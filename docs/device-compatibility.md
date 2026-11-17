@@ -89,15 +89,14 @@ turn it off ([on trial](evidence.md#no-known-method-not-built-yet-on-trial)).
 
 ### Zigbee plugs and switches
 
-Turn on with timer on a ZHA `switch`, and get attributes on a ZHA or Zigbee2MQTT one. A plug works only if its firmware
-honors the Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On
-Zigbee2MQTT, turn on with timer is tested plug by plug: DeviceSide uses Tuya's countdown on the TS011F plugs Zigbee2MQTT
-drives by it ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and every other plug, a Hue
-one included, runs only with Experimental features on. On ZHA, and on Zigbee2MQTT's other Tuya
-plugs, DeviceSide refuses it, as they would turn on and stay on, or on long after the time asked; the
-[Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. Get attributes reads none of Tuya's plugs:
-a Zigbee2MQTT countdown plug's time left can't be read, and it reads only plugs another feature runs on, which the
-rest, and the Sonoff SWV on ZHA, are not. ZHA and Zigbee2MQTT each need their own report.
+Turn on with timer runs on a Zigbee plug or switch only where it has passed on that plug: Zigbee2MQTT's Tuya TS011F
+plugs, which DeviceSide sends Tuya's countdown ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)).
+Research predicts most other plugs fail the Zigbee timed-on command: plugs needn't implement it, and many run a
+countdown of their own instead. So on ZHA, and on every other Zigbee2MQTT plug, a Hue one included, it isn't built yet,
+even with Experimental features on: it waits for DeviceSide's own timer or a plug's auto-off. The
+[Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. Get attributes reads no Zigbee plug, as it reads only what
+another feature runs on, and a Zigbee2MQTT countdown plug's time left can't be read. A contributor with a plug that
+passes can add it ([evidence](evidence.md#levels)).
 
 ## Not built yet
 
@@ -126,8 +125,8 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>`LWA012` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities; other, tuya_zcl on light, sengled, gledopto classes | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102` | |
+| `get_attributes` | Verified | light entities; hue on light classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>`LWA012` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
+| `get_attributes` | Experimental | switch entities; other on light, tuya_zcl on light, sengled, gledopto classes | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102` | |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_zcl, tuya_mcu, sengled, gledopto classes | | |
@@ -148,7 +147,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, tuya_mcu, sengled, gledopto classes | | |
 | `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102`<br>`LWA012` (`hue`), firmware `1.163.1`<br>`LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | other, tuya_countdown, gledopto classes | | |
+| `turn_on_for` | Experimental | other on light, tuya_countdown, gledopto classes | | |
 
 | No known method | Why | Source |
 |---|---|---|
@@ -156,6 +155,8 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
+| other brands' plugs and switches (`turn_on_for`) | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
+| Hue smart plugs (`turn_on_for`) | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya TS011F plugs (no countdown setting) (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | other Tuya devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya datapoint devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
@@ -166,7 +167,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
 | `get_attributes` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>`LWA012` (`hue`), firmware `0x01002a00` | [record](integrations/zha/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities; other, tuya_zcl on light, sengled classes | | |
+| `get_attributes` | Experimental | other, tuya_zcl on light, sengled classes | | |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_zcl, sengled classes | | |
@@ -185,11 +186,13 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>group | [record](integrations/zha/test-records/stop.json) |
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, sengled classes | | |
-| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin fields | `LWA012` (`hue`), firmware `0x01002a00`<br>`LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | switch entities; other classes | | |
+| `turn_on_for` | Verified | light entities; hue on light classes; brightness, color_temp_kelvin fields | `LWA012` (`hue`), firmware `0x01002a00`<br>`LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
+| `turn_on_for` | Experimental | switch entities; other on light classes | | |
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
+| other brands' plugs and switches (`turn_on_for`) | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
+| Hue smart plugs (`turn_on_for`) | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya TS011F _TZ3000_gjnozsaz (`turn_on_for`) | Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and the timer that would serve it isn't built | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
 | Tuya countdown plugs and switches (TS011F, TS0001–TS0004, TS0011, TS0726) (`turn_on_for`) | ZHA's timer can turn it on long after the time asked and leave it on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | other Tuya devices (`turn_on_for`) | ZHA's timer can turn it on or off long after the time asked | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |

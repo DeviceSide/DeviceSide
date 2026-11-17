@@ -70,8 +70,9 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "raise_saturation": _UNTESTED,
     "lower_saturation": _UNTESTED,
     # Raw ZCL reads and writes. Other brands depart: a bulb without `onTime` can fail the read, and some come on, or
-    # at full, when written while off.
-    "get_attributes": _UNTESTED,
+    # at full, when written while off. The read on lights alone, as no action serves an `other` switch
+    # (docs/evidence.md, "A read serves only"; turn_on_for refuses it, refusals.py).
+    "get_attributes": experimental(OTHER, domains=(Platform.LIGHT,), only=True),
     "set_attributes": _UNTESTED,
     # Every other brand may depart (some never switch off).
     "turn_on_for": _UNTESTED,

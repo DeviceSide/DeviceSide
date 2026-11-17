@@ -25,7 +25,14 @@ def test_turn_on_for_alone_refuses_classes_not_built_and_harms_there_alone():
     """Each class turn_on_for refuses has a call that would work, not built yet. turn_on_for's failure harms, so the
     dispatcher refuses a device it can't place too; no other Z2M adapter does."""
     assert REFUSALS.keys() == {"turn_on_for", "get_attributes"}
-    assert set(REFUSALS["turn_on_for"]) == {"tuya_ts011f", "tuya_zcl", "tuya_mcu", "tuya_countdown_harmed"}
+    assert set(REFUSALS["turn_on_for"]) == {
+        "other",
+        "hue",
+        "tuya_ts011f",
+        "tuya_zcl",
+        "tuya_mcu",
+        "tuya_countdown_harmed",
+    }
     assert all(isinstance(entry, NotBuilt) for entry in REFUSALS["turn_on_for"].values())
     assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms(FAILURE_HARMS[adapter.action])] == [
         "turn_on_for"
@@ -61,6 +68,25 @@ async def test_turn_on_for_refuses_a_ts011f_as_not_built_with_experimental_on(ha
     broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
+    assert commands(broker) == []
+
+
+@pytest.mark.parametrize("manufacturer", ["Philips", "Innr"], ids=["hue", "other"])
+async def test_turn_on_for_refuses_a_plug_with_no_switch_pass_as_not_built_with_experimental_on(
+    hass, setup_production, broker, manufacturer
+):
+    """Research predicts most plugs and switches fail OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md),
+    and no Hue or other brand's plug has a pass (docs/evidence.md, On trial): refused, so Experimental features can't
+    send it, with why."""
+    allow_experimental(hass)
+    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=manufacturer, model_id="SP 120")
+    broker.retained[DEVICES] = [interviewed(IEEE, manufacturer, "SP 120")]
+
+    with pytest.raises(TargetNotSupported) as raised:
+        await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
+
+    assert raised.value.reason == "not_built"
+    assert "plugs and switches ignore the timer" in raised.value.translation_placeholders["why"]
     assert commands(broker) == []
 
 

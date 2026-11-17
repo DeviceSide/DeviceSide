@@ -81,13 +81,14 @@ don't apply to a valve.
 
 ### Other brands
 
-Lights, plugs and switches of every other brand, such as IKEA, Innr, Ledvance or Sonoff. Dimming down smoothly (lower
+Lights of every other brand, such as IKEA, Innr, Ledvance or Sonoff; their plugs and switches get no feature yet
+([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)). Dimming down smoothly (lower
 brightness) and stop send them exactly the standard Zigbee commands a Hue bulb gets, which no known brand handles
 differently, so they should work. Their other features are untested, so they run only with Experimental features on
 ([try it](../../device-compatibility.md#try-it-experimental-features)); raising brightness from off turns a Hue bulb
 on by Hue's own command, which other brands don't get. So the card splits smooth dimming for other brands: smooth
 dimming down should work, and smooth dimming up runs only with Experimental features on. Brands differ most on turn on
-with timer: some turn on and never off, or ignore the timer. If you try one, please report it whether it works or not: Integrations >
+with timer: some turn on and never off, or ignore the timer. If you try a light, please report it whether it works or not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug. A brand with a passing report gets its own entry here.
 

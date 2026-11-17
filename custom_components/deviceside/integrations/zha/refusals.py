@@ -9,11 +9,14 @@ alone; this path isn't theirs, so an entry is added, changed or removed with an 
 
 from collections.abc import Mapping
 
+from homeassistant.const import Platform
+
 from .docs import INTERNALS, RESEARCH
+from .families.hue import HUE
 from .families.sengled import SENGLED
 from .families.sonoff import SONOFF_SWV
 from .families.tuya import TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_ZCL
-from ...core.scope import NoKnownMethod, NotBuilt
+from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 
 REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # turn_on_for's call harms each of these (docs/evidence.md, When today's call harms a class): it ends on with no
@@ -22,6 +25,19 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # A call that would work is known or plausible, but isn't built (plan Decisions 70, 74 and 41): every class the
     # call harms, so none has no known method.
     "turn_on_for": {
+        # Plugs and switches of every brand with no switch pass, on the switch domain alone (docs/evidence.md, On
+        # trial): research predicts most fail, as plugs and relays needn't implement OnWithTimedOff, and many read it
+        # as a vendor countdown, a delayed toggle, or nothing. The calls that would serve them, a host-side off or a
+        # vendor's auto-off, aren't built. Their bulbs keep the class's level.
+        **dict.fromkeys(
+            (OTHER, HUE),
+            NotBuilt(
+                reason="Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, "
+                "and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built",
+                source=RESEARCH + "2026-11-14-timed-on-call-patterns.md",
+                domains=frozenset({Platform.SWITCH}),
+            ),
+        ),
         # The countdown misbehaves on this string (Z2M #30493: the time left jumps back at random), and Tuya's inching
         # (cluster 0xE000, command 0xFB), which would plausibly serve it, isn't built (plan Decision 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(

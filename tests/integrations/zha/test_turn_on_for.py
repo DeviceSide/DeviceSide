@@ -138,27 +138,15 @@ async def test_failed_read_is_sent(hass, setup_production, commands, readback, r
     assert response == {"light.bulb": {"status": "sent", "integration": "zha", "detail": "readback_failed"}}
 
 
-@pytest.mark.parametrize(
-    ("on", "expected"),
-    [
-        (True, CONFIRMED),
-        # A plug that keeps OnTime but stays off.
-        (False, {"status": "sent", "integration": "zha", "detail": "not_on"}),
-    ],
-)
-async def test_switch_is_experimental(hass, setup_production, commands, turn_ons, readback, on, expected):
+@pytest.mark.parametrize("experimental", [False, True])
+async def test_a_switch_is_not_built(hass, setup_production, commands, turn_ons, experimental):
+    """Most plugs ignore OnWithTimedOff, so no ZHA class is served on switch, Experimental or not."""
     add_zha_entity(hass, zha_entry(hass), "switch.plug")
-    readback.return_value = reads(50, on=on)
-    data = {"entity_id": "switch.plug", "duration": 5}
+    allow_experimental(hass, experimental)
 
-    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
     assert not commands
-
-    allow_experimental(hass)
-    assert await call(hass, "turn_on_for", data) == {"switch.plug": expected}
     assert not turn_ons
-    assert commands[0].data["command"] == 0x42
-    assert commands[0].data["params"] == {"on_off_control": 0, "on_time": 50, "off_wait_time": 0}
 
 
 async def test_entity_without_a_light_unique_id_is_not_addressable(hass, setup_production, commands, turn_ons):

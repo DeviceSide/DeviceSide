@@ -67,7 +67,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Both Verified: the class decides a switch's level, as each class holds its own per domain (its family's
         # turn_on_for scope). Zigbee plugs and switches rarely honor OnWithTimedOff, so only a class with a switch
-        # record is Verified there; a Hue plug, an `other` one and the rest stay untested.
+        # record serves one; a Hue plug and an `other` one are not built (refusals.py).
         domains=verified(Platform.LIGHT, Platform.SWITCH),
         # The not_built entries (refusals.py) each harm their class (a Tuya plug left on), so the dispatcher refuses a
         # device not yet placed, and a group of unknown membership, as class_unknown, even with Experimental features

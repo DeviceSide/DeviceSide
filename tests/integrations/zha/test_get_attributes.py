@@ -150,44 +150,24 @@ async def test_timer_from_on_time_while_on(hass, bulb, on_off, expected):
     assert await call(hass, "get_attributes", {"entity_id": "light.bulb"}) == {"light.bulb": expected}
 
 
-async def test_switch_is_experimental_and_reads_only_on_off(hass, bulb, requests):
-    add_zha_entity(hass, zha_entry(hass), "switch.plug", state="on")
-    bulb[zcl.ON_OFF_CLUSTER] = {zcl.ON_OFF: 1, zcl.ON_TIME: 50}
-
-    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "experimental_off"
-    assert not requests
-
-    allow_experimental(hass)
-    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(5.0)}}
-    assert clusters_read(requests) == [zcl.ON_OFF_CLUSTER]
-
-
 @pytest.mark.parametrize(
     "strings",
     [
         ("_TZ3000_typdpbpg", "TS011F"),  # a countdown model
         ("_TZ3000_gjnozsaz", "TS011F"),  # the reported plug
         ("_TZ3000_abcdefgh", "TS0101"),  # another Tuya ZCL device, as a switch
+        ("IKEA of Sweden", "TRADFRI control outlet"),  # another brand's plug
     ],
 )
-async def test_a_tuya_plug_or_switch_is_not_read(hass, bulb, requests, strings):
-    """No other action serves a Tuya plug or switch yet, so get_attributes doesn't either
+@pytest.mark.parametrize("experimental", [False, True])
+async def test_a_plug_or_switch_is_not_read(hass, bulb, requests, strings, experimental):
+    """No ZHA class is served on switch by turn_on_for, so get_attributes reads lights alone
     (docs/evidence.md, "A read serves only")."""
     add_zha_entity(hass, zha_entry(hass), "switch.plug", state="on", strings=strings)
-    allow_experimental(hass)
+    allow_experimental(hass, experimental)
 
-    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "not_built"
+    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "domain_not_tested"
     assert not requests
-
-
-async def test_another_brand_s_plug_reads_the_spec_s_tenths(hass, bulb):
-    add_zha_entity(
-        hass, zha_entry(hass), "switch.plug", state="on", strings=("IKEA of Sweden", "TRADFRI control outlet")
-    )
-    bulb[zcl.ON_OFF_CLUSTER] = {zcl.ON_OFF: 1, zcl.ON_TIME: 10}
-    allow_experimental(hass)
-
-    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(1.0)}}
 
 
 async def test_light_without_an_address_is_refused(hass, bulb, requests):

@@ -67,8 +67,9 @@ every call and reply path unchanged: a `no_call_changed` row citing its commit k
 call lands next. It reopens `stop`'s records alone, and a rerun of the `stop` suite completes the sign-off.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
-That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA
-`turn_on_for`, and on Zigbee2MQTT each class holds its own level on switches: `hue` is Verified on lights alone. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
+That reopened "a Zigbee switch takes the light's timed-on call", and with research predicting most plugs and switches
+fail it, no class without a switch pass is on trial there: `turn_on_for` refuses `other` and `hue` switches as not
+built on ZHA and Zigbee2MQTT, and `hue` stays Verified on lights. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
 light's call one plug stayed off while another switched on about ten times later than asked and stayed on
 ([internals](internals.md#tested-behavior)). Research also found that even lights given the identical call differ by
 firmware: Hue replaces a running timer where the spec keeps the longer one, and some IKEA and Hue models turn on and
@@ -141,7 +142,8 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 - **A level per class and domain.** A class's level holds on every domain the adapter serves, unless its entry names
   some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
   Experimental. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
-  on lights, as every record ran on a bulb, so a Hue plug, a switch, stays flagged.
+  on lights, as every record ran on a bulb, and a Hue plug, a switch, is not built on `turn_on_for`. A `NotBuilt`
+  entry can name domains too, refusing its class on those alone while its capability entry serves the rest.
 - **A class names its domains.** Each class declares the entity domains whose features its devices have (a TS011F
   plug: switch, even where Zigbee2MQTT shows it as a light; Gledopto: light; other brands: light and switch). The
   guarantee is per action: a scope never holds a class on an action that serves none of its domains, so an action for

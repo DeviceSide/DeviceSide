@@ -382,9 +382,9 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
     """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
-    its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block, which keeps the
-    harm's source: the card leaves the class's feature out, as it does any not built yet. One per class, reason and
-    source."""
+    its class's devices.yaml phrase (an entry on some domains alone, by its phrases for them), with the actions whose
+    adapters list it, for the evidence block, which keeps the harm's source: the card leaves the class's feature out,
+    as it does any not built yet. One per class, reason and source."""
     found: dict[tuple, dict] = {}
     for adapter in integration_adapters:
         for name, entry in adapter.scope.not_built.items():
@@ -395,6 +395,11 @@ def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]
             if name not in data.capabilities.get(key, {}):
                 fail(f"capabilities: no entry for {key} {name}, which a scope lists as not built yet")
             what = data.capabilities[key][name]["phrase"]
+            if entry.domains is not None:  # refused on some domains alone: named by their phrases ("Hue smart plugs")
+                phrases = data.capabilities[key][name].get("domains") or {}
+                if missing := sorted(entry.domains - phrases.keys()):
+                    fail(f"capabilities: {key} {name} needs a phrase for {', '.join(missing)}, where it is not built")
+                what = ", ".join(phrases[domain] for domain in sorted(entry.domains))
             section = data.section_phrases.get(key, {}).get(data.capabilities[key][name]["section"], {})
             if "variants" in section:  # a variant's phrase names it within its model: "no countdown setting"
                 what = f"{section['phrase']} ({what})"

@@ -62,9 +62,9 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Zigbee plugs and switches rarely honor OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md), so
-        # switch fails the Documented test (docs/evidence.md, Levels): it stays flagged experimental, untested, until
-        # a maintainer judges it ready.
+        # Zigbee plugs and switches rarely honor OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md), so no
+        # class is served on switch: each is refused there with its reason (refusals.py). The domain stays in scope,
+        # flagged, so those refusals name a domain the scope serves; a class with a switch pass is served on it.
         domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
         # Each class's level is its family's (families/<family>/), `other`'s classes.py's; the classes the call harms
         # are refused (refusals.py).

@@ -17,7 +17,7 @@ it connects. Every feature says how well it is proven for each
 ([levels of proof](../../device-compatibility.md#levels-of-proof)).
 
 - **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them. A Hue smart plug
-  hasn't: turn on with timer runs on it only with Experimental features on.
+  hasn't, and turn on with timer isn't built for it ([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)).
 - A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Experimental features
   off, one of another brand, falls back to its lights, each on its own; with them on, it runs as one group. A member
   Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya plug in a
@@ -101,11 +101,12 @@ feature on them is untested and runs only with Experimental features on.
 
 ### Other brands
 
-Lights, plugs and switches of every other brand, such as IKEA, Innr or Ledvance. Dimming smoothly (raise and lower
+Lights of every other brand, such as IKEA, Innr or Ledvance; their plugs and switches get no feature yet
+([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)). Dimming smoothly (raise and lower
 brightness) and stop send them exactly the standard Zigbee commands a Hue bulb gets, which no known brand handles
 differently, so they should work. Their other features are untested, so they run only with Experimental features on
 ([try it](../../device-compatibility.md#try-it-experimental-features)). Brands differ most on turn on with timer:
-some turn on and never off, or ignore the timer. If you try one, please report it whether it works or not:
+some turn on and never off, or ignore the timer. If you try a light, please report it whether it works or not:
 Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report
 a device test result or bug. A brand with a passing report gets its own entry here.
 

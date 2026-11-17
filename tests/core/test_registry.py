@@ -246,7 +246,9 @@ def test_shelly_names_no_default_class_and_zigbee2mqtt_holds_its_below_verified(
     assert registry.integrations["shelly"].default_class is None
     z2m = [adapter for _, key, adapter in registry.matrix() if key == "zigbee2mqtt" and adapter is not None]
     assert z2m
-    assert all(adapter.scope.capabilities["other"] < Level.VERIFIED for adapter in z2m)
+    # An entry held on some domains alone (OnDomains) carries its level.
+    levels = [getattr(entry, "level", entry) for entry in (adapter.scope.capabilities["other"] for adapter in z2m)]
+    assert all(level < Level.VERIFIED for level in levels)
 
 
 @pytest.mark.parametrize(

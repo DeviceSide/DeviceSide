@@ -54,7 +54,9 @@ FAMILY = Family(
         "raise_saturation": _VERIFIED,
         "lower_saturation": _VERIFIED,
         "stop": _VERIFIED,
-        "get_attributes": _VERIFIED,
+        # On lights alone: no action serves a Hue plug (turn_on_for refuses it, refusals.py), so none is read
+        # (docs/evidence.md, "A read serves only").
+        "get_attributes": FamilyScope(capabilities=verified(HUE, domains=(Platform.LIGHT,), only=True)),
         "set_attributes": _VERIFIED,
         # On lights alone, as every record ran on a bulb, so a Hue plug (a switch) is untested.
         "turn_on_for": FamilyScope(capabilities=verified(HUE, domains=(Platform.LIGHT,))),

@@ -277,7 +277,7 @@ get_attributes:
         integration: mqtt
       - domain: [light, switch]
         integration: matter
-      - domain: [light, switch]
+      - domain: light
         integration: zha
 
 set_scene:
