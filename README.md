@@ -198,7 +198,7 @@ The following actions cancel a `turn_on_for` timer:
 
 * Start a new timer (replaces the old timer)
 
-* Turn on (i.e. leave on). Tested on Shelly only
+* Turn on (i.e. leave on), on some integrations: each [integration's page](docs/integrations.md) says what cancels its timer
 
 ### Turn off with timer
 
@@ -210,7 +210,7 @@ Turn off, then on after a delay. Timer runs on the device. Example use case:
 
 | Field               | Description                                                     |
 |:------------------- |:--------------------------------------------------------------- |
-| `target`            | Shelly lights and switches (required)                           |
+| `target`            | Lights and switches (required)                                  |
 | `duration`          | Delay until the device turns on (required). Up to 7 days        |
 | `response_variable` | Variable that receives the response from each entity (optional) |
 
@@ -264,7 +264,7 @@ data:
 
 | Field               | Description                                                     |
 |:------------------- |:--------------------------------------------------------------- |
-| `target`            | Shelly lights and switches (required)                           |
+| `target`            | Lights and switches (required)                                  |
 | `duration`          | Delay until the device turns off/on. Up to 7 days (required)    |
 | `response_variable` | Variable that receives the response from each entity (optional) |
 
@@ -315,8 +315,6 @@ buttons_released:
 | `limit`      | Raise: maximum brightness (default 100%).<br>Lower: minimum brightness (default 0%). The light turns off at 0%; choose 0.4%+ to keep it on |
 
 To dim multiple Zigbee lights together, target a Hue, Z2M or ZHA group instead of separate lights or an HA group. Native groups move in sync via group-wide Zigbee messages.
-
-On Shelly, Multicolor Bulbs (Gen3) dim this way too. Other Shelly lights are refused until tested.
 
 ### Smooth color changes
 
@@ -390,11 +388,11 @@ Sets brightness, color temperature or color without changing on/off state.
 
 Action: `set_scene`
 
-Currently implemented for Hue scenes on the Hue integration only.
+Stages a native scene on its lights without turning them on.
 
-| Field    | Description          |
-|:-------- |:-------------------- |
-| `target` | Hue scene (required) |
+| Field    | Description             |
+|:-------- |:----------------------- |
+| `target` | Native scene (required) |
 
 ### Get attributes
 
