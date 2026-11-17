@@ -1,0 +1,12 @@
+{
+  "format": 2,
+  "integration": "shelly",
+  "signoffs": [
+    {
+      "date": "2026-11-17",
+      "commit": "234bb2d2b3d6683cf68abaf779c48ebc04f10d49",
+      "tester": "jasonmx",
+      "no_call_changed": true
+    }
+  ]
+}

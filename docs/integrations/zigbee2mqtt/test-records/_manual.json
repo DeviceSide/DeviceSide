@@ -1,0 +1,20 @@
+{
+  "format": 2,
+  "integration": "zigbee2mqtt",
+  "signoffs": [
+    {
+      "date": "2026-11-17",
+      "commit": "ab1ccdd3fca831b0fa26d5637077717862cd2a29",
+      "tester": "jasonmx",
+      "no_call_changed": true,
+      "actions": ["get_attributes", "lower_brightness", "lower_hue", "lower_saturation", "raise_brightness", "raise_hue", "raise_saturation", "set_attributes", "stop", "turn_on_for"]
+    },
+    {
+      "date": "2026-11-17",
+      "commit": "234bb2d2b3d6683cf68abaf779c48ebc04f10d49",
+      "tester": "jasonmx",
+      "no_call_changed": true,
+      "actions": ["get_attributes", "lower_brightness", "lower_hue", "lower_saturation", "raise_brightness", "raise_hue", "raise_saturation", "set_attributes", "stop", "turn_on_for"]
+    }
+  ]
+}
