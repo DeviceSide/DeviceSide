@@ -1,12 +1,12 @@
-# The device's persistent auto-on: after every turn-off, from any source, it turns itself on after the delay. Plug
-# only, and the entry reload, as in set_auto_off.yaml.
+# The device's persistent auto-on: after every turn-off, from any source, it turns itself on after the delay. The
+# roles and the entry reload as in set_auto_off.yaml.
 action: set_auto_on
-rig_seconds: 400
+rig_seconds: 550
 tests:
   # The one regression case: the write, the repeat that sends nothing, the stored delay read back, and the delay
   # firing on a plain turn-off.
   - name: applies_to_any_turn_off
-    roles: [switch_plug]
+    roles: [switch_plug, light_color]
     only: [shelly]
     steps:
       - set: {state: on}
