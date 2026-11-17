@@ -30,6 +30,9 @@ shared home named in parentheses.
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
 | A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
 | Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |
+| A name HA defines (entity domain, service, state, attribute, `ColorMode`) | HA's constant (`homeassistant.const`, `homeassistant.components.light`); not where DeviceSide's meaning differs (its `brightness` is a percent), nor from an integration's `const.py` that imports a vendor library |
+| A wire fact two integrations share (ZCL or Matter encodings) | `core/`, named for the encoding (`core/zcl.py`); never another integration's package |
+| A constant two modules of one package share | the package module that owns the call, imported by the other |
 | Classes, levels, no known method and not built yet entries | the package's code: `IntegrationInfo.classes` and the scopes' `no_known_method` and `not_built` (on an integration with families, the entries are in its `integrations/<x>/refusals.py`; `scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
 | A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
@@ -62,7 +65,7 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 9. Retest what the change exercises: only the rig cases whose call or reply handling changed. The gate reopens a
    record when its own adapter's module or a shared one changed; a `no_call_changed` row at that change keeps it.
 
-The levels (Verified, Documented), device classes, the `experimental` flag, caveats, the release gate and the sign-off
+The levels (Verified, Documented, Experimental), device classes, caveats, the release gate and the sign-off
 format:
 [`docs/evidence.md`](docs/evidence.md).
 
@@ -130,4 +133,5 @@ attached to the session, its `CLAUDE.md` says how to run it.
 ## Conventions
 
 - Logging: [`docs/logging.md`](docs/logging.md): levels, the per-call DEBUG line, and never a device address.
+- Constants: before defining one, `rg` for its value and meaning and import the existing one; `scripts/check_ha_literals.py` flags an HA name written as a literal. A duration's name carries its unit (`_S`, `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined.
 - American English, matching HA.

@@ -15,6 +15,7 @@ from homeassistant.helpers.storage import Store
 
 from .addressing import entity_name
 from .bridge import OPTION, ensure_options
+from .bridge_cache import KINDS
 from ...core.errors import describe
 from ...core.runtime import get_runtime
 
@@ -24,7 +25,6 @@ _KEY = "zigbee2mqtt_restore_journal"
 _LOCKS_KEY = "zigbee2mqtt_native_control_locks"
 _REPLAYS_KEY = "zigbee2mqtt_restore_replays"
 _VERSION = 1
-_KINDS = ("device", "group")
 
 type Address = tuple[Literal["device", "group"], str]  # Z2M's options section and the ID in it
 
@@ -54,7 +54,7 @@ class Journal:
             return
         for key, value in loaded.items():
             kind, _, z2m_id = str(key).partition("/")
-            if kind not in _KINDS or not z2m_id or not isinstance(value, bool):
+            if kind not in KINDS or not z2m_id or not isinstance(value, bool):
                 _LOGGER.warning("Skipped a malformed %s restore journal entry, so that restore is lost", OPTION)
                 continue
             self.owed[key] = value

@@ -14,6 +14,8 @@ literal strings escaped.
 
 import re
 
+from homeassistant.const import Platform
+
 from .countdown import COUNTDOWN
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental, verified
@@ -113,7 +115,7 @@ _RAW_ZCL = FamilyScope(capabilities=experimental(TUYA_ZCL, *_TS011F))
 # call isn't, so a group with one falls back to its members. The classes off the countdown are left out: the
 # integration refuses them there, as today's call would harm them (refusals.py).
 _TURN_ON_FOR = FamilyScope(
-    capabilities=verified(*VERIFIED_COUNTDOWNS, domains=("switch",)) | experimental(TUYA_COUNTDOWN),
+    capabilities=verified(*VERIFIED_COUNTDOWNS, domains=(Platform.SWITCH,)) | experimental(TUYA_COUNTDOWN),
     own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
 )
 

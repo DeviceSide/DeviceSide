@@ -3,6 +3,7 @@
 import logging
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import (
@@ -20,11 +21,12 @@ from ...core.adapter import Adapter
 from ...core.errors import describe
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, documented, verified
+from ...core.zcl import MAX_TENTHS_S
 
 _LOGGER = logging.getLogger(__name__)
 
-# OnWithTimedOff.onTime is a uint16 in tenths of a second; the spec caps it at 65534 tenths, so 6553.4 s is the most.
-_TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
+# OnWithTimedOff.onTime (core/zcl.py).
+_TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=MAX_TENTHS_S)
 # OffWaitTime 1 (0.1 s), not 0: matter.js before v0.17.2 never times off on 0 (internals.md, turn_on_for).
 _OFF_WAIT_TENTHS = 1
 
@@ -38,7 +40,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Documented on both until the plug's rerun on OffWaitTime 1 (its record ran 0); lights take the same call as
         # plugs, behind the same LT check.
-        domains=documented("switch", "light"),
+        domains=documented(Platform.SWITCH, Platform.LIGHT),
         duration=_TIMER_LIMITS,
         fields=verified(),
         capabilities=TURN_ON_FOR,

@@ -91,6 +91,22 @@ def test_level_folds_in_the_fields_the_call_carries(fields, level):
     assert scope.level("light", (), fields) is level
 
 
+@pytest.mark.parametrize(
+    ("scope", "flagged"),
+    [
+        (AdapterScope(domains=experimental("light", "switch"), capabilities=verified("A")), True),
+        (AdapterScope(domains=experimental("light") | verified("switch")), False),  # flags only its domain's calls
+        (AdapterScope(domains=verified("light")), False),
+        (AdapterScope(domains={}), False),  # no domain, no call to flag
+        # A class or field at Experimental flags only the calls that touch it, never the adapter whole.
+        (AdapterScope(capabilities=experimental("A")), False),
+        (AdapterScope(fields=experimental("transition")), False),
+    ],
+)
+def test_an_adapter_is_flagged_whole_when_every_domain_is_experimental(scope, flagged):
+    assert scope.all_experimental is flagged
+
+
 def test_a_class_outside_the_scope_counts_as_experimental():
     """The gate must not raise on a class the refusal didn't stop."""
     scope = AdapterScope(capabilities=verified("RGBCCT"))
@@ -98,7 +114,7 @@ def test_a_class_outside_the_scope_counts_as_experimental():
     assert scope.level("light", ("Switch",)) is Level.EXPERIMENTAL
 
 
-NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
+NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source")
 
 
 @pytest.mark.parametrize(
@@ -116,19 +132,39 @@ NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.
 def test_a_class_with_no_known_method_or_not_served_is_refused(classes, reason):
     scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": NO_METHOD})
 
-    assert scope.refusal(classes) == reason
+    assert scope.refusal(classes, failure_harms=False) == reason
 
 
-HARMS = NoKnownMethod("Tuya plug", "It stays on", "https://example.com/source", harms=True)
+HARMS = NoKnownMethod("Tuya plug", "It stays on", "https://example.com/source")
 
 
-def test_every_no_known_method_entry_states_whether_its_call_harms():
-    """No default (plan Decision 30): an entry that left it out would pass as harmless and let an unplaced target
+def test_every_refusal_states_whether_the_action_s_failure_harms():
+    """No default, and by keyword alone: a caller that left it out would pass as harmless and let an unplaced target
     through the call that harms its class."""
+    scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": HARMS})
+
     with pytest.raises(TypeError):
-        NoKnownMethod("Tuya plug", "It stays on", "https://example.com/source")  # type: ignore[call-arg]
+        scope.refusal((None,))  # type: ignore[call-arg]
     with pytest.raises(TypeError):
-        NoKnownMethod("Tuya plug", "It stays on", "https://example.com/source", True)  # type: ignore[misc]
+        scope.refusal((None,), False, True)  # type: ignore[misc]
+
+
+@pytest.mark.parametrize(
+    ("failure_harms", "entries", "harms"),
+    [
+        (True, {"not_built": {"tuya_zcl": NotBuilt("It would stay on", "https://example.com/source")}}, True),
+        (True, {"no_known_method": {"tuya_zcl": HARMS}}, True),
+        (False, {"no_known_method": {"tuya_zcl": HARMS}}, False),  # Hue's set_scene and its smart scenes
+        (True, {}, False),  # a timed action with no refused class: none an unplaced target could be in
+        (False, {}, False),
+    ],
+)
+def test_harms_is_the_action_s_failure_and_any_refusal_entry(failure_harms, entries, harms):
+    """Derived, not declared: the action decides whether its failure harms, and the scope's entries trigger it."""
+    scope = AdapterScope(capabilities=verified("hue"), **entries)
+
+    assert scope.harms(failure_harms) is harms
+    assert (scope.refusal((Unplaced("hue"),), failure_harms=failure_harms) is not None) is harms
 
 
 @pytest.mark.parametrize(
@@ -145,11 +181,11 @@ def test_every_no_known_method_entry_states_whether_its_call_harms():
 def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(classes, reason):
     scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": HARMS})
 
-    assert scope.harms
-    assert scope.refusal(classes) == reason
+    assert scope.harms(True)
+    assert scope.refusal(classes, failure_harms=True) == reason
 
 
-NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source", harms=True)
+NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source")
 
 
 @pytest.mark.parametrize(
@@ -166,30 +202,29 @@ NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source", harms=Tru
 )
 def test_a_not_built_class_the_call_harms_refuses_one_not_yet_placed(classes, reason):
     """Plan Decision 70: a not built yet class today's call would harm refuses unplaced and None targets as
-    class_unknown, exactly as a harms no known method entry does."""
+    class_unknown, exactly as a no known method entry on an action whose failure harms does."""
     scope = AdapterScope(capabilities=verified("hue"), not_built={"tuya_zcl": NOT_BUILT})
 
-    assert scope.harms
-    assert scope.refusal(classes) == reason
+    assert scope.harms(True)
+    assert scope.refusal(classes, failure_harms=True) == reason
 
 
-def test_a_not_built_entry_harms_and_stays_out_of_the_other_two():
-    with pytest.raises(TypeError):
-        NotBuilt("It would stay on", "https://example.com/source")  # type: ignore[call-arg]
+def test_a_not_built_entry_stays_out_of_the_other_two():
+    """Only on an action whose failure harms, which the registry checks (test_registry.py)."""
     for other in ({"capabilities": verified("tuya_zcl")}, {"no_known_method": {"tuya_zcl": NO_METHOD}}):
         with pytest.raises(ValueError, match="not_built names classes"):
             AdapterScope(**{"capabilities": {}, **other}, not_built={"tuya_zcl": NOT_BUILT})
-    # An unharmed not built yet class needs no entry: leaving it out refuses it the same way.
-    with pytest.raises(ValueError, match=r"not_built entries \['tuya_zcl'\] don't harm"):
-        AdapterScope(capabilities=verified("hue"), not_built={"tuya_zcl": replace(NOT_BUILT, harms=False)})
 
 
 def test_elsewhere_an_unplaced_class_is_the_class_it_names():
     scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": NO_METHOD})
 
-    assert not scope.harms
-    assert scope.refusal((Unplaced("hue"),)) is None
-    assert scope.refusal((Unplaced("tuya_zcl"),)) == (Reason.NO_KNOWN_METHOD, "It never switches on")
+    assert not scope.harms(False)
+    assert scope.refusal((Unplaced("hue"),), failure_harms=False) is None
+    assert scope.refusal((Unplaced("tuya_zcl"),), failure_harms=False) == (
+        Reason.NO_KNOWN_METHOD,
+        "It never switches on",
+    )
     assert scope.level("light", (Unplaced("hue"),)) is Level.VERIFIED
     assert Unplaced("hue") == "hue"
     assert hash(Unplaced("hue")) == hash("hue")
@@ -197,7 +232,7 @@ def test_elsewhere_an_unplaced_class_is_the_class_it_names():
 
 
 def test_a_scope_without_classes_refuses_none():
-    assert AdapterScope().refusal(("anything",)) is None
+    assert AdapterScope().refusal(("anything",), failure_harms=True) is None
 
 
 def test_a_class_is_never_both_served_and_no_known_method():
@@ -220,7 +255,7 @@ def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
         ("hue", Level.VERIFIED, frozenset({"light"})),
         ("other", Level.DOCUMENTED, None),
     ]
-    assert scope.refusal(["hue"]) is None  # served, so not refused: gated by its level
+    assert scope.refusal(["hue"], failure_harms=False) is None  # served, so not refused: gated by its level
 
 
 @pytest.mark.parametrize(
@@ -262,9 +297,9 @@ def test_a_class_with_a_call_of_its_own_gets_its_limits_and_keeps_a_group_apart(
     assert scope.call_limits(UNTIMED) is scope.duration
     assert scope.call_limits(None) is scope.duration
     # A listed group with such a member falls back to its members; the member itself, and any other group, run.
-    assert scope.refusal(["A", "B"], group=True) == (Reason.OWN_CALL, None)
-    assert scope.refusal(["B"]) is None
-    assert scope.refusal(["A"], group=True) is None
+    assert scope.refusal(["A", "B"], group=True, failure_harms=False) == (Reason.OWN_CALL, None)
+    assert scope.refusal(["B"], failure_harms=False) is None
+    assert scope.refusal(["A"], group=True, failure_harms=False) is None
 
 
 def test_a_call_of_its_own_is_for_a_class_the_scope_serves():
@@ -298,8 +333,8 @@ FAMILIES = (
 )
 # The integration's own tables: its default class's level per action, and its refusal entries per action and class.
 DEFAULT_LEVELS = {"turn_on_for": experimental("O"), "stop": documented("O")}
-D_NO_METHOD = NoKnownMethod("Plug D", "It never switches on", "https://example.com/d", harms=False)
-E_NOT_BUILT = NotBuilt("It would stay on", "https://example.com/e", harms=True)
+D_NO_METHOD = NoKnownMethod("Plug D", "It never switches on", "https://example.com/d")
+E_NOT_BUILT = NotBuilt("It would stay on", "https://example.com/e")
 REFUSALS = {"turn_on_for": {"D": D_NO_METHOD, "E": E_NOT_BUILT}}
 
 
@@ -335,8 +370,8 @@ def test_class_scope_is_an_adapter_scope_s_class_entries_with_the_default_class_
     assert list(entries["capabilities"]) == ["O", "A", "B", "C"]
     scope = AdapterScope(**entries)
     assert scope.own_call(["B"]) is TIMED
-    assert scope.refusal(["E"]) == (Reason.NOT_BUILT, "It would stay on")
-    assert scope.refusal(["D"]) == (Reason.NO_KNOWN_METHOD, "It never switches on")
+    assert scope.refusal(["E"], failure_harms=True) == (Reason.NOT_BUILT, "It would stay on")
+    assert scope.refusal(["D"], failure_harms=True) == (Reason.NO_KNOWN_METHOD, "It never switches on")
 
 
 def test_class_scope_for_an_action_nothing_is_refused_on_holds_no_entry():
@@ -440,8 +475,8 @@ def _covers(stop: AdapterScope | None, items: str, item: str, level: Level) -> b
 
 def test_every_move_has_a_stop_at_least_as_strong():
     """A raise or lower that starts where stop is refused, or gated behind the option, can't be halted. Item levels
-    and the adapter-level flag: group reach (native_groups against expand_group) and refusals in supports() that don't
-    come from scope are not compared."""
+    alone (an adapter flagged whole has every domain Experimental): group reach (native_groups against expand_group)
+    and refusals in supports() that don't come from scope are not compared."""
     adapters = _adapters()
     stops = {adapter.integration: adapter.scope for adapter in adapters if adapter.action == "stop"}
     gaps = []
@@ -450,8 +485,6 @@ def test_every_move_has_a_stop_at_least_as_strong():
             continue
         stop = stops.get(adapter.integration)
         name = f"{adapter.integration} / {adapter.action}"
-        if stop is not None and stop.experimental and not adapter.scope.experimental:
-            gaps.append(f"{name}: stop is flagged experimental")
         for domain, level in adapter.scope.domains.items():
             if not _covers(stop, "domains", domain, level):
                 gaps.append(f"{name}: domain {domain} ({level.name})")

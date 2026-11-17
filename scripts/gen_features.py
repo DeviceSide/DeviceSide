@@ -30,6 +30,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
 from scripts.check_release import BUNDLES, adapters  # noqa: E402
@@ -40,7 +41,7 @@ END = "<!-- features:end -->"
 # Absolute: HACS renders the README inside Home Assistant, where relative image paths don't resolve.
 ICON_URL = "https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/{}.svg"
 # Absolute for the same reason. Without a link of its own, GitHub links each icon to its SVG file.
-DOC_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/{}#{}"
+DOC_URL = DOCS_URL + "{}#{}"
 INTEGRATIONS = "docs/integrations.md"
 # The integrations.md section explaining every NO_PATH entry to users; keep the two in step.
 IMPOSSIBLE = "what-cant-be-done-and-why"
@@ -160,12 +161,12 @@ def integration_columns(registry: AdapterRegistry) -> dict[str, str]:
 def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[str]:
     """The icon keys an adapter covers: its domains at any Level but Experimental (Verified and Documented ship with
     the option off), plus `group` when it takes lights and the dispatcher passes it native groups, natively or expanded
-    to their members (`_expand_native_groups`). Empty when the adapter is flagged (`experimental=True`), or the scope
-    lists capabilities and every one is Experimental: then no call works with the option off. With `experimental`,
-    what it covers with the option on: every domain."""
+    to their members (`_expand_native_groups`). Empty when the adapter is flagged whole (every domain Experimental),
+    or the scope lists capabilities and every one is Experimental: then no call works with the option off. With
+    `experimental`, what it covers with the option on: every domain."""
     capabilities = adapter.scope.capabilities
     if not experimental and (
-        adapter.scope.experimental
+        adapter.scope.all_experimental
         or (
             capabilities is not None
             and all(level is Level.EXPERIMENTAL for _, level, _ in adapter.scope.class_entries())

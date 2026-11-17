@@ -43,9 +43,9 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
 Experimental gating, the one place the option gates anything (docs/evidence.md, The experimental flag). After supports()
 passes and fields are dropped, a call's level is the weakest of its domain, its class in that domain (a native group's:
 its weakest member's; one the integration can't name, or whose entry holds other domains alone, counts as Experimental)
-and the fields it still carries; `experimental=True` flags the whole adapter. An Experimental call is refused as
-experimental_off while the option is off, a named target raising its own message. A call left nothing to send is
-unchanged, not refused.
+and the fields it still carries; an adapter flagged whole has every domain Experimental. An Experimental call is
+refused as experimental_off while the option is off, a named target raising its own message. A call left nothing to
+send is unchanged, not refused.
 
 Running. A run's durations are clamped to AdapterScope.duration, or its class's own call's limits (own_calls), rounded
 to their step_s (core/duration.py). Each adapter runs once per distinct request (its dropped fields and own call),
@@ -351,13 +351,13 @@ class Dispatcher:
         where the adapter's call harms a class, one not yet placed (Unplaced, or None) is refused as class_unknown,
         with Experimental features on or off; one the scope lists in no_known_method, or the integration names but the
         scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
-        list them (the module docstring, Native groups), and an empty one is skipped silently. A flagged call, from an
-        `experimental=True` adapter or touching an Experimental scope item, is refused while the Experimental features
-        option is off; a native group flagged by a member's class alone falls back to its members instead, as does one
-        with a member whose class takes a call of its own (AdapterScope.own_calls), and a target of such a class runs
-        apart, on that call and its duration limits. A named target that can't take the action raises then, before
-        anything is sent. Returns a result per target that ran or was left nothing to do, each with its class, and an
-        unsupported one per indirect target skipped.
+        list them (the module docstring, Native groups), and an empty one is skipped silently. A flagged call, one
+        touching an Experimental scope item, is refused while the Experimental features option is off; a native group
+        flagged by a member's class alone falls back to its members instead, as does one with a member whose class
+        takes a call of its own (AdapterScope.own_calls), and a target of such a class runs apart, on that call and its
+        duration limits. A named target that can't take the action raises then, before anything is sent. Returns a
+        result per target that ran or was left nothing to do, each with its class, and an unsupported one per indirect
+        target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -413,7 +413,9 @@ class Dispatcher:
                 # an entity the caller didn't target (Target.addressable). Its class's refusal comes first, so a
                 # member whose class harms says so. It stands for its whole device, so the skip names the device
                 # (_device_of), with no address.
-                reason, why = adapter.scope.refusal(self._reached(adapter, target, None).classes) or (
+                reason, why = adapter.scope.refusal(
+                    self._reached(adapter, target, None).classes, failure_harms=adapter.failure_harms
+                ) or (
                     Reason.NOT_ADDRESSABLE,
                     None,
                 )
@@ -434,7 +436,9 @@ class Dispatcher:
                 results.append(
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
                 )
-            elif refused := adapter.scope.refusal(found, group=members is not None):
+            elif refused := adapter.scope.refusal(
+                found, group=members is not None, failure_harms=adapter.failure_harms
+            ):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
                 # skipped as indirect. So a group with one member not yet placed runs the rest, where the call harms
                 # a class, and one with a member that takes a call of its own gives each member its own; one of
@@ -464,18 +468,14 @@ class Dispatcher:
         ]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
-        """Whether the call is flagged experimental: the whole adapter (`experimental=True`), or an Experimental item
-        it touches, its domain, class (a native group's: its weakest member's) or a field it carries. The one place
-        the option gates anything; adapters never read it (docs/evidence.md)."""
-        if adapter.scope.experimental:
-            return True
+        """Whether the call is flagged experimental: an Experimental item it touches, its domain (an adapter flagged
+        whole has every domain Experimental), class (a native group's: its weakest member's) or a field it carries.
+        The one place the option gates anything; adapters never read it (docs/evidence.md)."""
         return adapter.scope.level(target.domain, classes, request.fields_present()) is Level.EXPERIMENTAL
 
     def _flagged_by_class_alone(self, adapter: Adapter, request: Request, target: Target) -> bool:
-        """Whether a flagged call would pass but for its classes: the adapter isn't flagged whole, nor its domain or
-        a field it carries, so a group's members can run one by one."""
-        if adapter.scope.experimental:
-            return False
+        """Whether a flagged call would pass but for its classes: neither its domain nor a field it carries is
+        Experimental, so a group's members can run one by one."""
         return adapter.scope.level(target.domain, (), request.fields_present()) is not Level.EXPERIMENTAL
 
     def _listed(self, adapter: Adapter, target: Target) -> list[Target] | None:

@@ -5,18 +5,30 @@ import asyncio
 import logging
 from typing import Any, ClassVar
 
+from homeassistant.components.homeassistant import SERVICE_UPDATE_ENTITY
+from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_SUPPORTED_COLOR_MODES,
+    ATTR_XY_COLOR,
+)
+from homeassistant.const import ATTR_ENTITY_ID, Platform
+from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from . import classes, zcl
 from .addressing import address, unsupported_reason
-from ...actions.set_attributes import SetAttributesRequest
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
+from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -27,8 +39,8 @@ from ...core.zcl_write import (
     wants_level,
 )
 
-# 0.4 s, the Hue bridge's default write fade, so a call looks alike on both; a light that is off doesn't fade.
-_EXECUTE_IF_OFF = zcl.execute_if_off(4)
+# The write fade is core/zcl.py's, so a call looks alike on both transports.
+_EXECUTE_IF_OFF = zcl.execute_if_off(WRITE_FADE_TENTHS)
 
 Wire = tuple[int, int, dict[str, Any]]
 
@@ -37,7 +49,7 @@ Wire = tuple[int, int, dict[str, Any]]
 TRANSITION_WAIT_S = 3.0
 TRANSITION_POLL_S = 0.1
 LATE_REFRESH_POLL_S = 0.5
-FADE_WAIT_S = 0.6  # the commands' 0.4 s fade plus margin: a read sooner sees a mid-fade color temperature
+FADE_WAIT_S = WRITE_FADE_WAIT_S
 SETTLE_REFRESH_S = 1.0  # a second read after the first, for a fade that ran slow
 # The refreshes' share of the adapter's time: they run past the concurrency slots, so nothing else bounds them.
 REFRESH_BUDGET_S = 4.0
@@ -146,9 +158,14 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"),
+        domains=verified(Platform.LIGHT),
         fields=verified(
-            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
+            BRIGHTNESS_FIELD,
+            ATTR_COLOR_TEMP_KELVIN,
+            ATTR_HS_COLOR,
+            ATTR_RGB_COLOR,
+            ATTR_XY_COLOR,
+            *LIMITS,
         ),
         **classes.class_scope(action),
         max_concurrency=2,
@@ -170,7 +187,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
             addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
             # supported_color_modes stays in the state while the light is off.
             attrs = dict(target.state.attributes) if target.state else {}
-            modes = set(attrs.get("supported_color_modes") or ())
+            modes = set(attrs.get(ATTR_SUPPORTED_COLOR_MODES) or ())
             current_level = None
             if wants_level(request, modes):
                 read = await zcl.read_attributes(hass, addr, zcl.LEVEL_CLUSTER, (zcl.CURRENT_LEVEL,))
@@ -235,7 +252,11 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     async def _update(self, hass: HomeAssistant, request: SetAttributesRequest, entity_id: str) -> None:
         try:
             await hass.services.async_call(
-                "homeassistant", "update_entity", {"entity_id": entity_id}, blocking=True, context=request.context
+                HOMEASSISTANT_DOMAIN,
+                SERVICE_UPDATE_ENTITY,
+                {ATTR_ENTITY_ID: entity_id},
+                blocking=True,
+                context=request.context,
             )
         except Exception as err:  # noqa: BLE001 - the write landed; a stale HA state is no reason to fail it
             _LOGGER.warning(

@@ -5,6 +5,15 @@ values into Z2M's state, and so HA's."""
 import asyncio
 from typing import ClassVar
 
+from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_SUPPORTED_COLOR_MODES,
+    ATTR_XY_COLOR,
+    ColorMode,
+)
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .adapter import Z2MAdapter
@@ -14,10 +23,12 @@ from .classes import class_scope
 from .members import member_lights, unaddressable
 from .read import Reader, reader
 from .set_check import checked
-from ...actions.set_attributes import SetAttributesRequest
-from ...core.errors import Reason
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
+from ...core.errors import NOT_STORED, Reason
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
+from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -29,13 +40,13 @@ from ...core.zcl_write import (
     wants_level,
 )
 
-# 0.4 s, the Hue bridge's default write fade, as on ZHA; a light that is off doesn't fade. The override sets
-# ExecuteIfOff for this command only, so the light takes it while off; Options stays untouched.
-_EXECUTE_IF_OFF = {"transtime": 4, "optionsMask": 1, "optionsOverride": 1}
+# The write fade is core/zcl.py's, as on ZHA. The override sets ExecuteIfOff for this command only, so the light
+# takes it while off; Options stays untouched.
+_EXECUTE_IF_OFF = {"transtime": WRITE_FADE_TENTHS, "optionsMask": 1, "optionsOverride": 1}
 
 # The fade is 0.4 s from when the bulb gets the command; a read inside it answers a level between the old and the
 # target. Wait it out, with a margin for the command's trip, before reading.
-_FADE_WAIT_S = 0.6
+_FADE_WAIT_S = WRITE_FADE_WAIT_S
 
 # A bulb's color temperature fade can outlast that wait, so a read that doesn't match is repeated before the write
 # counts as ignored: a fade converges, an ignored override doesn't.
@@ -43,7 +54,6 @@ _RETRIES = 2
 _RETRY_S = 0.5
 
 _LEVEL, _COLOR = "genLevelCtrl", "lightingColorCtrl"
-NOT_STORED = "not_stored"
 
 
 def _wire(command: Command) -> dict:
@@ -67,12 +77,12 @@ def _kept_level(level: int) -> dict:
     brightness; a raw command doesn't touch what it keeps. This payload replaces the kept level and sends a MoveToLevel
     without the override, which a light that is off ignores, so it stays off (probe 13j, either hue_native_control).
     """
-    return {"state": None, "brightness": level, "transition": 0.4}
+    return {"state": None, "brightness": level, "transition": WRITE_FADE_TENTHS / 10}
 
 
 def _modes(target: Target) -> set[str]:
     # supported_color_modes stays in the state while the light is off.
-    return set((target.state and target.state.attributes.get("supported_color_modes")) or ())
+    return set((target.state and target.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES)) or ())
 
 
 def _attrs(target: Target) -> dict:
@@ -90,15 +100,15 @@ def _expected(light: Target, sent: list[Command]) -> tuple[dict[str, list[str]],
     expected: dict[str, int] = {}
     for command in sent:
         match command:
-            case MoveToLevel(level) if modes - {"onoff"}:
+            case MoveToLevel(level) if modes - {ColorMode.ONOFF}:
                 reads[_LEVEL] = ["currentLevel"]
                 expected["currentLevel"] = level
-            case MoveToColorTemp(mireds) if "color_temp" in modes:
+            case MoveToColorTemp(mireds) if ColorMode.COLOR_TEMP in modes:
                 reads[_COLOR] = ["colorMode", "colorTemperature"]
                 expected["colorTemperature"] = clamp_mireds(mireds, _attrs(light))
-            case MoveToColor() | MoveToHueAndSaturation() if "xy" in modes:
+            case MoveToColor() | MoveToHueAndSaturation() if ColorMode.XY in modes:
                 reads[_COLOR] = ["colorMode", "currentX", "currentY"]
-            case MoveToColor() | MoveToHueAndSaturation() if "hs" in modes:
+            case MoveToColor() | MoveToHueAndSaturation() if ColorMode.HS in modes:
                 reads[_COLOR] = ["colorMode", "currentHue", "currentSaturation"]
     return reads, expected
 
@@ -136,10 +146,15 @@ class Z2MSetAttributes(Z2MAdapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"),
+        domains=verified(Platform.LIGHT),
         **class_scope("set_attributes"),
         fields=verified(
-            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
+            BRIGHTNESS_FIELD,
+            ATTR_COLOR_TEMP_KELVIN,
+            ATTR_HS_COLOR,
+            ATTR_RGB_COLOR,
+            ATTR_XY_COLOR,
+            *LIMITS,
         ),
         confirmable=True,
         native_groups=True,  # read back through its members, which only Z2M's bridge/groups knows

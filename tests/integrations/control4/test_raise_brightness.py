@@ -293,7 +293,7 @@ async def test_the_ramp_is_logged_without_the_item_id(hass, wire):
 
 def test_scope():
     scope = Control4RaiseBrightness.scope
-    assert scope.experimental
+    assert scope.all_experimental
     assert scope.domains == {"light": Level.EXPERIMENTAL}
     assert scope.fields == {"brightness": Level.EXPERIMENTAL}
     assert scope.capabilities is None

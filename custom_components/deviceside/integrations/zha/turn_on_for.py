@@ -6,6 +6,8 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
+from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
 
@@ -15,17 +17,15 @@ from .groups import covers
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter, DeadlinePassed
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
+from ...core.zcl import MAX_TENTHS_S, READBACK_SLACK_TENTHS
 
-# OnWithTimedOff.on_time is a uint16 in tenths of a second; 0xFFFF is reserved, so 65534 tenths is the most.
-_TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
+# OnWithTimedOff.on_time (core/zcl.py).
+_TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=MAX_TENTHS_S)
 
 _ON_WITH_TIMED_OFF = 0x42
-
-# OnTime counts down live, so the read-back lands a little under the request; matches the rig's ZHA timing
-# tolerance, 3 s.
-_READBACK_SLACK_TENTHS = 30
 
 # A member's unicast read can overtake the groupcast it checks, so one that reads no timer is read again, every
 # _REREAD_S, up to _REREADS times (docs/integrations/zha/internals.md, turn_on_for).
@@ -53,7 +53,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     library raises on a unicast delivery failure or a non-success ZCL status, so a unicast that returns was
     accepted; a groupcast returns at once with no delivery feedback, and a member that can't run the timer drops
     it silently. So each light is read back either way: a new timer replaces a running one, so reading OnTime
-    straight back shows whether ours is running: CONFIRMED when it sits within _READBACK_SLACK_TENTHS under the
+    straight back shows whether ours is running: CONFIRMED when it sits within READBACK_SLACK_TENTHS under the
     request and OnOff reads on, otherwise SENT with a detail. OnTime alone is not proof: a Tuya TS011F plug stores
     it as its own countdown (internals.md, Tested behavior). A group member that reads no timer is read again, as its
     read can overtake the groupcast.
@@ -65,12 +65,12 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         # Zigbee plugs and switches rarely honor OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md), so
         # switch fails the Documented test (docs/evidence.md, Levels): it stays flagged experimental, untested, until
         # a maintainer judges it ready.
-        domains=verified("light") | experimental("switch"),
+        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
         # Each class's level is its family's (families/<family>/), `other`'s classes.py's; the classes the call harms
         # are refused (refusals.py).
         **classes.class_scope(action),
         duration=_TIMER_LIMITS,
-        fields=verified("brightness", "color_temp_kelvin"),
+        fields=verified(BRIGHTNESS_FIELD, ATTR_COLOR_TEMP_KELVIN),
         max_concurrency=2,
         confirmable=True,
     )
@@ -174,7 +174,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         data = request.light.as_turn_on_data()
         _LOGGER.debug("%s: sending ha light.turn_on %s", logged_as or entity_id, data)
         await hass.services.async_call(
-            "light", "turn_on", {"entity_id": entity_id, **data}, blocking=True, context=request.context
+            Platform.LIGHT, SERVICE_TURN_ON, {ATTR_ENTITY_ID: entity_id, **data}, blocking=True, context=request.context
         )
 
     async def _read_back(self, hass: HomeAssistant, target: Target, addr: Address, on_time: int) -> EntityResult:
@@ -198,7 +198,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
             )
             if on_off not in (0, 1):  # zigpy's Bool and Python's bool both equal 0 or 1; anything else is no answer
                 raise ValueError(f"OnOff read {on_off!r}")
-            running = 0 < remaining and on_time - _READBACK_SLACK_TENTHS <= remaining <= on_time
+            running = 0 < remaining and on_time - READBACK_SLACK_TENTHS <= remaining <= on_time
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; see zcl.py
             _LOGGER.debug("%s read-back failed for %s: %s", self.action, target.entity_id, describe(err))
             return self.result(target, Status.SENT, detail="readback_failed")

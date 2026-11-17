@@ -34,7 +34,7 @@ def pr(repo, monkeypatch):
     """`main` with an `acme` integration maintained by alice, and a `pr` branch off it."""
     monkeypatch.chdir(repo.path)
     repo.commit(INIT, init())
-    repo.commit(SCOPE, "scope = AdapterScope(experimental=True)\n")
+    repo.commit(SCOPE, "scope = AdapterScope(domains=experimental('light'))\n")
     repo.commit(owners.README, README)
     repo.commit(owners.COMPAT, COMPAT)
     repo.git("branch", "pr")
@@ -62,7 +62,7 @@ def test_a_maintainer_merges_a_change_anywhere_in_their_package(pr, path):
 
 
 def test_regenerated_output_rides_along(pr):
-    pr.commit(SCOPE, "scope = AdapterScope(experimental=False)\n")  # lifting the flag is the maintainer's call
+    pr.commit(SCOPE, "scope = AdapterScope(domains=verified('light'))\n")  # lifting the flag is the maintainer's call
     pr.commit(owners.README, README.replace("old cards", "new cards"))
     pr.commit(owners.COMPAT, COMPAT.replace("old rows", "new rows"))
     pr.commit(".github/CODEOWNERS", "* @x\n")
@@ -123,7 +123,7 @@ def test_compatibility_page_text_outside_its_block_is_refused(pr):
 @pytest.mark.parametrize(
     "text",
     [
-        'scope = AdapterScope(experimental=True, caveat=Caveat("https://x/1"))\n',
+        'scope = AdapterScope(domains=experimental("light"), caveat=Caveat("https://x/1"))\n',
         'c = core.Caveat("why")\n',
     ],
 )
@@ -234,7 +234,7 @@ def families(repo, monkeypatch):
     repo.commit(owners.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta").replace("Acme", "Zeta"))
     repo.commit(family_init(), family())
     repo.commit(family_init(name="hue"), family("hue", ()))
-    repo.commit(REFUSALS, 'TUYA = NoKnownMethod("Plugs", "why", "https://x/1", harms=True)\n')
+    repo.commit(REFUSALS, 'TUYA = NoKnownMethod("Plugs", "why", "https://x/1")\n')
     repo.commit(family_init("zeta"), family(maintainers=("zed",)))
     repo.commit(PKG + "families/__init__.py", "RULES = (*hue.RULES, *tuya.RULES)\n")
     repo.commit(PKG + "bridge.py", "x = 1\n")
@@ -291,7 +291,7 @@ def test_a_family_maintainer_changes_a_level(families):
     assert check("tina") == [TUYA]
 
 
-@pytest.mark.parametrize("text", ["", 'TUYA = NotBuilt("another reason", "https://x/2", harms=True)\n'])
+@pytest.mark.parametrize("text", ["", 'TUYA = NotBuilt("another reason", "https://x/2")\n'])
 def test_only_an_integration_maintainer_changes_the_refusal_entries(families, text):
     """They live in the integration's `refusals.py`, outside every family, so ownership by path is the whole rule."""
     families.commit(FAMILY + "rules.py", "x = 1\n")

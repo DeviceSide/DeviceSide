@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -9,9 +10,10 @@ from . import colors
 from .bridge import bridge_api, resource_id, write_light
 from .classes import LEVELS
 from .report_filter import write_forgetting
-from ...actions.set_attributes import SetAttributesRequest
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.color import color_xy
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
@@ -87,7 +89,12 @@ class HueSetAttributes(Adapter[SetAttributesRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         capabilities=LEVELS,
         fields=verified(
-            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
+            BRIGHTNESS_FIELD,
+            ATTR_COLOR_TEMP_KELVIN,
+            ATTR_HS_COLOR,
+            ATTR_RGB_COLOR,
+            ATTR_XY_COLOR,
+            *LIMITS,
         ),
     )
 

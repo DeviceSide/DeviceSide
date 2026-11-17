@@ -5,6 +5,7 @@ A light reports color in one native form; the row carries it with the other two 
 `xy_color` derived from it, as core's light state does.
 """
 
+from homeassistant.components.light import ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR
 from homeassistant.util.color import (
     color_hs_to_RGB,
     color_hs_to_xy,
@@ -29,13 +30,25 @@ def color_xy(fields: LightFields) -> tuple[float, float] | None:
 
 
 def xy_row(x: float, y: float) -> dict:
-    return {"xy_color": [x, y], "rgb_color": list(color_xy_to_RGB(x, y)), "hs_color": list(color_xy_to_hs(x, y))}
+    return {
+        ATTR_XY_COLOR: [x, y],
+        ATTR_RGB_COLOR: list(color_xy_to_RGB(x, y)),
+        ATTR_HS_COLOR: list(color_xy_to_hs(x, y)),
+    }
 
 
 def hs_row(h: float, s: float) -> dict:
-    return {"hs_color": [h, s], "rgb_color": list(color_hs_to_RGB(h, s)), "xy_color": list(color_hs_to_xy(h, s))}
+    return {
+        ATTR_HS_COLOR: [h, s],
+        ATTR_RGB_COLOR: list(color_hs_to_RGB(h, s)),
+        ATTR_XY_COLOR: list(color_hs_to_xy(h, s)),
+    }
 
 
 def rgb_row(r: int, g: int, b: int) -> dict:
     rgb = (r, g, b)
-    return {"rgb_color": list(rgb), "hs_color": list(color_RGB_to_hs(*rgb)), "xy_color": list(color_RGB_to_xy(*rgb))}
+    return {
+        ATTR_RGB_COLOR: list(rgb),
+        ATTR_HS_COLOR: list(color_RGB_to_hs(*rgb)),
+        ATTR_XY_COLOR: list(color_RGB_to_xy(*rgb)),
+    }

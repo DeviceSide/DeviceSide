@@ -5,6 +5,14 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_TRANSITION,
+    ATTR_XY_COLOR,
+)
+from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON, Platform
 from homeassistant.core import HomeAssistant
 
 from .adapter import Z2MAdapter
@@ -16,15 +24,16 @@ from .native_control import COLOR_FIELDS, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, verified
+from ...core.zcl import MAX_TENTHS_S
 
 _LOGGER = logging.getLogger(__name__)
 
-# Zigbee OnWithTimedOff: on_time in tenths of a second (uint16), range 1-65534 tenths.
-# 65534 tenths = 6553.4 s. The 50 ms floor from core/duration.py handles the effective minimum.
-_TIMER_LIMITS = DurationLimits(min_s=0, max_s=6553.4)
+# OnWithTimedOff.on_time (core/zcl.py). The 50 ms floor from core/duration.py handles the effective minimum.
+_TIMER_LIMITS = DurationLimits(min_s=0, max_s=MAX_TENTHS_S)
 
 # Read-back delays in seconds. The second end read allows for a bulb clock that runs slow on a long timer.
 _ON_READ_S = 1.0
@@ -59,13 +68,15 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
         # Both Verified: the class decides a switch's level, as each class holds its own per domain (its family's
         # turn_on_for scope). Zigbee plugs and switches rarely honor OnWithTimedOff, so only a class with a switch
         # record is Verified there; a Hue plug, an `other` one and the rest stay untested.
-        domains=verified("light", "switch"),
+        domains=verified(Platform.LIGHT, Platform.SWITCH),
         # The not_built entries (refusals.py) each harm their class (a Tuya plug left on), so the dispatcher refuses a
         # device not yet placed, and a group of unknown membership, as class_unknown, even with Experimental features
         # on (classes.py). The families' own calls (Tuya's countdown) run through execute_own (adapter.py).
         **class_scope("turn_on_for"),
         duration=_TIMER_LIMITS,
-        fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
+        fields=verified(
+            BRIGHTNESS_FIELD, ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR, ATTR_TRANSITION
+        ),
         confirmable=False,
         native_groups=True,  # Z2M group entities receive commands on <base>/<group ID>/set.
     )
@@ -100,7 +111,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
         timer's message would then publish the state from before the fields landed, which HA keeps, and contend
         with them on the mesh, starting the timer late. With no state by the timeout, the timer goes anyway.
         """
-        service_data = {"entity_id": target.entity_id, **data}
+        service_data = {ATTR_ENTITY_ID: target.entity_id, **data}
         published, unsubscribe = await state_reply(hass, target)
         try:
             if _LOGGER.isEnabledFor(logging.DEBUG):
@@ -109,7 +120,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
                 )
             # HA publishes it as a set, whose failure Z2M logs as any other's.
             await note(hass, target)
-            await hass.services.async_call("light", "turn_on", service_data, blocking=True)
+            await hass.services.async_call(Platform.LIGHT, SERVICE_TURN_ON, service_data, blocking=True)
             if published is None:
                 return
             try:

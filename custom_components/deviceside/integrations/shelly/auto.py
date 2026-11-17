@@ -2,6 +2,7 @@
 
 from typing import ClassVar, Literal
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import AUTO_CAPABILITIES, unsupported_reason
@@ -10,7 +11,7 @@ from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Target, TimedRequest
 from ...core.scope import AdapterScope, verified
 
-_DOMAINS = verified("light", "switch")
+_DOMAINS = verified(Platform.LIGHT, Platform.SWITCH)
 
 
 class ShellySetAuto(Adapter[TimedRequest]):

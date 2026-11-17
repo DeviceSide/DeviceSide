@@ -9,12 +9,15 @@ correcting the bridge's earlier report; report_filter takes it as real, ending o
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from ...core.transition import BRIGHTNESS, SATURATION
+from ...core.fields import BRIGHTNESS_FIELD
+from ...core.transition import SATURATION
+
+_BRIGHTNESS = "brightness"  # the bridge's report key, which DeviceSide's brightness field happens to share
 
 # Where each report key sits in an event, as (object, field): every key an attribute owns or could own.
 REPORT_KEYS: dict[str, tuple[str, str]] = {
     "on": ("on", "on"),
-    BRIGHTNESS: ("dimming", "brightness"),
+    _BRIGHTNESS: ("dimming", "brightness"),
     "mirek": ("color_temperature", "mirek"),
     "xy": ("color", "xy"),
 }
@@ -30,11 +33,11 @@ class Attribute:
 
 def _brightness(value: float) -> dict[str, float | bool]:
     """0 is off, leaving the stored brightness alone, as a soft off does on the bridge."""
-    return {"on": True, BRIGHTNESS: value} if value > 0 else {"on": False}
+    return {"on": True, _BRIGHTNESS: value} if value > 0 else {"on": False}
 
 
 ATTRIBUTES: dict[str, Attribute] = {
-    BRIGHTNESS: Attribute(frozenset({"on", BRIGHTNESS}), _brightness),
+    BRIGHTNESS_FIELD: Attribute(frozenset({"on", _BRIGHTNESS}), _brightness),
     # An xy write; on a light in color temperature mode the bridge may report its mirek going too. HA is shown the
     # bridge's xy, the end color at once.
     SATURATION: Attribute(frozenset({"xy", "mirek"}), None),

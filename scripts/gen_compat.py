@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the README's device table and the evidence block of docs/device-compatibility.md, from the test records,
 the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integrations/<integration>/. The rules
-the cards show (levels, the `experimental` flag, caveats) are in docs/evidence.md.
+the cards show (levels, caveats) are in docs/evidence.md.
 
 **Evidence** for an action is its passing test records (`<action>.json`, `<action>-<option>.json`, read by check_release
 against docs/test-records.schema.json) and the `_manual.json` rows whose `passed` names it. A format 2 record gives each
@@ -27,12 +27,12 @@ of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fi
   Works through another adapter's evidence.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
-  (`experimental=True`), whatever their evidence.
+  (every domain `experimental(...)`), whatever their evidence.
 - Not built yet: the classes the integration declares (`IntegrationInfo.classes`) that an adapter holds in
   neither its `capabilities` nor its `no_known_method`, and so refuses; only those devices.yaml gives a phrase. Then
   docs/models.yaml's `not_built` entries, by their `what`.
 - No known method: the scopes' `no_known_method`, with the features whose adapters list them, then devices.yaml's.
-  A scope's `not_built` entry (core/scope.py, NotBuilt, one today's call harms) is listed as not built yet, as
+  A scope's `not_built` entry (core/scope.py, NotBuilt, on a harmful action only) is listed as not built yet, as
   above; the evidence block adds a table of them and of models.yaml's, with why and the source.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
@@ -84,6 +84,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
@@ -106,8 +107,7 @@ PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
 MODELS = REPO / "docs" / "models.yaml"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
-BLOB_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/"
-PAGE_URL = f"{BLOB_URL}docs/device-compatibility.md"
+PAGE_URL = f"{DOCS_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
@@ -209,7 +209,7 @@ class Data:
             owners += sorted(self.pages)
         for owner in owners:
             if anchor in self.pages.get(owner, set()):
-                return f"{BLOB_URL}{page(owner)}#{anchor}"
+                return f"{DOCS_URL}{page(owner)}#{anchor}"
         return f"{PAGE_URL}#{anchor}"
 
 
@@ -310,7 +310,7 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
-    """The scopes' not_built entries (core/scope.py, NotBuilt, each one today's call harms), each named by
+    """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
     its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block: the card lists
     the class as not built yet, as it does any other, and this keeps the harm's source. One per class, reason and
     source."""
@@ -504,7 +504,7 @@ def card_evidence(adapter) -> Evidence:
     device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
     flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
-    if scope.experimental or "fields" in flagged:
+    if scope.all_experimental or "fields" in flagged:
         return Evidence([], [])
     if not flagged:
         return Evidence.of(adapter)
@@ -536,7 +536,7 @@ def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
     entries = [(level, item, "entities", None) for item, level in scope.domains.items()]
     entries += [(level, item, "classes", domains) for item, level, domains in scope.class_entries()]
     entries += [(level, item, "fields", None) for item, level in scope.fields.items()]
-    return [(Level.EXPERIMENTAL if scope.experimental else level, *rest) for level, *rest in entries]
+    return [(Level.EXPERIMENTAL if scope.all_experimental else level, *rest) for level, *rest in entries]
 
 
 # The evidence block.
@@ -614,7 +614,6 @@ def rows(adapter) -> list[str]:
         if item.cls in entries:
             # A format 2 test's domain decides a class held on some domains alone; one that names no domain, its level.
             held.append(scope.class_level(item.cls, item.domain) if item.domain else entries[item.cls][0])
-        held = [Level.EXPERIMENTAL if scope.experimental else level for level in held]
         # A class flagged in this domain alone may have no row of its level: the scope's weakest row takes it.
         row = models[index.get(min(held), len(levels) - 1)] if held else models[0]
         if (text := described(item)) not in row:
@@ -757,7 +756,7 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
     order, with the actions that hold it there."""
     held: dict[str, set[str]] = {}
     for adapter in integration_adapters:
-        if adapter.scope.experimental:
+        if adapter.scope.all_experimental:
             continue
         for item_level, item, noun in card_items(adapter.scope):
             if item_level is level and noun != "fields":
@@ -875,7 +874,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result = Card(
         title=info.title,
         requires=data.requires.get(key),
-        url=f"{BLOB_URL}{page(key)}" if key in data.pages else None,
+        url=f"{DOCS_URL}{page(key)}" if key in data.pages else None,
         maintainers=info.maintainers,
         marks=mark_entries(integration_adapters),
         all_unmaintained=bool(integration_adapters)
@@ -884,7 +883,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.lines["works"] = works(result, key, integration_adapters, data)
     for level, tier in ((Level.DOCUMENTED, "should"), (Level.EXPERIMENTAL, "experimental")):
         result.lines[tier] = class_entries(key, classes(key, integration_adapters, level, data), data)
-    if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.experimental}:
+    if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.all_experimental}:
         result.lines["experimental"].append(", ".join(features(flagged)))
     result.lines["not_built"] = class_entries(key, not_built(key, info.classes, integration_adapters, data), data)
     result.lines["not_built"] += [

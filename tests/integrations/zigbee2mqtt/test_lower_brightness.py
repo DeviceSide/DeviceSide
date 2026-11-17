@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.deviceside.core.transition import BRIGHTNESS
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
 from .conftest import SENT, SET, call, commands, group, light
@@ -53,5 +53,5 @@ async def test_a_group_gets_one_publish_and_a_prediction_per_member(hass, broker
     assert commands(broker) == [("zigbee2mqtt/7/set", {"state": "OFF", "transition": 3.0})]
     cache = transition_cache(hass)
     clock.now += 1.5
-    assert cache.value("light.one", BRIGHTNESS, 0) == pytest.approx(50.0)
-    assert cache.value("light.two", BRIGHTNESS, 0) == pytest.approx(10.0)
+    assert cache.value("light.one", BRIGHTNESS_FIELD, 0) == pytest.approx(50.0)
+    assert cache.value("light.two", BRIGHTNESS_FIELD, 0) == pytest.approx(10.0)

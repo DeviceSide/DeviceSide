@@ -90,10 +90,8 @@ class FakeRegistry:
             yield adapter.action, adapter.integration, adapter
 
 
-def adapter(integration, action, scope=None, *, experimental=False):
-    return SimpleNamespace(
-        integration=integration, action=action, scope=scope or AdapterScope(experimental=experimental)
-    )
+def adapter(integration, action, scope=None):
+    return SimpleNamespace(integration=integration, action=action, scope=scope or AdapterScope())
 
 
 def data(registry=None, **changes):
@@ -291,8 +289,12 @@ def test_records_are_the_action_and_its_options(root):
 
 
 def test_an_adapter_flagged_whole_has_one_experimental_row(root):
-    scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
-    assert gc.rows(adapter("zha", "stop", scope)) == ["| `stop` | Experimental | light, switch entities | none | |"]
+    # Every domain Experimental flags every call, so its Verified field shows Experimental too.
+    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
+    assert {level for level, *_ in gc.items(scope)} == {Level.EXPERIMENTAL}
+    assert gc.rows(adapter("zha", "stop", scope)) == [
+        "| `stop` | Experimental | light, switch entities; brightness fields | none | |"
+    ]
 
 
 MANUAL = (
@@ -307,7 +309,7 @@ def manual_file(root, integration="zha", rows=MANUAL):
 
 def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     manual_file(root)
-    flagged = adapter("zha", "stop", AdapterScope(experimental=True))
+    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
     assert gc.rows(flagged) == [
         "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
@@ -319,7 +321,7 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
 def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
     row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), passed=("stop",), group=True)
     manual_file(root, rows=[row])
-    flagged = adapter("zha", "stop", AdapterScope(experimental=True))
+    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
     assert gc.rows(flagged) == [
         "| `stop` | Experimental | light entities | group, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
@@ -393,12 +395,12 @@ def test_a_model_tested_by_hand_works_without_the_rig_mark(root):
 def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out_failing_records(root):
     record(root, "zha", "stop")
     record(root, "zha", "turn_on_for", result="fail", devices=[old_device("P1", "1")])
-    scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
+    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
     card = zha_card(
         adapter("zha", "stop", scope),
         adapter("zha", "turn_on_for"),
-        adapter("zha", "lower_hue", AdapterScope(experimental=True)),
-        adapter("zha", "raise_hue", AdapterScope(experimental=True)),
+        adapter("zha", "lower_hue", AdapterScope(domains=experimental("light"))),
+        adapter("zha", "raise_hue", AdapterScope(domains=experimental("light"))),
     )
     assert card.lines["works"] == []
     assert card.lines["should"] == []
@@ -599,7 +601,7 @@ def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_secti
     assert data.requires == {"zha": "Zigbee 3.0"}
     assert data.no_known_method[0]["integrations"] == ["zha"]
     # A section on the integration's page links there; the rest fall back to the shared page.
-    assert data.url("zha", "Dimmers") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#dimmers"
+    assert data.url("zha", "Dimmers") == f"{gc.DOCS_URL}docs/integrations/zha/index.md#dimmers"
     assert data.url("zha", "Zigbee plugs") == f"{URL}#zigbee-plugs"
     assert data.url("hue", "Dimmers") == f"{URL}#dimmers"
     page = PROSE.replace("### Dimmers\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n"
@@ -616,7 +618,7 @@ def test_a_models_or_native_groups_section_on_another_integrations_page_links_th
     # Every card showing it links its heading on the ZHA page, which is where the check found it. A class's section
     # isn't one (test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_sections).
     for key in ("hue", "zha"):
-        assert data.url(key, section) == f"{gc.BLOB_URL}docs/integrations/zha/index.md#{gf.slug(section)}"
+        assert data.url(key, section) == f"{gc.DOCS_URL}docs/integrations/zha/index.md#{gf.slug(section)}"
     gc.check_sections(
         PROSE.replace(f"### {section}\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n", data
     )
@@ -625,7 +627,7 @@ def test_a_models_or_native_groups_section_on_another_integrations_page_links_th
 def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
     data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch))
     card = gc.card("zha", FakeRegistry(), [], data)
-    assert card.render().startswith(f"**[ZHA]({gc.BLOB_URL}docs/integrations/zha/index.md)** (Zigbee 3.0)")
+    assert card.render().startswith(f"**[ZHA]({gc.DOCS_URL}docs/integrations/zha/index.md)** (Zigbee 3.0)")
 
 
 @pytest.mark.parametrize(
@@ -760,7 +762,7 @@ def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "stop", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "get_attributes", AdapterScope(caveat=unmaintained("the maintainer left"))),
-        adapter("zha", "set_scene", AdapterScope(experimental=True, caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "set_scene", AdapterScope(domains=experimental("light"), caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "raise_hue"),
     )
     # A warning names every feature, stop beside the others.
@@ -777,12 +779,12 @@ def heading(card):
 def test_a_card_whose_adapters_are_all_unmaintained_says_formerly_maintained(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
-        adapter("zha", "stop", AdapterScope(experimental=True, caveat=unmaintained("gone"))),
+        adapter("zha", "stop", AdapterScope(domains=experimental("light"), caveat=unmaintained("gone"))),
     )
     assert " · ⚠️ Unmaintained · formerly maintained by [@" in heading(card)
     assert " · maintained by " not in heading(card)
     # One maintained adapter, flagged or not, keeps "maintained by".
-    for scope in (AdapterScope(), AdapterScope(experimental=True)):
+    for scope in (AdapterScope(), AdapterScope(domains=experimental("light"))):
         card = zha_card(
             adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
             adapter("zha", "stop", scope),
@@ -805,7 +807,7 @@ def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=untested_fix(ISSUE_REASON))),
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained("gone"))),
-        adapter("zha", "set_scene", AdapterScope(experimental=True, caveat=untested_fix(ISSUE_REASON))),
+        adapter("zha", "set_scene", AdapterScope(domains=experimental("light"), caveat=untested_fix(ISSUE_REASON))),
     )
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith("- ⚠️") or line.startswith("- [⚠️")]
@@ -959,7 +961,7 @@ def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagg
 
 
 def test_a_class_an_adapter_serves_in_neither_axis_is_not_built_yet(root):
-    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     card = classed_card(
         adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Switch", "Light", "CCT", "RGB"))),
         adapter("zha", "set_attributes", AdapterScope(capabilities=verified("Switch"))),
@@ -977,7 +979,7 @@ def test_a_class_an_adapter_serves_in_neither_axis_is_not_built_yet(root):
 
 
 def test_a_scopes_no_known_method_reaches_the_card_and_the_evidence_with_its_actions(root):
-    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     scope = AdapterScope(capabilities=verified("Switch"), no_known_method=broken)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
@@ -993,7 +995,7 @@ def test_a_scopes_no_known_method_reaches_the_card_and_the_evidence_with_its_act
 
 def test_a_harmful_not_built_entry_is_not_built_yet_on_the_card_and_sourced_in_the_evidence(root):
     """Plan Decision 70: the card lists it as any not built yet class; the evidence block keeps why and where."""
-    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z", harms=True)}
+    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z")}
     scope = AdapterScope(capabilities=verified("Switch"), not_built=unbuilt)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
@@ -1011,11 +1013,11 @@ def test_a_harmful_not_built_entry_is_not_built_yet_on_the_card_and_sourced_in_t
     [
         (
             "CCT",
-            NotBuilt("No timer yet", "http://x.y/z", harms=True),
+            NotBuilt("No timer yet", "http://x.y/z"),
             "not_built zha CCT: source must be an https",
         ),
-        ("CCT", NotBuilt("", "https://x.y/z", harms=True), "not_built zha CCT needs a reason"),
-        ("Switch", NotBuilt("No timer yet", "https://x.y/z", harms=True), "no entry for zha Switch, which a scope"),
+        ("CCT", NotBuilt("", "https://x.y/z"), "not_built zha CCT needs a reason"),
+        ("Switch", NotBuilt("No timer yet", "https://x.y/z"), "no entry for zha Switch, which a scope"),
     ],
     ids=["non_https_source", "empty_reason", "no_phrase"],
 )

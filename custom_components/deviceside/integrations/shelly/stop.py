@@ -2,6 +2,7 @@
 
 from typing import Any, ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import DIMMING_CAPABILITIES, address, unsupported_reason
@@ -25,7 +26,7 @@ class ShellyStop(Adapter[Request]):
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"), capabilities=DIMMING_CAPABILITIES, confirmable=True
+        domains=verified(Platform.LIGHT), capabilities=DIMMING_CAPABILITIES, confirmable=True
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:

@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import CAPABILITIES, unsupported_reason
@@ -15,7 +16,7 @@ class ShellyTurnOffFor(Adapter[TimedRequest]):
     action: ClassVar[str] = "turn_off_for"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light", "switch"),
+        domains=verified(Platform.LIGHT, Platform.SWITCH),
         duration=TIMER_LIMITS,
         confirmable=True,
         # A relay shown as a light sends the same Switch.Set.

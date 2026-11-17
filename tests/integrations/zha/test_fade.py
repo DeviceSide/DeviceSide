@@ -10,9 +10,10 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import hue_moves, send_each, soft_off_restores, transition_cache
 
@@ -37,7 +38,7 @@ async def test_brightness_and_saturation_are_separate_fades(hass, commands, cloc
     assert [command[:2] for command in sent(commands)] == [(0x0008, 0x04), (0x0300, 0x03)]
     clock.now += 1
     cache = transition_cache(hass)
-    assert cache.value("light.bulb", BRIGHTNESS, 0) == pytest.approx(80)
+    assert cache.value("light.bulb", BRIGHTNESS_FIELD, 0) == pytest.approx(80)
     assert cache.value("light.bulb", SATURATION, 0) == pytest.approx(80)
 
 
@@ -86,7 +87,7 @@ async def test_non_admin_caller_is_refused(hass, admin_command, hass_read_only_u
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
     assert not admin_command
-    assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS)
+    assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS_FIELD)
 
 
 async def test_a_failed_command_rejects_and_keeps_no_prediction(hass):
@@ -100,7 +101,7 @@ async def test_a_failed_command_rejects_and_keeps_no_prediction(hass):
         await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: error"
-    assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS)
+    assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS_FIELD)
 
 
 async def test_a_failed_groupcast_rejects_its_members(hass, two_light_group):
@@ -140,7 +141,7 @@ async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, co
     await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
     await hass.async_block_till_done()
     clock.now -= 0.1  # back to the read's middle, where the ramp passes through what it saw
-    assert transition_cache(hass).value("light.bulb", BRIGHTNESS, 0) == pytest.approx(196 * 100 / 254)
+    assert transition_cache(hass).value("light.bulb", BRIGHTNESS_FIELD, 0) == pytest.approx(196 * 100 / 254)
     await advance(hass, start, 4.5)
 
     restore = (0x0008, 0x00, {"level": 203, "transition_time": 0, "options_mask": 1, "options_override": 1})
@@ -177,7 +178,7 @@ async def test_a_read_too_late_to_fit_changes_nothing(hass, commands, bulbs, clo
         original = bulbs.read.side_effect
 
         async def stop_first(*args, **kwargs):
-            transition_cache(hass).stopped("light.bulb", BRIGHTNESS, 55.0)
+            transition_cache(hass).stopped("light.bulb", BRIGHTNESS_FIELD, 55.0)
             return await original(*args, **kwargs)
 
         bulbs.read.side_effect = stop_first
@@ -185,7 +186,7 @@ async def test_a_read_too_late_to_fit_changes_nothing(hass, commands, bulbs, clo
     await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
     await hass.async_block_till_done()
 
-    assert transition_cache(hass).value("light.bulb", BRIGHTNESS, -1) == (55.0 if stopped else -1)
+    assert transition_cache(hass).value("light.bulb", BRIGHTNESS_FIELD, -1) == (55.0 if stopped else -1)
 
 
 async def test_nothing_to_do_by_a_stale_prediction_plans_again_from_has_state(hass, commands):
@@ -360,7 +361,7 @@ async def test_one_light_failing_rejects_only_it(hass, refreshes, caplog):
     for entity_id, ieee in (("light.a", A), ("light.b", B), ("light.c", C)):
         bulb(hass, entity_id, ieee)
     cache = transition_cache(hass)
-    earlier = cache.stopped("light.b", BRIGHTNESS, 55.0)
+    earlier = cache.stopped("light.b", BRIGHTNESS_FIELD, 55.0)
     start = wall_clock_now()
 
     with pytest.raises(HomeAssistantError) as raised:
@@ -368,8 +369,8 @@ async def test_one_light_failing_rejects_only_it(hass, refreshes, caplog):
 
     assert raised.value.translation_placeholders["summary"] == "light.b: error"
     assert sorted(service.data["ieee"] for service in calls) == [A, C]
-    assert cache.live("light.b", BRIGHTNESS) is earlier
-    assert cache.tracks("light.a", BRIGHTNESS) and cache.tracks("light.c", BRIGHTNESS)
+    assert cache.live("light.b", BRIGHTNESS_FIELD) is earlier
+    assert cache.tracks("light.a", BRIGHTNESS_FIELD) and cache.tracks("light.c", BRIGHTNESS_FIELD)
     assert "light.b: HomeAssistantError('no route')" in caplog.text
     await advance(hass, start, 3.5)
     assert sorted(service.data["entity_id"] for service in refreshes) == ["light.a", "light.c"]
@@ -385,7 +386,7 @@ async def test_a_failed_soft_off_takes_back_only_its_restore(hass):
         await call(hass, "lower_brightness", {"entity_id": ["light.a", "light.b"]})
 
     assert soft_off_restores(hass) == {"light.a", "light.b"}
-    assert not transition_cache(hass).tracks("light.b", BRIGHTNESS)
+    assert not transition_cache(hass).tracks("light.b", BRIGHTNESS_FIELD)
 
 
 async def test_a_failed_preset_drops_its_light_and_the_rest_go_unicast(hass, two_light_group, group_commands):
@@ -400,7 +401,7 @@ async def test_a_failed_preset_drops_its_light_and_the_rest_go_unicast(hass, two
     assert raised.value.translation_placeholders["summary"] == "light.b: error"
     assert not group_commands
     assert [(service.data["ieee"], service.data["command"]) for service in calls] == [(A, 0x04)]
-    assert not transition_cache(hass).tracks("light.b", BRIGHTNESS)
+    assert not transition_cache(hass).tracks("light.b", BRIGHTNESS_FIELD)
 
 
 async def test_a_failed_groupcast_keeps_no_prediction(hass, two_light_group):
@@ -538,14 +539,14 @@ async def test_an_overlapping_soft_off_keeps_its_restore_when_the_first_fails(ha
         await first
 
     assert soft_off_restores(hass) == {"light.a"}
-    assert transition_cache(hass).tracks("light.a", BRIGHTNESS)
+    assert transition_cache(hass).tracks("light.a", BRIGHTNESS_FIELD)
 
 
 async def test_a_cancel_puts_every_light_back(hass, monkeypatch):
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B)
     cache = transition_cache(hass)
-    earlier = cache.stopped("light.a", BRIGHTNESS, 55.0)
+    earlier = cache.stopped("light.a", BRIGHTNESS_FIELD, 55.0)
 
     async def cancelled(*args, **kwargs):
         raise asyncio.CancelledError
@@ -555,8 +556,8 @@ async def test_a_cancel_puts_every_light_back(hass, monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         await call(hass, "lower_brightness", {"entity_id": ["light.a", "light.b"]})
 
-    assert cache.live("light.a", BRIGHTNESS) is earlier
-    assert not cache.tracks("light.b", BRIGHTNESS)
+    assert cache.live("light.a", BRIGHTNESS_FIELD) is earlier
+    assert not cache.tracks("light.b", BRIGHTNESS_FIELD)
     assert soft_off_restores(hass) == set()
 
 

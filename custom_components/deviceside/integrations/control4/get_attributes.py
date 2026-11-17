@@ -2,6 +2,8 @@
 
 from typing import Any, ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .director import (
@@ -16,6 +18,7 @@ from .director import (
     unsupported_reason,
 )
 from ...core.adapter import Adapter
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental
 
@@ -33,9 +36,9 @@ def attributes_row(held: dict[str, Any]) -> dict:
     if BRIGHTNESS_PERCENT in held or LIGHT_LEVEL in held or LIGHT_STATE not in held:
         level = parse_level(held)
         if level.on:
-            row["brightness"] = level.brightness
+            row[BRIGHTNESS_FIELD] = level.brightness
     if (kelvin := color_temperature(held)) is not None:
-        row["color_temp_kelvin"] = kelvin
+        row[ATTR_COLOR_TEMP_KELVIN] = kelvin
     return row
 
 
@@ -47,7 +50,7 @@ class Control4GetAttributes(Adapter[Request]):
 
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "control4"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=experimental("light"), confirmable=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(domains=experimental(Platform.LIGHT), confirmable=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target)

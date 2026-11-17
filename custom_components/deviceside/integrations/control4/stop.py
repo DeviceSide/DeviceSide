@@ -3,6 +3,7 @@
 import asyncio
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .director import (
@@ -39,11 +40,11 @@ class Control4Stop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "control4"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=experimental("light"), confirmable=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(domains=experimental(Platform.LIGHT), confirmable=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         # Ahead of the scope check: an on/off light can never take a stop, whatever is tested.
-        if target.domain == "light" and not dimmable(target):
+        if target.domain == Platform.LIGHT and not dimmable(target):
             return "not_dimmable"
         return super().supports(hass, request, target) or unsupported_reason(target)
 

@@ -15,15 +15,17 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 
+from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_COLOR_MODE, ATTR_HS_COLOR
+from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
 
+from .fields import BRIGHTNESS_FIELD
 from .models import Target
 from .runtime import get_runtime
 
 # What the recording() block running in this task has recorded so far, by (resource_id, attribute).
 _RECORDED: ContextVar[dict[tuple[str, str], Transition] | None] = ContextVar("transition_recorded", default=None)
 
-BRIGHTNESS = "brightness"  # in percent
 SATURATION = "saturation"  # in percent
 
 
@@ -164,12 +166,13 @@ def transition_cache[C: TransitionCache](hass: HomeAssistant, integration: str, 
 
 def reported_brightness(light: Target) -> float:
     """HA's brightness in percent, 0 while off: a move from off starts at the bottom."""
-    brightness = light.state.attributes.get("brightness") if light.state and light.state.state == "on" else None
+    on = light.state is not None and light.state.state == STATE_ON
+    brightness = light.state.attributes.get(ATTR_BRIGHTNESS) if on else None  # ha-255: HA state reports a byte
     return brightness / 255 * 100 if brightness is not None else 0.0
 
 
 def light_brightness(cache: TransitionCache, light: Target) -> float:
-    return cache.value(light.entity_id, BRIGHTNESS, reported_brightness(light))
+    return cache.value(light.entity_id, BRIGHTNESS_FIELD, reported_brightness(light))
 
 
 def lit_where[L](
@@ -177,18 +180,18 @@ def lit_where[L](
 ) -> list[L]:
     """The lights that are on, or predicted above 0 %: a soft off may report off before its fade has run. key names
     the light's cache entry; an integration's own light type passes how it reads those."""
-    return [light for light in lights if is_on(light) or cache.value(key(light), BRIGHTNESS, 0.0) > 0]
+    return [light for light in lights if is_on(light) or cache.value(key(light), BRIGHTNESS_FIELD, 0.0) > 0]
 
 
 def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:
     return lit_where(
-        cache, lights, lambda light: light.entity_id, lambda light: bool(light.state and light.state.state == "on")
+        cache, lights, lambda light: light.entity_id, lambda light: bool(light.state and light.state.state == STATE_ON)
     )
 
 
 def color_mode(light: Target) -> str | None:
-    return light.state.attributes.get("color_mode") if light.state else None
+    return light.state.attributes.get(ATTR_COLOR_MODE) if light.state else None
 
 
 def hs_color(light: Target) -> tuple[float, float] | None:
-    return light.state.attributes.get("hs_color") if light.state else None
+    return light.state.attributes.get(ATTR_HS_COLOR) if light.state else None

@@ -77,8 +77,9 @@ proves the call on the `hue` class, not on every Zigbee light.
 
 ## Levels
 
-A scope item (an entity domain, class or field of an adapter) is Verified, Documented, or untested; an untested
-item ships only behind `experimental`.
+A scope item (an entity domain, class or field of an adapter) is Verified, Documented or Experimental; an
+Experimental item is refused unless Experimental features is on. To flag a whole adapter, flag its
+domains ([the experimental flag](#the-experimental-flag)).
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
@@ -102,12 +103,12 @@ covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence:** a credible report of a [harmful](#no-known-method-not-built-yet-untested) failure, upstream
 or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a no known method or
-not built yet entry with `harms`, by the definitions [below](#no-known-method-not-built-yet-untested), moving only
+not built yet entry on that action, by the definitions [below](#no-known-method-not-built-yet-untested), moving only
 the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
 Which kind depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
-tenths as seconds, and Tuya's recipe would serve it, so it is not built yet, with `harms`: the fix is the call,
+tenths as seconds, and Tuya's recipe would serve it, so it is not built yet: the fix is the call,
 and the entry lifts when the call changes. `_TZ3000_gjnozsaz` fails the very call that serves its siblings,
-but Tuya's inching call would plausibly serve it, so it too is not built yet, with `harms`; an identity no known
+but Tuya's inching call would plausibly serve it, so it too is not built yet; an identity no known
 call serves has no known method. As proof follows the call (tenet 5), the entry may cover every action that
 sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
 frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
@@ -158,7 +159,7 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that has no known
   method or is not built yet, a member whose class takes a call of its own (a branch in the adapter, below, which the
-  group's call isn't), or a member whose class is Experimental while Experimental features is off (the adapter, domain and
+  group's call isn't), or a member whose class is Experimental while Experimental features is off (its domain and
   fields not flagged), falls back to its members, each judged on its own, when the integration can list
   them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
   Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
@@ -179,10 +180,10 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   refused (`not_built`) and listed as not built yet.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
 
-Either kind may carry `harms`, the separate safety axis, when today's call would harm the class (below): a no known
-method entry states it (`NoKnownMethod.harms`), and a class not built yet that today's call would harm gets an entry
-of its own in the scope's `not_built` (`NotBuilt`, with why, a source and `harms`), which the card lists as not built
-yet, as it does any other. A class not built yet that today's call leaves unharmed needs no entry.
+Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
+built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
+source), which the card lists as not built yet, as it does any other. Any other class not built yet needs no entry, as
+leaving it out refuses it, and the registry refuses a `not_built` entry on an action whose failure doesn't harm.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
@@ -194,12 +195,12 @@ yet, as it does any other. A class not built yet that today's call leaves unharm
   scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,
   `clear_auto_off`, `clear_auto_on`); dimming and color (`raise_brightness`, `lower_brightness`, `raise_hue`,
   `lower_hue`, `raise_saturation`, `lower_saturation`), `stop`, `set_attributes` and `set_scene` don't, as a wrong
-  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `no_known_method`
-  and `not_built` entry answers it (`harms`, which has no default).
-- **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope holds an entry with
-  `harms`, no known method or not built yet alike, refuses a target whose class rests on information DeviceSide
-  doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet
-  placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
+  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. The action states it
+  (`Action.failure_harms`), for every adapter of that action.
+- **Where a call is known to harm, a class not yet known is refused.** An adapter whose action's failure harms and
+  whose scope holds a `no_known_method` or `not_built` entry refuses a target whose class rests on information
+  DeviceSide doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device
+  not yet placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
@@ -248,27 +249,29 @@ at `cut-release`, with the other release gates. Like every gate, it checks that 
 (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on
 `other` it is `experimental(...)`, so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA
 bulb adds an `ikea` class, Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own
-countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, with
-`harms`, until the countdown call is built for them; the TS011F plugs it is built for take it as `tuya_countdown`,
+countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, each
+with an entry, until the countdown call is built for them; the TS011F plugs it is built for take it as `tuya_countdown`,
 Experimental, and each maker string with a record of its own as its own class, Verified, so the check asks each string
 for its record; the Sengled, which ignores today's call, needs a call that isn't built, so it is not built yet too,
 with no entry, as today's call leaves it unharmed.
 
 ## The experimental flag
 
-`experimental` is a flag, not a level: the item is not yet judged ready for everyone. In code it is the per-axis
-marker `experimental(...)`, beside `verified(...)` and `documented(...)`; `experimental=True` on an `AdapterScope` flags
-the whole adapter. A flagged item is refused unless the user turns on the Experimental features option. The dispatcher
-is the only gate: adapters never read the option, and turning it on never changes how any other item behaves.
+Experimental is the lowest [level](#levels), and the flag is that level: the item is not yet judged ready for
+everyone. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and `documented(...)`. A call
+takes the weakest level among the items it touches, its domain always among them, so an adapter whose domains are all
+`experimental(...)` is flagged whole. A flagged item is refused unless the user turns on the Experimental features
+option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
+other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
 users who opt in. A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
 lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
 maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
 few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
-`experimental(...)` into `verified(...)`, or drops `experimental=True`; a flagged item that qualifies as Documented
-becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
-integration's package, so one of its maintainers approves it, as for any change there
+`experimental(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item that qualifies as
+Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a
+change to the integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
 the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 

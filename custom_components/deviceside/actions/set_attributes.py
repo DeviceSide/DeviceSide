@@ -2,19 +2,22 @@ from dataclasses import dataclass, field, replace
 from typing import ClassVar, Self
 
 import probatio
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 
 from ..const import DOMAIN
 from ..core.action import Action
+from ..core.fields import BRIGHTNESS_FIELD, COLOR_TEMP, COLORS, MAX_BRIGHTNESS_FIELD, MIN_BRIGHTNESS_FIELD
 from ..core.models import LIGHT_FIELD_SCHEMA, PERCENT, ActionKind, LightFields, Request
 
 # PERCENT, as on Hue and hue_dimmer, whose calls these must accept unchanged. A brightness of 0 goes to the bridge,
 # which sets the light's lowest level, as hue_dimmer's calls did; the UI selector starts at 0.4.
-_COLORS = ("color_temp_kelvin", "hs_color", "rgb_color", "xy_color")
-LIMITS = ("min_brightness", "max_brightness")
+_COLORS = COLOR_TEMP | COLORS
+LIMITS = (MIN_BRIGHTNESS_FIELD, MAX_BRIGHTNESS_FIELD)
 # 0 leaves these unset, as on hue_dimmer, so a template can pass 0 for "no limit".
-_UNSET_AT_ZERO = (*LIMITS, "color_temp_kelvin")
+_UNSET_AT_ZERO = (*LIMITS, ATTR_COLOR_TEMP_KELVIN)
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,11 +28,11 @@ class SetAttributesRequest(Request):
     max_brightness: float | None = None
 
     def fields_present(self) -> frozenset[str]:
-        own = {name for name in ("brightness", *LIMITS) if getattr(self, name) is not None}
+        own = {name for name in (BRIGHTNESS_FIELD, *LIMITS) if getattr(self, name) is not None}
         return self.light.present() | own
 
     def without(self, names: frozenset[str]) -> Self:
-        own = {name: None for name in ("brightness", *LIMITS) if name in names}
+        own = {name: None for name in (BRIGHTNESS_FIELD, *LIMITS) if name in names}
         return replace(self, light=self.light.without(names), **own)
 
     def nothing_to_do(self) -> bool:
@@ -44,9 +47,9 @@ class SetAttributes(Action[SetAttributesRequest]):
 
     key: ClassVar[str] = "set_attributes"
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
-    domains: ClassVar[frozenset[str]] = frozenset({"light"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT})
     fields: ClassVar[dict] = {
-        **{probatio.Optional(name): PERCENT for name in ("brightness", *LIMITS)},
+        **{probatio.Optional(name): PERCENT for name in (BRIGHTNESS_FIELD, *LIMITS)},
         # light.turn_on's validators without its one-color rule: given several colors, rgb_color wins, then
         # hs_color, then xy_color, as on hue_dimmer.
         **{
@@ -61,7 +64,7 @@ class SetAttributes(Action[SetAttributesRequest]):
         data = {name: value for name, value in call.data.items() if not (name in _UNSET_AT_ZERO and value == 0)}
         request = SetAttributesRequest(
             light=LightFields.from_data({name: value for name, value in data.items() if name in _COLORS}),
-            **{name: data.get(name) for name in ("brightness", *LIMITS)},
+            **{name: data.get(name) for name in (BRIGHTNESS_FIELD, *LIMITS)},
         )
         if not request.fields_present():
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="nothing_to_set")

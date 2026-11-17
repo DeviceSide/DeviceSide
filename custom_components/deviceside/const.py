@@ -1,8 +1,8 @@
 DOMAIN = "deviceside"
 NAME = "DeviceSide"
 
-# The light.turn_on fields a action may accept, under their light.turn_on names.
-LIGHT_FIELDS = ("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition")
+REPO_URL = "https://github.com/DeviceSide/DeviceSide"
+DOCS_URL = REPO_URL + "/blob/main/"
 
 # Ceiling for one adapter's execute(): a target whose Adapter.slot() hasn't finished by then is rejected with timeout,
 # and those that finished keep their results.

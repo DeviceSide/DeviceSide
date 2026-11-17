@@ -8,7 +8,7 @@
 
 - Integration:
 - Actions:
-- Level of each new or changed item (Verified, Documented or untested; flagged `experimental` or not):
+- Level of each new or changed item (Verified, Documented or Experimental):
 - Native groups (the integration's own groups that take one command): `is_group`, `expand_group` and `native_groups` built, or why not:
 
 ## Changes to shared code

@@ -804,7 +804,7 @@ async def test_a_group_with_no_member_placed_is_refused_as_class_unknown(hass, s
 
 
 async def test_a_member_not_yet_placed_still_runs_where_the_call_harms_no_class(hass, setup_production, broker):
-    """stop has no harm-based entry, so the group runs whole, with each member at the level its class has."""
+    """stop's failure doesn't harm, so the group runs whole, with each member at the level its class has."""
     entity_id = group(hass, broker, one={}, two={"manufacturer": "Lidl", "model_id": "HG06337"})
     del broker.retained[DEVICES]
 

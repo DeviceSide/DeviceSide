@@ -2,6 +2,7 @@
 
 from collections.abc import Iterable, Iterator
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -33,7 +34,7 @@ def light_members(hass: HomeAssistant, gid: int) -> frozenset[str]:
     return frozenset(
         entity_id
         for uid in _member_unique_ids(group)
-        if (entity_id := registry.async_get_entity_id("light", "zha", uid)) is not None
+        if (entity_id := registry.async_get_entity_id(Platform.LIGHT, "zha", uid)) is not None
     )
 
 

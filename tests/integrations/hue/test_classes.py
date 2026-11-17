@@ -5,6 +5,7 @@ import pytest
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from custom_components.deviceside import actions
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
@@ -97,13 +98,15 @@ def test_hue_is_verified_and_other_experimental_on_every_adapter(adapter):
     assert adapter.scope.capabilities == {"hue": Level.VERIFIED, "other": Level.EXPERIMENTAL}
 
 
-def test_only_set_scene_lists_smart_scenes_and_no_entry_harms():
+def test_only_set_scene_lists_smart_scenes_and_none_harms():
     listed = {
         adapter.action: set(adapter.scope.no_known_method) for adapter in ADAPTERS if adapter.scope.no_known_method
     }
 
     assert listed == {"set_scene": {"smart_scene"}}
-    assert not any(adapter.scope.harms for adapter in ADAPTERS)
+    # set_scene's failure doesn't harm, and no other Hue adapter holds an entry.
+    failure_harms = {action.key: action.failure_harms for action in actions.discover()}
+    assert not any(adapter.scope.harms(failure_harms[adapter.action]) for adapter in ADAPTERS)
 
 
 async def test_another_makers_light_runs_only_with_experimental_features(hass, bridge):

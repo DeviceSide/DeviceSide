@@ -3,10 +3,10 @@
 from typing import ClassVar
 
 from .fade import Z2MRamp, ramp_scope
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS
 
 
 class Z2MRaiseBrightness(Z2MRamp):
     action: ClassVar[str] = "raise_brightness"
-    scope: ClassVar[AdapterScope] = ramp_scope("raise_brightness", BRIGHTNESS)
+    scope: ClassVar[AdapterScope] = ramp_scope("raise_brightness", BRIGHTNESS_FIELD)
