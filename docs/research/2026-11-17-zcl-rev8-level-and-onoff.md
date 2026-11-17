@@ -127,6 +127,7 @@ restrict it to a named command subset. Color Control's Options is mandatory, Lev
 3. Level Control's Options (and so ExecuteIfOff) is O in the base cluster (section 2), but Level Control for
    Lighting, which lights use, marks it M, as Color Control does (section 6), and a command's OptionsMask and
    OptionsOverride set ExecuteIfOff for that command alone (section 2). So this document gives no reason a certified
-   light refuses a write while off; `other` is not built on `set_attributes` for its known departures (Hue, Sengled,
-   Gledopto), not for the base cluster's O. Whether a given firmware honors ExecuteIfOff is a device fact the spec
-   doesn't prove.
+   light refuses a write while off; `other` is not built on `set_attributes` for its known departures (a Sengled
+   E11-G13 comes on at full when written while off, and a Gledopto turns on when its color is set while off:
+   [ZHA internals](../integrations/zha/internals.md), [Hue internals](../integrations/hue/internals.md)), not for
+   the base cluster's O. Whether a given firmware honors ExecuteIfOff is a device fact the spec doesn't prove.
