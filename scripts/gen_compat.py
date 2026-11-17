@@ -103,6 +103,7 @@ from homeassistant.const import Platform
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
@@ -125,8 +126,7 @@ PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
 MODELS = REPO / "docs" / "models.yaml"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
-BLOB_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/"
-PAGE_URL = f"{BLOB_URL}docs/device-compatibility.md"
+PAGE_URL = f"{DOCS_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
 REQUIREMENTS = ("<!-- requirements:start -->", "<!-- requirements:end -->")
@@ -245,7 +245,7 @@ class Data:
             owners += sorted(self.pages)
         for owner in owners:
             if anchor in self.pages.get(owner, set()):
-                return f"{BLOB_URL}{page(owner)}#{anchor}"
+                return f"{DOCS_URL}{page(owner)}#{anchor}"
         return f"{PAGE_URL}#{anchor}"
 
 
@@ -381,7 +381,7 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
-    """The scopes' not_built entries (core/scope.py, NotBuilt, each one today's call harms), each named by
+    """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
     its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block, which keeps the
     harm's source: the card leaves the class's feature out, as it does any not built yet. One per class, reason and
     source."""
@@ -1182,7 +1182,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result = Card(
         title=info.title,
         requires=data.requires.get(key),
-        url=f"{BLOB_URL}{page(key)}" if key in data.pages else None,
+        url=f"{DOCS_URL}{page(key)}" if key in data.pages else None,
         maintainers=info.maintainers,
         marks=mark_entries(integration_adapters),
         all_unmaintained=bool(integration_adapters)

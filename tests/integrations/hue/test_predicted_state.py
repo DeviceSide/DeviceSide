@@ -8,8 +8,9 @@ import pytest
 from aiohue.v2.controllers.events import EventType
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.hue.report_filter import _END_PREFIX
 from custom_components.deviceside.integrations.hue.transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
 
@@ -315,7 +316,7 @@ async def test_a_brightness_report_mid_saturation_fade_keeps_the_saturation_pred
     await setup_room(hass, bridge)
     cache = transition_cache(hass)
     await raise_one(hass)  # attaches the filter
-    cache.forget("one", BRIGHTNESS)
+    cache.forget("one", BRIGHTNESS_FIELD)
     cache.moving("one", SATURATION, 20.0, 80.0, 10.0)
     clock.now += 2.0
 
@@ -336,9 +337,9 @@ async def test_off_from_elsewhere_mid_fade_forgets_only_the_brightness(hass, bri
     report(bridge, light_event("one", on=False))  # the Hue app
     await settle(hass)
 
-    assert cache.live("one", BRIGHTNESS) is None
+    assert cache.live("one", BRIGHTNESS_FIELD) is None
     assert cache.live("one", SATURATION) is not None
-    assert not any(key.endswith(f"one:{BRIGHTNESS}") for key in get_runtime(hass).pending)
+    assert not any(key.endswith(f"one:{BRIGHTNESS_FIELD}") for key in get_runtime(hass).pending)
 
 
 async def test_option_off_shows_what_the_bridge_reports(hass, bridge, clock):

@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Literal
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -46,7 +47,7 @@ def entity_name(hass: HomeAssistant, kind: Literal["device", "group"], z2m_id: s
     entities = er.async_get(hass)
     for device in dr.async_get(hass).async_get_devices(identifiers={device_identifier(address)}):
         for entry in er.async_entries_for_device(entities, device.id):
-            if entry.domain == "light":
+            if entry.domain == Platform.LIGHT:
                 return entry.entity_id
     return f"a Zigbee2MQTT {kind} with no light"
 

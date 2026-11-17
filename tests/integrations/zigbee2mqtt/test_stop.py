@@ -2,7 +2,8 @@
 
 import pytest
 
-from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
+from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, call, commands, group, light
@@ -52,7 +53,7 @@ async def test_a_soft_off_of_ours_is_halted_where_it_is(hass, broker, clock):
     # The soft off ran as a ZCL transition (native control off), so the brightness stop alone halts it.
     assert commands(broker)[1:] == [(SET, BRIGHTNESS_STOP)]
     clock.now += 1
-    assert transition_cache(hass).value(entity_id, BRIGHTNESS, 0) == pytest.approx(30.0)
+    assert transition_cache(hass).value(entity_id, BRIGHTNESS_FIELD, 0) == pytest.approx(30.0)
 
 
 @pytest.mark.parametrize(
@@ -113,7 +114,7 @@ async def test_the_halts_are_recorded_at_their_predictions(hass, broker, clock):
 
     clock.now += 1
     cache = transition_cache(hass)
-    assert cache.value(entity_id, BRIGHTNESS, 0) == pytest.approx(80.0)
+    assert cache.value(entity_id, BRIGHTNESS_FIELD, 0) == pytest.approx(80.0)
     assert cache.value(entity_id, SATURATION, 0) == pytest.approx(40.0)
 
 
@@ -127,9 +128,9 @@ async def test_a_group_is_stopped_with_one_publish_and_a_halt_per_member(hass, b
     assert response == {room: SENT}
     assert commands(broker)[1:] == [("zigbee2mqtt/7/set", BRIGHTNESS_STOP)]
     cache = transition_cache(hass)
-    assert cache.halted("light.one", BRIGHTNESS)
-    assert cache.value("light.one", BRIGHTNESS, 0) == pytest.approx(100 - 100 / 3)
-    assert cache.value("light.two", BRIGHTNESS, 0) == pytest.approx(20 - 20 / 3)
+    assert cache.halted("light.one", BRIGHTNESS_FIELD)
+    assert cache.value("light.one", BRIGHTNESS_FIELD, 0) == pytest.approx(100 - 100 / 3)
+    assert cache.value("light.two", BRIGHTNESS_FIELD, 0) == pytest.approx(20 - 20 / 3)
 
 
 async def test_a_group_with_nothing_lit_is_unchanged(hass, broker):

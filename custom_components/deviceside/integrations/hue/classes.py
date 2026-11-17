@@ -15,8 +15,8 @@ light; one that writes none, or that the bridge no longer lists (set_scene rejec
 reached. A room or zone is
 no device of its own: the dispatcher classes it by its members (bridge.expand_group), a light with no entity in Home
 Assistant included. Home Assistant registers every bridge device with its product data when the entry loads, so a
-device is placed once it has an entity: nothing is provisional (no Unplaced), and with no `harms` entry (no Hue
-action is timed) nothing needs to be.
+device is placed once it has an entity: nothing is provisional (no Unplaced), and as no Hue action's failure harms
+(none is timed) nothing needs to be.
 
 Every adapter's scope holds LEVELS; why `other` sits where it does is in internals.md (Device classes), index.md
 (Other brands) and the step 8 PR body.
@@ -28,15 +28,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .bridge import bridge_api, light_device, resource_id
+from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import NoKnownMethod, experimental, verified
+from ...core.scope import OTHER, NoKnownMethod, experimental, verified
 
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
 SIGNIFY = "Signify Netherlands B.V."
 
 HUE = "hue"
-OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 SMART_SCENE = "smart_scene"
 # Each class's domains (IntegrationInfo.classes): a light, Hue's smart plug included, which the bridge shows as one,
 # and a scene, classed by the lights it writes; a smart scene is a scene alone.
@@ -51,15 +51,14 @@ CLASSES = {
 # are known to depart from the calls it plausibly sends (internals.md, Device classes; the step 8 PR body).
 LEVELS = verified(HUE) | experimental(OTHER)
 
-_PAGE = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md"
+_PAGE = DOCS_URL + "docs/integrations/hue/index.md"
 SET_SCENE_NO_KNOWN_METHOD = {
     # No known method: no known call can write a smart scene's settings, as it has none fixed, a limit of the scene,
-    # not a call unbuilt. Not harmful (docs/evidence.md, When today's call harms a class): a wrong scene shows at once.
+    # not a call unbuilt. set_scene's failure doesn't harm (Action.failure_harms): a wrong scene shows at once.
     SMART_SCENE: NoKnownMethod(
         what="Hue smart scenes",
         reason="A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write",
         source=_PAGE + "#hue-smart-scenes",
-        harms=False,
     ),
 }
 

@@ -7,9 +7,9 @@ import logging
 import pytest
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
-from custom_components.deviceside.core.transition import BRIGHTNESS
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import AT_THE_BOTTOM, transition_cache, waiting
@@ -356,7 +356,7 @@ async def test_a_stop_in_the_option_window_halts_an_earlier_fade_where_the_stop_
     the stop, not where it would have reached once the lower got the option."""
     entity_id = light(hass, broker, manufacturer="Philips", brightness=51)
     cache = transition_cache(hass)
-    earlier = cache.moving(entity_id, BRIGHTNESS, 20.0, 100.0, 8.0)
+    earlier = cache.moving(entity_id, BRIGHTNESS_FIELD, 20.0, 100.0, 8.0)
     lock = locks(hass).setdefault(await nc._hue_address(hass, target(hass, entity_id)), asyncio.Lock())
     await lock.acquire()
     fade = asyncio.create_task(call(hass, "lower_brightness", {"entity_id": entity_id}))
@@ -369,7 +369,7 @@ async def test_a_stop_in_the_option_window_halts_an_earlier_fade_where_the_stop_
     lock.release()
     assert (await fade)[entity_id]["detail"] == "stopped"
 
-    halt = cache.live(entity_id, BRIGHTNESS)
+    halt = cache.live(entity_id, BRIGHTNESS_FIELD)
     assert (halt.target, halt.duration, halt.started_at) == (pytest.approx(earlier.value(stop_at)), 0.0, stop_at)
 
 
@@ -390,7 +390,7 @@ async def test_a_stop_halting_two_waiting_raises_from_off_leaves_the_bulb_at_the
     lock.release()
     assert [(await fade)[entity_id]["detail"] for fade in raises] == ["stopped", "stopped"]
 
-    assert transition_cache(hass).live(entity_id, BRIGHTNESS).target == 0
+    assert transition_cache(hass).live(entity_id, BRIGHTNESS_FIELD).target == 0
     assert waiting(hass) == {}
 
 

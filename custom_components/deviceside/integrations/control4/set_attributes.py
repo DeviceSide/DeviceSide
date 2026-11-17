@@ -6,6 +6,8 @@ import logging
 from dataclasses import replace
 from typing import Any, ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .director import (
@@ -30,7 +32,6 @@ from ...core.models import EntityResult, Status, Target
 from ...core.readback import read_back
 from ...core.scope import AdapterScope, experimental
 
-COLOR_TEMP = "color_temp_kelvin"
 _LOGGER = logging.getLogger(__name__)
 _READ_BACK = (*LEVEL_VARIABLES, CURRENT_CCT, COLOR_MODE, TARGET_CCT, TARGET_COLOR_MODE)
 
@@ -57,9 +58,9 @@ class Control4SetAttributes(Adapter[SetAttributesRequest]):
     integration: ClassVar[str] = "control4"
     scope: ClassVar[AdapterScope] = AdapterScope(
         experimental=True,
-        domains=experimental("light"),
-        fields=experimental(COLOR_TEMP),
-        unlisted=frozenset({COLOR_TEMP}),
+        domains=experimental(Platform.LIGHT),
+        fields=experimental(ATTR_COLOR_TEMP_KELVIN),
+        unlisted=frozenset({ATTR_COLOR_TEMP_KELVIN}),
         confirmable=True,
     )
 

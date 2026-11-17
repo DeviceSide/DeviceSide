@@ -6,15 +6,18 @@ import logging
 from datetime import datetime
 from typing import ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_rgbw_to_rgb
 
-from .addressing import CAPABILITIES, address, unsupported_reason
+from .addressing import CAPABILITIES, COMPONENTS, address, unsupported_reason
 from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.timer import timer_row
@@ -22,7 +25,7 @@ from ...core.timer import timer_row
 _LOGGER = logging.getLogger(__name__)
 
 
-_DIMMABLE = frozenset({"Light", "CCT", "RGB", "RGBW", "RGBCCT"})
+_DIMMABLE = frozenset(COMPONENTS.values()) - {"Switch"}
 # The clock skew the timer's time left absorbs; more means the device's clock isn't synced.
 _SKEW_S = 5.0
 
@@ -37,7 +40,7 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
     row: dict = {}
     # Brightness is the device's percent, as Hue's row is. A field the status lacks leaves its row out.
     if component in _DIMMABLE and "brightness" in status:
-        row["brightness"] = status["brightness"]
+        row[BRIGHTNESS_FIELD] = status["brightness"]
     row.update(color_row(component, status))
     if "timer_started_at" in status and "timer_duration" in status:
         duration = status["timer_duration"]
@@ -54,7 +57,7 @@ def color_row(component: str, status: dict) -> dict:
     mode = status.get("mode") if component == "RGBCCT" else None
     # The bulb's status carries ct and rgb in either mode; only the active one is reported, as core does.
     if (component == "CCT" or mode == "cct") and "ct" in status:
-        return {"color_temp_kelvin": status["ct"]}
+        return {ATTR_COLOR_TEMP_KELVIN: status["ct"]}
     if (component == "RGB" or mode == "rgb") and "rgb" in status:
         return rgb_row(*status["rgb"])
     if component == "RGBW" and "rgb" in status and "white" in status:
@@ -84,7 +87,7 @@ class ShellyGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light", "switch"),
+        domains=verified(Platform.LIGHT, Platform.SWITCH),
         # A relay shown as a light sends the same Switch.GetStatus.
         capabilities=CAPABILITIES,
         confirmable=True,

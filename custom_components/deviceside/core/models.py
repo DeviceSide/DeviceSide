@@ -3,13 +3,14 @@ from enum import StrEnum
 from typing import Any, Self
 
 import probatio
+from homeassistant.components.light import ATTR_BRIGHTNESS
 from homeassistant.components.light.const import LIGHT_TURN_ON_SCHEMA
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Context, State
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from ..const import LIGHT_FIELDS
+from .fields import BRIGHTNESS_FIELD, LIGHT_FIELDS
 
 
 class Status(StrEnum):
@@ -40,7 +41,7 @@ POSITIVE_PERCENT = probatio.All(probatio.Coerce(float), probatio.Range(min=0, mi
 # is a Marker.
 LIGHT_FIELD_SCHEMA: dict[probatio.Marker, Any] = {
     (key if isinstance(key, probatio.Marker) else probatio.Optional(key)): (
-        POSITIVE_PERCENT if str(key) == "brightness" else validator
+        POSITIVE_PERCENT if str(key) == BRIGHTNESS_FIELD else validator
     )
     for key, validator in LIGHT_TURN_ON_SCHEMA.items()
     if str(key) in LIGHT_FIELDS
@@ -76,7 +77,7 @@ class LightFields:
         """The fields as light.turn_on data."""
         data = {name: getattr(self, name) for name in sorted(self.present())}
         if self.brightness is not None:
-            data["brightness"] = self.brightness_255()
+            data[ATTR_BRIGHTNESS] = self.brightness_255()  # ha-255: service data takes HA's byte
         return data
 
     def without(self, names: frozenset[str]) -> LightFields:

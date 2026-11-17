@@ -52,17 +52,18 @@ zigpy 2.3.0, zha-quirks 2.3.0; links at those commits), 2026-11-14:
 - **Sonoff's SWV valve quirk keeps it too** ([swv.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/sonoff/swv.py#L38-L72)), and the valve reads
   `on_time` as whole seconds (Z2M #27980, which Z2M fixed by dividing by 10:
   [research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3, Sonoff row), so DeviceSide's tenths
-  would keep it open ten times as long: `sonoff_swv`, not built yet, `harms`, as a call in seconds would serve it.
+  would keep it open ten times as long: `sonoff_swv`, not built yet, harmed by today's call, as a call in seconds
+  would serve it.
 - **Which Tuya ZCL devices take seconds.** The reports and the probe cover plugs and switches only: TS011F, TS0001
   (Z2M #22182, #28914) and the models Z2M drives by Tuya's countdown (TS0001 to TS0004, TS0011, TS0726:
   [research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3, Tuya ZCL row). Those are
   `tuya_countdown`. Tuya's other ZCL devices (bulbs such as TS0505B, dimmers, `_TYZB01_…` white labels, which Z2M
   drives with a third field layout) are `tuya_zcl`: nobody has probed whether they read the spec's tenths or seconds,
-  so neither call is known safe, and `turn_on_for` refuses them, not built yet (`harms`).
+  so neither call is known safe, and `turn_on_for` refuses them, not built yet, harmed by today's call.
 - **A datapoint quirk answers the other actions too.** Its Level cluster turns a move into a datapoint and drops the
   transition ([mcu/\_\_init\_\_.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/tuya/mcu/__init__.py#L695-L770)), and its reads come from
-  its cache, so no adapter's call reaches a `tuya_mcu` device as sent: not built yet on every action, with
-  `harms` on `turn_on_for`.
+  its cache, so no adapter's call reaches a `tuya_mcu` device as sent: not built yet on every action, with an
+  entry on `turn_on_for`, whose failure harms.
 - **Some datapoint devices carry ZCL-style strings.** A TS0601 quirk matches `_TZ3000_uim07oem`
   ([ts0601_switch.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/tuya/ts0601_switch.py#L88)), and the TS0049 valve `_TZ3210_0jxeoadc` gets the
   builder's datapoint On/Off ([tuya_valve.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/tuya/tuya_valve.py#L652-L663)), so the strings alone
@@ -102,8 +103,8 @@ unicast: `light.turn_on` when there are fields, a plain `On`, then `OnWithTimedO
 call (C5: `0.1 | 1 | 0 | 10`, then `1.1 | 1 | 10 | 10`). It is the frame Z2M's converter A sends
 (`tuya.tz.on_off_countdown`, [tuya-countdown](../zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1) and the lab
 probe's C5. It was built and then taken out for v0.1.0's scope, not its units; until it returns, `turn_on_for`
-refuses the Tuya classes as not built yet, with `harms`, and `get_attributes` reads none of them, as it reads only
-what another action serves (`core/registry.py`, `check_queries`). When it returns, `get_attributes` reads a
+refuses the Tuya classes as not built yet, harmed by today's call, and `get_attributes` reads none of them, as it
+reads only what another action serves (`core/registry.py`, `check_queries`). When it returns, `get_attributes` reads a
 `tuya_countdown` again, its OnTime in whole seconds (the lab probe's ZHA C5 counts it down by 1 a second), so ten
 times the spec's tenths.
 

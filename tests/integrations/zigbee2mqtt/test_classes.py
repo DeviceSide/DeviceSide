@@ -162,7 +162,7 @@ def test_get_attributes_reads_a_tuya_zcl_device_as_a_light_alone():
     scope = _scopes()["get_attributes"]
     assert scope.admits("tuya_zcl", "light")
     assert not scope.admits("tuya_zcl", "switch")
-    assert scope.refusal(["tuya_zcl"], domain="switch") == ("not_built", None)
+    assert scope.refusal(["tuya_zcl"], domain="switch", failure_harms=False) == ("not_built", None)
 
 
 SWITCH_ONLY = {"tuya_ts011f", "tuya_countdown", *tuya.VERIFIED_COUNTDOWNS, "tuya_countdown_harmed"}
@@ -186,7 +186,7 @@ def test_actions_for_lights_alone_never_hold_a_switch_only_class():
     for scope in lights_alone.values():
         held = scope.capabilities.keys() | scope.no_known_method.keys() | scope.not_built.keys()
         assert not held & SWITCH_ONLY
-        assert scope.refusal(["tuya_ts011f"]) == ("not_built", None)
+        assert scope.refusal(["tuya_ts011f"], failure_harms=False) == ("not_built", None)
 
 
 # Group members, from the bridge cache.
@@ -884,7 +884,7 @@ async def test_a_group_with_no_member_placed_is_refused_as_class_unknown(hass, s
 
 
 async def test_a_member_not_yet_placed_still_runs_where_the_call_harms_no_class(hass, setup_production, broker):
-    """stop has no harm-based entry, so the group runs whole, with each member at the level its class has."""
+    """stop's failure doesn't harm, so the group runs whole, with each member at the level its class has."""
     entity_id = group(hass, broker, one={}, two={"manufacturer": "Lidl", "model_id": "HG06337"})
     del broker.retained[DEVICES]
 

@@ -31,6 +31,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
 from scripts.check_release import BUNDLES, adapters  # noqa: E402
@@ -41,7 +42,7 @@ END = "<!-- features:end -->"
 # Absolute: HACS renders the README inside Home Assistant, where relative image paths don't resolve.
 ICON_URL = "https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/{}.svg"
 # Absolute for the same reason. Without a link of its own, GitHub links each icon to its SVG file.
-DOC_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/{}#{}"
+DOC_URL = DOCS_URL + "{}#{}"
 INTEGRATIONS = "docs/integrations.md"
 # The integrations.md section explaining every NO_PATH entry to users; keep the two in step.
 IMPOSSIBLE = "what-cant-be-done-and-why"

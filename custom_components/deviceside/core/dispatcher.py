@@ -355,7 +355,9 @@ class Dispatcher:
                 # member whose class harms says so. It stands for its whole device, so the skip names the device
                 # (_device_of), with no address.
                 reason, why = adapter.scope.refusal(
-                    self._reached(adapter, target, None).classes, domain=target.domain
+                    self._reached(adapter, target, None).classes,
+                    domain=target.domain,
+                    failure_harms=adapter.failure_harms,
                 ) or (
                     Reason.NOT_ADDRESSABLE,
                     None,
@@ -377,7 +379,9 @@ class Dispatcher:
                 results.append(
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
                 )
-            elif refused := adapter.scope.refusal(found, group=members is not None, domain=target.domain):
+            elif refused := adapter.scope.refusal(
+                found, group=members is not None, domain=target.domain, failure_harms=adapter.failure_harms
+            ):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
                 # skipped as indirect. So a group with one member not yet placed runs the rest, where the call harms
                 # a class, and one with a member that takes a call of its own gives each member its own; one of

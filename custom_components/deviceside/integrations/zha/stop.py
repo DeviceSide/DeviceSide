@@ -5,6 +5,7 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
 
@@ -13,10 +14,11 @@ from .addressing import unsupported_reason
 from .fade import end_key, has_color, hue_moves, refresh, send_each, soft_off_restores, transition_cache, units
 from ...core.adapter import Adapter, DeadlinePassed
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
+from ...core.transition import SATURATION, TransitionCache, hs_color, light_brightness, lit
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ class ZHAStop(Adapter[Request]):
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"), **classes.class_scope(action), max_concurrency=2
+        domains=verified(Platform.LIGHT), **classes.class_scope(action), max_concurrency=2
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
@@ -60,10 +62,10 @@ class ZHAStop(Adapter[Request]):
                 halting = lit(cache, lights)
                 # A halt is predicted only where a move of ours ran: elsewhere the refresh is right at once.
                 halts = {
-                    BRIGHTNESS: {
+                    BRIGHTNESS_FIELD: {
                         light.entity_id: light_brightness(cache, light)
                         for light in halting
-                        if cache.tracks(light.entity_id, BRIGHTNESS)
+                        if cache.tracks(light.entity_id, BRIGHTNESS_FIELD)
                     },
                     SATURATION: {
                         light.entity_id: cache.value(light.entity_id, SATURATION, (hs_color(light) or (0, 0))[1])
@@ -137,7 +139,7 @@ class ZHAStop(Adapter[Request]):
         soft_off_restores(hass).difference_update(halted_ids)
         runtime = get_runtime(hass)
         for light in halted:
-            for attribute in (BRIGHTNESS, SATURATION):
+            for attribute in (BRIGHTNESS_FIELD, SATURATION):
                 runtime.schedule(hass, end_key(light, attribute), [])  # cancels the fades' end refreshes and restore
         await asyncio.gather(*(refresh(hass, light, request.context) for light in halted))
         return [*off, *(self._result(light, failed) for light in halting)]

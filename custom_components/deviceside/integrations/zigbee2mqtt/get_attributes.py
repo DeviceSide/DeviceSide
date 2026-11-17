@@ -7,6 +7,7 @@ OnTime holds the countdown last set, not the time left (refusals.py; internals.m
 from datetime import datetime
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
@@ -33,7 +34,7 @@ class Z2MGetAttributes(Z2MAdapter[Request]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Switches are Experimental, as in turn_on_for.
-        domains=verified("light") | experimental("switch"),
+        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
         **class_scope("get_attributes"),
         confirmable=True,
         native_groups=True,  # read through its members, which only Z2M's bridge/groups knows

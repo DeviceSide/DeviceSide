@@ -16,6 +16,9 @@ class Action[RequestT: Request](ABC):
 
     key: ClassVar[str]
     kind: ClassVar[ActionKind]
+    # Whether the call's failure harms (docs/evidence.md, When today's call harms a class): deferred and unattended,
+    # leaving a device on or off unasked after the user stopped watching. The timed and auto on/off actions alone.
+    failure_harms: ClassVar[bool] = False
     domains: ClassVar[frozenset[str]]
     supports_response: ClassVar[SupportsResponse] = SupportsResponse.OPTIONAL
     fields: ClassVar[dict[probatio.Marker, Any]] = {}

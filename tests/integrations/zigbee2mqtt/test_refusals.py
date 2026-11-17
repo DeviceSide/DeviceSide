@@ -5,6 +5,7 @@ are: a family's own tests cover its levels and calls."""
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside import actions
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.scope import NoKnownMethod, NotBuilt
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS
@@ -17,24 +18,26 @@ from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 
 COUNTDOWN = {"type": "numeric", "name": "countdown", "property": "countdown"}
+FAILURE_HARMS = {action.key: action.failure_harms for action in actions.discover()}
 
 
-def test_turn_on_for_alone_refuses_classes_not_built_and_each_entry_harms():
-    """Each class turn_on_for refuses has a call that would work, not built yet. `harms`, so the dispatcher refuses a
-    device it can't place too; no other Z2M adapter does."""
+def test_turn_on_for_alone_refuses_classes_not_built_and_harms_there_alone():
+    """Each class turn_on_for refuses has a call that would work, not built yet. turn_on_for's failure harms, so the
+    dispatcher refuses a device it can't place too; no other Z2M adapter does."""
     assert REFUSALS.keys() == {"turn_on_for", "get_attributes"}
     assert set(REFUSALS["turn_on_for"]) == {"tuya_ts011f", "tuya_zcl", "tuya_mcu", "tuya_countdown_harmed"}
-    assert all(isinstance(entry, NotBuilt) and entry.harms for entry in REFUSALS["turn_on_for"].values())
-    assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms] == ["turn_on_for"]
+    assert all(isinstance(entry, NotBuilt) for entry in REFUSALS["turn_on_for"].values())
+    assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms(FAILURE_HARMS[adapter.action])] == [
+        "turn_on_for"
+    ]
 
 
 def test_get_attributes_has_no_known_method_on_every_countdown_plug():
     """The time left can't be read (internals.md, Tuya's countdown, P6), on the Verified strings and the rest alike
-    (plan Decision 25). A read leaves nothing on or off, so no entry harms."""
+    (plan Decision 25). A read leaves nothing on or off, so get_attributes' failure doesn't harm."""
     assert set(REFUSALS["get_attributes"]) == set(tuya.COUNTDOWNS)
     for entry in REFUSALS["get_attributes"].values():
         assert isinstance(entry, NoKnownMethod)
-        assert not entry.harms
         assert entry.source.endswith("research/2026-11-15-tuya-countdown-probe.md")
 
 

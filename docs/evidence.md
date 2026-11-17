@@ -103,8 +103,8 @@ covers only what was exercised; it never signs off untested code.
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
 - **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
-  identity it names, on the report alone, citing it, with `harms`. It's not built yet if a known or plausible call
-  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
+  identity it names, on the report alone, citing it, as an entry on that action. It's not built yet if a known or
+  plausible call would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
 - **The identity is the narrowest one a class rule can key on:** model ID with manufacturer string, plus firmware
   where that decides. A vendor is not normally refused whole on a single report; split off the exception. A rule
   keyed on a vendor needs research.
@@ -113,8 +113,8 @@ covers only what was exercised; it never signs off untested code.
 - **Anything else** changes no level until a maintainer root-causes it. The fix, or the demotion, lands with the
   finding.
 
-*Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet, with
-`harms`. Z2M #25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, so it stays Experimental.
+*Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet. Z2M
+#25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, so it stays Experimental.
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -185,10 +185,10 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   refused (`not_built`), and the card leaves it out, as no one can list every feature that could be built.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
 
-Either kind may carry `harms`, the separate safety axis, when today's call would harm the class (below): a no known
-method entry states it (`NoKnownMethod.harms`), and a class not built yet that today's call would harm gets an entry
-of its own in the scope's `not_built` (`NotBuilt`, with why, a source and `harms`), which the card leaves out, as it
-does any other. A class not built yet that today's call leaves unharmed needs no entry.
+Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
+built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
+source), which the card leaves out, as it does any other. Any other class not built yet needs no entry, as
+leaving it out refuses it, and the registry refuses a `not_built` entry on an action whose failure doesn't harm.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
@@ -200,12 +200,12 @@ does any other. A class not built yet that today's call leaves unharmed needs no
   scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,
   `clear_auto_off`, `clear_auto_on`); dimming and color (`raise_brightness`, `lower_brightness`, `raise_hue`,
   `lower_hue`, `raise_saturation`, `lower_saturation`), `stop`, `set_attributes` and `set_scene` don't, as a wrong
-  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `no_known_method`
-  and `not_built` entry answers it (`harms`, which has no default).
-- **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope holds an entry with
-  `harms`, no known method or not built yet alike, refuses a target whose class rests on information DeviceSide
-  doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet
-  placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
+  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. The action states it
+  (`Action.failure_harms`), for every adapter of that action.
+- **Where a call is known to harm, a class not yet known is refused.** An adapter whose action's failure harms and
+  whose scope holds a `no_known_method` or `not_built` entry refuses a target whose class rests on information
+  DeviceSide doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device
+  not yet placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
@@ -254,8 +254,8 @@ at `cut-release`, with the other release gates. Like every gate, it checks that 
 (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on
 `other` it is `experimental(...)`, so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA
 bulb adds an `ikea` class, Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own
-countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, with
-`harms`, until the countdown call is built for them; the TS011F plugs it is built for take it as `tuya_countdown`,
+countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, each
+with an entry, until the countdown call is built for them; the TS011F plugs it is built for take it as `tuya_countdown`,
 Experimental, and each maker string with a record of its own as its own class, Verified, so the check asks each string
 for its record; the Sengled, which ignores today's call, needs a call that isn't built, so it is not built yet too,
 with no entry, as today's call leaves it unharmed.

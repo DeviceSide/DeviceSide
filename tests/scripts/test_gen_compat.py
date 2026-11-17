@@ -712,7 +712,7 @@ def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_secti
     assert data.requires == {"zha": "Zigbee 3.0"}
     assert data.no_known_method[0]["integrations"] == ["zha"]
     # A section on the integration's page links there; the rest fall back to the shared page.
-    assert data.url("zha", "Dimmers") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#dimmers"
+    assert data.url("zha", "Dimmers") == f"{gc.DOCS_URL}docs/integrations/zha/index.md#dimmers"
     assert data.url("zha", "Zigbee plugs") == f"{URL}#zigbee-plugs"
     assert data.url("hue", "Dimmers") == f"{URL}#dimmers"
     page = PROSE.replace("### Dimmers\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n"
@@ -729,7 +729,7 @@ def test_a_models_or_native_groups_section_on_another_integrations_page_links_th
     # Every card showing it links its heading on the ZHA page, which is where the check found it. A class's section
     # isn't one (test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_sections).
     for key in ("hue", "zha"):
-        assert data.url(key, section) == f"{gc.BLOB_URL}docs/integrations/zha/index.md#{gf.slug(section)}"
+        assert data.url(key, section) == f"{gc.DOCS_URL}docs/integrations/zha/index.md#{gf.slug(section)}"
     gc.check_sections(
         PROSE.replace(f"### {section}\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n", data
     )
@@ -738,7 +738,7 @@ def test_a_models_or_native_groups_section_on_another_integrations_page_links_th
 def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
     data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch))
     card = gc.card("zha", FakeRegistry(), [], data)
-    assert card.render().startswith(f"**[ZHA]({gc.BLOB_URL}docs/integrations/zha/index.md)** (Zigbee 3.0)")
+    assert card.render().startswith(f"**[ZHA]({gc.DOCS_URL}docs/integrations/zha/index.md)** (Zigbee 3.0)")
 
 
 @pytest.mark.parametrize(
@@ -1064,7 +1064,7 @@ def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagg
 
 
 def test_a_class_an_adapter_serves_in_neither_axis_shows_nothing_for_it(root):
-    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     card = classed_card(
         adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Switch", "Light", "CCT", "RGB"))),
         adapter("zha", "set_attributes", AdapterScope(capabilities=verified("Switch"))),
@@ -1080,7 +1080,7 @@ def test_a_class_an_adapter_serves_in_neither_axis_shows_nothing_for_it(root):
 
 
 def test_a_scopes_no_known_method_reaches_the_card_and_the_evidence_with_its_actions(root):
-    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     scope = AdapterScope(capabilities=verified("Switch"), no_known_method=broken)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
@@ -1105,7 +1105,7 @@ def test_a_scopes_no_known_method_reaches_the_card_and_the_evidence_with_its_act
 
 def test_a_harmful_not_built_entry_is_left_off_the_card_and_sourced_in_the_evidence(root):
     """The card leaves it out, as any feature not built yet; the evidence block keeps why and where."""
-    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z", harms=True)}
+    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z")}
     scope = AdapterScope(capabilities=verified("Switch"), not_built=unbuilt)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
@@ -1122,11 +1122,11 @@ def test_a_harmful_not_built_entry_is_left_off_the_card_and_sourced_in_the_evide
     [
         (
             "CCT",
-            NotBuilt("No timer yet", "http://x.y/z", harms=True),
+            NotBuilt("No timer yet", "http://x.y/z"),
             "not_built zha CCT: source must be an https",
         ),
-        ("CCT", NotBuilt("", "https://x.y/z", harms=True), "not_built zha CCT needs a reason"),
-        ("Hidden", NotBuilt("No timer yet", "https://x.y/z", harms=True), "no entry for zha Hidden, which a scope"),
+        ("CCT", NotBuilt("", "https://x.y/z"), "not_built zha CCT needs a reason"),
+        ("Hidden", NotBuilt("No timer yet", "https://x.y/z"), "no entry for zha Hidden, which a scope"),
     ],
     ids=["non_https_source", "empty_reason", "no_phrase"],
 )
@@ -1240,7 +1240,7 @@ def test_a_line_holding_every_class_of_its_section_names_the_section(root):
 
 def test_a_class_refused_on_every_action_has_no_line(root):
     """Decision 14: a class whose only entries are not built yet stays off the card."""
-    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z", harms=True)}
+    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z")}
     adapters = (
         adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Light"), not_built=unbuilt)),
         adapter("zha", "raise_brightness", AdapterScope(capabilities=verified("Light"))),

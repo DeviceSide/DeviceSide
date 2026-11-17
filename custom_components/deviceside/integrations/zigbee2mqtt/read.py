@@ -16,7 +16,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from homeassistant.components import mqtt
-from homeassistant.components.light import ColorMode, brightness_supported
+from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, ColorMode, brightness_supported
 from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic, state_topic, topic, z2m_address
@@ -44,7 +44,7 @@ def clusters(target: Target) -> dict[str, list[str]]:
     One unsupported attribute fails a cluster's whole read, so only the color mode's own are asked for: a color
     temperature bulb has no hue or saturation, and some have no EnhancedColorMode.
     """
-    modes = set((target.state and target.state.attributes.get("supported_color_modes")) or ())
+    modes = set((target.state and target.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES)) or ())
     wanted = {"genOnOff": ["onOff", "onTime"]}
     if brightness_supported(modes):
         wanted["genLevelCtrl"] = ["currentLevel"]

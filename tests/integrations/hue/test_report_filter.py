@@ -11,8 +11,9 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.hue.report_filter import (
     Report,
     applies_later,
@@ -33,7 +34,7 @@ def cache(hass, clock):
 
 def moving_up(cache, clock) -> None:
     """light "one" moving 20 % to 80 % over 10 s, 5 s in."""
-    cache.moving("one", BRIGHTNESS, 20.0, 80.0, 10.0)
+    cache.moving("one", BRIGHTNESS_FIELD, 20.0, 80.0, 10.0)
     clock.now += 5.0
 
 
@@ -68,7 +69,7 @@ async def test_classify_a_light_mid_move(hass, bridge, cache, clock, event, repo
 @pytest.mark.parametrize(
     ("event", "ending"),
     [
-        pytest.param(light_event("one", on=False), [BRIGHTNESS], id="off_from_elsewhere"),
+        pytest.param(light_event("one", on=False), [BRIGHTNESS_FIELD], id="off_from_elsewhere"),
         pytest.param(light_event("one", color_temperature={"mirek": 298}), [SATURATION], id="mirek"),
         pytest.param(
             light_event("one", brightness=96.44, color={"xy": {"x": 0.4, "y": 0.4}}), [SATURATION], id="xy_and_ours"
@@ -120,7 +121,7 @@ async def test_the_move_is_recorded_before_its_write(hass, bridge, cache):
 
 async def test_soft_off_reports_are_ours(hass, bridge, cache, clock):
     await setup_room(hass, bridge)
-    cache.moving("one", BRIGHTNESS, 100.0, 0.0, 10.0)
+    cache.moving("one", BRIGHTNESS_FIELD, 100.0, 0.0, 10.0)
     clock.now += 1.0
 
     assert classify(cache, bridge.api, light_event("one", on=False)) is Report.OURS
@@ -130,7 +131,7 @@ async def test_soft_off_reports_are_ours(hass, bridge, cache, clock):
 
 async def test_up_from_off_reports_are_ours(hass, bridge, cache, clock):
     await setup_room(hass, bridge)
-    cache.moving("one", BRIGHTNESS, 0.0, 100.0, 10.0)
+    cache.moving("one", BRIGHTNESS_FIELD, 0.0, 100.0, 10.0)
 
     assert classify(cache, bridge.api, light_event("one", on=True)) is Report.OURS
     assert classify(cache, bridge.api, light_event("one", brightness=100.0)) is Report.OURS
@@ -175,13 +176,13 @@ async def test_a_refused_write_puts_back_the_prediction_it_replaced(hass, bridge
     await setup_room(hass, bridge)
     await call(hass, "lower_brightness", {"entity_id": "light.one", "limit": 10})
     clock.now += 0.5
-    before = cache.live("one", BRIGHTNESS)
+    before = cache.live("one", BRIGHTNESS_FIELD)
     bridge.failing.add("one")
 
     with pytest.raises(HomeAssistantError):
         await call(hass, action, {"entity_id": "light.one"})
 
-    assert cache.live("one", BRIGHTNESS) == before
+    assert cache.live("one", BRIGHTNESS_FIELD) == before
 
 
 async def test_a_refused_write_from_set_attributes_keeps_the_prediction(hass, bridge, cache, clock):
@@ -193,7 +194,7 @@ async def test_a_refused_write_from_set_attributes_keeps_the_prediction(hass, br
     with pytest.raises(HomeAssistantError):
         await call(hass, "set_attributes", {"entity_id": "light.one", "brightness": 40})
 
-    assert cache.running("one", BRIGHTNESS) is not None
+    assert cache.running("one", BRIGHTNESS_FIELD) is not None
 
 
 def test_an_aiohue_without_the_private_handler_is_taken_to_apply_events_at_once():
@@ -224,7 +225,7 @@ async def test_a_light_call_from_ha_forgets_its_hue_lights(hass, bridge, cache, 
     entities.async_get_or_create("light", "demo", "other", suggested_object_id="other")
     async_mock_service(hass, "light", "turn_on")
     for light_id in ("one", "two"):
-        cache.stopped(light_id, BRIGHTNESS, 42.0)
+        cache.stopped(light_id, BRIGHTNESS_FIELD, 42.0)
     await call(hass, "stop", {"entity_id": "light.one"})  # attaches the filter
     if service_data is not None:
         service_data = {
@@ -242,7 +243,7 @@ async def test_a_scene_from_ha_forgets_its_rooms_lights(hass, bridge, cache):
     async_mock_service(hass, "scene", "turn_on")
     async_mock_service(hass, "switch", "turn_on")
     for light_id in ("one", "two"):
-        cache.stopped(light_id, BRIGHTNESS, 42.0)
+        cache.stopped(light_id, BRIGHTNESS_FIELD, 42.0)
     await call(hass, "stop", {"entity_id": "light.room"})
 
     await hass.services.async_call("switch", "turn_on", {"entity_id": "light.one"}, blocking=True)
@@ -292,7 +293,7 @@ async def test_a_failing_filter_never_stops_aiohue_applying_the_event(hass, brid
 async def test_any_brightness_after_a_stop_is_ours_until_its_window_ends(hass, bridge, cache, clock, brightness):
     # The rig saw a halt reported 0.9 from the prediction, and a stale report from before the move 16 above it.
     await setup_room(hass, bridge)
-    cache.stopped("one", BRIGHTNESS, 40.4)
+    cache.stopped("one", BRIGHTNESS_FIELD, 40.4)
     clock.now += 5.0
 
     assert classify(cache, bridge.api, light_event("one", brightness=brightness)) is Report.OURS
@@ -302,7 +303,7 @@ async def test_any_brightness_after_a_stop_is_ours_until_its_window_ends(hass, b
 
 async def test_off_after_a_lit_halt_is_real(hass, bridge, cache, clock):
     await setup_room(hass, bridge)
-    cache.stopped("one", BRIGHTNESS, 40.4)
+    cache.stopped("one", BRIGHTNESS_FIELD, 40.4)
     clock.now += 5.0
 
     assert classify(cache, bridge.api, light_event("one", on=False)) is Report.REAL
@@ -332,7 +333,7 @@ async def test_a_scene_recalled_on_the_bridge_forgets_its_rooms_lights(
     await setup_room(hass, bridge)
     await call(hass, "stop", {"entity_id": "light.room"})  # attaches the filter
     for light_id in ("one", "two"):
-        cache.stopped(light_id, BRIGHTNESS, 42.0)
+        cache.stopped(light_id, BRIGHTNESS_FIELD, 42.0)
 
     bridge.api.events.emit(EventType.RESOURCE_UPDATED, {"id": scene_id, "type": "scene", "status": {"active": active}})
     await hass.async_block_till_done()

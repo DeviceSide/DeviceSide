@@ -5,14 +5,16 @@ from dataclasses import dataclass, replace
 from typing import Any, ClassVar, Self
 
 import probatio
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from ..core.action import Action
+from ..core.fields import BRIGHTNESS_FIELD
 from ..core.models import ActionKind, Request
-from ..core.transition import BRIGHTNESS, SATURATION
+from ..core.transition import SATURATION
 
 HUE = "hue"
-__all__ = ["BRIGHTNESS", "HUE", "SATURATION", "Ramp", "RampRequest", "limit_field"]
+__all__ = ["BRIGHTNESS_FIELD", "HUE", "SATURATION", "Ramp", "RampRequest", "limit_field"]
 
 DEFAULT_SWEEP_TIME = 5.0
 
@@ -56,7 +58,7 @@ class Ramp(Action[RampRequest]):
     attribute: ClassVar[str]
     up: ClassVar[bool]
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
-    domains: ClassVar[frozenset[str]] = frozenset({"light"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT})
     fields: ClassVar[dict] = {
         probatio.Optional("sweep_time", default=DEFAULT_SWEEP_TIME): probatio.All(
             probatio.Coerce(float), probatio.Range(min=0.1)

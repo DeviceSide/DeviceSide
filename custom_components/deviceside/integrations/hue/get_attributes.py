@@ -4,8 +4,8 @@ from collections.abc import Iterable
 from statistics import mean
 from typing import TYPE_CHECKING, ClassVar
 
-from homeassistant.components.light import ATTR_COLOR_MODE, ColorMode
-from homeassistant.const import STATE_ON
+from homeassistant.components.light import ATTR_COLOR_MODE, ATTR_COLOR_TEMP_KELVIN, ColorMode
+from homeassistant.const import STATE_ON, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util.color import color_temperature_mired_to_kelvin
@@ -17,9 +17,9 @@ from .transition_cache import HueTransitionCache, transition_cache
 from ...core.adapter import Adapter
 from ...core.color import xy_row
 from ...core.errors import Reason
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
@@ -31,7 +31,7 @@ def light_row(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache, 
     value)."""
     row = attributes(hass, api, cache, [light])
     if light.dimming:
-        row["brightness"] = round(cache.value(light.id, BRIGHTNESS, light.dimming.brightness), 1)
+        row[BRIGHTNESS_FIELD] = round(cache.value(light.id, BRIGHTNESS_FIELD, light.dimming.brightness), 1)
     return row
 
 
@@ -45,7 +45,7 @@ def in_color_temp_mode(hass: HomeAssistant, api: HueBridgeV2, light: Light) -> b
         return False
     if (device := api.devices.get(light.owner.rid)) is None or device.product_data.certified:
         return feature.mirek_valid
-    entity_id = er.async_get(hass).async_get_entity_id("light", "hue", light.id)
+    entity_id = er.async_get(hass).async_get_entity_id(Platform.LIGHT, "hue", light.id)
     if (state := hass.states.get(entity_id) if entity_id else None) is None or state.state != STATE_ON:
         # Core shows no color mode for a light that is off, or one it has no entity for: the bridge's flag is all
         # there is, as for a certified light.
@@ -63,14 +63,14 @@ def attributes(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache,
     lights = list(lights)
     row: dict = {}
     if levels := [light.dimming.brightness for light in lights if light.dimming]:
-        row["brightness"] = round(mean(levels), 1)
+        row[BRIGHTNESS_FIELD] = round(mean(levels), 1)
     kelvins = [
         color_temperature_mired_to_kelvin(light.color_temperature.mirek)
         for light in lights
         if in_color_temp_mode(hass, api, light)
     ]
     if kelvins:
-        row["color_temp_kelvin"] = round(mean(kelvins))
+        row[ATTR_COLOR_TEMP_KELVIN] = round(mean(kelvins))
     if xys := [light_xy(cache, light) for light in lights if light.color]:
         row.update(xy_row(round(mean(x for x, _ in xys), 4), round(mean(y for _, y in xys), 4)))
     return row
@@ -114,13 +114,13 @@ class HueGetAttributes(Adapter[Request]):
             on = [light for light in lights if light.on.on]
             row = attributes(hass, api, cache, on or lights)
             dimmable = [light for light in lights if light.dimming]
-            if any(cache.tracks(light.id, BRIGHTNESS) for light in dimmable):
+            if any(cache.tracks(light.id, BRIGHTNESS_FIELD) for light in dimmable):
                 # Mid-move the bridge reports end values; average the lit lights' predictions instead. A light
                 # still moving counts as lit: a room moved up from all off is on before aiohue hears so.
                 lights_lit = lit(cache, dimmable) or dimmable
-                predicted = [cache.value(light.id, BRIGHTNESS, light.dimming.brightness) for light in lights_lit]
-                row["brightness"] = round(mean(predicted), 1)
+                predicted = [cache.value(light.id, BRIGHTNESS_FIELD, light.dimming.brightness) for light in lights_lit]
+                row[BRIGHTNESS_FIELD] = round(mean(predicted), 1)
             elif on and (group := grouped.get(resource_id(target))) is not None and group.dimming is not None:
-                row["brightness"] = round(group.dimming.brightness, 1)
+                row[BRIGHTNESS_FIELD] = round(group.dimming.brightness, 1)
             results.append(self.result(target, Status.CONFIRMED, data=row))
         return results

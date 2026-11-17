@@ -5,6 +5,7 @@ from typing import ClassVar
 
 from aiohue.v2.models.resource import ResourceTypes
 from aiohue.v2.models.scene import Scene
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .bridge import bridge_api, entity_name, resource_id, write_light
@@ -56,7 +57,7 @@ class HueSetScene(Adapter[Request]):
     action: ClassVar[str] = "set_scene"
     integration: ClassVar[str] = "hue"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("scene"), capabilities=LEVELS, no_known_method=SET_SCENE_NO_KNOWN_METHOD
+        domains=verified(Platform.SCENE), capabilities=LEVELS, no_known_method=SET_SCENE_NO_KNOWN_METHOD
     )
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:

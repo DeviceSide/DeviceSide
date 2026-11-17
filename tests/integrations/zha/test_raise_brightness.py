@@ -3,7 +3,7 @@ Hue's own command)."""
 
 import pytest
 
-from custom_components.deviceside.core.transition import BRIGHTNESS
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zha.addressing import Address
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
@@ -91,8 +91,8 @@ async def test_a_groups_members_get_one_groupcast_from_their_mean(hass, two_ligh
     ]
     assert not commands
     cache = transition_cache(hass)
-    assert cache.value("light.a", BRIGHTNESS, 0) == pytest.approx(40)
-    assert cache.value("light.b", BRIGHTNESS, 0) == pytest.approx(80)
+    assert cache.value("light.a", BRIGHTNESS_FIELD, 0) == pytest.approx(40)
+    assert cache.value("light.b", BRIGHTNESS_FIELD, 0) == pytest.approx(80)
 
 
 async def test_an_off_member_is_put_at_the_bottom_on_its_own(hass, two_light_group, commands, group_commands):

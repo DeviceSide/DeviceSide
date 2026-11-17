@@ -11,7 +11,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from homeassistant.components.light import COLOR_MODES_COLOR, color_supported
+from homeassistant.components.homeassistant import SERVICE_UPDATE_ENTITY
+from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, COLOR_MODES_COLOR, color_supported
+from homeassistant.const import ATTR_ENTITY_ID, Platform
+from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import Unauthorized
 from homeassistant.util.color import color_hs_to_xy
@@ -23,12 +26,12 @@ from ...actions.ramp import HUE, RampRequest
 from ...core import transition
 from ...core.adapter import Adapter, DeadlinePassed
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, verified
 from ...core.transition import (
-    BRIGHTNESS,
     SATURATION,
     TransitionCache,
     color_mode,
@@ -87,7 +90,7 @@ class ZHACallResolver:
                 cycling.clear()
             return
         for entry in entries:
-            if entry.domain != "light":
+            if entry.domain != Platform.LIGHT:
                 continue
             gid = group_id(entry.unique_id)
             for light_id in light_members(hass, gid) if gid is not None else (entry.entity_id,):
@@ -117,7 +120,7 @@ def units(hass: HomeAssistant, targets: list[Target]) -> list[tuple[int | None, 
 
 
 def has_color(light: Target) -> bool:
-    modes = light.state.attributes.get("supported_color_modes") if light.state else None
+    modes = light.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES) if light.state else None
     return color_supported(modes)
 
 
@@ -181,7 +184,11 @@ def failures(lights: list[Target], outcomes: list[Any]) -> dict[str, Exception]:
 async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -> None:
     try:
         await hass.services.async_call(
-            "homeassistant", "update_entity", {"entity_id": light.entity_id}, blocking=True, context=context
+            HOMEASSISTANT_DOMAIN,
+            SERVICE_UPDATE_ENTITY,
+            {ATTR_ENTITY_ID: light.entity_id},
+            blocking=True,
+            context=context,
         )
     except Exception as err:  # noqa: BLE001 - a failed refresh leaves HA's state stale, nothing more
         _LOGGER.debug("update_entity for %s failed: %s", light.entity_id, describe(err))
@@ -213,7 +220,7 @@ class HueMove:
 def ramp_scope(action: str, attribute: str) -> AdapterScope:
     """A ramp's scope: its classes as classes.class_scope holds them for the action."""
     return AdapterScope(
-        domains=verified("light"), fields=verified(attribute), **classes.class_scope(action), max_concurrency=2
+        domains=verified(Platform.LIGHT), fields=verified(attribute), **classes.class_scope(action), max_concurrency=2
     )
 
 
@@ -283,13 +290,13 @@ class ZHARamp(Adapter[RampRequest]):
         outcome = plan(cache, request, lights, capabilities)
         if (
             isinstance(outcome, str)
-            and request.attribute == BRIGHTNESS
-            and any(cache.tracks(light.entity_id, BRIGHTNESS) for light in lights)
+            and request.attribute == BRIGHTNESS_FIELD
+            and any(cache.tracks(light.entity_id, BRIGHTNESS_FIELD) for light in lights)
         ):
             # Nothing to do by the prediction, which a change made elsewhere can leave stale: ZHA applies the bulb's
             # brightness reports, so its state is right then. Plan again from it.
             for light in lights:
-                cache.forget(light.entity_id, BRIGHTNESS)
+                cache.forget(light.entity_id, BRIGHTNESS_FIELD)
             outcome = plan(cache, request, lights, capabilities)
         if isinstance(outcome, str):
             return each(Status.UNCHANGED, detail=outcome)
@@ -330,7 +337,7 @@ def plan(
     cache: TransitionCache, request: RampRequest, lights: list[Target], capabilities: dict[str, int]
 ) -> Fade | HueMove | str:
     """The attribute's fade or hue move, or why it has none to make."""
-    if request.attribute == BRIGHTNESS:
+    if request.attribute == BRIGHTNESS_FIELD:
         return brightness_fade(cache, request, lights)
     if request.attribute == SATURATION:
         return saturation_fade(cache, request, lights, capabilities)
@@ -397,7 +404,7 @@ class Marks:
         }
         pending = soft_off_restores(hass)
         kept: frozenset[str] = frozenset()
-        if fade.attribute == BRIGHTNESS:
+        if fade.attribute == BRIGHTNESS_FIELD:
             kept = frozenset(pending & fade.starts.keys())
             pending.difference_update(fade.starts)
             pending.update(fade.restores)
@@ -441,7 +448,7 @@ def run_on(
 async def color_capabilities(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> dict[str, int]:
     """Each light's ColorCapabilities for a hue or saturation move, by entity ID; none for brightness. Raises when one
     isn't read. The dispatcher already dropped saturation and hue from lights without color."""
-    if request.attribute == BRIGHTNESS:
+    if request.attribute == BRIGHTNESS_FIELD:
         return {}
     reads = await asyncio.gather(*(zcl.color_capabilities(hass, address(light.entry.unique_id)) for light in lights))
     return {light.entity_id: bits for light, bits in zip(lights, reads, strict=True)}
@@ -470,7 +477,7 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, lights: list[T
         command_id, level = zcl.MOVE_TO_LEVEL, zcl.level(limit)
     command = (zcl.LEVEL_CLUSTER, command_id, {"level": level, "transition_time": tenths})
     return Fade(
-        BRIGHTNESS,
+        BRIGHTNESS_FIELD,
         dict.fromkeys(leg.starts, command),
         movers,
         leg.starts,
@@ -542,7 +549,7 @@ async def sync_to_bulb(
         _LOGGER.debug("Level read after a fade was sent failed for %s: %s", light.entity_id, describe(err))
         return
     elapsed = (at - recorded.started_at) / recorded.duration if recorded.duration > 0 else 1.0
-    if elapsed >= 1 or cache.live(light.entity_id, BRIGHTNESS) is not recorded:
+    if elapsed >= 1 or cache.live(light.entity_id, BRIGHTNESS_FIELD) is not recorded:
         _LOGGER.debug(
             "Fit skipped for %s: read %.1f %% at f=%.3f, or a newer move or stop", light.entity_id, level, elapsed
         )
@@ -569,7 +576,9 @@ async def sync_to_bulb(
     if kept:
         return
     fade.starts[light.entity_id] = start
-    cache.moving(light.entity_id, BRIGHTNESS, start, recorded.target, recorded.duration, started_at=recorded.started_at)
+    cache.moving(
+        light.entity_id, BRIGHTNESS_FIELD, start, recorded.target, recorded.duration, started_at=recorded.started_at
+    )
 
 
 def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None, context: Context | None) -> Job:

@@ -18,7 +18,7 @@ bridge the bridge's software. The rules, first match winning:
 
 The rules read the node's attribute cache, as addressing.lt_feature does: sync, no I/O. A node holds every attribute
 from its interview on, so one with no VendorID isn't fully reported: it is `uncertified`, Unplaced, the cautious class
-until it reports. No Matter scope holds a `harms` entry, so Unplaced refuses nothing today. A target with
+until it reports. No Matter scope holds a refusal entry, so Unplaced refuses nothing today. A target with
 no node is None (addressing.unsupported_reason refuses it first, as not_addressable).
 """
 
@@ -29,13 +29,12 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import node_for
 from ...core.models import Target
-from ...core.scope import Unplaced, documented, experimental, verified
+from ...core.scope import OTHER, Unplaced, documented, experimental, verified
 
 UNCERTIFIED = "uncertified"
 BRIDGED = "bridged"
 WIZ_PLUG = "wiz_plug"
 MULTI_ENDPOINT = "multi_endpoint"
-OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 # Each class's domains (IntegrationInfo.classes): the WiZ Smart Plug is a switch; any other may be a light or a plug.
 CLASSES = {
     name: frozenset({Platform.SWITCH}) if name == WIZ_PLUG else frozenset({Platform.LIGHT, Platform.SWITCH})

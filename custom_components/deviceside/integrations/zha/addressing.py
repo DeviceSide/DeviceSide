@@ -2,6 +2,7 @@
 
 from typing import NamedTuple
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -45,7 +46,7 @@ def group_id(unique_id: str) -> int | None:
 
 def group_entity_id(hass: HomeAssistant, gid: int) -> str | None:
     """The light entity of the ZHA group with this Zigbee group ID, or None."""
-    return er.async_get(hass).async_get_entity_id("light", "zha", f"light{_GROUP_MARKER}{gid:04x}")
+    return er.async_get(hass).async_get_entity_id(Platform.LIGHT, "zha", f"light{_GROUP_MARKER}{gid:04x}")
 
 
 def via_zha_group(hass: HomeAssistant, target: Target) -> int | None:

@@ -2,6 +2,7 @@
 
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .adapter import Z2MAdapter
@@ -13,10 +14,11 @@ from .fade import hue_moves, lights_of, read_back_key, transition_cache
 from .members import unaddressable
 from .set_check import checked
 from ...core.errors import Reason
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
-from ...core.transition import BRIGHTNESS, SATURATION, hs_color, light_brightness, lit
+from ...core.transition import SATURATION, hs_color, light_brightness, lit
 
 # Z2M's saturation_move: stop halts only the saturation attribute and lets a color fade drift on (internals.md, `stop`).
 _STOP_MOVE_STEP = {
@@ -40,7 +42,9 @@ class Z2MStop(Z2MAdapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zigbee2mqtt"
-    scope: ClassVar[AdapterScope] = AdapterScope(domains=verified("light"), **class_scope("stop"), native_groups=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        domains=verified(Platform.LIGHT), **class_scope("stop"), native_groups=True
+    )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
@@ -57,15 +61,17 @@ class Z2MStop(Z2MAdapter[Request]):
             # A raise from off still waiting to publish (fade.start) predicts 0 % at first: it is halted too.
             on = lit(cache, lights)
             if not (
-                halting := [light for light in lights if light in on or cache.running(light.entity_id, BRIGHTNESS)]
+                halting := [
+                    light for light in lights if light in on or cache.running(light.entity_id, BRIGHTNESS_FIELD)
+                ]
             ):
                 return self.result(target, Status.UNCHANGED, detail="off")
             # A halt is predicted only where a move of ours ran: elsewhere Z2M's read-back is right at once.
             halts = {
-                BRIGHTNESS: {
+                BRIGHTNESS_FIELD: {
                     light.entity_id: light_brightness(cache, light)
                     for light in halting
-                    if cache.tracks(light.entity_id, BRIGHTNESS)
+                    if cache.tracks(light.entity_id, BRIGHTNESS_FIELD)
                 },
                 SATURATION: {
                     light.entity_id: cache.value(light.entity_id, SATURATION, (hs_color(light) or (0, 0))[1])
@@ -94,7 +100,7 @@ class Z2MStop(Z2MAdapter[Request]):
             # Replaces the end read-backs of the moves this halts.
             color_halted = hue or halts[SATURATION]
             runtime = get_runtime(hass)
-            runtime.schedule(hass, read_back_key(target, BRIGHTNESS), [])
+            runtime.schedule(hass, read_back_key(target, BRIGHTNESS_FIELD), [])
             runtime.schedule(hass, read_back_key(target, SATURATION), [(DELAY_S, refresh)] if color_halted else [])
             return self.result(target, Status.SENT)
 

@@ -2,6 +2,8 @@
 
 from typing import ClassVar
 
+from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, ColorMode
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from . import classes, zcl
@@ -11,7 +13,7 @@ from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
 from ...core.zcl_row import zcl_row
 
-_COLOR_MODES = frozenset({"color_temp", "hs", "xy"})
+_COLOR_MODES = frozenset({ColorMode.COLOR_TEMP, ColorMode.HS, ColorMode.XY})
 
 _COLOR_ATTRIBUTES = (
     zcl.CURRENT_HUE,
@@ -59,7 +61,7 @@ class ZHAGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs rarely honor OnTime (see turn_on_for), so a switch's timer may never show: Experimental.
-        domains=verified("light") | experimental("switch"),
+        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
         **classes.class_scope(action),
         max_concurrency=2,
         confirmable=True,
@@ -72,10 +74,10 @@ class ZHAGetAttributes(Adapter[Request]):
         async def read(target: Target) -> EntityResult:
             addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
             # supported_color_modes stays in the state while the light is off.
-            modes = set(target.state.attributes.get("supported_color_modes") or ()) if target.state else set()
+            modes = set(target.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES) or ()) if target.state else set()
             read = await zcl.read_attributes(hass, addr, zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,), optional=(zcl.ON_TIME,))
             attributes = named(zcl.ON_OFF_CLUSTER, read)
-            if modes - {"onoff"}:
+            if modes - {ColorMode.ONOFF}:
                 read = await zcl.read_attributes(hass, addr, zcl.LEVEL_CLUSTER, (zcl.CURRENT_LEVEL,))
                 attributes |= named(zcl.LEVEL_CLUSTER, read)
             if modes & _COLOR_MODES:
