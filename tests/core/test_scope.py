@@ -92,18 +92,19 @@ def test_level_folds_in_the_fields_the_call_carries(fields, level):
 
 
 @pytest.mark.parametrize(
-    ("domains", "flagged"),
+    ("scope", "flagged"),
     [
-        (experimental("light", "switch"), True),
-        (experimental("light") | verified("switch"), False),  # one Experimental domain flags only its calls
-        (verified("light"), False),
-        ({}, False),  # no domain, no call to flag
+        (AdapterScope(domains=experimental("light", "switch"), capabilities=verified("A")), True),
+        (AdapterScope(domains=experimental("light") | verified("switch")), False),  # flags only its domain's calls
+        (AdapterScope(domains=verified("light")), False),
+        (AdapterScope(domains={}), False),  # no domain, no call to flag
+        # A class or field at Experimental flags only the calls that touch it, never the adapter whole.
+        (AdapterScope(capabilities=experimental("A")), False),
+        (AdapterScope(fields=experimental("transition")), False),
     ],
 )
-def test_an_adapter_is_flagged_whole_when_every_domain_is_experimental(domains, flagged):
-    # A class or field at Experimental flags only the calls that touch it, never the adapter whole.
-    assert AdapterScope(domains=domains, capabilities=verified("A")).all_experimental is flagged
-    assert AdapterScope(fields=experimental("transition")).all_experimental is False
+def test_an_adapter_is_flagged_whole_when_every_domain_is_experimental(scope, flagged):
+    assert scope.all_experimental is flagged
 
 
 def test_a_class_outside_the_scope_counts_as_experimental():

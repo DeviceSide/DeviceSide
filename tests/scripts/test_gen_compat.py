@@ -289,8 +289,12 @@ def test_records_are_the_action_and_its_options(root):
 
 
 def test_an_adapter_flagged_whole_has_one_experimental_row(root):
-    scope = AdapterScope(domains=experimental("light", "switch"))
-    assert gc.rows(adapter("zha", "stop", scope)) == ["| `stop` | Experimental | light, switch entities | none | |"]
+    # Every domain Experimental flags every call, so its Verified field shows Experimental too.
+    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
+    assert {level for level, *_ in gc.items(scope)} == {Level.EXPERIMENTAL}
+    assert gc.rows(adapter("zha", "stop", scope)) == [
+        "| `stop` | Experimental | light, switch entities; brightness fields | none | |"
+    ]
 
 
 MANUAL = (
@@ -391,7 +395,7 @@ def test_a_model_tested_by_hand_works_without_the_rig_mark(root):
 def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out_failing_records(root):
     record(root, "zha", "stop")
     record(root, "zha", "turn_on_for", result="fail", devices=[old_device("P1", "1")])
-    scope = AdapterScope(domains=experimental("light", "switch"))
+    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
     card = zha_card(
         adapter("zha", "stop", scope),
         adapter("zha", "turn_on_for"),
