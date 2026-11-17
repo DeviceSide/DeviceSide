@@ -1,0 +1,2171 @@
+[
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 2203,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2203,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ],
+    [
+     "light.plain",
+     "light.plain",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.plain",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": false, \"color_correlated_temperature_min\": 0, \"color_correlated_temperature_max\": 0}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "color_temp_not_reported",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "color_temp_not_reported",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "color_temp_not_reported",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"varName\": \"Navigator Dynamic Capabilities\", \"value\": \"not json\"}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": false, \"color_correlated_temperature_min\": 0, \"color_correlated_temperature_max\": 0}}}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": null}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp_0",
+     "light.lamp_0",
+     false
+    ],
+    [
+     "light.lamp_1",
+     "light.lamp_1",
+     false
+    ],
+    [
+     "light.lamp_2",
+     "light.lamp_2",
+     false
+    ],
+    [
+     "light.lamp_3",
+     "light.lamp_3",
+     false
+    ],
+    [
+     "light.lamp_4",
+     "light.lamp_4",
+     false
+    ],
+    [
+     "light.lamp_5",
+     "light.lamp_5",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_0",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_1",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_2",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_3",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_4",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_5",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/200/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/201/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/202/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 202, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/202/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/203/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 203, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/203/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/204/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 204, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/204/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/205/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 205, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/205/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 200, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 200, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 200, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 201, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 201, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 201, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/202/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 202, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 202, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 202, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 202, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/203/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 203, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 203, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 203, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 203, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/204/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 204, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 204, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 204, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 204, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/205/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 205, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 205, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 205, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 205, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 200, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 200, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 200, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 201, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 201, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 201, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/202/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 202, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 202, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 202, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 202, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/203/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 203, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 203, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 203, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 203, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/204/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 204, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 204, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 204, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 204, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/205/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 205, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 205, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 205, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 205, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 200, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 200, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 200, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 201, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 201, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 201, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/202/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 202, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 202, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 202, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 202, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/203/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 203, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 203, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 203, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 203, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/204/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 204, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 204, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 204, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 204, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/205/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 205, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 205, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 205, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 205, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 3000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 3000,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3000}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3000}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 4000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "stored_while_off",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 4000,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 4000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "stored_while_off",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 4000,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 4000}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 4000}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 6535,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 6535,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 6530}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 6530}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 7000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 6536,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 6536,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 6530}, {\"id\": 100, \"varName\": \"Target CCT\", \"value\": 6530}, {\"id\": 100, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ }
+]

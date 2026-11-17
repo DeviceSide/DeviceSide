@@ -1,0 +1,1337 @@
+[
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.far",
+     "light.far",
+     false
+    ],
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.far",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "rejected"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/201/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.far",
+     "light.far",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.far",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/98765/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/98765/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 98765, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 98765, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "halt_not_reported",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "halt_not_reported",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"varName\": \"Brightness Percent\", \"value\": 40}, {\"varName\": \"Brightness Target Percent\", \"value\": NaN}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 0.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "still_fading",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "still_fading",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 45.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 45.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/100/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 100, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp_0",
+     "light.lamp_0",
+     false
+    ],
+    [
+     "light.lamp_1",
+     "light.lamp_1",
+     false
+    ],
+    [
+     "light.lamp_2",
+     "light.lamp_2",
+     false
+    ],
+    [
+     "light.lamp_3",
+     "light.lamp_3",
+     false
+    ],
+    [
+     "light.lamp_4",
+     "light.lamp_4",
+     false
+    ],
+    [
+     "light.lamp_5",
+     "light.lamp_5",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_0",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_1",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_2",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_3",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_4",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp_5",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/200/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/201/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/202/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/203/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/204/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/205/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/202/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 202, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/203/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 203, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/204/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 204, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/205/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 205, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/202/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 202, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 202, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/203/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 203, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 203, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/204/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 204, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 204, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/205/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 205, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 205, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/202/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 202, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 202, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/203/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 203, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 203, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/204/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 204, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 204, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/205/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 205, \"varName\": \"Brightness Percent\", \"value\": 55.0}, {\"id\": 205, \"varName\": \"Brightness Target Percent\", \"value\": 55.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.neighbor",
+     "light.neighbor",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "still_fading",
+    "entity_id": "light.neighbor",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/201/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/201/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
+   ]
+  ]
+ }
+]
