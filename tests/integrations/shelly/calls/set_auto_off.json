@@ -1,0 +1,1293 @@
+[
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 2.5
+   },
+   "targets": [
+    [
+     "switch.gate",
+     "switch.gate",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.gate",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 2.5
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 2.5,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ],
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ],
+    [
+     "switch.gate",
+     "switch.gate",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.gate",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetConfig",
+      {
+       "id": 2
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 2
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 2
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetConfig",
+      {
+       "id": 2
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 2
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 1
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 1
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 1
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 1
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 1
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "CCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Light",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Light.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Light.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Light.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGB",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBW",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.gate",
+     "switch.gate",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": "already_set",
+    "entity_id": "switch.gate",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 5.004,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.gate",
+     "switch.gate",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": "config_not_reported",
+    "entity_id": "switch.gate",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.gate",
+     "switch.gate",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "switch.gate",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 5.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.gate",
+     "switch.gate",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "switch.gate",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 691200.0
+   },
+   "targets": [
+    [
+     "switch.gate",
+     "switch.gate",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 604800,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.gate",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 604800
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 604800,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 90.0
+   },
+   "targets": [
+    [
+     "light.porch",
+     "light.porch",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.porch",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 90.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 90.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 90.0
+   },
+   "targets": [
+    [
+     "light.porch",
+     "light.porch",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.porch",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": false,
+     "auto_off_delay": 60.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.SetConfig",
+      {
+       "config": {
+        "auto_off": true,
+        "auto_off_delay": 90.0
+       },
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "restart_required": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetConfig",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "auto_off": true,
+     "auto_off_delay": 90.0,
+     "auto_on": false,
+     "auto_on_delay": 60.0,
+     "id": 0
+    }
+   ]
+  ]
+ }
+]
