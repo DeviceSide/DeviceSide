@@ -236,18 +236,20 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 ### The coverage check
 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
-that reached it; one held on some domains alone needs it in each of them, from a test in that domain (a manual row
-names no domain, so it covers each). A record names the class each test's devices reached, and a manual row each device's. A native group's
-test credits each member's class, from its members' entries (the response's `member_capabilities`,
+that reached it; one held on some domains alone needs it in each of them, from a test in that domain (a manual row names
+no domain, so it covers each). A record names the class each test's devices reached, and a manual row each device's. A
+native group's test credits each member's class, from its members' entries (the response's `member_capabilities`,
 [action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one call reached each member (a null one
-credits none; the cards add "native groups", never the members' models). A group with a null-class member is on no
-card, as "native groups" needs every member's class named and unflagged, while its named members still count here; a
-manual row credits every class it lists to every action it passed, so a row whose actions reached different classes is
-split. A scene's test is a group's, its members the scene's lights. A null class credits none, here or on the cards, as
-does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and
-names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
-`scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
-checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
+credits none; the cards add "native groups", never the members' models). A group with a null-class member is on no card,
+as "native groups" needs every member's class named and unflagged, while its named members still count here; a manual
+row credits every class it lists to every action it passed, so a row whose actions reached different classes is split. A
+manual row may carry `group`, as a rig group test does: its devices are the members, credited as a group test's are; the
+evidence table shows it as "group, by hand", and the card "native groups", with no ✔ from it. A scene's test is a
+group's, its members the scene's lights. A null class credits none, here or on the cards, as does a test that didn't
+pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names it, for example
+"zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py --signoffs` fails on it
+at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it suffices
+(tenet 7), and it applies to integrations that name classes.
 
 *Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and `other`
 (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on
@@ -379,6 +381,9 @@ and which gives each field. The rules it serves:
   device name) with the class it reached, and the actions that passed on all of them. A change that alters neither a
   call nor the handling of a device's reply (tenet 9) signs off with a `no_call_changed` row instead, which may name
   the `actions` it covers.
+  A row whose actions targeted a native group or a scene carries `group`, its devices the members. The model is the
+  device's own (its label, the vendor's app or HA's device page), never a driver's or bridge's name, as on Control4's
+  Director; the manufacturer is as the schema's `manufacturer` gives it.
 - **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
   has no class.
 

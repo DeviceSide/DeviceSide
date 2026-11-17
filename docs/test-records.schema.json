@@ -177,17 +177,18 @@
         "commit": {"description": "The commit tested: on main or a release/ branch, holding the package as the release does.", "$ref": "#/$defs/commit"},
         "tester": {"description": "A GitHub handle, without the @: one of the integration's maintainers or a repo maintainer.", "type": "string", "pattern": "^[A-Za-z0-9-]+$"},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/manual_device"}},
+        "group": {"description": "The actions targeted a native group, or a scene: devices are its members, each with its manufacturer and class.", "const": true},
         "passed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
         "no_call_changed": {"const": true},
         "actions": {"description": "With no_call_changed: the actions whose records the row carries across the change its commit made, to their own or a shared module (docs/evidence.md, Release gate). Without it the row covers every action, and is a sign-off alone only when the package before its commit is the last release's.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}}
       },
       "if": {"required": ["no_call_changed"]},
-      "then": {"not": {"anyOf": [{"required": ["devices"]}, {"required": ["passed"]}]}},
+      "then": {"not": {"anyOf": [{"required": ["devices"]}, {"required": ["group"]}, {"required": ["passed"]}]}},
       "else": {"required": ["devices", "passed"], "not": {"required": ["actions"]}}
     },
 
     "manual_device": {
-      "description": "A model id (docs/models.yaml or its bundle's devices.yaml, never a household's device name), its manufacturer string and the class it reached.",
+      "description": "A model id (docs/models.yaml or its bundle's devices.yaml, never a household's device name), its manufacturer string and the class it reached; where the model and manufacturer come from: docs/evidence.md, Sign-off format.",
       "type": "object",
       "required": ["model", "manufacturer", "class"],
       "additionalProperties": false,

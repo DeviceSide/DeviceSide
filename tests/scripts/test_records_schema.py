@@ -187,7 +187,9 @@ def test_manual_and_facts_files_parse_by_their_names(tmp_path, monkeypatch):
     folder = cr.test_records_dir("shelly")
     write(folder / cr.MANUAL, MANUAL)
     write(folder / cr.FACTS, FACTS)
-    assert cr.manual_rows("shelly", "turn_on_for") == [[("S3SW-001X8EU", "Switch"), ("S3BL-C010007AEU", "RGBCCT")]]
+    assert cr.manual_rows("shelly", "turn_on_for") == [
+        (False, [("S3SW-001X8EU", "Switch"), ("S3BL-C010007AEU", "RGBCCT")])
+    ]
     assert cr.manual_rows("shelly", "stop") == []
     assert cr.load(folder / cr.FACTS)["facts"][0]["devices"][0]["class"] == "Switch"
     write(folder / cr.FACTS, MANUAL)  # sign-offs under the facts' name
@@ -196,3 +198,8 @@ def test_manual_and_facts_files_parse_by_their_names(tmp_path, monkeypatch):
     (folder / "stop.json").write_text("{")
     with pytest.raises(SystemExit, match="stop.json: not JSON"):
         cr.load(folder / "stop.json")
+
+
+def test_a_manual_row_may_be_a_group_only_alongside_devices():
+    assert errors(manual("shelly", signoff(devices=MIXED, group=True))) == []
+    assert errors(manual("shelly", signoff(passed=None) | {"group": True})) != []
