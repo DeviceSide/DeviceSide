@@ -23,8 +23,8 @@ invite them to Triage, as for an integration's maintainers.
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required
   checks (`lint`, `secrets-history`, `pytest`, `pytest-without-family-tests`, `validate-hacs`, `validate`) must pass,
   with no up-to-date rule and no merge queue, so a branch behind `main` merges without an update. The accepted risk:
-  two green pull requests can clash on `main`, and the push run on `main` shows it. To add a queue later, restore
-  `merge_group:` to the four workflows behind the checks and add the merge queue rule. Force pushes are blocked.
+  two green pull requests can clash on `main`, and the push run on `main` shows it. To add a queue later, revert #501
+  (restoring the `merge_group` triggers and the queue wording), then add the merge queue rule. Force pushes are blocked.
   There are no bypass actors.
   `pytest-without-family-tests` (`tests.yml`) runs the tests with every family's and the catalog's left out, so a
   family maintainer's test code can't silence the integration's on a `/merge`.

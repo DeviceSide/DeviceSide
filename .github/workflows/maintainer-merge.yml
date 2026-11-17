@@ -114,14 +114,24 @@ jobs:
             exit 1
           fi
 
-      - name: Say it will merge
+      # One comment, true in each case: merged now, armed with checks pending, or armed with a required check failed.
+      # Read with the App's token, which can see checks; github.token here has pull requests write only.
+      - name: Say what happens
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh pr comment "$NUMBER" --body "✅ \`/merge\`: squash-merges once its required checks pass \
-          (already green, it merged now). A push to the branch cancels this."
+          read -r state failed < <(gh pr view "$NUMBER" --json state,statusCheckRollup --jq \
+            '"\(.state) \([.statusCheckRollup[]? | select((.conclusion // .state) | IN("FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "STARTUP_FAILURE"))] | length)"')
+          if [ "$state" = MERGED ]; then
+            msg="✅ \`/merge\`: merged."
+          elif [ "${failed:-0}" -gt 0 ]; then
+            msg="⚠️ \`/merge\`: auto-merge is on, but a required check failed; it merges once the author pushes a fix and the checks pass. Comment \`/merge <sha>\` again with the new head if the push cancels it."
+          else
+            msg="✅ \`/merge\`: squash-merges once its required checks pass. A push to the branch cancels this."
+          fi
+          gh pr comment "$NUMBER" --body "$msg"
 
       # The likely causes first, each with what to do; never "update the branch", which a Triage maintainer can't.
       - name: Say why not
