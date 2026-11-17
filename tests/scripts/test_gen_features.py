@@ -4,6 +4,7 @@ stale check."""
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, verified
 from scripts import gen_features as gf
@@ -73,7 +74,12 @@ def test_a_domain_is_live_only_where_a_non_experimental_class_can_be_on_it(no_bl
     """Matter's Turn on with timer: the switch-only WiZ plug is Verified, and every class that can be a light is
     Experimental, so the light icon stays grey."""
     registry = FakeRegistry(
-        classes={"matter": {"wiz_plug": frozenset({"switch"}), "other": frozenset({"light", "switch"})}}
+        classes={
+            "matter": {
+                "wiz_plug": frozenset({Platform.SWITCH}),
+                "other": frozenset({Platform.LIGHT, Platform.SWITCH}),
+            }
+        }
     )
     scope = {
         "domains": verified("switch") | documented("light"),
