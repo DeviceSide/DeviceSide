@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import json
 import logging
 import re
@@ -83,6 +84,14 @@ def publish_via_service(monkeypatch):
         await hass.services.async_call("mqtt", "publish", {"topic": topic, "payload": payload}, blocking=True)
 
     monkeypatch.setattr(bridge.mqtt, "async_publish", async_publish)
+
+
+@pytest.fixture(autouse=True)
+def numbered_transactions(monkeypatch):
+    """bridge.py's options-request transactions, numbered per test (`000...01`) instead of random, so a request's
+    bytes are the same on every run."""
+    numbers = itertools.count(1)
+    monkeypatch.setattr(bridge, "uuid4", lambda: SimpleNamespace(hex=f"{next(numbers):032x}"))
 
 
 @pytest.fixture

@@ -7,12 +7,17 @@ any deselection, or one where no test ran), which would drop or miss every actio
 the tasks and timers the run starts (a fade's ticks) land in it too. `wire` holds each call made inside the segment at a
 wire boundary, as `[call, reply]`: any non-DeviceSide service through `ServiceRegistry.async_call`, as `["service",
 "<domain>.<service>", data]` (and `{"target": ...}` when one is passed), and each boundary an integration declares in
-its `tests/integrations/<x>/wire.py`, `BOUNDARIES = [(module, attribute, leading args to drop), ...]`, as `["<module's
-last name>.<attribute>", args, kwargs]` (a class's method, `Class.method`, has its instance as the first arg, even when
-a test's mock on the class is called without it). A boundary is wrapped at each segment's open, around whatever a test
-installed there (so name it where callers look it up), and unwrapped when the test ends; a call it makes to itself, as a
-test's mock calling through to the real one, records once. `result` is the run's reconciled per-target results. A
-segment is serialized when its test ends, and carries no test id; a run its test didn't see finish is left out.
+its `tests/integrations/<x>/wire.py`, `BOUNDARIES = [(module, attribute, leading args to drop[, callback index]), ...]`,
+as `["<module's last name>.<attribute>", args, kwargs]` (a class's method, `Class.method`, has its instance as the first
+arg, even when a test's mock on the class is called without it). A boundary with a callback index is a subscription:
+the call is recorded without the callback and with no reply, and each call the callback (a sync one, at that position
+among the call's args) gets is recorded as `["<name>.callback", args, kwargs]` and its reply, in the segment open at
+delivery, so the messages a run is answered with are in its wire. A service call made inside a boundary call is a
+fake's plumbing (a publish routed through a service), not recorded. A boundary is wrapped at each segment's open,
+around whatever a test installed there (so name it where callers look it up), and unwrapped when the test ends; a call
+it makes to itself, as a test's mock calling through to the real one, records once. `result` is the run's reconciled
+per-target results. A segment is serialized when its test ends, and carries no test id; a run its test didn't see
+finish is left out.
 
 Normalization: HomeAssistant and Context values are dropped (omitted from mappings and dataclasses, None in a sequence),
 as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists; bytes hex; a
@@ -30,6 +35,7 @@ segments to the controller, which writes or checks.
 
 import dataclasses
 import enum
+import functools
 import importlib
 import importlib.util
 import inspect
@@ -73,7 +79,7 @@ _NARROWING = (
     ("--setup-only", "setuponly"),
 )
 
-type Boundary = tuple[str, str, int]
+type Boundary = tuple[str, str, int] | tuple[str, str, int, int]
 
 
 def norm(value: Any) -> Any:  # noqa: C901
@@ -140,10 +146,12 @@ class Wire:
     mock after a call still configures the mock. A call made while the same boundary is already recording in this
     context (a test's mock calling through to the real one) isn't recorded again."""
 
-    def __init__(self, name: str, fn: Callable, skip: int, instance: tuple = ()) -> None:
+    def __init__(self, name: str, fn: Callable, skip: int, instance: tuple = (), callback: int | None = None) -> None:
         object.__setattr__(self, "__wrapped__", fn)
         object.__setattr__(self, "_wire_name", name)
         object.__setattr__(self, "_wire_skip", skip)
+        # The position of a subscription's callback among a call's args, or None.
+        object.__setattr__(self, "_wire_callback", callback)
         # The instance a mock on a class was looked up on, recorded first as a method's would be, never passed on.
         object.__setattr__(self, "_wire_instance", instance)
 
@@ -163,12 +171,14 @@ class Wire:
             return self
         if hasattr(type(self.__wrapped__), "__get__"):
             return MethodType(self, instance)
-        return Wire(self._wire_name, self.__wrapped__, self._wire_skip, (instance,))
+        return Wire(self._wire_name, self.__wrapped__, self._wire_skip, (instance,), self._wire_callback)
 
     def __call__(self, *args, **kwargs) -> Any:
         if _SEGMENT.get() is None or self._wire_name in _ACTIVE.get():
             return self.__wrapped__(*args, **kwargs)
         call = [self._wire_name, list((*self._wire_instance, *args)[self._wire_skip :]), kwargs]
+        if (at := self._wire_callback) is not None:
+            args, call = self._subscription(args, call, at)
         token = _ACTIVE.set(_ACTIVE.get() | {self._wire_name})
         try:
             reply = self.__wrapped__(*args, **kwargs)
@@ -179,8 +189,32 @@ class Wire:
             _ACTIVE.reset(token)
         if inspect.isawaitable(reply):
             return self._awaited(call, reply)
-        _record(call, reply)
+        self._record_reply(call, reply)
         return reply
+
+    def _record_reply(self, call: list, reply: Any) -> None:
+        # A subscription's reply is its unsubscribe.
+        _record(call, None if self._wire_callback is not None else reply)
+
+    def _subscription(self, args: tuple, call: list, at: int) -> tuple[tuple, list]:
+        """`args` with the callback at `at` wrapped to record each call it gets, and `call` without the callback."""
+        callback = args[at]
+        if inspect.iscoroutinefunction(callback):
+            raise TypeError(f"transcripts: {self._wire_name}'s callback must be sync")
+        name = f"{self._wire_name}.callback"
+
+        @functools.wraps(callback)
+        def recorded(*cb_args, **cb_kwargs):
+            try:
+                reply = callback(*cb_args, **cb_kwargs)
+            except BaseException as err:
+                _record([name, list(cb_args), cb_kwargs], err)
+                raise
+            _record([name, list(cb_args), cb_kwargs], reply)
+            return reply
+
+        del call[1][at + len(self._wire_instance) - self._wire_skip]
+        return (*args[:at], recorded, *args[at + 1 :]), call
 
     async def _awaited(self, call: list, awaitable) -> Any:
         token = _ACTIVE.set(_ACTIVE.get() | {self._wire_name})
@@ -191,7 +225,7 @@ class Wire:
             raise
         finally:
             _ACTIVE.reset(token)
-        _record(call, reply)
+        self._record_reply(call, reply)
         return reply
 
 
@@ -272,7 +306,7 @@ class Recorder:
             return results
 
         async def recorded_call(self, domain, service, *args, **kwargs):
-            if domain == DOMAIN or _SEGMENT.get() is None:
+            if domain == DOMAIN or _SEGMENT.get() is None or _ACTIVE.get():
                 return await async_call(self, domain, service, *args, **kwargs)
             given = signature.bind(self, domain, service, *args, **kwargs).arguments
             call = ["service", f"{domain}.{service}", given.get("service_data")]
@@ -296,10 +330,12 @@ class Recorder:
 
     def wrap(self) -> None:
         """Each boundary wrapped around whatever stands there now (a test's mock, or the real one)."""
-        for module, attribute, skip in self.boundaries:
+        for module, attribute, skip, *callback in self.boundaries:
             owner, name = _owner(module, attribute)
             if not isinstance(current := inspect.getattr_static(owner, name), Wire):
-                wire = Wire(_boundary_name(module, attribute), current, skip)
+                wire = Wire(
+                    _boundary_name(module, attribute), current, skip, callback=callback[0] if callback else None
+                )
                 self.installed.append((owner, name, name in vars(owner), wire))
                 setattr(owner, name, wire)
 

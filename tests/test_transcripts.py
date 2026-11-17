@@ -477,6 +477,66 @@ async def test_mocked_on_the_class(hass, setup_integration, monkeypatch):
     ]
 
 
+def test_a_subscription_boundary_records_the_subscribe_and_each_message_its_callback_gets(inner):
+    (inner.path / "inner_wire.py").write_text(
+        """
+subscribers = []
+
+
+def subscribe(hass, topic, callback):
+    subscribers.append(callback)
+    return lambda: None
+
+
+async def publish(hass, topic):
+    await hass.services.async_call("probe", "ping", {"plumbing": True}, blocking=True)
+"""
+    )
+    (inner.path / "tests/integrations/fake/wire.py").write_text(
+        'BOUNDARIES = [("inner_wire", "subscribe", 1, 2), ("inner_wire", "publish", 1)]\n'
+    )
+    only(
+        inner,
+        """
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import inner_wire
+
+from tests.conftest import call
+from tests.fakes.fake_integration import FakeTurnOnFor
+from tests.fakes.scripted import ScriptedAdapter
+from tests.fixtures.fake import add_fake_entity, fake_config_entry
+
+
+async def listens(self, hass, request, targets):
+    heard = []
+    inner_wire.subscribe(hass, "a/b", heard.append)
+    await inner_wire.publish(hass, "a/b")
+    for callback in inner_wire.subscribers:
+        callback(SimpleNamespace(topic="a/b", payload="1"))
+    assert len(heard) == 1
+    return await ScriptedAdapter.execute(self, hass, request, targets)
+
+
+async def test_listens(hass, setup_integration):
+    hass.services.async_register("probe", "ping", lambda call: None)
+    add_fake_entity(hass, fake_config_entry(hass), "light.a")
+    with patch.object(FakeTurnOnFor, "execute", listens):
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+""",
+    )
+
+    assert run(inner, "--transcripts=write").ret == 0
+    assert [segment["wire"] for segment in segments(inner)] == [
+        [
+            [["inner_wire.subscribe", ["a/b"], {}], None],
+            [["inner_wire.publish", ["a/b"], {}], None],
+            [["inner_wire.subscribe.callback", [{"payload": "1", "topic": "a/b"}], {}], None],
+        ]
+    ]
+
+
 def test_dict_keys_are_normalized():
     class Color(enum.Enum):
         RED = "red"
