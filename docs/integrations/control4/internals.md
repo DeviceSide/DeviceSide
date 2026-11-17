@@ -9,7 +9,7 @@ What a user sees is in [index.md](index.md) and isn't repeated here; what every 
 Through the core integration's pyControl4 `C4Director` (`runtime_data.director`), borrowed for each call, so
 DeviceSide holds no connection or credentials of its own. The unique ID is the Director item ID. Commands go to
 `/api/v1/items/<id>/commands` (`send_post_request`), reads to `/api/v1/items/<id>/variables?varnames=…`
-(`send_get_request`). A Control4 light group is one item: it takes one command and is not expanded.
+(`send_get_request`). A light group is one item: it takes one command (`inventory`).
 
 ## Modules
 
@@ -28,6 +28,25 @@ One section per adapter module, named after it.
   waiting on a busy light holds no slot, and nothing under it takes a slot. With it, a stop that arrives during a move
   is sent after the ramp that move starts. A stop sent right behind a ramp halted the tested group where it was
   (Tested behavior); a light that ignored one would report `still_fading`.
+
+### `inventory`
+
+Read as each Control4 entry loads (DeviceSide's setup, then each state change to loaded) and held, since
+`expand_group` and `supports()` have no I/O. Changes made in Composer show after the Control4 entry reloads.
+
+- **Groups.** A light group made with the open-source
+  [Light Group driver](https://github.com/skialpine/control4-group-lighting) (`light_group.c4z`) is a native group:
+  the light item whose parent is the driver's item, in core's item list (`runtime_data.director_all_items`). Its
+  members are the light item ids in the driver's `Lights` property (`GET /api/v1/items/<driver>/properties`). A member
+  is the HA light entity with that unique ID; one with none is left out. A group whose read fails runs as a plain
+  light, logged. Control4 names no classes, so members matter only for the fallback with Experimental features off.
+  Control4's own Hue driver can also stand for a Hue bridge group, but its members are on the bridge, not the
+  Director, so it is a plain light.
+- **Stop.** Every item's `Navigator Dynamic Capabilities` in one request
+  (`GET /api/v1/items/variables?varnames=…`). A light whose `supports_brightness_stop` is false is refused `stop`
+  (`stop_not_supported`): its Director shows a ramp's end at once and the stop changes nothing (Tested behavior), so a
+  read-back would confirm a halt that never happened. A light that reports no capabilities can stop, as before. A
+  failed read leaves every light able to stop, logged.
 
 ### `fade`
 
@@ -66,7 +85,7 @@ sized from the stop timings below); the waits hold no concurrency slot. `confirm
 equal, `sent` (`still_fading`) when they still differ (Control4 hadn't shown the halt yet, the driver ignored the
 stop, or a new move began meanwhile), `sent` (`halt_not_reported`) on
 a driver with no target, `unchanged` (`off`) at rest at 0. An on/off light is refused (`not_dimmable`) with nothing
-sent.
+sent, as is one that can't stop (`stop_not_supported`, `inventory`).
 
 ### `get_attributes`
 
@@ -211,3 +230,15 @@ hardware and versions, sent and timed in-process by a probe in Home Assistant. N
 - **A press and release also ramps.** `BUTTON_ACTION` press (`ACTION: 1`) on the bottom button ramped the group down
   at its hold rate until the release, from 100 to 32; the top button raised it to 94. The adapters don't send a press:
   its speed is the driver's, not the call's `sweep_time`.
+- **Lights that can't stop, 2026-11-17.** On Control4's own Philips Hue driver (`control4_philips_hue_light.c4z`),
+  standing for a Hue bridge zone of two lightstrips: a 10 s `RAMP_TO_LEVEL` from off to 100, then
+  `SET_BRIGHTNESS_STOP` 3 s in, with reads every 0.5 s. The Director showed level and target 100 from the first read
+  after the ramp was sent, and the stop changed nothing; Home Assistant's own Hue integration showed the strips
+  updating for about 12 s after the ramp and ending at full brightness, so they ramped and didn't halt. The item's
+  capabilities say `supports_brightness_stop: false`, as do two Chowmain "Link Client - Light" items, whose Director
+  also showed a ramp's end within a second (2026-11-16). The "Zigbee 3 Light" bulb and the Light Group driver say
+  true.
+- **Group members, 2026-11-17.** On the driver's group (driver build 2026111504), the light item's variables and
+  bindings name no member: the driver item's variables hold only a count (`LIGHTS_TOTAL` 3). The driver item's
+  properties hold `Lights` (a device selector) with three light item ids, comma-separated; each is the unique ID of a
+  Control4 light entity in Home Assistant.

@@ -29,7 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def fade_scope() -> AdapterScope:
-    return AdapterScope(domains=experimental(Platform.LIGHT), fields=experimental(BRIGHTNESS_FIELD))
+    return AdapterScope(domains=experimental(Platform.LIGHT), fields=experimental(BRIGHTNESS_FIELD), native_groups=True)
 
 
 class Control4Fade(LevelFade):

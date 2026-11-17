@@ -61,6 +61,7 @@ class Control4SetAttributes(Adapter[SetAttributesRequest]):
         fields=experimental(ATTR_COLOR_TEMP_KELVIN),
         unlisted=frozenset({ATTR_COLOR_TEMP_KELVIN}),
         confirmable=True,
+        native_groups=True,
     )
 
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
