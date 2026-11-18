@@ -1,14 +1,14 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "zha",
   "action": "get_attributes",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "687d369d"
+    "commit": "e21e0e52"
   },
-  "package": "58496e69e867",
+  "calls": "6c39d64c260662c8f26b28a08f7163978e3c4d89",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -18,9 +18,9 @@
       "result": "pass",
       "devices": [
         {
-          "model": "LTA009",
+          "model": "LCA016",
           "manufacturer": "Signify Netherlands B.V.",
-          "firmware": "0x01002a00",
+          "firmware": "0x01000d08",
           "class": "hue"
         }
       ]
@@ -52,9 +52,9 @@
       "result": "pass",
       "devices": [
         {
-          "model": "LWA012",
+          "model": "LCA016",
           "manufacturer": "Signify Netherlands B.V.",
-          "firmware": "0x01002a00",
+          "firmware": "0x01000d08",
           "class": "hue"
         }
       ]

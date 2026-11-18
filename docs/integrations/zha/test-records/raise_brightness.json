@@ -3,12 +3,12 @@
   "integration": "zha",
   "action": "raise_brightness",
   "result": "pass",
-  "date": "2026-11-17",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "2a500c44"
+    "commit": "e21e0e52"
   },
-  "calls": "cd2b2c16efc2f3b931d534ba9547b0311826ee14",
+  "calls": "d2ce550247eba2b56f47acfac267cd2861b460c5",
   "home_assistant": "2026.10.4",
   "tests": [
     {

@@ -3,12 +3,12 @@
   "integration": "zha",
   "action": "turn_on_for",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "687d369d"
+    "commit": "e21e0e52"
   },
-  "calls": "ea36d682ebe5a0751db57b4f29e96594f68eebac",
+  "calls": "6b5832fb51e85aea4f0229017a967d458399f378",
   "home_assistant": "2026.10.4",
   "tests": [
     {
