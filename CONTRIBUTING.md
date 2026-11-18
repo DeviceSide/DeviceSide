@@ -39,7 +39,7 @@ Every code pull request follows these steps:
    </details>
 
    <details>
-   <summary><b>A new class</b></summary>
+   <summary><b>A new class (e.g. Tuya countdown plugs and switches)</b></summary>
 
    For devices that answer a class's call differently ([device classes](docs/evidence.md#device-classes)). To split devices off a class, [split off the exception](docs/evidence.md#no-known-method-not-built-yet-on-trial); a class that needs a different payload gets a call of its own ([the split rule](docs/evidence.md#the-split-rule)).
 
@@ -53,7 +53,7 @@ Every code pull request follows these steps:
    </details>
 
    <details>
-   <summary><b>A new family</b></summary>
+   <summary><b>A new family (e.g. Tuya devices on Zigbee2MQTT)</b></summary>
 
    A vendor's classes on an integration with families (Zigbee2MQTT, ZHA): [Family](docs/design.md#glossary) in design.md's glossary, and its row in the ["Writing an integration" table](docs/design.md#core-contract).
 
