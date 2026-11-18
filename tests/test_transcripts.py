@@ -136,7 +136,9 @@ def inner(pytester: pytest.Pytester, monkeypatch) -> pytest.Pytester:
     monkeypatch.setenv("PYTHONPATH", str(ROOT))
     # A test that edits an inner module and reruns within the second would otherwise import the stale .pyc.
     monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
-    pytester.makepyprojecttoml('[tool.pytest.ini_options]\nasyncio_mode = "auto"\n')
+    pytester.makepyprojecttoml(
+        '[tool.pytest.ini_options]\nasyncio_mode = "auto"\nasyncio_default_fixture_loop_scope = "function"\n'
+    )
     pytester.makeconftest(CONFTEST)
     pytester.makepyfile(inner_wire=WIRE_MODULE, inner_helpers=HELPERS, test_inner=TEST)
     for integration in ("fake", "fake_special"):
@@ -258,7 +260,7 @@ def pytest_collection_modifyitems(config, items):
 """
     )
 
-    result = run(inner, "--transcripts=write")
+    result = run_here(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines(["ERROR: --transcripts=write needs the whole suite: this run deselects tests"])
@@ -289,11 +291,12 @@ def test_a_run_from_a_subdirectory_is_refused(inner, monkeypatch):
     ],
 )
 def test_a_run_where_no_test_ran_keeps_the_golden_files(inner, suite):
-    assert run(inner, "--transcripts=write").ret == 0
+    (inner.path / CALLS).mkdir()
+    (inner.path / GOLDEN).write_text("[]\n")
     only(inner, suite)
 
     for mode in ("write", "check"):
-        result = run(inner, f"--transcripts={mode}")
+        result = run_here(inner, f"--transcripts={mode}")
 
         assert result.ret == pytest.ExitCode.USAGE_ERROR
         result.stdout.fnmatch_lines([f"transcripts not {'written' if mode == 'write' else 'checked'}: no test ran"])
