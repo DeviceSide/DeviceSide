@@ -43,6 +43,7 @@ from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group
 pytestmark = pytest.mark.usefixtures("setup_integration")
 
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
+SENT = {"status": "sent", "integration": "fake"}  # a result with nothing added: extend it, SENT | {"capability": "A"}
 
 
 @pytest.fixture(params=[False, True], ids=["experimental_off", "experimental_on"])
@@ -85,8 +86,8 @@ async def test_a_named_target_on_an_experimental_domain_raises_unless_the_option
     with patch.object(FakeTurnOnFor, "scope", SWITCH_EXPERIMENTAL):
         if on:
             assert await call(hass, "turn_on_for", data) == {
-                "light.a": {"status": "sent", "integration": "fake"},
-                "switch.s": {"status": "sent", "integration": "fake"},
+                "light.a": SENT,
+                "switch.s": SENT,
             }
             return
         with pytest.raises(ServiceNotSupported) as err:
@@ -109,9 +110,7 @@ async def test_every_level_above_experimental_passes_with_the_option_off(hass, f
     allow_experimental(hass, False)
 
     with patch.object(FakeTurnOnFor, "scope", AdapterScope(domains=domains, duration=LIMITS)):
-        assert await call(hass, "turn_on_for", {"entity_id": "switch.s", "duration": 5}) == {
-            "switch.s": {"status": "sent", "integration": "fake"}
-        }
+        assert await call(hass, "turn_on_for", {"entity_id": "switch.s", "duration": 5}) == {"switch.s": SENT}
 
 
 async def test_an_indirect_target_on_an_experimental_domain_is_skipped_and_logged(hass, fake, reset_script, caplog):
@@ -123,7 +122,7 @@ async def test_an_indirect_target_on_an_experimental_domain_is_skipped_and_logge
     with patch.object(FakeTurnOnFor, "scope", SWITCH_EXPERIMENTAL):
         response = await call(hass, "turn_on_for", {"area_id": area_id, "duration": 5})
 
-    assert response == {"light.a": {"status": "sent", "integration": "fake"}}
+    assert response == {"light.a": SENT}
     assert "turn_on_for skipped targets that can't take it: switch.s (experimental_off)" in caplog.text
 
 
@@ -138,15 +137,13 @@ async def test_an_experimental_field_is_gated_only_when_the_call_carries_it(hass
         assert await refusal(hass, "turn_on_for", {"entity_id": "light.full", **data}) == "experimental_off"
         # A light that lacks transition has it dropped first, so its call touches nothing Experimental.
         assert await call(hass, "turn_on_for", {"entity_id": "light.no_fade", **data}) == {
-            "light.no_fade": {"status": "sent", "integration": "fake", "detail": "fields_dropped"}
+            "light.no_fade": SENT | {"detail": "fields_dropped"}
         }
         assert await call(hass, "turn_on_for", {"entity_id": "light.full", "duration": 5, "brightness": 9}) == {
-            "light.full": {"status": "sent", "integration": "fake"}
+            "light.full": SENT
         }
         allow_experimental(hass, True)
-        assert await call(hass, "turn_on_for", {"entity_id": "light.full", **data}) == {
-            "light.full": {"status": "sent", "integration": "fake"}
-        }
+        assert await call(hass, "turn_on_for", {"entity_id": "light.full", **data}) == {"light.full": SENT}
 
 
 def by_name(hass, target):
@@ -208,12 +205,12 @@ async def test_an_experimental_class_is_gated_by_the_one_the_integration_names(h
 
     with patch.object(FakeTurnOnFor, "scope", CLASSED):
         assert await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5}) == {
-            "light.a": {"status": "sent", "integration": "fake", "capability": "A"}
+            "light.a": SENT | {"capability": "A"}
         }
         assert await refusal(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5}) == "experimental_off"
         allow_experimental(hass, True)
         assert await call(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5}) == {
-            "light.b": {"status": "sent", "integration": "fake", "capability": "B"}
+            "light.b": SENT | {"capability": "B"}
         }
 
 
@@ -234,7 +231,7 @@ async def test_a_class_with_no_known_method_or_not_served_is_refused_and_none_is
         # Reached indirectly, both are skipped, as any target that can never take the action is.
         response = await call(hass, "turn_on_for", {"area_id": area_id, "duration": 5})
 
-    assert response == {"light.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert response == {"light.a": SENT | {"capability": "A"}}
     assert "skipped targets that can't take it: light.c (not_built), light.d (no_known_method)" in caplog.text
     assert "turn_on_for on fake: light.c is class ('C',)" in caplog.text
     assert reset_script.calls == [("fake", "turn_on_for", reset_script.calls[0][2], ["light.a"])]
@@ -280,7 +277,7 @@ async def test_elsewhere_a_class_not_yet_placed_is_the_class_it_names(hass, fake
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.pending_a", "duration": 5})
 
-    assert response == {"switch.pending_a": {"status": "sent", "integration": "fake"}}
+    assert response == {"switch.pending_a": SENT}
 
 
 @pytest.mark.usefixtures("classed", "harmless")
@@ -295,9 +292,7 @@ async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    assert response == {
-        "switch.fake_group": {"status": "sent", "integration": "fake", "member_capabilities": {"switch.a": "A"}}
-    }
+    assert response == {"switch.fake_group": SENT | {"member_capabilities": {"switch.a": "A"}}}
     assert [ids for *_, ids in reset_script.calls] == [["switch.fake_group"]]
 
 
@@ -311,13 +306,7 @@ async def test_a_group_with_a_member_the_integration_cant_name_reports_the_rest(
     with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, capabilities=verified("A", "E"))):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    assert response == {
-        "switch.fake_group": {
-            "status": "sent",
-            "integration": "fake",
-            "member_capabilities": {"light.e": "E", "switch.a": "A"},
-        }
-    }
+    assert response == {"switch.fake_group": SENT | {"member_capabilities": {"light.e": "E", "switch.a": "A"}}}
 
 
 @pytest.mark.usefixtures("classed")
@@ -332,12 +321,7 @@ async def test_a_group_leaves_an_unavailable_member_out_of_its_member_map(hass, 
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert response == {
-        "switch.fake_group": {
-            "status": "sent",
-            "integration": "fake",
-            "capabilities": ["A", "E"],
-            "member_capabilities": {"switch.a": "A"},
-        }
+        "switch.fake_group": SENT | {"capabilities": ["A", "E"], "member_capabilities": {"switch.a": "A"}}
     }
 
 
@@ -360,12 +344,7 @@ async def test_a_group_leaves_a_member_it_cant_address_alone_out_of_its_member_m
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert response == {
-        "switch.fake_group": {
-            "status": "sent",
-            "integration": "fake",
-            "capabilities": ["A", "E"],
-            "member_capabilities": {"switch.a": "A"},
-        }
+        "switch.fake_group": SENT | {"capabilities": ["A", "E"], "member_capabilities": {"switch.a": "A"}}
     }
 
 
@@ -383,7 +362,7 @@ async def test_a_group_whose_classifier_raised_reports_no_member_classes(hass, f
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    assert response == {"switch.fake_group": {"status": "sent", "integration": "fake"}}
+    assert response == {"switch.fake_group": SENT}
 
 
 async def test_a_group_on_an_integration_that_names_no_classes_reports_none(hass, fake, reset_script):
@@ -391,7 +370,7 @@ async def test_a_group_on_an_integration_that_names_no_classes_reports_none(hass
 
     response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    assert response == {"switch.fake_group": {"status": "sent", "integration": "fake"}}
+    assert response == {"switch.fake_group": SENT}
 
 
 @pytest.mark.usefixtures("classed")
@@ -436,8 +415,8 @@ async def test_a_group_with_a_member_a_harmful_not_built_entry_names_falls_back(
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert response == {
-        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
-        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+        "switch.a": SENT | {"capability": "A"},
+        "switch.e": SENT | {"capability": "E"},
     }
     assert [ids for *_, ids in reset_script.calls] == [["switch.a", "switch.e"]]
     assert "turn_off_for skipped targets that can't take it: switch.c (not_built)" in caplog.text
@@ -459,8 +438,8 @@ async def test_a_group_with_a_member_not_yet_placed_falls_back_where_the_call_ha
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert response == {
-        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
-        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+        "switch.a": SENT | {"capability": "A"},
+        "switch.e": SENT | {"capability": "E"},
     }
     assert [ids for *_, ids in reset_script.calls] == [["switch.a", "switch.e"]]
     assert "turn_off_for skipped targets that can't take it: switch.pending_d (class_unknown)" in caplog.text
@@ -477,7 +456,7 @@ async def test_a_group_with_a_placed_and_an_unplaced_member_of_one_class_falls_b
     with patch.object(FakeTurnOffFor, "scope", HARMED):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert response == {"switch.a": SENT | {"capability": "A"}}
     assert [ids for *_, ids in reset_script.calls] == [["switch.a"]]
     assert "switch.pending_a (class_unknown)" in caplog.text
 
@@ -550,12 +529,8 @@ async def test_a_native_group_takes_its_members_classes(hass, fake, reset_script
 
     # Sorted, each once; and each member's, two members of one class each named.
     assert response == {
-        "switch.fake_group": {
-            "status": "sent",
-            "integration": "fake",
-            "capabilities": ["A", "E"],
-            "member_capabilities": {"light.a": "A", "switch.a": "A", "switch.e": "E"},
-        }
+        "switch.fake_group": SENT
+        | {"capabilities": ["A", "E"], "member_capabilities": {"light.a": "A", "switch.a": "A", "switch.e": "E"}}
     }
 
 
@@ -568,12 +543,7 @@ async def test_a_native_group_of_one_class_names_it_once_and_each_member_s(hass,
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert response == {
-        "switch.fake_group": {
-            "status": "sent",
-            "integration": "fake",
-            "capabilities": ["A"],
-            "member_capabilities": {"light.a": "A", "switch.a": "A"},
-        }
+        "switch.fake_group": SENT | {"capabilities": ["A"], "member_capabilities": {"light.a": "A", "switch.a": "A"}}
     }
 
 
@@ -620,7 +590,7 @@ async def test_a_native_group_with_a_flagged_member_falls_back_while_experimenta
         on = await call(hass, "turn_off_for", data)
 
     # Off: the member of a Verified class runs on its own, the flagged one is skipped as indirect.
-    assert off == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert off == {"switch.a": SENT | {"capability": "A"}}
     assert f"turn_off_for skipped targets that can't take it: {flagged} (experimental_off)" in caplog.text
     # On: the group runs whole, as one command.
     assert list(on) == ["switch.fake_group"]
@@ -651,8 +621,8 @@ async def test_a_native_group_with_a_refused_member_falls_back_to_its_members(
         response = await call(hass, "turn_off_for", {"entity_id": ["switch.fake_group", "switch.a"], "duration": 5})
 
     assert response == {
-        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
-        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+        "switch.a": SENT | {"capability": "A"},
+        "switch.e": SENT | {"capability": "E"},
     }
     assert reset_script.calls[0][3] == ["switch.a", "switch.e"]  # switch.a once, though named and a member
     assert f"turn_off_for skipped targets that can't take it: {bad} ({reason})" in caplog.text
@@ -668,7 +638,7 @@ async def test_a_group_whose_member_is_already_a_target_is_answered_by_it(hass, 
     add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", flagged])
     area_id = in_area(hass, "Den", "switch.fake_group")
     allow_experimental(hass, False)
-    expected = {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    expected = {"switch.a": SENT | {"capability": "A"}}
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         alone = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
@@ -736,7 +706,7 @@ async def test_a_fallen_group_skips_a_member_it_cant_address_alone(hass, fake, r
         data = {"entity_id": ["switch.pair", "switch.a"], "duration": 5}
         assert await refusal(hass, "turn_off_for", data) == "not_built"
 
-    assert response == {"switch.e": {"status": "sent", "integration": "fake", "capability": "E"}}
+    assert response == {"switch.e": SENT | {"capability": "E"}}
     assert (
         "skipped targets that can't take it: the device of switch.a (not_addressable), switch.c (not_built)"
         in caplog.text
@@ -762,7 +732,7 @@ async def test_a_member_it_cant_address_alone_whose_class_has_no_known_method_sa
     with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, capabilities=verified("A", "E"))):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    assert response == {"switch.e": {"status": "sent", "integration": "fake", "capability": "E"}}
+    assert response == {"switch.e": SENT | {"capability": "E"}}
     assert "skipped targets that can't take it: the device of switch.d (no_known_method)" in caplog.text
     assert [ids for *_, ids in reset_script.calls] == [["switch.e"]]
 
@@ -844,7 +814,7 @@ async def test_an_empty_native_group_is_skipped_silently(hass, fake, reset_scrip
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": ["switch.fake_group", "switch.a"], "duration": 5})
 
-    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert response == {"switch.a": SENT | {"capability": "A"}}
     assert "skipped targets" not in caplog.text
 
 
@@ -888,9 +858,7 @@ async def test_an_expand_group_answering_none_gates_a_classed_group(hass, fake, 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         assert await refusal(hass, "turn_off_for", data) == "experimental_off"
         allow_experimental(hass)
-        assert await call(hass, "turn_off_for", data) == {
-            "switch.fake_group": {"status": "sent", "integration": "fake"}
-        }
+        assert await call(hass, "turn_off_for", data) == {"switch.fake_group": SENT}
 
 
 @pytest.mark.usefixtures("classed")
@@ -955,7 +923,7 @@ async def test_two_groups_sharing_a_member_send_it_once(hass, fake, reset_script
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": ["switch.one", "switch.two"], "duration": 5})
 
-    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert response == {"switch.a": SENT | {"capability": "A"}}
     assert [ids for *_, ids in reset_script.calls] == [["switch.a"]]
 
 
@@ -983,9 +951,7 @@ async def test_a_native_group_whose_members_cant_be_listed_is_gated_and_names_no
         assert await refusal(hass, "turn_off_for", data) == "experimental_off"
         allow_experimental(hass, True)
         # No list, which would pass for the whole group's.
-        assert await call(hass, "turn_off_for", data) == {
-            "switch.fake_group": {"status": "sent", "integration": "fake"}
-        }
+        assert await call(hass, "turn_off_for", data) == {"switch.fake_group": SENT}
 
 
 async def test_an_experimental_call_left_nothing_to_send_is_unchanged_not_refused(hass, fake, reset_script):
@@ -1145,7 +1111,7 @@ async def test_an_indirect_target_that_cant_take_the_action_is_skipped_and_logge
     response = await call(hass, "turn_off_for", {"area_id": area_id, "entity_id": "light.room", "duration": 5})
 
     # A light group helper is a deliberately mixed set, so its members are indirect, unlike core's group.* rule.
-    assert response == {"switch.s": {"status": "sent", "integration": "fake"}}
+    assert response == {"switch.s": SENT}
     assert (
         "turn_off_for skipped targets that can't take it: light.a (domain_not_tested), light.lamp (no_adapter)"
         in caplog.text
@@ -1167,7 +1133,7 @@ async def test_unavailable_targets_are_skipped_and_the_named_ones_logged(hass, f
         {"entity_id": ["light.a", "light.down", "light.ghost", "light.unloaded"], "area_id": area_id, "duration": 5},
     )
 
-    assert response == {"light.a": {"status": "sent", "integration": "fake"}}
+    assert response == {"light.a": SENT}
     assert reset_script.calls[0][3] == ["light.a"]
     assert (
         "Referenced entities light.down, light.ghost, light.unloaded are missing or not currently available"
@@ -1292,7 +1258,7 @@ async def test_native_group_members_are_indirect(hass, fake, reset_script):
     response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5, "rgb_color": [1, 2, 3]})
 
     # light.a would take the untested color, so it is skipped rather than raised; light.dim lacks it and drops it.
-    assert response == {"light.dim": {"status": "sent", "integration": "fake", "detail": "fields_dropped"}}
+    assert response == {"light.dim": SENT | {"detail": "fields_dropped"}}
     assert reset_script.calls[0][3] == ["light.dim"]
 
 
@@ -1345,7 +1311,7 @@ async def test_an_untested_field_is_refused_after_lacked_ones_are_dropped(hass, 
     data = {"duration": 5, "rgb_color": [255, 0, 0], "brightness": 9}
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.dim", **data})
-    assert response == {"light.dim": {"status": "sent", "integration": "fake", "detail": "fields_dropped"}}
+    assert response == {"light.dim": SENT | {"detail": "fields_dropped"}}
     reset_script.calls.clear()
     assert await refusal(hass, "turn_on_for", {"entity_id": ["light.dim", "light.a"], **data}) == "fields_not_tested"
     assert reset_script.calls == []  # light.dim is planned first, and still nothing is sent
@@ -1363,10 +1329,10 @@ async def test_lacked_fields_are_dropped_and_each_request_runs_once(hass, fake, 
 
     response = await call(hass, "turn_on_for", data)
 
-    dropped = {"status": "sent", "integration": "fake", "detail": "fields_dropped"}
+    dropped = SENT | {"detail": "fields_dropped"}
     assert response == {
-        "light.full": {"status": "sent", "integration": "fake"},
-        "light.full_2": {"status": "sent", "integration": "fake"},
+        "light.full": SENT,
+        "light.full_2": SENT,
         "light.no_fade": dropped,
         "light.onoff": dropped,
         "switch.s": dropped,  # a switch lacks every light field, and the timer still runs
@@ -1398,7 +1364,7 @@ async def test_scope_drops_are_dropped_before_the_scope_check(hass, fake, reset_
     with patch.object(FakeTurnOnFor, "scope", scope):
         response = await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5, "rgb_color": [255, 0, 0]})
 
-    assert response == {"light.a": {"status": "sent", "integration": "fake", "detail": "fields_dropped"}}
+    assert response == {"light.a": SENT | {"detail": "fields_dropped"}}
     assert reset_script.calls[0][2].fields_present() == frozenset()
 
 
@@ -1420,7 +1386,7 @@ async def test_an_unlisted_field_reaches_the_adapter_on_a_light_whose_state_lack
         response = await call(hass, "turn_on_for", data)
 
     # transition is still dropped as lacked: only the unlisted field passes.
-    assert response == {"light.dim": {"status": "sent", "integration": "fake", "detail": "fields_dropped"}}
+    assert response == {"light.dim": SENT | {"detail": "fields_dropped"}}
     assert reset_script.calls[0][2].fields_present() == {"color_temp_kelvin"}
 
 
@@ -1447,8 +1413,8 @@ async def test_wrapper_and_its_switch_each_get_a_result(hass, fake, reset_script
     response = await call(hass, "turn_on_for", {"entity_id": ["light.relay", "switch.relay"], "duration": 5})
 
     assert response == {
-        "light.relay": {"status": "sent", "integration": "fake"},
-        "switch.relay": {"status": "sent", "integration": "fake"},
+        "light.relay": SENT,
+        "switch.relay": SENT,
     }
     assert reset_script.calls[0][3] == ["switch.relay", "switch.relay"]  # the same Set twice: idempotent
 
@@ -1461,7 +1427,7 @@ async def test_a_request_left_nothing_to_do_is_unchanged_and_sends_nothing(hass,
 
     assert response == {
         "light.onoff": {"status": "unchanged", "integration": "fake", "detail": "fields_dropped"},
-        "light.dim": {"status": "sent", "integration": "fake"},
+        "light.dim": SENT,
     }
     assert reset_script.calls[0][3] == ["light.dim"]
 
@@ -1552,7 +1518,7 @@ async def test_missing_stray_and_untargeted_results_are_reconciled(hass, fake):
         response = await call(hass, "turn_off_for", {"entity_id": ["switch.fake_group", "switch.a"], "duration": 500})
 
     assert response == {
-        "switch.a": {"status": "sent", "integration": "fake", "clamped_to": 100},
+        "switch.a": SENT | {"clamped_to": 100},
         "switch.fake_group": {"status": "confirmed", "integration": "fake", "clamped_to": 100},
     }
     assert list(response) == ["switch.a", "switch.fake_group"]
@@ -1672,8 +1638,8 @@ async def test_a_class_with_a_call_of_its_own_runs_apart_with_its_own_limits(has
 
     # The scope's limits clamp the one, the class's round and clamp the other, each reported.
     assert response == {
-        "switch.a": {"status": "sent", "integration": "fake", "capability": "A", "clamped_to": 100},
-        "switch.e": {"status": "sent", "integration": "fake", "capability": "E", "clamped_to": 500},
+        "switch.a": SENT | {"capability": "A", "clamped_to": 100},
+        "switch.e": SENT | {"capability": "E", "clamped_to": 500},
     }
     assert sorted((request.duration_s, ids) for *_, request, ids in reset_script.calls) == [
         (100, ["switch.a"]),
@@ -1723,8 +1689,8 @@ async def test_classes_share_a_run_only_on_one_own_call_object(hass, fake, reset
 
     assert sorted([target.entity_id for target in args[3]] for args, _ in own.await_args_list) == runs
     assert response == {
-        "switch.b": {"status": "sent", "integration": "fake", "capability": "B"},
-        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+        "switch.b": SENT | {"capability": "B"},
+        "switch.e": SENT | {"capability": "E"},
     }
 
 
@@ -1739,8 +1705,8 @@ async def test_a_group_with_a_member_that_takes_a_call_of_its_own_falls_back(has
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert response == {
-        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
-        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+        "switch.a": SENT | {"capability": "A"},
+        "switch.e": SENT | {"capability": "E"},
     }
     assert sorted(ids for *_, ids in reset_script.calls) == [["switch.a"], ["switch.e"]]
     assert "switch.fake_group falls back to its members (own_call)" in caplog.text
@@ -1838,7 +1804,7 @@ async def test_a_fallen_group_skips_a_stand_in_member(hass, fake, reset_script, 
     with patch.object(FakeTurnOnFor, "scope", OWN_CALL):
         response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
 
-    assert response == {"light.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert response == {"light.a": SENT | {"capability": "A"}}
     assert (
         "skipped targets that can't take it: a member device of light.fake_group (not_addressable),"
         " a member device of light.fake_group (no_known_method)" in caplog.text
@@ -1862,7 +1828,7 @@ async def test_a_stand_in_plug_in_a_light_group_is_refused_on_its_own_domain(has
     with patch.object(FakeTurnOnFor, "scope", A_PLUG_NOT_BUILT):
         response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
 
-    assert response == {"light.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert response == {"light.a": SENT | {"capability": "A"}}
     assert "a member device of light.fake_group (not_addressable)" in caplog.text
     assert [ids for *_, ids in reset_script.calls] == [["light.a"]]
 
@@ -1920,7 +1886,7 @@ async def test_a_group_whose_stand_ins_device_ran_as_a_target_does_not_raise(has
     with patch.object(FakeTurnOnFor, "scope", OWN_CALL):
         response = await call(hass, "turn_on_for", {"entity_id": ["light.fake_group", "switch.e"], "duration": 5})
 
-    assert response == {"switch.e": {"status": "sent", "integration": "fake", "capability": "E"}}
+    assert response == {"switch.e": SENT | {"capability": "E"}}
 
 
 @pytest.mark.usefixtures("classed")
