@@ -49,3 +49,4 @@ async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_producti
         await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
     assert raised.value.translation_placeholders["why"] == REFUSALS["turn_on_for"]["tuya_ts011f"].reason
     assert "no timer, so it would stay on" in raised.value.translation_placeholders["why"]
+    assert commands(broker) == []
