@@ -154,6 +154,11 @@ def run(pytester: pytest.Pytester, *args: str) -> pytest.RunResult:
     return pytester.runpytest_subprocess("-p", "no:cacheprovider", *args)
 
 
+def run_here(pytester: pytest.Pytester, *args: str) -> pytest.RunResult:
+    """An inner run in this process, for a refusal at configure time: it fails before the recorder patches anything."""
+    return pytester.runpytest("-p", "no:cacheprovider", "-p", "no:randomly", *args)
+
+
 def segments(pytester: pytest.Pytester, path: str = GOLDEN) -> list[dict]:
     return json.loads((pytester.path / path).read_text())
 
@@ -236,7 +241,7 @@ def test_transcripts_are_off_by_default(inner):
 )
 def test_a_narrowed_run_is_refused(inner, args, reason):
     for mode in ("write", "check"):
-        result = run(inner, f"--transcripts={mode}", *args)
+        result = run_here(inner, f"--transcripts={mode}", *args)
 
         assert result.ret == pytest.ExitCode.USAGE_ERROR
         result.stderr.fnmatch_lines([f"ERROR: --transcripts={mode} needs the whole suite: {reason}"])
@@ -270,7 +275,7 @@ def test_a_run_from_a_subdirectory_is_refused(inner, monkeypatch):
     (sub / "test_sub.py").write_text("def test_sub():\n    pass\n")
     monkeypatch.chdir(sub)
 
-    result = run(inner, "--transcripts=write")
+    result = run_here(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines(["ERROR: --transcripts=write needs the whole suite: it runs */sub, not the testpaths"])
@@ -768,7 +773,7 @@ async def test_object(hass, setup_integration, monkeypatch):
 def test_a_bad_boundary_is_a_usage_error(inner, boundary, error):
     (inner.path / "tests/integrations/fake/wire.py").write_text(f'BOUNDARIES = [("inner_wire", "{boundary}", 0)]\n')
 
-    result = run(inner, "--transcripts=write")
+    result = run_here(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines([f"ERROR: transcripts: wire boundary {error}"])
