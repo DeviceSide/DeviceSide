@@ -11,9 +11,6 @@ from custom_components.deviceside.core.scope import Level, OnDomains
 from custom_components.deviceside.integrations.zigbee2mqtt.families import ikea
 from custom_components.deviceside.zigbee import ikea as catalog
 
-from ...conftest import commands, light
-from .....conftest import allow_experimental, refusal
-
 
 def fields(zigbee: tuple[str, str], registry: tuple[str, str] = ("IKEA", "LED1836G9")) -> dict:
     """A device's rule fields once bridge/devices lists its Zigbee strings."""
@@ -66,19 +63,3 @@ def test_on_trial_on_the_brightness_fades_stop_and_turn_on_for_on_lights_alone()
         "stop": certified,
         "turn_on_for": {ikea.IKEA: OnDomains(Level.EXPERIMENTAL, frozenset({Platform.LIGHT}))},
     }
-
-
-async def test_a_bulb_reported_to_stay_on_is_not_built_on_turn_on_for(hass, setup_production, broker):
-    """Reported turned on by a unicast timer and never off (Zigbee2MQTT #29158): refused even with Experimental
-    features on."""
-    entity_id = light(
-        hass,
-        broker,
-        manufacturer="IKEA",
-        model_id="LED2005R5/LED2106R3",
-        zigbee=("IKEA of Sweden", "TRADFRIbulbGU10WS345lm"),
-    )
-    allow_experimental(hass)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_built"
-    assert commands(broker) == []

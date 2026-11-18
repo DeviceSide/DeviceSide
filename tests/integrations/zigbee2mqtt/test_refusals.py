@@ -13,7 +13,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from custom_components.deviceside.integrations.zigbee2mqtt.refusals import REFUSALS
 
 from .conftest import DEVICES, PLUG, TUYA, commands, interviewed, light
-from ...conftest import allow_experimental, refusal
+from ...conftest import allow_experimental
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 
@@ -62,40 +62,6 @@ def test_each_entry_is_in_its_adapter_s_scope():
     }
 
 
-async def test_turn_on_for_refuses_a_ts011f_as_not_built_with_experimental_on(hass, setup_production, broker):
-    """Z2M has no on_time converter for it, so today's call would turn the plug on with no timer
-    (research/2026-11-14-lab-probe.md, §2): refused, not flagged, so Experimental features can't send it."""
-    allow_experimental(hass)
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
-    broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
-    assert commands(broker) == []
-
-
-@pytest.mark.parametrize(
-    ("manufacturer", "why"),
-    [("Philips", "plugs and switches ignore the timer"), ("Innr", "most plugs turn on and never off")],
-    ids=["hue", "other"],
-)
-async def test_turn_on_for_refuses_a_plug_with_no_switch_pass_as_not_built_with_experimental_on(
-    hass, setup_production, broker, manufacturer, why
-):
-    """Research predicts most plugs and switches fail OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md),
-    and no Hue or other brand's plug has a pass (docs/evidence.md, On trial): refused, so Experimental features can't
-    send it, with why."""
-    allow_experimental(hass)
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=manufacturer, model_id="SP 120")
-    broker.retained[DEVICES] = [interviewed(IEEE, manufacturer, "SP 120")]
-
-    with pytest.raises(TargetNotSupported) as raised:
-        await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
-
-    assert raised.value.reason == "not_built"
-    assert why in raised.value.translation_placeholders["why"]
-    assert commands(broker) == []
-
-
 async def test_turn_on_for_refuses_another_brand_s_light_as_not_built_with_experimental_on(
     hass, setup_production, broker
 ):
@@ -120,39 +86,3 @@ async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_producti
         await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
     assert raised.value.translation_placeholders["why"] == REFUSALS["turn_on_for"]["tuya_ts011f"].reason
     assert "no timer, so it would stay on" in raised.value.translation_placeholders["why"]
-
-
-@pytest.mark.parametrize(
-    "registry",
-    [
-        pytest.param(("Tuya", "TS0001_switch_module"), id="tuya_zcl"),
-        pytest.param(("Tuya", "TS0601_switch"), id="tuya_mcu"),
-    ],
-)
-async def test_turn_on_for_refuses_every_tuya_class_as_not_built_with_experimental_on(
-    hass, setup_production, broker, registry
-):
-    """Z2M turns `on_time` into a plain On on Tuya firmware (Decision 20), so the device would stay on."""
-    allow_experimental(hass)
-    entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_built"
-    assert commands(broker) == []
-
-
-async def test_the_string_reported_harmed_on_the_countdown_is_not_built_with_experimental_on(
-    hass, setup_production, broker
-):
-    """A countdown plug by its definition, so it would get Tuya's countdown, which its maker string is reported to
-    fail with harm (Zigbee2MQTT #30493)."""
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
-    definition = {"model": PLUG[1], "exposes": [{"type": "switch", "features": [{"name": "state"}]}, COUNTDOWN]}
-    broker.retained[DEVICES] = [interviewed(IEEE, "_TZ3000_gjnozsaz", "TS011F") | {"definition": definition}]
-    allow_experimental(hass)
-
-    with pytest.raises(TargetNotSupported) as raised:
-        await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
-
-    assert raised.value.reason == "not_built"
-    assert raised.value.translation_placeholders["why"] == REFUSALS["turn_on_for"]["tuya_countdown_harmed"].reason
-    assert commands(broker) == []

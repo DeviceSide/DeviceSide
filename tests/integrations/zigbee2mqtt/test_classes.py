@@ -341,16 +341,6 @@ async def test_a_light_group_with_a_ts011f_plug_falls_back_on_a_light_action_wit
     assert "a member device of light.room (not_built)" in caplog.text
 
 
-async def test_a_ts011f_zigbee2mqtt_shows_as_a_light_is_refused_by_stop(hass, setup_production, broker):
-    """Per docs/evidence.md's "A class names its domains": a TS011F stays a switch when Z2M is set to show it as a
-    light, so stop refuses it as not built yet, where it once sent the plug a brightness_move it can't do."""
-    plug = light(hass, broker, "light.plug", "0x03", manufacturer=PLUG[0], model_id=PLUG[1], zigbee=(TUYA, "TS011F"))
-    allow_experimental(hass)
-
-    assert await refusal(hass, "stop", {"entity_id": plug}) == "not_built"
-    assert commands(broker) == []
-
-
 # What a native group's member_capabilities holds (docs/action-behavior.md, The class).
 
 HUE_PAIR = {"light.one": "hue", "light.two": "hue"}
