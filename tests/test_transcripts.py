@@ -648,36 +648,61 @@ def test_keys_that_normalize_alike_raise():
         norm({1: "x", "1": "y"})
 
 
-@pytest.mark.parametrize(
-    "reply",
-    [
-        pytest.param("object()", id="value"),
-        pytest.param("{object(): 1}", id="key"),
-        pytest.param("{(1, object()): 1}", id="inside-a-key"),
-    ],
-)
-def test_an_unnormalized_value_blocks_write(inner, reply):
-    only(
-        inner,
-        f"""
+UNNORMALIZED = """
 import inner_wire
 
 from inner_helpers import run
 
 
-async def test_object(hass, setup_integration, monkeypatch):
+class Value:
+    pass
+
+
+class Key:
+    pass
+
+
+class InsideAKey:
+    pass
+
+
+async def reply_with(hass, monkeypatch, reply):
     async def send(hass, payload, **kw):
-        return {reply}
+        return reply
 
     monkeypatch.setattr(inner_wire, "send", send)
     await run(hass)
-""",
-    )
+
+
+async def test_value(hass, setup_integration, monkeypatch):
+    await reply_with(hass, monkeypatch, Value())
+
+
+async def test_key(hass, setup_integration, monkeypatch):
+    await reply_with(hass, monkeypatch, {Key(): 1})
+
+
+async def test_inside_a_key(hass, setup_integration, monkeypatch):
+    await reply_with(hass, monkeypatch, {(1, InsideAKey()): 1})
+"""
+
+
+def test_an_unnormalized_value_blocks_write(inner):
+    """One run, each reply an object of its own class so the placeholders stay three lines: as a value, as a key and
+    inside a key."""
+    only(inner, UNNORMALIZED)
 
     result = run(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.TESTS_FAILED
-    result.stdout.fnmatch_lines(["transcripts not written: values with no normalization*", "fake turn_on_for <object>"])
+    result.stdout.fnmatch_lines(
+        [
+            "transcripts not written: values with no normalization*",
+            "fake turn_on_for <InsideAKey>",
+            "fake turn_on_for <Key>",
+            "fake turn_on_for <Value>",
+        ]
+    )
     assert not (inner.path / CALLS).exists()
 
 
