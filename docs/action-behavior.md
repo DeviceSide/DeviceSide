@@ -44,7 +44,8 @@ the integration can't address. A field the adapter has never been tested with is
 field** comes from the target's state, read as `filter_turn_on_params` reads it (a color is lacked only without any
 color mode, color temperature only without that or a color mode, since core converts between them first), and from the
 adapter where only it knows (`AdapterScope.drops`, a color gamut, a component's fields). A field tested on one kind
-of component but not yet ported or recorded for another is dropped there, not refused. A `switch`, or a `switch_as_x` light, lacks every light field, so a timed call still runs its timer. A
+of component but not yet ported or recorded for another is dropped there, not refused. A `switch`, or a `switch_as_x`
+light, lacks every light field, so a timed call still runs its timer. A
 call left nothing to do by dropping is `unchanged` with `fields_dropped`. An empty group is skipped silently, as core's
 group expansion yields nothing for one.
 
@@ -69,7 +70,8 @@ never Documented, so it starts Experimental. A `switch` still lacks every light 
 counter, or a `sweep_time` outside what the device's native move takes. It is clamped
 to that range and the result carries `clamped_to`, the value used. It isn't refused, as the call can still do the
 nearest thing, and it isn't `fields_dropped`, which is for a field the light lacks. Rounding inside the range isn't
-reported, except where the device's timer runs in coarser steps than the request (whole seconds, say): there the result carries `clamped_to` too, as the timer won't end when asked.
+reported, except where the device's timer runs in coarser steps than the request (whole seconds, say): there the
+result carries `clamped_to` too, as the timer won't end when asked.
 
 ## What a response looks like
 
@@ -84,9 +86,10 @@ raises or the entity is skipped.
   `turn_on_for`, `turn_off_for` or the device's own) carries `timer: {turns, ends_at, remaining_s}`: `turns`
   is `on` or `off`, the state the timer leaves it in; `ends_at` is UTC ISO 8601; `remaining_s` is seconds, to
   one decimal. With no timer running the key is absent. The time left is always the device's, and DeviceSide never
-  tracks one itself: a device whose running timer can't be read is refused (`no_known_method`), never read as having
-  none.
-- **Auto-off and auto-on.** A target whose device has these settings carries `auto_off` and `auto_on`: `{duration}` (seconds) while set,
+  tracks one itself. A device whose time left DeviceSide has no way to read is refused (`no_known_method`); one it
+  can read but not trust at the moment (its clock unsynced) has no `timer` key. The integration's page says which.
+- **Auto-off and auto-on.** A target whose device has these settings carries `auto_off` and `auto_on`: `{duration}`
+  (seconds) while set,
   `null` while clear. A key is absent when the setting couldn't be read, so absent never means clear.
 - **`merge_response`** turns that shape into a list of the entities' dicts with `entity_id` added to each, so
   a blueprint can loop without knowing the IDs. It requires every value to be a dict and raises if one already
