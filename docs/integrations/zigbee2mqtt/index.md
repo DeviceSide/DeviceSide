@@ -50,7 +50,7 @@ setting for the plug). Turn on with timer uses that countdown:
 - **Verified one maker string at a time** (the Zigbee manufacturer Zigbee2MQTT shows for the plug), each by its own
   test record: `_TZ3000_0zfrhq4i`, `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` and `_TZ3000_okaz9tjs`. Plugs of the same
   model answer the countdown differently by maker, so one string's test proves nothing about another's.
-- **On trial on every other maker string:** other TS011F plugs with a countdown setting are on trial: turn on
+- **Every other maker string:** other TS011F plugs with a countdown setting are on trial: turn on
   Experimental features to try one, and report whether it works. About 200 maker strings share the plugs'
   Zigbee2MQTT definitions, each a different maker's build, and some are reported to ignore the countdown
   ([research](research/2026-11-15-converter-seed-list.md)); a string moves to Verified with its own passing run

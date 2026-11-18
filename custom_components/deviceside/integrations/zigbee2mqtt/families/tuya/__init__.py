@@ -54,7 +54,7 @@ def string_class(string: str) -> str:
 
 VERIFIED_COUNTDOWNS = tuple(string_class(string) for string in VERIFIED_STRINGS)
 # Every class on Tuya's countdown, converter A's: the Verified maker strings, which turn_on_for sends that call, and the
-# rest, which it refuses.
+# rest, which it runs on trial.
 COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
 # Tuya's TS011F plugs, on its countdown or not.
 _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
