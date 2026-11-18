@@ -1,6 +1,6 @@
 # Experimental listing: run on passing kin, fold trials on the cards
 
-Date: 2026-11-18. Status: agreed with the repo maintainer; not started.
+Date: 2026-11-18. Status: agreed with the repo maintainer; Steps 1-3 built.
 
 ## Context
 
