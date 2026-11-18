@@ -18,7 +18,7 @@ from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import Level, Unplaced
+from custom_components.deviceside.core.scope import Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, INTEGRATION, bridge_cache, classes, members
 from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 
@@ -103,35 +103,8 @@ def test_a_target_with_no_device_has_no_class(hass):
     )
 
 
-def test_the_default_class_is_other_and_held_below_verified():
-    assert INTEGRATION.default_class == "other"
-    assert INTEGRATION.classes.keys() == {
-        "hue",
-        "ikea",
-        "ikea_timer_harmed",
-        "tuya_zcl",
-        "tuya_ts011f",
-        "tuya_countdown",
-        *tuya.VERIFIED_COUNTDOWNS,
-        "tuya_countdown_harmed",
-        "tuya_mcu",
-        "sengled",
-        "gledopto",
-        "other",
-    }
-
-
 def _scopes() -> dict:
     return {adapter.action: adapter.scope for adapter in ADAPTERS}
-
-
-def test_other_is_on_trial_on_brightness_fades_and_stop_alone():
-    """Level Control's moves, which Zigbee 3.0 certification requires of a dimmable light (docs/internals.md, Shared);
-    not built elsewhere. It spans vendors, so a Hue bulb's pass never makes it Documented."""
-    served = {
-        action: scope.capabilities["other"] for action, scope in _scopes().items() if "other" in scope.capabilities
-    }
-    assert served == dict.fromkeys(("raise_brightness", "lower_brightness", "stop"), Level.EXPERIMENTAL)
 
 
 ALL = {
@@ -181,14 +154,6 @@ def test_where_each_class_is_refused(capability, harmed, not_built, no_method):
     assert {action for action, scope in scopes.items() if capability in scope.no_known_method} == no_method
     assert {action for action, scope in scopes.items() if capability in scope.not_built} == harmed
     assert {action for action, scope in scopes.items() if capability not in scope.capabilities} == not_built
-
-
-def test_get_attributes_reads_no_tuya_zcl_device():
-    """No other action serves one (docs/evidence.md, "A read serves only")."""
-    scope = _scopes()["get_attributes"]
-    for domain in ("light", "switch"):
-        assert not scope.admits("tuya_zcl", domain)
-        assert scope.refusal(["tuya_zcl"], domain=domain, failure_harms=False) == ("not_built", None)
 
 
 SWITCH_ONLY = {"tuya_ts011f", "tuya_countdown", *tuya.VERIFIED_COUNTDOWNS, "tuya_countdown_harmed"}

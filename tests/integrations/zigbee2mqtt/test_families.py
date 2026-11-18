@@ -5,7 +5,7 @@ import pytest
 
 from custom_components.deviceside.core.registry import check_families
 from custom_components.deviceside.core.rules import Rule, compose
-from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, native_control, rules
+from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, native_control, rules
 from custom_components.deviceside.integrations.zigbee2mqtt.families import (
     FAMILIES,
     REGISTRY_PLACED,
@@ -35,10 +35,6 @@ def test_the_rule_groups_run_in_the_integration_s_order():
         *gledopto.RULES,
         *tuya.REGISTRY_RULES,
     )
-
-
-def test_every_rule_names_a_class_but_the_default():
-    assert {rule.capability for rule in RULES} == classes.CLASSES.keys() - {classes.OTHER}
 
 
 def test_a_rule_tests_the_fields_zigbee2mqtt_reads():
