@@ -1,4 +1,4 @@
-<!-- CONTRIBUTING.md's "Fast track" and "What your change touches" explain each section. Delete the ones that don't apply. -->
+<!-- CONTRIBUTING.md's "Fast track" explains each section. Delete the ones that don't apply. -->
 
 ## Summary
 
@@ -29,6 +29,6 @@
 
 ## New integration only
 
-- [ ] The shared files CONTRIBUTING's new-integration path lists
+- [ ] The shared files CONTRIBUTING's Fast track step 3 lists for a new integration
 - [ ] `IntegrationInfo.maintainers` names me
 - [ ] Not yours to tick: a repo maintainer invites the maintainers to Triage after merge ([docs/repo-maintainers.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/repo-maintainers.md))
