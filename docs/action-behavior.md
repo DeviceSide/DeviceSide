@@ -38,14 +38,13 @@ the dispatcher expanded. Core treats a `group.*` member as named; DeviceSide doe
 deliberately mixed set. An indirect entity outside the action's domains is never a target, as in core.
 
 **Can never support** is any reason that holds whatever the device's state: no adapter, an integration or gateway
-DeviceSide doesn't support (`integration_not_supported`; a named Hue v1 bridge light raises saying why), a domain or
+DeviceSide doesn't support (`integration_not_supported`), a domain or
 option nobody has tested, a class with no known method or not built yet (`no_known_method`, `not_built`), an entity
 the integration can't address. A field the adapter has never been tested with is in this class too: it is refused, never dropped. **Lacks a
 field** comes from the target's state, read as `filter_turn_on_params` reads it (a color is lacked only without any
 color mode, color temperature only without that or a color mode, since core converts between them first), and from the
-adapter where only it knows: Hue's gamut, `AdapterScope.drops`, and a Shelly component's fields. A field tested on one
-Shelly component but not yet ported or recorded for another is dropped there, not refused (`color_temp_kelvin` on a
-`CCT` light). A `switch`, or a `switch_as_x` light, lacks every light field, so a timed call still runs its timer. A
+adapter where only it knows (`AdapterScope.drops`, a color gamut, a component's fields). A field tested on one kind
+of component but not yet ported or recorded for another is dropped there, not refused. A `switch`, or a `switch_as_x` light, lacks every light field, so a timed call still runs its timer. A
 call left nothing to do by dropping is `unchanged` with `fields_dropped`. An empty group is skipped silently, as core's
 group expansion yields nothing for one.
 
@@ -60,18 +59,17 @@ that one is refused.
 
 **Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take although
 the light's state says they can't; a light never lacks those for that adapter, where `filter_turn_on_params` would drop
-them. Why: DeviceSide fills design gaps between an upstream integration and HA, as it makes Zigbee2MQTT announce the HS
-mode its full-color lights have ([integrations.md](integrations.md)), and an integration that leaves a mode out of
-`supported_color_modes` shouldn't stop a device that has it. HA's own UI still shows the light without the mode, and
+them. Why: DeviceSide fills design gaps between an upstream integration and HA
+([integrations.md](integrations.md)): an integration that leaves a mode out of `supported_color_modes` shouldn't stop
+a device that has it. HA's own UI still shows the light without the mode, and
 `light.turn_on` still drops the field. An unlisted field must be in the adapter's `fields`, at its own level: fields are
 never Documented, so it starts Experimental. A `switch` still lacks every light field.
 
 **A value the device can't reach** passes the schema but lies outside what the device can do: a timer longer than its
-counter, or a `raise_hue` or `lower_hue` `sweep_time` outside a native hue cycle's 1–254 s (Zigbee2MQTT). It is clamped
+counter, or a `sweep_time` outside what the device's native move takes. It is clamped
 to that range and the result carries `clamped_to`, the value used. It isn't refused, as the call can still do the
 nearest thing, and it isn't `fields_dropped`, which is for a field the light lacks. Rounding inside the range isn't
-reported, except where the device's timer runs in coarser steps than the request (a Tuya plug's whole seconds on
-Zigbee2MQTT): there the result carries `clamped_to` too, as the timer won't end when asked.
+reported, except where the device's timer runs in coarser steps than the request (whole seconds, say): there the result carries `clamped_to` too, as the timer won't end when asked.
 
 ## What a response looks like
 
@@ -85,9 +83,10 @@ raises or the entity is skipped.
 - **Timers.** `get_attributes` takes lights and switches. A target with an on/off timer running (from
   `turn_on_for`, `turn_off_for` or the device's own) carries `timer: {turns, ends_at, remaining_s}`: `turns`
   is `on` or `off`, the state the timer leaves it in; `ends_at` is UTC ISO 8601; `remaining_s` is seconds, to
-  one decimal. With no timer running the key is absent. The time left is always the device's: an integration
-  that can't read it reports no timer, and DeviceSide never tracks one itself.
-- **Auto-off and auto-on.** A Shelly target carries `auto_off` and `auto_on`: `{duration}` (seconds) while set,
+  one decimal. With no timer running the key is absent. The time left is always the device's, and DeviceSide never
+  tracks one itself: a device whose running timer can't be read is refused (`no_known_method`), never read as having
+  none.
+- **Auto-off and auto-on.** A target whose device has these settings carries `auto_off` and `auto_on`: `{duration}` (seconds) while set,
   `null` while clear. A key is absent when the setting couldn't be read, so absent never means clear.
 - **`merge_response`** turns that shape into a list of the entities' dicts with `entity_id` added to each, so
   a blueprint can loop without knowing the IDs. It requires every value to be a dict and raises if one already
@@ -120,8 +119,8 @@ raises or the entity is skipped.
   names the rest. So is every member core didn't reach through its own available entity (availability judged when
   the call is planned), whose class still counts in `capabilities`: one that is unavailable; one core resolves only
   through a stand-in, as a plug in a light group (which HA exposes as a switch, or a `switch_as_x` light wraps) or a
-  disabled member; and a device with more than one entity in the group's domain, as a Zigbee2MQTT group holds one
-  of its endpoints, which DeviceSide can't address on its own. The key is absent when no member is left. Like
+  disabled member; and a device with more than one entity in the group's domain, as when a group holds one of its
+  endpoints, which DeviceSide can't address on its own. The key is absent when no member is left. Like
   `capability`, the map also appears on an `unchanged` entry, where the call sent nothing: a reader crediting
   evidence credits only an entry whose status shows a send. A group that falls back has no entry, so no map: each
   member's own entry carries its `capability`.

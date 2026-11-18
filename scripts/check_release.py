@@ -14,7 +14,7 @@ branch still resolves after a squash merge that landed the transcript unchanged;
 nothing. Evidence stands while every segment of its transcript occurs, unchanged, in HEAD's (`segments_hold`): a test
 added, or a new call path, reopens nothing; a segment changed or removed reopens it, whatever code changed it (an
 integration's package or `core/`). A changed action's evidence must also hold every segment HEAD's transcript gained
-since the tag's (`Calls.gained`), so a run that never sent the changed call can't sign off its change; with no tag's
+since the tag's (`Calls.gained`), so a run from before the change can't sign it off; with no tag's
 transcript, standing is enough. An action is changed when HEAD's transcript of it doesn't hold every segment of the
 last release tag's (the latest `vX.Y.Z` that is an ancestor of HEAD), or the tag has none, or there is no tag; its last
 change is the latest commit touching its transcript. Each changed action needs a sign-off of its own: its rig records
