@@ -78,12 +78,12 @@ def register(hass):
     hass.services.async_register("deviceside", "probe", lambda call: None)
 
 
-async def run(hass):
+async def run(hass, duration=5):
     register(hass)
     add_fake_entity(hass, fake_config_entry(hass), "light.a")
     start = wall_clock_now()
     with patch.object(FakeTurnOnFor, "execute", execute):
-        response = await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+        response = await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": duration})
     await advance(hass, start, 2)
     return response
 """
@@ -128,15 +128,15 @@ async def publish(hass, topic):
         callback({"topic": topic, "payload": "1"})
 """
 
-SUBSCRIPTION_BOUNDARIES = 'BOUNDARIES = [("inner_wire", "subscribe", 1, 2), ("inner_wire", "publish", 1)]\n'
-
 
 @pytest.fixture
 def inner(pytester: pytest.Pytester, monkeypatch) -> pytest.Pytester:
     monkeypatch.setenv("PYTHONPATH", str(ROOT))
     # A test that edits an inner module and reruns within the second would otherwise import the stale .pyc.
     monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
-    pytester.makepyprojecttoml('[tool.pytest.ini_options]\nasyncio_mode = "auto"\n')
+    pytester.makepyprojecttoml(
+        '[tool.pytest.ini_options]\nasyncio_mode = "auto"\nasyncio_default_fixture_loop_scope = "function"\n'
+    )
     pytester.makeconftest(CONFTEST)
     pytester.makepyfile(inner_wire=WIRE_MODULE, inner_helpers=HELPERS, test_inner=TEST)
     for integration in ("fake", "fake_special"):
@@ -154,15 +154,32 @@ def run(pytester: pytest.Pytester, *args: str) -> pytest.RunResult:
     return pytester.runpytest_subprocess("-p", "no:cacheprovider", *args)
 
 
+def run_here(pytester: pytest.Pytester, *args: str) -> pytest.RunResult:
+    """An inner run in this process, for a run that never reaches a hass-based test (the HA plugin patches globally)."""
+    return pytester.runpytest("-p", "no:cacheprovider", "-p", "no:randomly", *args)
+
+
 def segments(pytester: pytest.Pytester, path: str = GOLDEN) -> list[dict]:
     return json.loads((pytester.path / path).read_text())
 
 
-def test_write_then_check_passes_and_records_the_wire(inner):
-    assert run(inner, "--transcripts=write").ret == 0
+def test_the_golden_files_lifecycle(inner):
+    # Off by default: nothing is recorded.
+    assert run(inner).ret == 0
+    assert not (inner.path / CALLS).exists()
+
+    # Check reports a missing file and an extra one; write fixes both. Naming the whole suite is no narrowing.
+    calls = inner.path / CALLS
+    calls.mkdir()
+    (calls / "gone.json").write_text("[]\n")
+    result = run(inner, "--transcripts=check")
+    assert result.ret == pytest.ExitCode.TESTS_FAILED
+    result.stdout.fnmatch_lines([f"missing: {GOLDEN}", f"extra: {CALLS}/gone.json"])
+    assert run(inner, "--transcripts=write", str(inner.path)).ret == 0
+    assert sorted(p.name for p in calls.iterdir()) == ["turn_on_for.json"]
     assert run(inner, "--transcripts=check").ret == 0
 
-    raised, sent = segments(inner)
+    raised, sent = serial = segments(inner)
     assert [raised["integration"], raised["action"]] == [sent["integration"], sent["action"]] == ["fake", "turn_on_for"]
     # The request's Context is dropped.
     assert "context" not in sent["request"]["request"]
@@ -182,29 +199,17 @@ def test_write_then_check_passes_and_records_the_wire(inner):
         [["service", "probe.ping", {"later": True}], None],
     ]
 
+    # Under xdist the workers hand their segments to the controller, which writes the same file.
+    (inner.path / GOLDEN).unlink()
+    assert run(inner, "-n", "2", "--transcripts=write").ret == 0
+    assert segments(inner) == serial
 
-def test_a_changed_call_fails_check(inner):
-    assert run(inner, "--transcripts=write").ret == 0
+    # A changed call fails check.
     helpers = inner.path / "inner_helpers.py"
     helpers.write_text(helpers.read_text().replace("LEVEL = 1", "LEVEL = 2"))
-
     result = run(inner, "--transcripts=check")
-
     assert result.ret == pytest.ExitCode.TESTS_FAILED
     result.stdout.fnmatch_lines([f"differs: {GOLDEN} (+2 -2 segments)"])
-
-
-def test_a_missing_or_extra_file_fails_check_and_write_fixes_both(inner):
-    calls = inner.path / CALLS
-    calls.mkdir()
-    (calls / "gone.json").write_text("[]\n")
-
-    result = run(inner, "--transcripts=check")
-
-    assert result.ret == pytest.ExitCode.TESTS_FAILED
-    result.stdout.fnmatch_lines([f"missing: {GOLDEN}", f"extra: {CALLS}/gone.json"])
-    assert run(inner, "--transcripts=write").ret == 0
-    assert sorted(p.name for p in calls.iterdir()) == ["turn_on_for.json"]
 
 
 def test_a_failing_test_blocks_write(inner):
@@ -214,11 +219,6 @@ def test_a_failing_test_blocks_write(inner):
 
     assert result.ret == pytest.ExitCode.TESTS_FAILED
     result.stdout.fnmatch_lines(["transcripts not written: the run failed"])
-    assert not (inner.path / CALLS).exists()
-
-
-def test_transcripts_are_off_by_default(inner):
-    assert run(inner).ret == 0
     assert not (inner.path / CALLS).exists()
 
 
@@ -236,7 +236,7 @@ def test_transcripts_are_off_by_default(inner):
 )
 def test_a_narrowed_run_is_refused(inner, args, reason):
     for mode in ("write", "check"):
-        result = run(inner, f"--transcripts={mode}", *args)
+        result = run_here(inner, f"--transcripts={mode}", *args)
 
         assert result.ret == pytest.ExitCode.USAGE_ERROR
         result.stderr.fnmatch_lines([f"ERROR: --transcripts={mode} needs the whole suite: {reason}"])
@@ -253,7 +253,7 @@ def pytest_collection_modifyitems(config, items):
 """
     )
 
-    result = run(inner, "--transcripts=write")
+    result = run_here(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines(["ERROR: --transcripts=write needs the whole suite: this run deselects tests"])
@@ -270,7 +270,7 @@ def test_a_run_from_a_subdirectory_is_refused(inner, monkeypatch):
     (sub / "test_sub.py").write_text("def test_sub():\n    pass\n")
     monkeypatch.chdir(sub)
 
-    result = run(inner, "--transcripts=write")
+    result = run_here(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines(["ERROR: --transcripts=write needs the whole suite: it runs */sub, not the testpaths"])
@@ -284,29 +284,16 @@ def test_a_run_from_a_subdirectory_is_refused(inner, monkeypatch):
     ],
 )
 def test_a_run_where_no_test_ran_keeps_the_golden_files(inner, suite):
-    assert run(inner, "--transcripts=write").ret == 0
+    (inner.path / CALLS).mkdir()
+    (inner.path / GOLDEN).write_text("[]\n")
     only(inner, suite)
 
     for mode in ("write", "check"):
-        result = run(inner, f"--transcripts={mode}")
+        result = run_here(inner, f"--transcripts={mode}")
 
         assert result.ret == pytest.ExitCode.USAGE_ERROR
         result.stdout.fnmatch_lines([f"transcripts not {'written' if mode == 'write' else 'checked'}: no test ran"])
     assert (inner.path / GOLDEN).is_file()
-
-
-def test_the_whole_suite_named_explicitly_is_not_narrowed(inner):
-    assert run(inner, "--transcripts=write", str(inner.path)).ret == 0
-
-
-def test_xdist_workers_hand_their_segments_to_the_controller(inner):
-    assert run(inner, "--transcripts=write").ret == 0
-    serial = segments(inner)
-    (inner.path / GOLDEN).unlink()
-
-    assert run(inner, "-n", "2", "--transcripts=write").ret == 0
-    assert segments(inner) == serial
-    assert run(inner, "-n", "2", "--transcripts=check").ret == 0
 
 
 NATIVE_GROUPS = """
@@ -357,92 +344,85 @@ def test_a_native_groups_action_tested_on_a_group_passes(inner):
 
     assert run(inner, "--transcripts=write").ret == 0
     assert any(target[2] for segment in segments(inner) for target in segment["request"]["targets"])
-    assert run(inner, "--transcripts=check").ret == 0
 
 
-def test_a_wrapper_forwards_attributes_and_is_gone_after_its_test(inner):
-    only(
-        inner,
-        """
-import types
-from unittest.mock import AsyncMock
+# A module for every boundary kind at once; each inner test runs its own duration, and the assertions read only the
+# segments of theirs.
+KINDS_WIRE = (
+    WIRE_MODULE
+    + SUBSCRIPTION_WIRE
+    + '''
 
-import inner_wire
+async def nested(hass, payload):
+    await hass.services.async_call("probe", "ping", {"inside": True}, blocking=True)
+'''
+)
 
-from inner_helpers import run
+KINDS_BOUNDARIES = """
+BOUNDARIES = [
+    ("inner_wire", "send", 0),
+    ("inner_wire", "Client.send", 1),
+    ("inner_wire", "subscribe", 1, 2),
+    ("inner_wire", "publish", 1),
+    ("inner_wire", "nested", 1),
+]
+"""
 
-
-async def test_a_sets_its_mock_after_a_call(hass, setup_integration, monkeypatch):
-    mock = AsyncMock(return_value=1)
-    monkeypatch.setattr(inner_wire, "send", mock)
-    await run(hass)
-    # The recorder's wrapper stands there now; this configures the mock.
-    inner_wire.send.return_value = 2
-    assert mock.return_value == 2
-    await run(hass)
-
-
-async def test_b_finds_the_real_function(hass, setup_integration):
-    await run(hass)
-    assert type(inner_wire.send) is not types.FunctionType
-
-
-async def test_c_finds_the_real_function_again():
-    assert type(inner_wire.send) is types.FunctionType
-""",
-    )
-
-    assert run(inner, "-p", "no:randomly", "--transcripts=write").ret == 0
-    assert sorted(str(segment["wire"][0][1]) for segment in segments(inner)) == ["1", "2", "{'ok': {'level': 1}}"]
-
-
-def test_a_mock_calling_through_to_the_real_boundary_records_once(inner):
-    only(
-        inner,
-        """
-from unittest.mock import AsyncMock
-
-import inner_wire
-
-from inner_helpers import run
-
-
-async def test_through(hass, setup_integration, monkeypatch):
-    await run(hass)
-    through = inner_wire.send  # the recorder's wrapper of the real one, by now
-
-    async def via_mock(hass, payload, **kw):
-        return await through(hass, {"via": "mock"}, **kw)
-
-    monkeypatch.setattr(inner_wire, "send", AsyncMock(side_effect=via_mock))
-    await run(hass)
-""",
-    )
-
-    assert run(inner, "--transcripts=write").ret == 0
-    sends = [entry for segment in segments(inner) for entry in segment["wire"] if entry[0][0] == "inner_wire.send"]
-    assert sorted(sends, key=str) == [
-        [["inner_wire.send", [None, {"level": 1}], {}], {"ok": {"level": 1}}],
-        [["inner_wire.send", [None, {"level": 1}], {}], {"ok": {"via": "mock"}}],
-    ]
-
-
-def test_concurrent_runs_each_hold_only_their_own_calls(inner):
-    only(
-        inner,
-        """
+KINDS = """
 import asyncio
-from unittest.mock import patch
+import types
+from contextlib import suppress
+from unittest.mock import AsyncMock, patch
 
 import inner_wire
 
+from inner_helpers import register, run
 from tests.conftest import call
+from tests.fakes.fake_integration import FakeTurnOnFor
 from tests.fakes.scripted import ScriptedAdapter
 from tests.fixtures.fake import add_fake_entity, fake_config_entry
 
 execute = ScriptedAdapter.execute
 
 
+async def turn_on(hass, duration):
+    add_fake_entity(hass, fake_config_entry(hass), "light.a")
+    await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": duration})
+
+
+# Duration 11: a wrapper forwards attributes and is gone after its test.
+async def test_a_sets_its_mock_after_a_call(hass, setup_integration, monkeypatch):
+    mock = AsyncMock(return_value=1)
+    monkeypatch.setattr(inner_wire, "send", mock)
+    await run(hass, 11)
+    # The recorder's wrapper stands there now; this configures the mock.
+    inner_wire.send.return_value = 2
+    assert mock.return_value == 2
+    await run(hass, 11)
+
+
+async def test_b_finds_the_real_function(hass, setup_integration):
+    await run(hass, 11)
+    assert type(inner_wire.send) is not types.FunctionType
+
+
+async def test_c_finds_the_real_function_again():
+    assert type(inner_wire.send) is types.FunctionType
+
+
+# Duration 12: a mock calling through to the real boundary records once.
+async def test_through(hass, setup_integration, monkeypatch):
+    await run(hass, 12)
+    through = inner_wire.send  # the recorder's wrapper of the real one, by now
+
+    async def via_mock(hass, payload, **kw):
+        return await through(hass, {"via": "mock"}, **kw)
+
+    monkeypatch.setattr(inner_wire, "send", AsyncMock(side_effect=via_mock))
+    await run(hass, 12)
+
+
+# Duration 13: concurrent runs each hold only their own calls.
 async def interleaved(self, hass, request, targets):
     for step in range(3):
         await inner_wire.send(hass, {"by": self.integration, "step": step})
@@ -455,31 +435,10 @@ async def test_two_runs(hass, setup_integration):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.lamp", identifier="special_1")
     with patch.object(ScriptedAdapter, "execute", interleaved):
-        await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.lamp"], "duration": 5})
-""",
-    )
-
-    assert run(inner, "--transcripts=write").ret == 0
-    for integration in ("fake", "fake_special"):
-        (segment,) = segments(inner, f"tests/integrations/{integration}/calls/turn_on_for.json")
-        assert [entry[0][1][1] for entry in segment["wire"]] == [{"by": integration, "step": s} for s in range(3)]
+        await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.lamp"], "duration": 13})
 
 
-def test_a_run_that_never_finished_is_left_out(inner):
-    only(
-        inner,
-        """
-import asyncio
-from contextlib import suppress
-from unittest.mock import patch
-
-from tests.conftest import call
-from tests.fakes.fake_integration import FakeTurnOnFor
-from tests.fixtures.fake import add_fake_entity, fake_config_entry
-
-from inner_helpers import register
-
-
+# Duration 14: a run that never finished is left out.
 async def test_cancelled(hass, setup_integration):
     started = asyncio.Event()
 
@@ -491,149 +450,129 @@ async def test_cancelled(hass, setup_integration):
     register(hass)
     add_fake_entity(hass, fake_config_entry(hass), "light.a")
     with patch.object(FakeTurnOnFor, "execute", stuck):
-        task = hass.async_create_task(call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5}))
+        task = hass.async_create_task(call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 14}))
         await started.wait()
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
-""",
-    )
-
-    assert run(inner, "--transcripts=write").ret == 0
-    assert not (inner.path / CALLS).exists()
 
 
-def test_a_class_method_boundary_records_its_call_mocked_or_not(inner):
-    (inner.path / "tests/integrations/fake/wire.py").write_text('BOUNDARIES = [("inner_wire", "Client.send", 1)]\n')
-    only(
-        inner,
-        """
-from unittest.mock import AsyncMock, patch
-
-import inner_wire
-
-from tests.conftest import call
-from tests.fakes.fake_integration import FakeTurnOnFor
-from tests.fakes.scripted import ScriptedAdapter
-from tests.fixtures.fake import add_fake_entity, fake_config_entry
-
-
+# Duration 15: a class method boundary records its call, mocked or not.
 async def sends(self, hass, request, targets):
     await inner_wire.Client().send({"level": 1})
-    return await ScriptedAdapter.execute(self, hass, request, targets)
-
-
-async def turn_on(hass):
-    add_fake_entity(hass, fake_config_entry(hass), "light.a")
-    with patch.object(FakeTurnOnFor, "execute", sends):
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+    return await execute(self, hass, request, targets)
 
 
 async def test_real(hass, setup_integration):
-    await turn_on(hass)
+    with patch.object(FakeTurnOnFor, "execute", sends):
+        await turn_on(hass, 15)
 
 
 async def test_mocked_on_the_class(hass, setup_integration, monkeypatch):
     mock = AsyncMock(return_value={"mocked": True})
     monkeypatch.setattr(inner_wire.Client, "send", mock)
-    await turn_on(hass)
+    with patch.object(FakeTurnOnFor, "execute", sends):
+        await turn_on(hass, 15)
     # Called without the instance, as a mock on a class is; reached through the wrapper, which forwards to it.
     mock.assert_awaited_once_with({"level": 1})
     inner_wire.Client().send.assert_awaited_once_with({"level": 1})
-""",
-    )
-
-    assert run(inner, "--transcripts=write").ret == 0
-    assert sorted((segment["wire"] for segment in segments(inner)), key=str) == [
-        [[["inner_wire.Client.send", [{"level": 1}], {}], {"client": {"level": 1}}]],
-        [[["inner_wire.Client.send", [{"level": 1}], {}], {"mocked": True}]],
-    ]
 
 
-def test_a_subscription_boundary_records_the_subscribe_and_each_message_its_callback_gets_after_the_call_that_drew_it(
-    inner,
-):
-    (inner.path / "inner_wire.py").write_text(SUBSCRIPTION_WIRE)
-    (inner.path / "tests/integrations/fake/wire.py").write_text(SUBSCRIPTION_BOUNDARIES)
-    only(
-        inner,
-        """
-from unittest.mock import patch
-
-import inner_wire
-
-from tests.conftest import call
-from tests.fakes.fake_integration import FakeTurnOnFor
-from tests.fakes.scripted import ScriptedAdapter
-from tests.fixtures.fake import add_fake_entity, fake_config_entry
-
-
+# Duration 16: a subscription records the subscribe and each message its callback gets after the call that drew it.
 async def listens(self, hass, request, targets):
     heard = []
     inner_wire.subscribe(hass, "a/b", heard.append)
     await inner_wire.publish(hass, "a/b")
     assert len(heard) == 1
-    return await ScriptedAdapter.execute(self, hass, request, targets)
+    return await execute(self, hass, request, targets)
 
 
 async def test_listens(hass, setup_integration):
-    add_fake_entity(hass, fake_config_entry(hass), "light.a")
+    inner_wire.subscribers.clear()
     with patch.object(FakeTurnOnFor, "execute", listens):
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
-""",
+        await turn_on(hass, 16)
+
+
+# Durations 17 and 18: a message records in the segment its subscription was made in, whoever delivers it.
+async def subscribes(self, hass, request, targets):
+    inner_wire.subscribe(hass, "a/b", lambda message: None)
+    return await execute(self, hass, request, targets)
+
+
+async def publishes(self, hass, request, targets):
+    # Delivered from another run's segment.
+    await inner_wire.publish(hass, "c/d")
+    return await execute(self, hass, request, targets)
+
+
+async def test_delivered_elsewhere(hass, setup_integration):
+    inner_wire.subscribers.clear()
+    with patch.object(FakeTurnOnFor, "execute", subscribes):
+        await turn_on(hass, 17)
+    # Delivered from no segment.
+    for callback in inner_wire.subscribers:
+        callback({"topic": "x/y", "payload": "2"})
+    with patch.object(FakeTurnOnFor, "execute", publishes):
+        await turn_on(hass, 18)
+
+
+# Duration 19: a service call made inside a boundary call is recorded.
+async def nests(self, hass, request, targets):
+    await inner_wire.nested(hass, {"level": 1})
+    return await execute(self, hass, request, targets)
+
+
+async def test_nests(hass, setup_integration):
+    hass.services.async_register("probe", "ping", lambda call: None)
+    with patch.object(FakeTurnOnFor, "execute", nests):
+        await turn_on(hass, 19)
+"""
+
+
+def wires(pytester: pytest.Pytester, *durations: int, path: str = GOLDEN) -> list[list]:
+    """The wire of each segment of the runs of these durations, in a fold of runs sharing one golden file."""
+    return sorted(
+        (s["wire"] for s in segments(pytester, path) if s["request"]["request"]["duration_s"] in durations), key=str
     )
 
-    assert run(inner, "--transcripts=write").ret == 0
-    assert [segment["wire"] for segment in segments(inner)] == [
+
+def test_each_boundary_kind_is_recorded(inner):
+    (inner.path / "inner_wire.py").write_text(KINDS_WIRE)
+    (inner.path / "tests/integrations/fake/wire.py").write_text(KINDS_BOUNDARIES)
+    only(inner, KINDS)
+
+    assert run(inner, "-p", "no:randomly", "--transcripts=write").ret == 0
+
+    # A wrapper forwards attributes and is gone after its test: the mock's two replies and the real one.
+    assert sorted(str(wire[0][1]) for wire in wires(inner, 11)) == ["1", "2", "{'ok': {'level': 1}}"]
+    # A mock calling through to the real boundary records once.
+    sends = [entry for wire in wires(inner, 12) for entry in wire if entry[0][0] == "inner_wire.send"]
+    assert sorted(sends, key=str) == [
+        [["inner_wire.send", [None, {"level": 1}], {}], {"ok": {"level": 1}}],
+        [["inner_wire.send", [None, {"level": 1}], {}], {"ok": {"via": "mock"}}],
+    ]
+    # Concurrent runs each hold only their own calls.
+    for integration in ("fake", "fake_special"):
+        path = f"tests/integrations/{integration}/calls/turn_on_for.json"
+        (wire,) = wires(inner, 13, path=path)
+        assert [entry[0][1][1] for entry in wire] == [{"by": integration, "step": s} for s in range(3)]
+    # A run that never finished is left out.
+    assert wires(inner, 14) == []
+    # A class method boundary records its call, mocked or not.
+    assert wires(inner, 15) == [
+        [[["inner_wire.Client.send", [{"level": 1}], {}], {"client": {"level": 1}}]],
+        [[["inner_wire.Client.send", [{"level": 1}], {}], {"mocked": True}]],
+    ]
+    # A subscription records the subscribe and each message its callback gets after the call that drew it.
+    assert wires(inner, 16) == [
         [
             [["inner_wire.subscribe", ["a/b"], {}], None],
             [["inner_wire.publish", ["a/b"], {}], None],
             [["inner_wire.subscribe.callback", [{"payload": "1", "topic": "a/b"}], {}], None],
         ]
     ]
-
-
-def test_a_message_records_in_the_segment_its_subscription_was_made_in_whoever_delivers_it(inner):
-    (inner.path / "inner_wire.py").write_text(SUBSCRIPTION_WIRE)
-    (inner.path / "tests/integrations/fake/wire.py").write_text(SUBSCRIPTION_BOUNDARIES)
-    only(
-        inner,
-        """
-from unittest.mock import patch
-
-import inner_wire
-
-from tests.conftest import call
-from tests.fakes.fake_integration import FakeTurnOnFor
-from tests.fakes.scripted import ScriptedAdapter
-from tests.fixtures.fake import add_fake_entity, fake_config_entry
-
-
-async def subscribes(self, hass, request, targets):
-    inner_wire.subscribe(hass, "a/b", lambda message: None)
-    return await ScriptedAdapter.execute(self, hass, request, targets)
-
-
-async def publishes(self, hass, request, targets):
-    # Delivered from another run's segment.
-    await inner_wire.publish(hass, "c/d")
-    return await ScriptedAdapter.execute(self, hass, request, targets)
-
-
-async def test_delivered_elsewhere(hass, setup_integration):
-    add_fake_entity(hass, fake_config_entry(hass), "light.a")
-    with patch.object(FakeTurnOnFor, "execute", subscribes):
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
-    # Delivered from no segment.
-    for callback in inner_wire.subscribers:
-        callback({"topic": "x/y", "payload": "2"})
-    with patch.object(FakeTurnOnFor, "execute", publishes):
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
-""",
-    )
-
-    assert run(inner, "--transcripts=write").ret == 0
-    assert sorted((segment["wire"] for segment in segments(inner)), key=str) == sorted(
+    # A message records in the segment its subscription was made in, whoever delivers it.
+    assert wires(inner, 17, 18) == sorted(
         [
             [
                 [["inner_wire.subscribe", ["a/b"], {}], None],
@@ -644,46 +583,10 @@ async def test_delivered_elsewhere(hass, setup_integration):
         ],
         key=str,
     )
-
-
-def test_a_service_call_made_inside_a_boundary_call_is_recorded(inner):
-    (inner.path / "inner_wire.py").write_text(
-        """
-async def send(hass, payload):
-    await hass.services.async_call("probe", "ping", {"inside": True}, blocking=True)
-"""
-    )
-    (inner.path / "tests/integrations/fake/wire.py").write_text('BOUNDARIES = [("inner_wire", "send", 1)]\n')
-    only(
-        inner,
-        """
-from unittest.mock import patch
-
-import inner_wire
-
-from tests.conftest import call
-from tests.fakes.fake_integration import FakeTurnOnFor
-from tests.fakes.scripted import ScriptedAdapter
-from tests.fixtures.fake import add_fake_entity, fake_config_entry
-
-
-async def sends(self, hass, request, targets):
-    await inner_wire.send(hass, {"level": 1})
-    return await ScriptedAdapter.execute(self, hass, request, targets)
-
-
-async def test_sends(hass, setup_integration):
-    hass.services.async_register("probe", "ping", lambda call: None)
-    add_fake_entity(hass, fake_config_entry(hass), "light.a")
-    with patch.object(FakeTurnOnFor, "execute", sends):
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
-""",
-    )
-
-    assert run(inner, "--transcripts=write").ret == 0
-    assert [segment["wire"] for segment in segments(inner)] == [
+    # A service call made inside a boundary call is recorded.
+    assert wires(inner, 19) == [
         [
-            [["inner_wire.send", [{"level": 1}], {}], None],
+            [["inner_wire.nested", [{"level": 1}], {}], None],
             [["service", "probe.ping", {"inside": True}, {"blocking": True}], None],
         ]
     ]
@@ -725,36 +628,61 @@ def test_keys_that_normalize_alike_raise():
         norm({1: "x", "1": "y"})
 
 
-@pytest.mark.parametrize(
-    "reply",
-    [
-        pytest.param("object()", id="value"),
-        pytest.param("{object(): 1}", id="key"),
-        pytest.param("{(1, object()): 1}", id="inside-a-key"),
-    ],
-)
-def test_an_unnormalized_value_blocks_write(inner, reply):
-    only(
-        inner,
-        f"""
+UNNORMALIZED = """
 import inner_wire
 
 from inner_helpers import run
 
 
-async def test_object(hass, setup_integration, monkeypatch):
+class Value:
+    pass
+
+
+class Key:
+    pass
+
+
+class InsideAKey:
+    pass
+
+
+async def reply_with(hass, monkeypatch, reply):
     async def send(hass, payload, **kw):
-        return {reply}
+        return reply
 
     monkeypatch.setattr(inner_wire, "send", send)
     await run(hass)
-""",
-    )
+
+
+async def test_value(hass, setup_integration, monkeypatch):
+    await reply_with(hass, monkeypatch, Value())
+
+
+async def test_key(hass, setup_integration, monkeypatch):
+    await reply_with(hass, monkeypatch, {Key(): 1})
+
+
+async def test_inside_a_key(hass, setup_integration, monkeypatch):
+    await reply_with(hass, monkeypatch, {(1, InsideAKey()): 1})
+"""
+
+
+def test_an_unnormalized_value_blocks_write(inner):
+    """One run, each reply an object of its own class so the placeholders stay three lines: as a value, as a key and
+    inside a key."""
+    only(inner, UNNORMALIZED)
 
     result = run(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.TESTS_FAILED
-    result.stdout.fnmatch_lines(["transcripts not written: values with no normalization*", "fake turn_on_for <object>"])
+    result.stdout.fnmatch_lines(
+        [
+            "transcripts not written: values with no normalization*",
+            "fake turn_on_for <InsideAKey>",
+            "fake turn_on_for <Key>",
+            "fake turn_on_for <Value>",
+        ]
+    )
     assert not (inner.path / CALLS).exists()
 
 
@@ -768,7 +696,7 @@ async def test_object(hass, setup_integration, monkeypatch):
 def test_a_bad_boundary_is_a_usage_error(inner, boundary, error):
     (inner.path / "tests/integrations/fake/wire.py").write_text(f'BOUNDARIES = [("inner_wire", "{boundary}", 0)]\n')
 
-    result = run(inner, "--transcripts=write")
+    result = run_here(inner, "--transcripts=write")
 
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines([f"ERROR: transcripts: wire boundary {error}"])

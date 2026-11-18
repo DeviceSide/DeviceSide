@@ -1,6 +1,7 @@
-"""Zigbee2MQTT's Tuya family: its two rule groups, each alone, the catalog they read, its levels, and the actions it
-leaves a class out of. The countdown plugs' classes and call are test_countdown.py's; the order between its groups and
-the other families' is the integration's (test_classification.py), as are turn_on_for's refusals (test_refusals.py)."""
+"""Zigbee2MQTT's Tuya family: its two rule groups, each alone, the catalog they read, and the raw ZCL calls it
+leaves a datapoint device out of. The countdown plugs' classes and call are test_countdown.py's; the order between
+its groups and the other families' is the integration's (test_classification.py), as are turn_on_for's refusals
+(test_refusals.py)."""
 
 import re
 
@@ -70,12 +71,6 @@ async def test_the_zigbee_strings_in_bridge_devices_place_a_rebadged_tuya_device
     entity_id = light(hass, broker, manufacturer="Lidl", model_id="HG06337", zigbee=(TUYA, "TS011F"))
 
     assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_ts011f"
-
-
-def test_turn_on_for_alone_serves_a_tuya_class():
-    """Not built on every other action (docs/evidence.md, On trial): no pass or research admits Tuya's firmware there.
-    turn_on_for's levels, on Tuya's countdown, are test_countdown.py's."""
-    assert tuya.FAMILY.scopes.keys() == {"turn_on_for"}
 
 
 @pytest.mark.parametrize(

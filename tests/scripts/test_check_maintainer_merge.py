@@ -5,6 +5,8 @@ import pytest
 from scripts import check_maintainer_merge as cmm
 from scripts import owners
 
+from .conftest import from_template
+
 PATHS = owners.package_paths()
 PKG = "custom_components/deviceside/integrations/acme/"
 INIT = owners.INIT.format(key="acme")
@@ -29,16 +31,20 @@ def family_init(integration="acme", name="tuya"):
     return owners.FAMILY_INIT.format(key=integration, family=name)
 
 
-@pytest.fixture
-def pr(repo, monkeypatch):
-    """`main` with an `acme` integration maintained by alice, and a `pr` branch off it."""
-    monkeypatch.chdir(repo.path)
+def build_pr(repo):
     repo.commit(INIT, init())
     repo.commit(SCOPE, "scope = AdapterScope(domains=experimental('light'))\n")
     repo.commit(owners.README, README)
     repo.commit(owners.COMPAT, COMPAT)
     repo.git("branch", "pr")
     repo.git("checkout", "-q", "pr")
+
+
+@pytest.fixture
+def pr(repo, monkeypatch, tmp_path_factory):
+    """`main` with an `acme` integration maintained by alice, and a `pr` branch off it."""
+    monkeypatch.chdir(repo.path)
+    from_template(repo, build_pr, tmp_path_factory)
     return repo
 
 
@@ -225,11 +231,7 @@ def test_main_reports_the_reason(pr, tmp_path, monkeypatch, capsys):
     assert capsys.readouterr().out == "Every file it changes is in `acme`, which @alice owns.\n"
 
 
-@pytest.fixture
-def families(repo, monkeypatch):
-    """`main` with `acme` (alice) and `zeta` (zoe), each with a `tuya` family (tina; on zeta, zed) beside a `hue` one
-    with no maintainers of its own, and the catalog file the `tuya` families share; then a `pr` branch."""
-    monkeypatch.chdir(repo.path)
+def build_families(repo):
     repo.commit(INIT, init())
     repo.commit(owners.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta").replace("Acme", "Zeta"))
     repo.commit(family_init(), family())
@@ -241,6 +243,14 @@ def families(repo, monkeypatch):
     repo.commit("tests/integrations/acme/test_classification.py", "DEVICES = ()\n")
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
     repo.git("checkout", "-q", "-b", "pr")
+
+
+@pytest.fixture
+def families(repo, monkeypatch, tmp_path_factory):
+    """`main` with `acme` (alice) and `zeta` (zoe), each with a `tuya` family (tina; on zeta, zed) beside a `hue` one
+    with no maintainers of its own, and the catalog file the `tuya` families share; then a `pr` branch."""
+    monkeypatch.chdir(repo.path)
+    from_template(repo, build_families, tmp_path_factory)
     return repo
 
 

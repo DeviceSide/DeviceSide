@@ -331,6 +331,7 @@ class Recorder:
             segment["result"] = norm(results)
             return results
 
+        @functools.wraps(async_call)  # so a nested install reads the original's signature
         async def recorded_call(self, domain, service, *args, **kwargs):
             if domain == DOMAIN or _SEGMENT.get() is None:
                 return await async_call(self, domain, service, *args, **kwargs)
