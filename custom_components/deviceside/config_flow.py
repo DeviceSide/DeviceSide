@@ -27,7 +27,7 @@ from .const import (
     Z2M_COLOR_MODES_DEFAULT,
 )
 from .core.errors import describe
-from .core.resolver import resolve
+from .core.resolver import SWITCH_AS_X, resolve
 from .core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,6 +67,8 @@ class IssueForm:
     title: str  # The prefilled title's prefix.
     multiple: bool = False  # Takes several devices, not one.
     domains: tuple[str, ...] | None = None  # The entity domains its picker offers; None, any.
+    known_only: bool = False  # Its picker offers only entities on an integration DeviceSide has.
+    device_only: bool = False  # Its picker offers only entities on a device, not helpers, automations or scenes.
 
 
 _VERSION_FIELDS = ("deviceside_version", "ha_version", "experimental_features")
@@ -80,23 +82,68 @@ ISSUE_FORMS = (
         "Device report",
         multiple=True,
         domains=(Platform.LIGHT, Platform.SWITCH),  # The only ones that run actions.
+        known_only=True,  # Another integration's switches are mostly its settings (Adaptive Lighting's).
     ),
     IssueForm(
-        "propose_device", "proposal_link", "propose_device_or_integration.yml", ("devices",), "Proposal", multiple=True
+        "propose_device",
+        "proposal_link",
+        "propose_device_or_integration.yml",
+        ("devices",),
+        "Proposal",
+        multiple=True,
+        # The domains that control a device. A sensor isn't one, and button, number, select, text and time entities
+        # are mostly a device's settings, with no category to filter them by.
+        domains=(
+            Platform.LIGHT,
+            Platform.SWITCH,
+            Platform.FAN,
+            Platform.COVER,
+            Platform.CLIMATE,
+            Platform.LOCK,
+            Platform.VALVE,
+            Platform.MEDIA_PLAYER,
+            Platform.SIREN,
+            Platform.HUMIDIFIER,
+            Platform.WATER_HEATER,
+            Platform.VACUUM,
+            Platform.LAWN_MOWER,
+            Platform.REMOTE,
+            Platform.ALARM_CONTROL_PANEL,
+            Platform.CAMERA,
+        ),
+        device_only=True,
     ),
 )
 _FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
 
 
-def _settings_entities(hass: HomeAssistant, form: IssueForm) -> list[str]:
-    """The entities a picker leaves out: a config or diagnostic one (a Sonos speaker's loudness switch, a plug's child
-    lock), which isn't the device, and a hidden one. The selector filters by domain but not by category."""
-    return [
-        entry.entity_id
-        for entry in er.async_get(hass).entities.values()
-        if (entry.entity_category is not None or entry.hidden_by is not None)
-        and (form.domains is None or entry.domain in form.domains)
-    ]
+def _picker(hass: HomeAssistant, form: IssueForm) -> EntitySelectorConfig:
+    """The form's entity picker, as an include list, which HA checks on submit (its integration filter only narrows
+    the dropdown). It leaves out a config or diagnostic entity (a Sonos speaker's loudness switch), which isn't the
+    device, and a hidden one; a known_only form's offers only the entities on an integration DeviceSide has and the
+    switch_as_x wrappers over them (all of them, without DeviceSide's runtime); a device_only form's only the entities
+    on a device."""
+    runtime = hass.data.get(DATA)
+    platforms = (
+        {info.ha_domain for info in runtime.registry.integrations.values()} | {SWITCH_AS_X}
+        if form.known_only and runtime is not None
+        else None
+    )
+    config = EntitySelectorConfig(
+        multiple=form.multiple,
+        include_entities=[
+            entry.entity_id
+            for entry in er.async_get(hass).entities.values()
+            if (form.domains is None or entry.domain in form.domains)
+            and entry.entity_category is None
+            and entry.hidden_by is None
+            and (platforms is None or entry.platform in platforms)
+            and (not form.device_only or entry.device_id is not None)
+        ],
+    )
+    if form.domains is not None:
+        config["domain"] = list(form.domains)
+    return config
 
 
 def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry | None) -> str:
@@ -245,11 +292,9 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
             picked = user_input[CONF_ENTITY_ID]
             self._issue_url = await issue_url(self.hass, form, picked if isinstance(picked, list) else [picked])
             return self._show_link(form.link_step, None)
-        config = EntitySelectorConfig(multiple=form.multiple, exclude_entities=_settings_entities(self.hass, form))
-        if form.domains is not None:
-            config["domain"] = list(form.domains)
         return self.async_show_form(
-            step_id=form.step, data_schema=vol.Schema({vol.Required(CONF_ENTITY_ID): EntitySelector(config)})
+            step_id=form.step,
+            data_schema=vol.Schema({vol.Required(CONF_ENTITY_ID): EntitySelector(_picker(self.hass, form))}),
         )
 
     def _show_link(self, step_id: str, user_input):
