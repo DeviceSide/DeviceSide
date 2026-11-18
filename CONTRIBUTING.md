@@ -4,14 +4,14 @@ Everybody is invited and welcome to contribute.
 
 ## How to help
 
-* **Add what's missing:** suggest or build a new integration, more devices on an existing one (e.g. a maker's bulbs on Zigbee2MQTT or ZHA, another Shelly dimmer), a new action or entity domain (e.g. fans, climate), or a call sequence you've got working reliably on your own devices. Suggest it at Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Propose a device or integration, or [build it yourself](#fast-track-build-it-yourself).
-* **Adopt an integration or family:** help us build faster by taking on an existing integration (e.g. Zigbee2MQTT, ZHA) or an integration's family (e.g. IKEA devices on ZHA). We'll gladly bring you on as a co-maintainer or primary maintainer, depending on your experience and how much time you want to commit. Open an issue to get in touch.
+* **Add what's missing:** propose a call sequence you've got working reliably on your own devices, including for new integrations. Share your working YAML at Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Propose a device or integration, or [build it yourself](#fast-track-build-it-yourself).
+* **Adopt an integration or device family:** help us build faster by taking on an existing integration (e.g. Zigbee2MQTT, ZHA) or an integration's family (e.g. IKEA devices on ZHA). We'll gladly bring you on as a co-maintainer or primary maintainer, depending on how involved you want to be. Open an issue to get in touch.
 * **Test your devices:** if you discover a device that works on DeviceSide and isn't on the [compatible list](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md) or doesn't work as expected, please tell us. Go to Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test result or bug.
 * **Report bugs:** for a bug that isn't about a device, open a [blank issue](https://github.com/DeviceSide/DeviceSide/issues/new).
 
 ## Development principles
 
-- **On-device features.** We unlock features that already exist on devices and make them easy to use in HA. We never simulate features with Home Assistant timers or loops.
+- **Actions run on devices.** We unlock features that exist on devices and are hard for users to access in HA. We don't simulate features with timers or loops in HA.
 - **Features with broad appeal.** We focus on features that users keep asking for in community forums and feature requests, and which are supportable by at least one of the [top-30 Home Assistant integration](https://analytics.home-assistant.io/integrations/). That keeps us focused on the most features that the most users care about, while keeping the codebase easy to maintain.
 - **New integrations and entity domains.** We welcome them when they meet the broad appeal criterion above, so the wider HA community benefits.
 - **Feature gaps.** We focus on features that are missing from or unintuitive in HA. We avoid replicating what Core and the automation editor already do well. We also fill design gaps between an upstream integration and HA, where a device can do something HA's entity doesn't expose (e.g. HS color on Zigbee2MQTT lights).
@@ -19,7 +19,7 @@ Everybody is invited and welcome to contribute.
 
 ## Fast track: build it yourself
 
-If you can build a change and test it on your own devices, open a pull request directly. You don't need an issue first. If you're unsure it fits, ask in the draft (step 3). If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md): it holds the repo's rules.
+If you want to build a change and test it on your own devices, open a pull request directly. You don't need an issue first. If you're unsure it fits, ask in the draft (step 3). If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md): it holds the repo's rules.
 
 Every code pull request follows these steps:
 
