@@ -64,6 +64,13 @@ def fake(hass):
     return fake_config_entry(hass)
 
 
+def native_group(hass, fake, entity_id, members):
+    """A native group of the fake integration, its members added as entities of their own first."""
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    return add_fake_native_group(hass, fake, entity_id, members)
+
+
 SWITCH_EXPERIMENTAL = AdapterScope(domains=verified("light") | experimental("switch"), duration=LIMITS)
 
 
@@ -282,9 +289,7 @@ async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass
     does a member the integration couldn't name: a list stands only for every member's known class. Each member's
     class leaves out only that member (plan Decision 66)."""
     members = ["switch.a", "switch.pending_a"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     allow_experimental(hass, False)
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
@@ -300,9 +305,7 @@ async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass
 async def test_a_group_with_a_member_the_integration_cant_name_reports_the_rest(hass, fake, reset_script):
     """Run whole with Experimental features on, the unnamed member voids the group's list and only its own entry."""
     members = ["switch.a", "switch.unknown", "light.e"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     allow_experimental(hass)
 
     with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, capabilities=verified("A", "E"))):
@@ -342,9 +345,7 @@ async def test_a_group_leaves_an_unavailable_member_out_of_its_member_map(hass, 
 async def test_a_group_leaves_a_member_it_cant_address_alone_out_of_its_member_map(hass, fake, reset_script):
     """An integration that lists a member by an entity the group's call may not have reached (Target.addressable
     false: a Z2M device with several lights) keeps its class in the group's list and out of the map."""
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_entity(hass, fake, "light.e")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "light.e"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "light.e"])
     registry = get_runtime(hass).registry
     info = registry.integrations["fake"]
 
@@ -370,8 +371,7 @@ async def test_a_group_leaves_a_member_it_cant_address_alone_out_of_its_member_m
 
 @pytest.mark.usefixtures("classed", "harmless")
 async def test_a_group_whose_classifier_raised_reports_no_member_classes(hass, fake, reset_script):
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a"])
     registry = get_runtime(hass).registry
 
     def fail(hass, target):
@@ -387,8 +387,7 @@ async def test_a_group_whose_classifier_raised_reports_no_member_classes(hass, f
 
 
 async def test_a_group_on_an_integration_that_names_no_classes_reports_none(hass, fake, reset_script):
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a"])
 
     response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
@@ -430,9 +429,7 @@ async def test_a_group_with_a_member_a_harmful_not_built_entry_names_falls_back(
     """Plan Decisions 8 and 70: the not built yet member is skipped with its reason, and the rest sent, never the
     group whole, which would reach it."""
     members = ["switch.a", "switch.c", "switch.e"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     allow_experimental(hass, on)
 
     with patch.object(FakeTurnOffFor, "scope", replace(HARMED_NOT_BUILT, capabilities=verified("A", "E"))):
@@ -453,9 +450,7 @@ async def test_a_group_with_a_member_not_yet_placed_falls_back_where_the_call_ha
 ):
     """Only that member is refused; the group isn't sent whole, which would reach it."""
     members = ["switch.a", "switch.pending_d", "switch.e"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     allow_experimental(hass, on)
     scope = replace(HARMED, capabilities=verified("A", "E"))
 
@@ -476,9 +471,7 @@ async def test_a_group_with_a_placed_and_an_unplaced_member_of_one_class_falls_b
     """The two members' classes are equal, Unplaced("A") == "A": a set of them would keep one and might drop the
     flag, so the group would run whole and reach the unplaced member. The dispatcher keeps both (Classes)."""
     members = ["switch.a", "switch.pending_a"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     allow_experimental(hass)
 
     with patch.object(FakeTurnOffFor, "scope", HARMED):
@@ -491,9 +484,7 @@ async def test_a_group_with_a_placed_and_an_unplaced_member_of_one_class_falls_b
 
 @pytest.mark.usefixtures("classed")
 async def test_a_group_whose_members_none_of_them_placed_is_refused_as_class_unknown(hass, fake, reset_script):
-    for member in ("switch.pending_a", "switch.pending_e"):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.pending_a", "switch.pending_e"])
+    native_group(hass, fake, "switch.fake_group", ["switch.pending_a", "switch.pending_e"])
     allow_experimental(hass)
 
     with patch.object(FakeTurnOffFor, "scope", HARMED), pytest.raises(TargetNotSupported) as raised:
@@ -512,8 +503,7 @@ async def test_a_group_of_unknown_class_is_refused_where_the_call_harms_a_class(
 ):
     """Its membership unknown (expand_group raised, or answered None), or every member's class: refused with
     Experimental features on, where elsewhere it would run whole."""
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a"])
     registry = get_runtime(hass).registry
 
     def fail(hass, target):
@@ -551,9 +541,7 @@ async def test_an_adapters_own_refusal_and_nothing_to_do_come_before_the_class(h
 @pytest.mark.usefixtures("classed")
 async def test_a_native_group_takes_its_members_classes(hass, fake, reset_script):
     members = ["switch.e", "switch.a", "light.a"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     allow_experimental(hass, False)
     scope = replace(CLASSED, capabilities=verified("A", "E") | experimental("B"))
 
@@ -574,9 +562,7 @@ async def test_a_native_group_takes_its_members_classes(hass, fake, reset_script
 @pytest.mark.usefixtures("classed")
 async def test_a_native_group_of_one_class_names_it_once_and_each_member_s(hass, fake, reset_script):
     members = ["switch.a", "light.a"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
@@ -624,9 +610,7 @@ async def test_a_native_group_left_nothing_to_do_names_its_members_classes(hass,
 async def test_a_native_group_with_a_flagged_member_falls_back_while_experimental_is_off(
     hass, fake, reset_script, caplog, flagged
 ):
-    for member in ("switch.a", flagged):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", flagged])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", flagged])
     allow_experimental(hass, False)
     data = {"entity_id": "switch.fake_group", "duration": 5}
 
@@ -645,9 +629,7 @@ async def test_a_native_group_with_a_flagged_member_falls_back_while_experimenta
 
 @pytest.mark.usefixtures("classed")
 async def test_a_flagged_member_named_too_raises(hass, fake, reset_script):
-    for member in ("switch.a", "switch.b"):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
     allow_experimental(hass, False)
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
@@ -661,9 +643,7 @@ async def test_a_flagged_member_named_too_raises(hass, fake, reset_script):
 async def test_a_native_group_with_a_refused_member_falls_back_to_its_members(
     hass, fake, reset_script, caplog, bad, reason
 ):
-    for member in ("switch.a", "switch.e", bad):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", bad, "switch.e"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", bad, "switch.e"])
     scope = replace(CLASSED, capabilities=verified("A", "E"))
 
     with patch.object(FakeTurnOffFor, "scope", scope):
@@ -712,9 +692,7 @@ async def test_a_group_whose_member_is_already_a_target_is_answered_by_it(hass, 
 async def test_a_group_whose_members_all_fail_is_refused_with_its_reason(
     hass, fake, reset_script, caplog, members, reason
 ):
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     area_id = in_area(hass, "Den", "switch.fake_group")
     allow_experimental(hass, False)
 
@@ -815,8 +793,7 @@ async def test_a_fallen_group_whose_member_has_nothing_to_do_is_answered_by_it(h
 
 
 async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported(hass, fake, reset_script, caplog):
-    add_fake_entity(hass, fake, "light.a")
-    add_fake_native_group(hass, fake, "light.fake_group", ["light.a"])
+    native_group(hass, fake, "light.fake_group", ["light.a"])
     registry = get_runtime(hass).registry
 
     def fail(hass, target):
@@ -834,8 +811,7 @@ async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported
 
 async def test_an_expand_group_that_can_t_list_the_group_leaves_it_not_supported(hass, fake, reset_script):
     """None is its answer for membership unknowable now (Zigbee2MQTT's, before bridge/groups arrives)."""
-    add_fake_entity(hass, fake, "light.a")
-    add_fake_native_group(hass, fake, "light.fake_group", ["light.a"])
+    native_group(hass, fake, "light.fake_group", ["light.a"])
     registry = get_runtime(hass).registry
     registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
 
@@ -875,8 +851,7 @@ async def test_an_empty_native_group_is_skipped_silently(hass, fake, reset_scrip
 @pytest.mark.usefixtures("classed", "harmless")
 @pytest.mark.parametrize("broken", ["capability", "expand_group"])
 async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fake, reset_script, caplog, broken):
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a"])
     registry = get_runtime(hass).registry
 
     def fail(hass, target):
@@ -904,8 +879,7 @@ async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fa
 
 @pytest.mark.usefixtures("classed", "harmless")
 async def test_an_expand_group_answering_none_gates_a_classed_group(hass, fake, reset_script):
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a"])
     registry = get_runtime(hass).registry
     registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
     allow_experimental(hass, False)
@@ -937,9 +911,7 @@ FALLS_BACK = "turn_off_for: switch.fake_group falls back to its members"
 @pytest.mark.usefixtures("classed")
 async def test_a_group_flagged_by_more_than_its_classes_does_not_fall_back(hass, fake, reset_script, caplog):
     caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
-    for member in ("switch.a", "switch.b"):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
     allow_experimental(hass, False)
 
     with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, domains=experimental("switch"))):
@@ -989,9 +961,7 @@ async def test_two_groups_sharing_a_member_send_it_once(hass, fake, reset_script
 
 @pytest.mark.usefixtures("classed")
 async def test_a_group_with_refused_and_experimental_members_falls_back_with_experimental_on(hass, fake, reset_script):
-    for member in ("switch.a", "switch.b", "switch.c"):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b", "switch.c"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b", "switch.c"])
     allow_experimental(hass)
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
@@ -1292,8 +1262,7 @@ async def test_ha_groups_expand_for_light_and_switch_and_an_empty_one_is_left_ou
 
 
 async def test_native_group_passes_through_when_adapter_addresses_groups(hass, fake, reset_script):
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a"])
 
     response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
@@ -1304,9 +1273,7 @@ async def test_native_group_passes_through_when_adapter_addresses_groups(hass, f
 async def test_native_group_expands_when_adapter_cannot_address_it_and_an_empty_one_is_left_out(
     hass, fake, reset_script
 ):
-    add_fake_entity(hass, fake, "light.a")
-    add_fake_entity(hass, fake, "light.b")
-    add_fake_native_group(hass, fake, "light.fake_group", ["light.a", "light.b"])
+    native_group(hass, fake, "light.fake_group", ["light.a", "light.b"])
     add_fake_native_group(hass, fake, "light.empty_group", [])
 
     data = {"entity_id": ["light.fake_group", "light.empty_group", "light.a"], "duration": 5}
@@ -1556,9 +1523,7 @@ async def test_an_execute_busy_outside_gather_past_the_backstop_times_out_every_
 async def test_missing_stray_and_untargeted_results_are_reconciled(hass, fake):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.b")
-    add_fake_entity(hass, fake, "switch.a")
-    add_fake_entity(hass, fake, "switch.b")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
 
     async def execute_lights(self, hass, request, targets):
         return [self.result(targets[0], Status.SENT), self.result(targets[0], Status.REJECTED)] + [
@@ -1767,9 +1732,7 @@ async def test_classes_share_a_run_only_on_one_own_call_object(hass, fake, reset
 async def test_a_group_with_a_member_that_takes_a_call_of_its_own_falls_back(hass, fake, reset_script, caplog):
     """The group's call isn't the member's, so each member gets its own, with Experimental features on or off."""
     members = ["switch.a", "switch.e"]
-    for member in members:
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    native_group(hass, fake, "switch.fake_group", members)
     caplog.set_level(logging.DEBUG, logger=DISPATCHER)
 
     with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
@@ -1799,9 +1762,7 @@ async def test_a_named_group_none_of_whose_members_runs_raises_own_call(hass, fa
 @pytest.mark.usefixtures("classed")
 async def test_a_named_own_call_group_whose_members_are_all_gated_raises_experimental_off(hass, fake, reset_script):
     """The members' reason, which says how to let the call through, not own_call (#440's review, M2)."""
-    for member in ("switch.e", "light.e"):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.e", "light.e"])
+    native_group(hass, fake, "switch.fake_group", ["switch.e", "light.e"])
     allow_experimental(hass, False)
     scope = replace(OWN_CALL, capabilities=verified("A") | experimental("E"))
 
@@ -1815,9 +1776,7 @@ async def test_a_named_own_call_group_whose_members_are_all_gated_raises_experim
 @pytest.mark.usefixtures("classed")
 async def test_experimental_off_wins_over_a_member_skipped_earlier_for_another_reason(hass, fake, reset_script):
     """The first member is refused by supports() and planned first; the gated one's reason still names the group."""
-    for member in ("switch.a", "switch.e"):
-        add_fake_entity(hass, fake, member)
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.e"])
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.e"])
     allow_experimental(hass, False)
     scope = replace(OWN_CALL, capabilities=verified("A") | experimental("E"))
     original = FakeTurnOffFor.supports
