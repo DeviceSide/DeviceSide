@@ -1,14 +1,14 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "zha",
   "action": "raise_brightness",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "687d369d"
+    "commit": "e21e0e52"
   },
-  "package": "58496e69e867",
+  "calls": "d2ce550247eba2b56f47acfac267cd2861b460c5",
   "home_assistant": "2026.10.4",
   "tests": [
     {

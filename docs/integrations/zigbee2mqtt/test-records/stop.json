@@ -1,14 +1,14 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "zigbee2mqtt",
   "action": "stop",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "a27779ef"
+    "commit": "c05e6168"
   },
-  "package": "c29127046ee7",
+  "calls": "ac1e9a1a62eb2cf4697956a49c19784b34250a19",
   "home_assistant": "2026.10.4",
   "tests": [
     {

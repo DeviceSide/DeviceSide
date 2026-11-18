@@ -3,12 +3,12 @@
   "integration": "matter",
   "action": "get_attributes",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "323e24d5"
+    "commit": "57d7cf4b"
   },
-  "calls": "2ba1dfba38abca02b7710bf9acaa33ab2c0ba9e9",
+  "calls": "31fa5326cdaeb630b9b5fac4f451bfbb406fbdb8",
   "home_assistant": "2026.10.4",
   "tests": [
     {
