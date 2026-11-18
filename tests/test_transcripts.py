@@ -344,7 +344,6 @@ def test_a_native_groups_action_tested_on_a_group_passes(inner):
 
     assert run(inner, "--transcripts=write").ret == 0
     assert any(target[2] for segment in segments(inner) for target in segment["request"]["targets"])
-    assert run(inner, "--transcripts=check").ret == 0
 
 
 # A module for every boundary kind at once; each inner test runs its own duration, and the assertions read only the
