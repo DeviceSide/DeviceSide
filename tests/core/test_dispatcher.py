@@ -72,6 +72,17 @@ def native_group(hass, fake, entity_id, members):
     return add_fake_native_group(hass, fake, entity_id, members)
 
 
+def fake_info(hass, **changes):
+    """The fake integration's info with changes, swapped into the loaded registry for the test."""
+    registry = get_runtime(hass).registry
+    registry.integrations["fake"] = replace(registry.integrations["fake"], **changes)
+
+
+def _raise(hass, target):
+    """An integration hook (capability, expand_group) that is buggy."""
+    raise RuntimeError("bug")
+
+
 SWITCH_EXPERIMENTAL = AdapterScope(domains=verified("light") | experimental("switch"), duration=LIMITS)
 
 
@@ -165,7 +176,7 @@ def classed(hass, setup_integration):
     the loaded registry for the test."""
     registry = get_runtime(hass).registry
     info = registry.integrations["fake"]
-    registry.integrations["fake"] = replace(info, capability=by_name, classes=dict.fromkeys("ABCDE", ANYWHERE))
+    fake_info(hass, capability=by_name, classes=dict.fromkeys("ABCDE", ANYWHERE))
     yield
     registry.integrations["fake"] = info
 
@@ -330,15 +341,14 @@ async def test_a_group_leaves_a_member_it_cant_address_alone_out_of_its_member_m
     """An integration that lists a member by an entity the group's call may not have reached (Target.addressable
     false: a Z2M device with several lights) keeps its class in the group's list and out of the map."""
     native_group(hass, fake, "switch.fake_group", ["switch.a", "light.e"])
-    registry = get_runtime(hass).registry
-    info = registry.integrations["fake"]
+    info = get_runtime(hass).registry.integrations["fake"]
 
     def expand(hass, target):
         return [
             replace(member, addressable=member.entity_id != "light.e") for member in info.expand_group(hass, target)
         ]
 
-    registry.integrations["fake"] = replace(info, expand_group=expand)
+    fake_info(hass, expand_group=expand)
 
     with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, capabilities=verified("A", "E"))):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
@@ -351,12 +361,8 @@ async def test_a_group_leaves_a_member_it_cant_address_alone_out_of_its_member_m
 @pytest.mark.usefixtures("classed", "harmless")
 async def test_a_group_whose_classifier_raised_reports_no_member_classes(hass, fake, reset_script):
     native_group(hass, fake, "switch.fake_group", ["switch.a"])
-    registry = get_runtime(hass).registry
 
-    def fail(hass, target):
-        raise RuntimeError("classifier bug")
-
-    registry.integrations["fake"] = replace(registry.integrations["fake"], capability=fail)
+    fake_info(hass, capability=_raise)
     allow_experimental(hass)
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
@@ -483,15 +489,11 @@ async def test_a_group_of_unknown_class_is_refused_where_the_call_harms_a_class(
     """Its membership unknown (expand_group raised, or answered None), or every member's class: refused with
     Experimental features on, where elsewhere it would run whole."""
     native_group(hass, fake, "switch.fake_group", ["switch.a"])
-    registry = get_runtime(hass).registry
-
-    def fail(hass, target):
-        raise RuntimeError("classifier bug")
 
     if broken == "unknown":
-        registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
+        fake_info(hass, expand_group=lambda hass, target: None)
     else:
-        registry.integrations["fake"] = replace(registry.integrations["fake"], **{broken: fail})
+        fake_info(hass, **{broken: _raise})
     allow_experimental(hass)
     data = {"entity_id": "switch.fake_group", "duration": 5}
 
@@ -764,12 +766,8 @@ async def test_a_fallen_group_whose_member_has_nothing_to_do_is_answered_by_it(h
 
 async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported(hass, fake, reset_script, caplog):
     native_group(hass, fake, "light.fake_group", ["light.a"])
-    registry = get_runtime(hass).registry
 
-    def fail(hass, target):
-        raise RuntimeError("listing bug")
-
-    registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=fail)
+    fake_info(hass, expand_group=_raise)
     data = {"entity_id": "light.fake_group", "duration": 5}
 
     assert await refusal(hass, "turn_on_for", data) == "group_not_supported"
@@ -782,8 +780,7 @@ async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported
 async def test_an_expand_group_that_can_t_list_the_group_leaves_it_not_supported(hass, fake, reset_script):
     """None is its answer for membership unknowable now (Zigbee2MQTT's, before bridge/groups arrives)."""
     native_group(hass, fake, "light.fake_group", ["light.a"])
-    registry = get_runtime(hass).registry
-    registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
+    fake_info(hass, expand_group=lambda hass, target: None)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5}) == "group_not_supported"
     assert reset_script.calls == []
@@ -822,12 +819,8 @@ async def test_an_empty_native_group_is_skipped_silently(hass, fake, reset_scrip
 @pytest.mark.parametrize("broken", ["capability", "expand_group"])
 async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fake, reset_script, caplog, broken):
     native_group(hass, fake, "switch.fake_group", ["switch.a"])
-    registry = get_runtime(hass).registry
 
-    def fail(hass, target):
-        raise RuntimeError("classifier bug")
-
-    registry.integrations["fake"] = replace(registry.integrations["fake"], **{broken: fail})
+    fake_info(hass, **{broken: _raise})
     allow_experimental(hass, False)
     data = {"entity_id": "switch.fake_group", "duration": 5}
 
@@ -850,8 +843,7 @@ async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fa
 @pytest.mark.usefixtures("classed", "harmless")
 async def test_an_expand_group_answering_none_gates_a_classed_group(hass, fake, reset_script):
     native_group(hass, fake, "switch.fake_group", ["switch.a"])
-    registry = get_runtime(hass).registry
-    registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
+    fake_info(hass, expand_group=lambda hass, target: None)
     allow_experimental(hass, False)
     data = {"entity_id": "switch.fake_group", "duration": 5}
 
@@ -942,8 +934,7 @@ async def test_a_group_with_refused_and_experimental_members_falls_back_with_exp
 @pytest.mark.usefixtures("classed", "harmless")
 async def test_a_native_group_whose_members_cant_be_listed_is_gated_and_names_no_class(hass, fake, reset_script):
     add_fake_native_group(hass, fake, "switch.fake_group", [])
-    registry = get_runtime(hass).registry
-    registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=None)
+    fake_info(hass, expand_group=None)
     allow_experimental(hass, False)
     data = {"entity_id": "switch.fake_group", "duration": 5}
 
