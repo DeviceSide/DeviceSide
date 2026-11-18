@@ -160,7 +160,7 @@ OUTCOMES = (
 # or 🟡 (docs/evidence.md, The experimental flag). The number is directional: the failure it prevents is the earlier
 # card list of more than half untried classes, which read as a claim that DeviceSide was ready for them.
 EXPERIMENTAL_SHARE_MAX = 0.25
-TRIAL = "🔍 on trial"
+TRIAL = f"{next(icon for key, icon, _ in OUTCOMES if key == 'experimental')} on trial"
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.EXPERIMENTAL: "experimental"}
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
@@ -944,9 +944,10 @@ class Line:
 
 
 def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> tuple[list[Line], str | None]:
-    """Two or more top-level lines that are on trial (`Line.on_trial`) leave `lines` for one folded line, in their
-    order: "🔍 on trial: [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside
-    it after " · ". A variants parent's children, and a single such line, stay where they are."""
+    """Two or more top-level lines that are on trial (`Line.on_trial`) leave `lines` for one folded line:
+    "🔍 on trial: [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside it
+    after " · ", and a group sits where its last line does, so one holding an "other brands" line comes last.
+    A variants parent's children, and a single such line, stay where they are."""
     trial = [line for line in lines if line.on_trial() and not line.variant]
     if len(trial) < 2:
         return lines, None
@@ -954,8 +955,11 @@ def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> 
     groups: dict[Shape, list[str]] = {}
     for line in trial:
         groups.setdefault(line.shape, []).append(line.name(card, key, data, rig))
+    # A group sits where its last line does, so a group with an "other brands" line comes last, as on the card.
+    last = {found: max(i for i, line in enumerate(lines) if line.shape == found and line in trial) for found in groups}
     parts = []
-    for found, names in groups.items():
+    for found in sorted(groups, key=last.get):
+        names = groups[found]
         inside = " · ".join(
             ", ".join(labels) if status == "experimental" else f"{icons[status]} {', '.join(labels)}"
             for status, labels in found

@@ -1441,6 +1441,21 @@ def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root)
     )
 
 
+def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_last(root):
+    """Lines in card order: acme's CCT (smooth dimming), Beta's Light (timer, smooth dimming), other brands (smooth
+    dimming). The smooth-dimming group holds the first and last, so it follows the group of the middle line."""
+    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("CCT", "Light", "other")))
+    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=experimental("Light")))
+    registry = brand_registry(dimming, timer)
+    capabilities = copy.deepcopy(DATA["capabilities"])
+    capabilities["zha"]["other"] = {"phrase": "other brands", "section": "Lights"}
+    card = gc.card("zha", registry, [dimming, timer], data(registry, capabilities=capabilities))
+    assert card.lines[-1] == (
+        f"🔍 on trial: [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming);"
+        f" [CCT controllers]({URL}#dimmers), [other brands]({URL}#lights) (smooth dimming)"
+    )
+
+
 def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
     broken = {"CCT": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     off = adapter("zha", "turn_off_for", AdapterScope(capabilities=experimental("RGBCCT"), no_known_method=broken))
@@ -1498,7 +1513,17 @@ def test_the_cap_fails_over_a_quarter_and_names_the_share_and_the_lines():
         gc.check_share(share(100, 26))
 
 
-def test_the_cap_counts_every_card_together_and_runs_in_a_plain_run_and_in_check(root, monkeypatch):
+def test_the_cap_counts_every_card_together():
+    """A card of nothing but Experimental lines passes beside a large tried one: the share is over all the cards."""
+    tried, trial = gc.Card("a", total=96), gc.Card("b", total=4, trial=["🔍 x"] * 4)
+    with pytest.raises(SystemExit, match=r"4 of 4 card lines"):
+        gc.check_share([trial])
+    gc.check_share([tried, trial])  # 4 of 100
+    with pytest.raises(SystemExit, match=r"30 of 100 card lines"):
+        gc.check_share([gc.Card("a", total=50, trial=["🔍 x"] * 15), gc.Card("b", total=50, trial=["🔍 x"] * 15)])
+
+
+def test_the_cap_runs_in_a_plain_run_and_in_check(root, monkeypatch):
     registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=experimental("Switch"))))
     run = write_files(root, registry, monkeypatch)
     for argv in ([], ["--check"]):
