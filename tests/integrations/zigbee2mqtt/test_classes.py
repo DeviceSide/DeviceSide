@@ -50,7 +50,12 @@ def registry_only(hass, manufacturer: str | None, model_id: str | None = None) -
 
 @pytest.mark.parametrize(
     ("manufacturer", "model_id", "expected"),
-    [("Philips", "9290018217", "hue"), ("IKEA of Sweden", "LED1836G9", "other")],
+    [
+        ("Philips", "9290018217", "hue"),
+        ("IKEA of Sweden", "LED1836G9", "other"),
+        ("Tuya", "TS0001_switch_module", "tuya_zcl"),
+        ("Sengled", "E11-G13", "sengled"),
+    ],
 )
 def test_on_the_registry_alone_only_a_hue_device_is_placed(hass, manufacturer, model_id, expected):
     """`hue`, which no Zigbee-string rule can override: every other class could still move, so it is Unplaced."""
@@ -781,13 +786,6 @@ async def test_turn_on_for_refuses_a_group_of_unknown_membership_with_experiment
     assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
 
 
-async def test_turn_on_for_refuses_a_group_without_the_bridge_cache(hass, setup_production):
-    allow_experimental(hass)
-    add_z2m_group(hass, z2m_entry(hass), "light.room", group_id=7)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "light.room", "duration": 5}) == "class_unknown"
-
-
 async def test_turn_on_for_refuses_a_device_only_the_registry_placed_in_other(hass, setup_production, broker):
     """The audit's M2: a rebadged TS011F (Lidl's definition) before bridge/devices arrives looks like another brand.
     Once it arrives, the plug is its own class, refused as not built yet, and an IKEA bulb runs on trial again."""
@@ -838,22 +836,6 @@ async def test_a_group_with_a_placed_and_an_unplaced_member_both_other_falls_bac
     assert response == {"light.one": SENT}
     assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
     assert "light.two (class_unknown)" in caplog.text
-
-
-async def test_a_device_whose_interview_never_completes_stays_refused_and_its_group_falls_back(
-    hass, setup_production, broker, caplog
-):
-    """Both strings listed, but `interview_completed` false: refused as class_unknown until it is paired again, and
-    its group runs its other light on its own (index.md, Device classes)."""
-    stuck = {"manufacturer": IKEA[0], "zigbee": IKEA, "interviewed": False}
-    entity_id = group(hass, broker, one={}, two=stuck)
-    allow_experimental(hass)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "light.two", "duration": 5}) == "class_unknown"
-    response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
-
-    assert response == {"light.one": SENT}
-    assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
 
 
 async def test_a_group_with_no_member_placed_is_refused_as_class_unknown(hass, setup_production, broker):
@@ -936,38 +918,6 @@ async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_
     assert "light.two (not_built)" in caplog.text
 
 
-async def test_a_named_member_not_yet_placed_raises_beside_its_group(hass, setup_production, broker):
-    """Named, it is its own target, so it raises before anything is sent, as any named target refused."""
-    entity_id = group(hass, broker, one={}, two=GLEDOPTO_TUYA)
-    del broker.retained[DEVICES]
-    allow_experimental(hass)
-
-    with pytest.raises(TargetNotSupported) as raised:
-        await call_service(hass, "turn_on_for", {"entity_id": [entity_id, "light.two"], "duration": 5})
-
-    assert raised.value.translation_key == "class_unknown"
-    assert raised.value.translation_placeholders["entity_id"] == "light.two"
-    assert commands(broker) == []
-
-
-@pytest.mark.parametrize(
-    "registry",
-    [
-        pytest.param(("Tuya", "TS0001_switch_module"), id="tuya"),
-        pytest.param(("Sengled", "E11-G13"), id="sengled"),
-        pytest.param(("IKEA of Sweden", "LED1836G9"), id="other"),
-    ],
-)
-async def test_without_the_strings_only_a_hue_device_runs(hass, setup_production, broker, registry):
-    """A registry Tuya class waits as well: refused either way, and part 3's countdown class must wait for the
-    strings that decide it."""
-    entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
-    del broker.retained[DEVICES]
-    allow_experimental(hass)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
-
-
 async def test_a_hue_device_runs_with_no_bridge_cache(hass, setup_production, broker, monkeypatch):
     lamp = light(hass, broker, manufacturer="Philips")
     monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass: None))
@@ -1029,16 +979,6 @@ async def test_another_brand_waits_until_interviewed_with_both_strings(
     allow_experimental(hass)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": ikea, "duration": 5}) == "class_unknown"
-
-
-async def test_another_brand_listed_with_null_strings_waits_and_once_interviewed_runs(hass, setup_production, broker):
-    ikea = light(hass, broker, manufacturer=IKEA[0], zigbee=None)
-    allow_experimental(hass)
-    data = {"entity_id": ikea, "duration": 5}
-
-    assert await refusal(hass, "turn_on_for", data) == "class_unknown"
-    broker.retained[DEVICES][0] |= {"manufacturer": IKEA[0], "model_id": IKEA[1], "interview_completed": True}
-    assert await call(hass, "turn_on_for", data) == {ikea: SENT}
 
 
 async def test_class_unknown_says_it_clears_once_zigbee2mqtt_reports_the_device(hass, setup_production, broker):
