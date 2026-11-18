@@ -5,9 +5,9 @@ Everybody is invited and welcome to contribute.
 ## How to help
 
 * **Propose it or build it:** help us to add a new integration, more devices on an existing one (e.g. a maker's bulbs on Zigbee2MQTT or ZHA, another Shelly dimmer), a new action or entity domain (e.g. fans, climate), or a call sequence you've got working reliably on your own devices. Propose it at Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Propose a device or integration, or [build it yourself](#fast-track-build-it-yourself).
+* **Adopt an integration or family:** help us build faster by taking on an existing integration (e.g. Zigbee2MQTT, ZHA) or an integration's family (e.g. IKEA devices on ZHA). We'll gladly bring you on as a co-maintainer or primary maintainer, depending on your experience and how much time you want to commit. Open an issue to get in touch.
 * **Test your devices:** if you discover a device that works on DeviceSide and isn't on the [compatible list](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md) or doesn't work as expected, please tell us. Go to Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test result or bug.
 * **Report bugs:** for a bug that isn't about a device, open a [blank issue](https://github.com/DeviceSide/DeviceSide/issues/new).
-* **Adopt an integration or family:** help us build faster by taking on an existing integration (e.g. Zigbee2MQTT, ZHA) or one maker's devices on it, a family (e.g. IKEA devices on ZHA). We'll gladly bring you on as a co-maintainer, or hand it over to you. Open an issue saying which, and see [Maintaining an integration](#maintaining-an-integration) and [Maintaining a family](#maintaining-a-family) for what it involves.
 
 ## Development principles
 
