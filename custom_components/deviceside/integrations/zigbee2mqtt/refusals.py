@@ -25,10 +25,10 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # turn_on_for. Tuya's classes off its countdown are not built yet, and harmed by today's call (plan Decisions 20,
     # 70 and 71): Z2M has no `on_time` converter for a definition built with `onOffCountdown`, or for a datapoint
     # device, so it sends a plain On and the device stays on. Each has a call that would work, Z2M's `countdown`, which
-    # isn't built for them: converter A's for a TS011F Z2M shows no `countdown` for and the TS011F's kin (v0.1.0
-    # serves it to the countdown plugs alone, Verified or on trial, plan Decision 72), the datapoint one for TS0601 devices (v0.1.x,
-    # docs/plans/2026-11-15-tuya-datapoint-countdown.md). The action's failure harms, so the dispatcher refuses a device
-    # not yet placed as well, which could be one of them (plan Decision 26).
+    # isn't built for them: converter A's for a TS011F Z2M shows no `countdown` for and the TS011F's kin (v0.1.0 serves
+    # it to the countdown plugs alone, Verified or on trial, plan Decision 72), the datapoint one for TS0601 devices
+    # (v0.1.x, docs/plans/2026-11-15-tuya-datapoint-countdown.md). The action's failure harms, so the dispatcher refuses
+    # a device not yet placed as well, which could be one of them (plan Decision 26).
     "turn_on_for": {
         # Every other brand's lights, plugs and switches (docs/evidence.md, On trial): no pass, and research names only
         # some makers' lights as running the timer, some lights turning on and never off, and most plugs ignoring it
