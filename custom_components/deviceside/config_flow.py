@@ -68,6 +68,7 @@ class IssueForm:
     multiple: bool = False  # Takes several devices, not one.
     domains: tuple[str, ...] | None = None  # The entity domains its picker offers; None, any.
     known_only: bool = False  # Its picker offers only entities on an integration DeviceSide has.
+    device_only: bool = False  # Its picker offers only entities on a device, not helpers, automations or scenes.
 
 
 _VERSION_FIELDS = ("deviceside_version", "ha_version", "experimental_features")
@@ -84,36 +85,65 @@ ISSUE_FORMS = (
         known_only=True,  # Another integration's switches are mostly its settings (Adaptive Lighting's).
     ),
     IssueForm(
-        "propose_device", "proposal_link", "propose_device_or_integration.yml", ("devices",), "Proposal", multiple=True
+        "propose_device",
+        "proposal_link",
+        "propose_device_or_integration.yml",
+        ("devices",),
+        "Proposal",
+        multiple=True,
+        # The domains that control a device. A sensor isn't one, and button, number, select, text and time entities
+        # are mostly a device's settings, with no category to filter them by.
+        domains=(
+            Platform.LIGHT,
+            Platform.SWITCH,
+            Platform.FAN,
+            Platform.COVER,
+            Platform.CLIMATE,
+            Platform.LOCK,
+            Platform.VALVE,
+            Platform.MEDIA_PLAYER,
+            Platform.SIREN,
+            Platform.HUMIDIFIER,
+            Platform.WATER_HEATER,
+            Platform.VACUUM,
+            Platform.LAWN_MOWER,
+            Platform.REMOTE,
+            Platform.ALARM_CONTROL_PANEL,
+            Platform.CAMERA,
+        ),
+        device_only=True,
     ),
 )
 _FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
 
 
 def _picker(hass: HomeAssistant, form: IssueForm) -> EntitySelectorConfig:
-    """The form's entity picker. It leaves out a config or diagnostic entity (a Sonos speaker's loudness switch), which
-    isn't the device, and a hidden one; a known_only form's offers only the entities on an integration DeviceSide has
-    and the switch_as_x wrappers over them, as an include list, which HA checks on submit (its integration filter only
-    narrows the dropdown). Without DeviceSide's runtime, the picker falls back to the form's domains."""
-    config = EntitySelectorConfig(multiple=form.multiple)
+    """The form's entity picker, as an include list, which HA checks on submit (its integration filter only narrows
+    the dropdown). It leaves out a config or diagnostic entity (a Sonos speaker's loudness switch), which isn't the
+    device, and a hidden one; a known_only form's offers only the entities on an integration DeviceSide has and the
+    switch_as_x wrappers over them (all of them, without DeviceSide's runtime); a device_only form's only the entities
+    on a device."""
+    runtime = hass.data.get(DATA)
+    platforms = (
+        {info.ha_domain for info in runtime.registry.integrations.values()} | {SWITCH_AS_X}
+        if form.known_only and runtime is not None
+        else None
+    )
+    config = EntitySelectorConfig(
+        multiple=form.multiple,
+        include_entities=[
+            entry.entity_id
+            for entry in er.async_get(hass).entities.values()
+            if (form.domains is None or entry.domain in form.domains)
+            and entry.entity_category is None
+            and entry.hidden_by is None
+            and (platforms is None or entry.platform in platforms)
+            and (not form.device_only or entry.device_id is not None)
+        ],
+    )
     if form.domains is not None:
         config["domain"] = list(form.domains)
-    entries = [
-        entry for entry in er.async_get(hass).entities.values() if form.domains is None or entry.domain in form.domains
-    ]
-    runtime = hass.data.get(DATA)
-    if form.known_only and runtime is not None:
-        platforms = {info.ha_domain for info in runtime.registry.integrations.values()} | {SWITCH_AS_X}
-        config["include_entities"] = [
-            entry.entity_id for entry in entries if entry.platform in platforms and not _setting(entry)
-        ]
-    else:
-        config["exclude_entities"] = [entry.entity_id for entry in entries if _setting(entry)]
     return config
-
-
-def _setting(entry: er.RegistryEntry) -> bool:
-    return entry.entity_category is not None or entry.hidden_by is not None
 
 
 def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry | None) -> str:
