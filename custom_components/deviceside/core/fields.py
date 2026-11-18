@@ -26,10 +26,12 @@ if TYPE_CHECKING:  # models.py imports this module (LIGHT_FIELDS)
 BRIGHTNESS_FIELD = "brightness"
 MIN_BRIGHTNESS_FIELD = "min_brightness"
 MAX_BRIGHTNESS_FIELD = "max_brightness"
+HUE_FIELD = "hue"  # DeviceSide's: the hue ramps' attribute
+SATURATION_FIELD = "saturation"  # DeviceSide's, in percent
 BRIGHTNESS = frozenset({BRIGHTNESS_FIELD, MIN_BRIGHTNESS_FIELD, MAX_BRIGHTNESS_FIELD})
 COLORS = frozenset({ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR})
 COLOR_TEMP = frozenset({ATTR_COLOR_TEMP_KELVIN})
-COLOR = COLORS | {"hue", "saturation"}  # hue and saturation are DeviceSide's
+COLOR = COLORS | {HUE_FIELD, SATURATION_FIELD}
 TRANSITION = frozenset({ATTR_TRANSITION})
 # The light.turn_on fields an action may accept, under their light.turn_on names.
 LIGHT_FIELDS = (BRIGHTNESS_FIELD, ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR, ATTR_TRANSITION)

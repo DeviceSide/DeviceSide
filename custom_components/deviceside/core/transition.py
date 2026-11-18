@@ -20,13 +20,12 @@ from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
 
 from .fields import BRIGHTNESS_FIELD
+from .fields import SATURATION_FIELD as SATURATION  # noqa: F401 - re-exported: the fades import it from here
 from .models import Target
 from .runtime import get_runtime
 
 # What the recording() block running in this task has recorded so far, by (resource_id, attribute).
 _RECORDED: ContextVar[dict[tuple[str, str], Transition] | None] = ContextVar("transition_recorded", default=None)
-
-SATURATION = "saturation"  # in percent
 
 
 @dataclass(frozen=True, slots=True)
