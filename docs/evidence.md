@@ -127,12 +127,14 @@ documents identically (`integrations/shelly/addressing.py`).
 A **class** is the set of devices that get the same call and run the same firmware family. The integration declares
 its classes (`IntegrationInfo.classes`) and names each target's (`IntegrationInfo.capability`; in code a scope's
 `capabilities`), and every adapter of the integration sees the same one; an adapter maps the classes it serves to its
-own branch. A scope holds a level per class, so each
-class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
-is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
-decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`,
-`tuya_countdown`, `tuya_mcu`, `sengled`, `gledopto`, `ikea`, `other`), and, where evidence is per identity, the identity: a
-Zigbee2MQTT countdown plug's maker string with a record of its own is a class of its own.
+own branch. A scope holds a level per class, so each class stands on its own evidence: a record on one class proves
+nothing about another, except that it puts the class's kin on trial ([below](#no-known-method-not-built-yet-on-trial)).
+On a single-vendor API the class is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the
+call and the firmware family decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
+`tuya_zcl`, `tuya_ts011f`, `tuya_countdown`, `tuya_mcu`, `sengled`, `gledopto`, `ikea`, `other`), and, where evidence is
+per identity, the identity: a Zigbee2MQTT countdown plug's maker string with a record of its own is a class of its own.
+The classes split this way from one class, the rest of it among them, are **kin**: they get the same call on the same
+firmware family, and differ only in whose evidence they hold.
 
 - **Unknown is flagged, never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
@@ -186,23 +188,22 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
   it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
-  class not admitted on trial (below), as research predicts most of it fails the default call or no pass or research
-  admits it, while another call is known or plausible. The integration names it, and the adapter's scope holds it in
-  neither `capabilities` nor `no_known_method`. It is refused (`not_built`), and the card leaves it out, as no one can
-  list every feature that could be built.
+  class not admitted on trial (below), as research predicts most of it fails the default call or no pass (on it or its
+  kin) or research admits it, while another call is known or plausible. The integration names it, and the adapter's
+  scope holds it in neither `capabilities` nor `no_known_method`. It is refused (`not_built`), and the card leaves it
+  out, as no one can list every feature that could be built.
 - **On trial (Experimental):** a class still behind the flag, admitted on a reason to expect the call works: a pass on a
-  device of the class (the builder's own probe or run counts, tenet 2), a pass of the exact call it would get on its
-  kin (another class of the same firmware family), or research predicting most of the class accepts it. Without any of
-  these, or with research predicting most fail, it stays not built. A trial admits only what its evidence names: a
-  pass, on the class or its kin, admits a class only where it is one firmware family, and research admits the vendors
-  or identities it names, not the class around them; the rest of the class stays not built. On an action whose
-  failure harms, turning on Experimental features is the user's consent to its trials, so a class on trial there runs
-  with the option on. An identity reported harmed there is split off as not built (`NotBuilt`), a pass on its kin
-  counting as the pass that splitting off the exception needs (below), and a target not yet placed is still refused
-  (`class_unknown`, below). On a failed report, the maintainer triaging it takes on the fix, keeping the trial, or
-  makes the class not built, as their time allows; one they stop fixing becomes not built. A not built class returns
-  with a contributor's PR and a passing run on their own device. The class is in scope as `experimental(...)` and
-  runs behind the flag.
+  device of the class (the builder's own probe or run counts, tenet 2), a pass of the exact call it would get on its kin
+  ([above](#device-classes)), or research predicting most of the class accepts it. Without any of these, or with
+  research predicting most fail, it stays not built. A trial admits only what its evidence names: a pass, on the class
+  or its kin, admits a class only where it is one firmware family, and research admits the vendors or identities it
+  names, not the class around them; the rest of the class stays not built. On an action whose failure harms, turning on
+  Experimental features is the user's consent to its trials, so a class on trial there runs with the option on. An
+  identity reported harmed there is split off as not built (`NotBuilt`, below), and a target not yet placed is still
+  refused (`class_unknown`, below). On a failed report, the maintainer triaging it takes on the fix, keeping the trial,
+  or makes the class not built, as their time allows; one they stop fixing becomes not built. A not built class returns
+  with a contributor's PR and a passing run on their own device. The class is in scope as `experimental(...)` and runs
+  behind the flag.
 
 Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
 built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
@@ -210,10 +211,10 @@ source), which the card leaves out, as it does any other. Any other class not bu
 leaving it out refuses it, and the registry refuses a `not_built` entry on an action whose failure doesn't harm.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
-  into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
-  whole class drops a level only when no rule can tell the departing devices apart. Split off the exception only once
-  a pass shows the rest of the class works; a failure in a class with no pass is the class's result, not an
-  exception.
+  into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The whole
+  class drops a level only when no rule can tell the departing devices apart. Split off the exception only once a pass,
+  on the class or its kin, shows the rest of the class works; a failure in a class with neither is the class's result,
+  not an exception.
 - **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
   device's identity.
 - **When today's call harms a class.** A failure harms when it is deferred and unattended: the device ends in an
@@ -309,9 +310,10 @@ For an item no maintainer can test, users' working reports can verify it through
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
 maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
-The cards never credit a tested model from a pass on a flagged item while its flag stands, and keep Experimental-only
-lines to at most a quarter of all card lines, folding a card's top-level ones into one "🔍 on trial" line
-(`scripts/gen_compat.py`, which fails over the cap).
+The cards never credit a tested model from a pass on a flagged item while its flag stands, and keep Experimental lines
+(🔍 with no 🟢 or 🟡, though 🔴 may sit beside it) to at most a quarter of all card lines, counted across every card,
+folding two or more top-level ones on a card into one "🔍 on trial" line (`scripts/gen_compat.py`, which fails over
+the cap).
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
 `DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
