@@ -314,6 +314,27 @@ async def test_the_report_picker_offers_only_lights_and_switches_and_the_proposa
     assert selector.config["multiple"] is True
 
 
+@pytest.mark.parametrize("step", ["report_device", "propose_device"])
+async def test_the_pickers_leave_out_settings_and_hidden_entities(hass: HomeAssistant, step):
+    entry = await load_entry(hass)
+    registry = er.async_get(hass)
+    for unique_id, object_id, extra in (
+        ("plug", "plug", {}),
+        ("loudness", "speaker_loudness", {"entity_category": er.EntityCategory.CONFIG}),
+        ("led", "plug_led", {"entity_category": er.EntityCategory.DIAGNOSTIC}),
+        ("hidden", "hidden_relay", {"hidden_by": er.RegistryEntryHider.USER}),
+    ):
+        registry.async_get_or_create("switch", "test", unique_id, suggested_object_id=object_id, **extra)
+        hass.states.async_set(f"switch.{object_id}", "off")
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
+    schema = result["data_schema"]
+    assert schema({"entity_id": ["switch.plug"]}) == {"entity_id": ["switch.plug"]}
+    for entity_id in ("switch.speaker_loudness", "switch.plug_led", "switch.hidden_relay"):
+        with pytest.raises(vol.Invalid):
+            schema({"entity_id": [entity_id]})
+
+
 async def test_a_proposal_takes_a_fan_but_a_report_does_not(hass: HomeAssistant):
     entry = await load_entry(hass)
     hass.states.async_set("fan.desk", "off")
