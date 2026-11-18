@@ -155,7 +155,7 @@ def run(pytester: pytest.Pytester, *args: str) -> pytest.RunResult:
 
 
 def run_here(pytester: pytest.Pytester, *args: str) -> pytest.RunResult:
-    """An inner run in this process, for a refusal at configure time: it fails before the recorder patches anything."""
+    """An inner run in this process, for a run that never reaches a hass-based test (the HA plugin patches globally)."""
     return pytester.runpytest("-p", "no:cacheprovider", "-p", "no:randomly", *args)
 
 
