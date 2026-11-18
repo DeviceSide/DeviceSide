@@ -163,11 +163,23 @@ def segments(pytester: pytest.Pytester, path: str = GOLDEN) -> list[dict]:
     return json.loads((pytester.path / path).read_text())
 
 
-def test_write_then_check_passes_and_records_the_wire(inner):
-    assert run(inner, "--transcripts=write").ret == 0
+def test_the_golden_files_lifecycle(inner):
+    # Off by default: nothing is recorded.
+    assert run(inner).ret == 0
+    assert not (inner.path / CALLS).exists()
+
+    # Check reports a missing file and an extra one; write fixes both. Naming the whole suite is no narrowing.
+    calls = inner.path / CALLS
+    calls.mkdir()
+    (calls / "gone.json").write_text("[]\n")
+    result = run(inner, "--transcripts=check")
+    assert result.ret == pytest.ExitCode.TESTS_FAILED
+    result.stdout.fnmatch_lines([f"missing: {GOLDEN}", f"extra: {CALLS}/gone.json"])
+    assert run(inner, "--transcripts=write", str(inner.path)).ret == 0
+    assert sorted(p.name for p in calls.iterdir()) == ["turn_on_for.json"]
     assert run(inner, "--transcripts=check").ret == 0
 
-    raised, sent = segments(inner)
+    raised, sent = serial = segments(inner)
     assert [raised["integration"], raised["action"]] == [sent["integration"], sent["action"]] == ["fake", "turn_on_for"]
     # The request's Context is dropped.
     assert "context" not in sent["request"]["request"]
@@ -187,29 +199,17 @@ def test_write_then_check_passes_and_records_the_wire(inner):
         [["service", "probe.ping", {"later": True}], None],
     ]
 
+    # Under xdist the workers hand their segments to the controller, which writes the same file.
+    (inner.path / GOLDEN).unlink()
+    assert run(inner, "-n", "2", "--transcripts=write").ret == 0
+    assert segments(inner) == serial
 
-def test_a_changed_call_fails_check(inner):
-    assert run(inner, "--transcripts=write").ret == 0
+    # A changed call fails check.
     helpers = inner.path / "inner_helpers.py"
     helpers.write_text(helpers.read_text().replace("LEVEL = 1", "LEVEL = 2"))
-
     result = run(inner, "--transcripts=check")
-
     assert result.ret == pytest.ExitCode.TESTS_FAILED
     result.stdout.fnmatch_lines([f"differs: {GOLDEN} (+2 -2 segments)"])
-
-
-def test_a_missing_or_extra_file_fails_check_and_write_fixes_both(inner):
-    calls = inner.path / CALLS
-    calls.mkdir()
-    (calls / "gone.json").write_text("[]\n")
-
-    result = run(inner, "--transcripts=check")
-
-    assert result.ret == pytest.ExitCode.TESTS_FAILED
-    result.stdout.fnmatch_lines([f"missing: {GOLDEN}", f"extra: {CALLS}/gone.json"])
-    assert run(inner, "--transcripts=write").ret == 0
-    assert sorted(p.name for p in calls.iterdir()) == ["turn_on_for.json"]
 
 
 def test_a_failing_test_blocks_write(inner):
@@ -219,11 +219,6 @@ def test_a_failing_test_blocks_write(inner):
 
     assert result.ret == pytest.ExitCode.TESTS_FAILED
     result.stdout.fnmatch_lines(["transcripts not written: the run failed"])
-    assert not (inner.path / CALLS).exists()
-
-
-def test_transcripts_are_off_by_default(inner):
-    assert run(inner).ret == 0
     assert not (inner.path / CALLS).exists()
 
 
@@ -299,20 +294,6 @@ def test_a_run_where_no_test_ran_keeps_the_golden_files(inner, suite):
         assert result.ret == pytest.ExitCode.USAGE_ERROR
         result.stdout.fnmatch_lines([f"transcripts not {'written' if mode == 'write' else 'checked'}: no test ran"])
     assert (inner.path / GOLDEN).is_file()
-
-
-def test_the_whole_suite_named_explicitly_is_not_narrowed(inner):
-    assert run(inner, "--transcripts=write", str(inner.path)).ret == 0
-
-
-def test_xdist_workers_hand_their_segments_to_the_controller(inner):
-    assert run(inner, "--transcripts=write").ret == 0
-    serial = segments(inner)
-    (inner.path / GOLDEN).unlink()
-
-    assert run(inner, "-n", "2", "--transcripts=write").ret == 0
-    assert segments(inner) == serial
-    assert run(inner, "-n", "2", "--transcripts=check").ret == 0
 
 
 NATIVE_GROUPS = """
