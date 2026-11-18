@@ -63,7 +63,8 @@ identically; their color and color temperature aren't built yet.
 
 On every Shelly light, `get_attributes` reports the timer, auto-off/on, brightness, and the color its component
 keeps: color temperature on a CCT light, color on an RGB or RGBW light (with its white mixed in, as Home Assistant
-shows it).
+shows it). While the device's clock hasn't synced (after a reboot, or with no time server), its row has no timer, even
+while one runs ([internals](internals.md#get_attributes)).
 
 ## Tested devices
 
