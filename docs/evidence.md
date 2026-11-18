@@ -364,7 +364,8 @@ what it does on a group reopens no evidence.
 
   An integration's actions may mix the two. A format 1 or 2 record, or a format 2 row, signs nothing off. Either
   must also hold every segment HEAD's transcript has that the tag's lacks (added or changed since the release), so a
-  run that never sent the changed call can't sign off its change; with no tag's transcript, standing is enough.
+  run from before the change can't sign it off (which cases the run reached is the maintainer's judgment); with no
+  tag's transcript, standing is enough.
 - **A call changed on purpose** reopens its action's evidence: regenerate the transcripts with
   `scripts/gen_transcripts.py` and commit them with the change. A reopened action needs only its own suites rerun,
   which `check_release.py --signoffs --reruns` lists. A suite that is no action's (`config_entry.json`) has no

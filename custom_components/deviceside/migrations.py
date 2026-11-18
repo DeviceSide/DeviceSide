@@ -33,7 +33,7 @@ from homeassistant.core import Event, EventStateChangedData, HomeAssistant, Stat
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.start import async_at_started
 
-from .const import DOMAIN
+from .const import DOMAIN, REPO_URL
 
 LEGACY_DOMAIN = "device_side"
 LEGACY_ISSUE = "legacy_device_side"
@@ -43,7 +43,7 @@ LEGACY_SERVICES = ("turn_on_for", "turn_off_for")
 HUE_DIMMER_DOMAIN = "hue_dimmer"
 HUE_DIMMER_ISSUE = "migrate_hue_dimmer"
 # The README's "Coming from Hue Smooth Dimming?" box, which the repair's text follows.
-HUE_DIMMER_URL = "https://github.com/DeviceSide/DeviceSide#coming-from-hue-smooth-dimming"
+HUE_DIMMER_URL = REPO_URL + "#coming-from-hue-smooth-dimming"
 
 
 def legacy_folder(hass: HomeAssistant) -> Path:

@@ -3,7 +3,8 @@
 On Zigbee the call and the firmware family decide the result together (research/2026-11-14-timed-on-call-patterns.md),
 and Tuya's departs most: Z2M has no `on_time` converter for it, so turn_on_for's call would leave a Tuya device on.
 The classes split it by the call that would serve each: the countdown plugs get Tuya's countdown (countdown.py), and
-the rest are refused there until theirs is built (the integration's refusals.py holds those entries, and why).
+the other classes are refused there until theirs is built (the integration's refusals.py holds those entries, and
+why).
 
 Two rule groups, as the integration places them apart (families/__init__.py): ZIGBEE_RULES, on the device's own
 Zigbee strings and its definition, from bridge/devices, which alone show a Tuya device under another vendor's
