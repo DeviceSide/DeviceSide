@@ -311,8 +311,8 @@ sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): ru
 maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
 The cards never credit a tested model from a pass on a flagged item while its flag stands, and keep Experimental lines
-(🔍 with no 🟢 or 🟡, though 🔴 may sit beside it) to at most a quarter of all card lines, counted across every card,
-folding two or more top-level ones on a card into one "🔍 on trial" line (`scripts/gen_compat.py`, which fails over
+(⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) to at most a quarter of all card lines, counted across every card,
+folding two or more top-level ones on a card into one "⚪ on trial" line (`scripts/gen_compat.py`, which fails over
 the cap).
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
