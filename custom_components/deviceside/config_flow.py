@@ -66,9 +66,9 @@ class IssueForm:
     fields: tuple[str, ...]
     title: str  # The prefilled title's prefix.
     multiple: bool = False  # Takes several devices, not one.
+    domains: tuple[str, ...] | None = None  # The entity domains its picker offers; None, any.
 
 
-_DEVICE_FIELDS = ("integration", "model", "product", "firmware")
 _VERSION_FIELDS = ("deviceside_version", "ha_version", "experimental_features")
 # In the order of GitHub's template chooser, which sorts the forms by file name.
 ISSUE_FORMS = (
@@ -79,8 +79,11 @@ ISSUE_FORMS = (
         ("devices",) + _VERSION_FIELDS,
         "Device report",
         multiple=True,
+        domains=(Platform.LIGHT, Platform.SWITCH),  # The only ones that run actions.
     ),
-    IssueForm("propose_device", "proposal_link", "propose_device_or_integration.yml", _DEVICE_FIELDS, "Proposal"),
+    IssueForm(
+        "propose_device", "proposal_link", "propose_device_or_integration.yml", ("devices",), "Proposal", multiple=True
+    ),
 )
 _FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
 
@@ -188,12 +191,7 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_ids: list[str])
     area or MAC)."""
     # One entry per distinct device facts, so several devices of one model give one line.
     devices = list(dict.fromkeys(dict(_device_facts(hass, entity_id) for entity_id in entity_ids).values()))
-    first = devices[0] if devices else _DeviceFacts()
     values = {
-        "integration": first.integration,
-        "model": first.model,
-        "product": first.product,
-        "firmware": first.firmware,
         "devices": "\n".join(device.line for device in devices if device.line),
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
@@ -211,7 +209,7 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_ids: list[str])
 
 class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
     """A menu: the settings page, whose saving reloads the entry so the next action runs with them, and the issue
-    forms, each prefilled from a light or switch."""
+    forms, each prefilled from the entities picked."""
 
     _issue_url: str = ""
 
@@ -231,7 +229,7 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
         return self._show_link("proposal_link", user_input)
 
     async def _pick_entities(self, form: IssueForm, user_input):
-        """Pick the lights and switches (one, for a form that takes a single device), then show the link."""
+        """Pick the entities (one, for a form that takes a single device), then show the link."""
         if user_input is not None:
             picked = user_input[CONF_ENTITY_ID]
             self._issue_url = await issue_url(self.hass, form, picked if isinstance(picked, list) else [picked])
@@ -241,7 +239,9 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_ENTITY_ID): EntitySelector(
-                        EntitySelectorConfig(domain=[Platform.LIGHT, Platform.SWITCH], multiple=form.multiple)
+                        EntitySelectorConfig(multiple=form.multiple)
+                        if form.domains is None
+                        else EntitySelectorConfig(domain=list(form.domains), multiple=form.multiple)
                     )
                 }
             ),

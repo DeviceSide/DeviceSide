@@ -6,31 +6,28 @@ body:
   - type: markdown
     attributes:
       value: |
-        Proposals are accepted only for devices and integrations where a known YAML solution already exists. Please only submit a proposal if you have the feature running stably on your Home Assistant instance and are willing to share the YAML. Speculative feature requests belong in the community forum.
+        Proposals are accepted for a call sequence you've got working reliably on your own devices, and are willing to share. Speculative feature requests belong in the community forum.
 
         Building it yourself? Skip this form and open a pull request: see the [Fast track](https://github.com/DeviceSide/DeviceSide/blob/main/CONTRIBUTING.md#fast-track-build-it-yourself).
-  - type: input
-    id: integration
+  - type: dropdown
+    id: kind
     attributes:
-      label: Home Assistant integration
-      description: e.g. zha, zigbee2mqtt, shelly.
+      label: What are you proposing?
+      options:
+        - A new integration
+        - More devices on an existing integration
+        - A new action or entity domain
+        - A call sequence I've got working reliably on my own devices
     validations:
       required: true
-  - type: input
-    id: product
+  - type: textarea
+    id: devices
     attributes:
-      label: Device product name
-  - type: input
-    id: model
-    attributes:
-      label: Device model
-      description: As shown on the device page in Home Assistant. If you're proposing a new integration, you only need to list one device in this field.
+      label: Devices
+      description: One line per device, as shown on its device page in Home Assistant, with a Zigbee device's manufacturer string (such as _TZ3000_…). Filled in when you start from DeviceSide's options. For a new integration, one device is enough.
+      placeholder: integration · product name · model · manufacturer · firmware
     validations:
       required: true
-  - type: input
-    id: firmware
-    attributes:
-      label: Firmware version
   - type: checkboxes
     id: features
     attributes:
@@ -76,6 +73,7 @@ body:
     attributes:
       label: How involved do you want to be?
       options:
+        - I want to build it and maintain it.
         - "Experienced coders only: I want to submit the PR myself."
         - I want to help code the change, with some guidance.
         - I want to test only.
