@@ -60,10 +60,10 @@ every integration shares is in `docs/integrations.md`: add your value there, don
    user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
 8. Test to decide: a hardware run needs a decision its result takes (a design choice, a foundation, lifting a flag, a
-   surprise, a release), run at the last point that can take it: the release's run for a device the rig or a
-   maintainer reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
+   surprise, a release), run at the last point that can take it: the release's run for a device a maintainer
+   reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
    on a run without naming the decision.
-9. Retest what the change exercises: only the rig cases whose call or reply handling changed. Evidence binds to the
+9. Retest what the change exercises: only the cases whose call or reply handling changed. Evidence binds to the
    action's call transcript, and a change reopens it only when a segment it was tested on changes or goes.
 
 The levels (Verified, Documented, Experimental), device classes, caveats, the release gate and the sign-off
@@ -121,16 +121,6 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
   audit is `docs/evidence.md`, the `experimental` flag and `AdapterScope`, `Level.DOCUMENTED`,
   `scripts/check_release.py`, `docs/test-records.schema.json`, `docs/integrations/*/test-records/`, and rule text in
   `CLAUDE.md` or `docs/design.md`.
-
-## The rig
-
-The rig, which drives the live HA and writes the records in `docs/integrations/<integration>/test-records/`, is a
-separate repo (jasonmx/ha-rig) kept out of this one: no rig code or rig docs here. The rig's test plan, its
-step files, named for the action they test and landed with that action, has two homes: shared ones in `tests/rig/steps/`
-need a repo maintainer; an integration's own in `tests/integrations/<x>/rig/`, run on `<x>` alone, belong to its
-maintainers, and repo maintainers may adopt them into the shared files. Before adding a case, name what it catches that
-no existing case or unit test does: a different call shape, a live-reply branch, or a firmware fact. When the rig is
-attached to the session, its `CLAUDE.md` says how to run it.
 
 ## Conventions
 
