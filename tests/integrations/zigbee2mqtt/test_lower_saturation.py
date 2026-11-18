@@ -2,7 +2,7 @@
 
 import pytest
 
-from .conftest import SENT, SET, call, commands, light
+from .conftest import SENT, SET, call, commands, group, light
 from ...conftest import result
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
@@ -35,3 +35,12 @@ async def test_at_the_limit_is_unchanged(hass, broker):
 
     assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="at_limit")}
     assert commands(broker) == []
+
+
+async def test_a_group_is_one_publish_timed_from_its_members_mean(hass, broker):
+    room = group(hass, broker, one={"hs": (200.0, 40.0)}, two={"hs": (200.0, 80.0)})
+
+    response = await call(hass, "lower_saturation", {"entity_id": room})
+
+    assert response == {room: SENT}
+    assert commands(broker) == [("zigbee2mqtt/7/set", {"color": {"saturation": 0.0}, "transition": 3.0})]
