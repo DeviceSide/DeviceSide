@@ -88,6 +88,17 @@ ISSUE_FORMS = (
 _FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
 
 
+def _settings_entities(hass: HomeAssistant, form: IssueForm) -> list[str]:
+    """The entities a picker leaves out: a config or diagnostic one (a Sonos speaker's loudness switch, a plug's child
+    lock), which isn't the device, and a hidden one. The selector filters by domain but not by category."""
+    return [
+        entry.entity_id
+        for entry in er.async_get(hass).entities.values()
+        if (entry.entity_category is not None or entry.hidden_by is not None)
+        and (form.domains is None or entry.domain in form.domains)
+    ]
+
+
 def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry | None) -> str:
     """DeviceSide's key for the entity's integration when it serves the entity, or when a detect hook claims it (a
     Z2M device on an MQTT broker DeviceSide can't reach yet). Otherwise the entity's platform, so a device DeviceSide
@@ -234,17 +245,11 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
             picked = user_input[CONF_ENTITY_ID]
             self._issue_url = await issue_url(self.hass, form, picked if isinstance(picked, list) else [picked])
             return self._show_link(form.link_step, None)
+        config = EntitySelectorConfig(multiple=form.multiple, exclude_entities=_settings_entities(self.hass, form))
+        if form.domains is not None:
+            config["domain"] = list(form.domains)
         return self.async_show_form(
-            step_id=form.step,
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_ENTITY_ID): EntitySelector(
-                        EntitySelectorConfig(multiple=form.multiple)
-                        if form.domains is None
-                        else EntitySelectorConfig(domain=list(form.domains), multiple=form.multiple)
-                    )
-                }
-            ),
+            step_id=form.step, data_schema=vol.Schema({vol.Required(CONF_ENTITY_ID): EntitySelector(config)})
         )
 
     def _show_link(self, step_id: str, user_input):
