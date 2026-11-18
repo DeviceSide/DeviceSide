@@ -15,7 +15,7 @@ Everybody is invited and welcome to contribute.
 - **Features with broad appeal.** We focus on features that users keep asking for in community forums and feature requests, and which are supportable by at least one of the [top-30 Home Assistant integration](https://analytics.home-assistant.io/integrations/). That keeps us focused on the most features that the most users care about, while keeping the codebase easy to maintain.
 - **New integrations and entity domains.** We welcome them when they meet the broad appeal criterion above, so the wider HA community benefits.
 - **Feature gaps.** We focus on features that are missing from or unintuitive in HA. We avoid replicating what Core and the automation editor already do well. We also fill design gaps between an upstream integration and HA, where a device can do something HA's entity doesn't expose (e.g. HS color on Zigbee2MQTT lights).
-- **Claims need evidence.** The connectivity chain from Home Assistant to a device's hardware is littered with undocumented behaviors and design gaps that can easily break a feature. Therefore, we verify key assumptions through testing on real devices, even when they're derived from official documents, before it ships to everyone ([evidence rules](docs/evidence.md)).
+- **Tested on real devices.** Between Home Assistant and a device's hardware sit undocumented behaviors and design gaps that can quietly break a feature. So we test each key assumption on real devices before it ships to everyone, even when the vendor's documentation backs it ([evidence rules](docs/evidence.md)).
 
 ## Fast track: build it yourself
 
