@@ -39,7 +39,7 @@ Every code pull request follows these steps:
    </details>
 
    <details>
-   <summary><b>A new class (e.g. Tuya countdown plugs and switches)</b></summary>
+   <summary><b>A new class (e.g. Innr bulbs)</b></summary>
 
    For devices that answer a class's call differently ([device classes](docs/evidence.md#device-classes)). To split devices off a class, [split off the exception](docs/evidence.md#no-known-method-not-built-yet-on-trial); a class that needs a different payload gets a call of its own ([the split rule](docs/evidence.md#the-split-rule)).
 
