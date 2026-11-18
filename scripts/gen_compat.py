@@ -150,7 +150,7 @@ OUTCOMES = (
     (
         "experimental",
         "⚪",
-        "Experimental: untested device models on trial. Enable in Configure > Settings > Experimental features.",
+        "Experimental: untested device models on trial.",
     ),
     ("no_known_method", "🔴", "no known command works on it"),
 )
