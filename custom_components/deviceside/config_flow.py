@@ -27,7 +27,7 @@ from .const import (
     Z2M_COLOR_MODES_DEFAULT,
 )
 from .core.errors import describe
-from .core.resolver import resolve
+from .core.resolver import SWITCH_AS_X, resolve
 from .core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,6 +67,7 @@ class IssueForm:
     title: str  # The prefilled title's prefix.
     multiple: bool = False  # Takes several devices, not one.
     domains: tuple[str, ...] | None = None  # The entity domains its picker offers; None, any.
+    known_only: bool = False  # Its picker offers only entities on an integration DeviceSide has.
 
 
 _VERSION_FIELDS = ("deviceside_version", "ha_version", "experimental_features")
@@ -80,6 +81,7 @@ ISSUE_FORMS = (
         "Device report",
         multiple=True,
         domains=(Platform.LIGHT, Platform.SWITCH),  # The only ones that run actions.
+        known_only=True,  # Another integration's switches are mostly its settings (Adaptive Lighting's).
     ),
     IssueForm(
         "propose_device", "proposal_link", "propose_device_or_integration.yml", ("devices",), "Proposal", multiple=True
@@ -88,15 +90,30 @@ ISSUE_FORMS = (
 _FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
 
 
-def _settings_entities(hass: HomeAssistant, form: IssueForm) -> list[str]:
-    """The entities a picker leaves out: a config or diagnostic one (a Sonos speaker's loudness switch, a plug's child
-    lock), which isn't the device, and a hidden one. The selector filters by domain but not by category."""
-    return [
-        entry.entity_id
-        for entry in er.async_get(hass).entities.values()
-        if (entry.entity_category is not None or entry.hidden_by is not None)
-        and (form.domains is None or entry.domain in form.domains)
+def _picker(hass: HomeAssistant, form: IssueForm) -> EntitySelectorConfig:
+    """The form's entity picker. It leaves out a config or diagnostic entity (a Sonos speaker's loudness switch), which
+    isn't the device, and a hidden one; a known_only form's offers only the entities on an integration DeviceSide has
+    and the switch_as_x wrappers over them, as an include list, which HA checks on submit (its integration filter only
+    narrows the dropdown). Without DeviceSide's runtime, the picker falls back to the form's domains."""
+    config = EntitySelectorConfig(multiple=form.multiple)
+    if form.domains is not None:
+        config["domain"] = list(form.domains)
+    entries = [
+        entry for entry in er.async_get(hass).entities.values() if form.domains is None or entry.domain in form.domains
     ]
+    runtime = hass.data.get(DATA)
+    if form.known_only and runtime is not None:
+        platforms = {info.ha_domain for info in runtime.registry.integrations.values()} | {SWITCH_AS_X}
+        config["include_entities"] = [
+            entry.entity_id for entry in entries if entry.platform in platforms and not _setting(entry)
+        ]
+    else:
+        config["exclude_entities"] = [entry.entity_id for entry in entries if _setting(entry)]
+    return config
+
+
+def _setting(entry: er.RegistryEntry) -> bool:
+    return entry.entity_category is not None or entry.hidden_by is not None
 
 
 def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry | None) -> str:
@@ -245,11 +262,9 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
             picked = user_input[CONF_ENTITY_ID]
             self._issue_url = await issue_url(self.hass, form, picked if isinstance(picked, list) else [picked])
             return self._show_link(form.link_step, None)
-        config = EntitySelectorConfig(multiple=form.multiple, exclude_entities=_settings_entities(self.hass, form))
-        if form.domains is not None:
-            config["domain"] = list(form.domains)
         return self.async_show_form(
-            step_id=form.step, data_schema=vol.Schema({vol.Required(CONF_ENTITY_ID): EntitySelector(config)})
+            step_id=form.step,
+            data_schema=vol.Schema({vol.Required(CONF_ENTITY_ID): EntitySelector(_picker(self.hass, form))}),
         )
 
     def _show_link(self, step_id: str, user_input):

@@ -262,8 +262,8 @@ async def test_a_hook_that_raises_is_logged_and_the_string_left_out(hass: HomeAs
     assert "zha: no Zigbee manufacturer string for the report form: RuntimeError('gateway gone')" in caplog.text
 
 
-async def test_a_report_for_an_unsupported_platform_uses_the_raw_platform(hass: HomeAssistant):
-    """Tuya isn't served, and those reports are the demand signal for new adapters."""
+async def test_a_proposal_for_an_unsupported_platform_uses_the_raw_platform(hass: HomeAssistant):
+    """Tuya isn't served, and those proposals are the demand signal for new adapters."""
     entry = await load_entry(hass)
     tuya = MockConfigEntry(domain="tuya")
     tuya.add_to_hass(hass)
@@ -274,32 +274,31 @@ async def test_a_report_for_an_unsupported_platform_uses_the_raw_platform(hass: 
         "light", "tuya", "u1", suggested_object_id="den", config_entry=tuya, device_id=device.id
     )
 
-    fields, url = await report_for(hass, entry, "light.den")
+    fields, url = await report_for(hass, entry, "light.den", "propose_device", "proposal_link")
 
     assert fields["devices"] == "tuya \u00b7 Dimmer \u00b7 1.0"  # no model_id, so the model is the whole name
-    assert fields["title"] == "Device report: Dimmer (tuya)"
+    assert fields["title"] == "Proposal: Dimmer (tuya)"
     assert "den" not in url
 
 
-async def test_a_report_for_an_entity_without_a_device_leaves_those_fields_out(hass: HomeAssistant):
+async def test_a_proposal_for_an_entity_without_a_device_leaves_those_fields_out(hass: HomeAssistant):
     entry = await load_entry(hass)
     er.async_get(hass).async_get_or_create("switch", "template", "u2", suggested_object_id="virtual")
 
-    fields, _ = await report_for(hass, entry, "switch.virtual")
+    fields, _ = await report_for(hass, entry, "switch.virtual", "propose_device", "proposal_link")
 
     assert fields["devices"] == "template"
-    assert fields["title"] == "Device report: template"
-    assert {"deviceside_version", "ha_version"} <= fields.keys()
+    assert fields["title"] == "Proposal: template"
 
 
-async def test_a_report_for_an_entity_outside_the_registry_leaves_the_integration_blank(hass: HomeAssistant):
+async def test_a_proposal_for_an_entity_outside_the_registry_leaves_the_integration_blank(hass: HomeAssistant):
     entry = await load_entry(hass)
     hass.states.async_set("light.ghost", "off")
 
-    fields, _ = await report_for(hass, entry, "light.ghost")
+    fields, _ = await report_for(hass, entry, "light.ghost", "propose_device", "proposal_link")
 
     assert "devices" not in fields
-    assert fields["title"] == "Device report"
+    assert fields["title"] == "Proposal"
 
 
 @pytest.mark.parametrize(("step", "domains"), [("report_device", ["light", "switch"]), ("propose_device", None)])
@@ -324,7 +323,7 @@ async def test_the_pickers_leave_out_settings_and_hidden_entities(hass: HomeAssi
         ("led", "plug_led", {"entity_category": er.EntityCategory.DIAGNOSTIC}),
         ("hidden", "hidden_relay", {"hidden_by": er.RegistryEntryHider.USER}),
     ):
-        registry.async_get_or_create("switch", "test", unique_id, suggested_object_id=object_id, **extra)
+        registry.async_get_or_create("switch", "shelly", unique_id, suggested_object_id=object_id, **extra)
         hass.states.async_set(f"switch.{object_id}", "off")
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
@@ -333,6 +332,32 @@ async def test_the_pickers_leave_out_settings_and_hidden_entities(hass: HomeAssi
     for entity_id in ("switch.speaker_loudness", "switch.plug_led", "switch.hidden_relay"):
         with pytest.raises(vol.Invalid):
             schema({"entity_id": [entity_id]})
+
+
+async def test_the_report_picker_offers_only_integrations_deviceside_has(hass: HomeAssistant):
+    """Another integration's switches are mostly its settings (Adaptive Lighting's), with no category to filter by;
+    a device DeviceSide doesn't serve is proposed instead."""
+    entry = await load_entry(hass)
+    registry = er.async_get(hass)
+    for domain, platform, object_id in (
+        ("light", "hue", "lamp"),
+        ("light", "switch_as_x", "wrapped"),
+        ("switch", "adaptive_lighting", "sleep_mode"),
+        ("light", "tuya", "den"),
+    ):
+        registry.async_get_or_create(domain, platform, object_id, suggested_object_id=object_id)
+    for step, offered in (
+        ("report_device", {"light.lamp", "light.wrapped"}),
+        ("propose_device", {"light.lamp", "light.wrapped", "switch.sleep_mode", "light.den"}),
+    ):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
+        for entity_id in ("light.lamp", "light.wrapped", "switch.sleep_mode", "light.den"):
+            if entity_id in offered:
+                result["data_schema"]({"entity_id": [entity_id]})
+            else:
+                with pytest.raises(vol.Invalid):
+                    result["data_schema"]({"entity_id": [entity_id]})
 
 
 async def test_a_proposal_takes_a_fan_but_a_report_does_not(hass: HomeAssistant):
