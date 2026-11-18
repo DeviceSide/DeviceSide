@@ -124,10 +124,6 @@ def has_color(light: Target) -> bool:
     return color_supported(modes)
 
 
-def drops_while_off(light: Target) -> bool:
-    return light.device is not None and light.device.model in zcl.DROPS_WHILE_OFF
-
-
 async def send_each(
     hass: HomeAssistant, gid: int | None, movers: list[Target], commands: dict[str, Command], context: Context | None
 ) -> dict[str, Exception]:
@@ -238,8 +234,7 @@ class ZHARamp(Adapter[RampRequest]):
     (zcl.hue_turn_on), any other light set there with ExecuteIfOff. Lowering to a limit is
     MoveToLevel, which a light that is off ignores. Lowering to 0 is MoveToLevelWithOnOff to 0, which leaves the bulb
     at level 1; once it reads off, its start level goes back with ExecuteIfOff, so it stays off and comes back at its
-    old level, as on Hue. Models that drop a level while off (zcl.DROPS_WHILE_OFF) get neither: they
-    start a raise at their stored level, and come back on dim.
+    old level, as on Hue.
 
     Saturation is MoveToSaturation on lit lights in color whose ColorCapabilities report hue and saturation: the bulb
     keeps its own hue, so a group's members share one groupcast. A light without them, or in color temperature, gets
@@ -469,10 +464,10 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, lights: list[T
     if request.up:
         command_id, level = zcl.MOVE_TO_LEVEL_WITH_ON_OFF, zcl.level(limit)
         lit_ids = {light.entity_id for light in leg.lit}
-        presets = [light for light in lights if light.entity_id not in lit_ids and not drops_while_off(light)]
+        presets = [light for light in lights if light.entity_id not in lit_ids]
     elif limit == 0:
         command_id, level = zcl.MOVE_TO_LEVEL_WITH_ON_OFF, 0
-        restores = frozenset(light.entity_id for light in movers if not drops_while_off(light))
+        restores = frozenset(light.entity_id for light in movers)
     else:
         command_id, level = zcl.MOVE_TO_LEVEL, zcl.level(limit)
     command = (zcl.LEVEL_CLUSTER, command_id, {"level": level, "transition_time": tenths})

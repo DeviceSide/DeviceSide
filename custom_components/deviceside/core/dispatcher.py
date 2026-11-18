@@ -113,6 +113,14 @@ class Reached:
 type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached], OwnCall | None]
 
 
+def _stand_in_classes(found: Classes, members: list[Target] | None) -> tuple[str | None, ...]:
+    """The classes of a native group's stand-in members (Target.stand_in), paired by position as _reached gives
+    them."""
+    if not members or len(members) != len(found):
+        return ()
+    return tuple(name for name, member in zip(found, members, strict=True) if member.stand_in)
+
+
 def _placed(name: str | None) -> bool:
     return name is not None and not isinstance(name, Unplaced)
 
@@ -440,7 +448,12 @@ class Dispatcher:
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
                 )
             elif refused := adapter.scope.refusal(
-                found, group=members is not None, domain=target.domain, failure_harms=adapter.failure_harms
+                found,
+                group=members is not None,
+                domain=target.domain,
+                failure_harms=adapter.failure_harms,
+                # A stand-in has no entity in the group's domain, so a domain-scoped entry judges it as elsewhere.
+                elsewhere=_stand_in_classes(found, members),
             ):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
                 # skipped as indirect. So a group with one member not yet placed runs the rest, where the call harms

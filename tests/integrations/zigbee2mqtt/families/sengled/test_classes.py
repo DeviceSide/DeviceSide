@@ -2,7 +2,6 @@
 
 import pytest
 
-from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS
 from custom_components.deviceside.integrations.zigbee2mqtt.families import sengled
 
@@ -15,11 +14,9 @@ def test_the_rule_reads_z2m_s_whole_vendor_string(manufacturer, matched):
     assert [rule.matches({"manufacturer": manufacturer}) for rule in sengled.RULES] == [matched]
 
 
-def test_sengled_is_untested_on_every_action_it_is_served_on():
-    served = {adapter.action: adapter.scope.capabilities.get("sengled") for adapter in ADAPTERS}
-
-    assert served.pop("turn_on_for") is None
-    assert set(served.values()) == {Level.EXPERIMENTAL}
+def test_sengled_is_not_built_on_every_action():
+    """ZHA's probe found it departs, and no pass or research admits it (docs/evidence.md, On trial)."""
+    assert not any("sengled" in adapter.scope.capabilities for adapter in ADAPTERS)
 
 
 async def test_turn_on_for_is_not_built(hass, setup_production, broker):

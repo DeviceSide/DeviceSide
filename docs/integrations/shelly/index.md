@@ -56,7 +56,8 @@ values and stays off, and the next plain on comes up with them. The device answe
 reads the status back: brightness, color temperature and mode must read as written, or the call fails (`not_stored`).
 A color is not compared, only the mode it switches to. `min_brightness` and `max_brightness` clamp the brightness the
 bulb has stored, read first, so they work while it is off; a bulb already within them is `unchanged`. On dimmers and
-CCT, RGB and RGBW LED controllers it sends the same `<Component>.Set`, untested, so it is experimental there.
+CCT, RGB and RGBW LED controllers it sends the same `<Component>.Set` with brightness, which Shelly documents
+identically; their color and color temperature aren't built yet.
 
 ## Get attributes
 

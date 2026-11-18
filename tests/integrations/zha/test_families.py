@@ -5,18 +5,18 @@ import pytest
 from custom_components.deviceside.core.registry import check_families
 from custom_components.deviceside.core.rules import Rule, compose
 from custom_components.deviceside.integrations.zha import INTEGRATION, classes, rules
-from custom_components.deviceside.integrations.zha.families import FAMILIES, RULES, hue, sengled, sonoff, tuya
+from custom_components.deviceside.integrations.zha.families import FAMILIES, RULES, hue, ikea, sengled, sonoff, tuya
 
 
-def test_the_integration_holds_the_four_families_and_the_registry_s_checks_pass():
+def test_the_integration_holds_the_five_families_and_the_registry_s_checks_pass():
     assert INTEGRATION.families is FAMILIES
-    assert [family.key for family in FAMILIES] == ["hue", "tuya", "sengled", "sonoff"]
+    assert [family.key for family in FAMILIES] == ["hue", "ikea", "tuya", "sengled", "sonoff"]
     check_families(INTEGRATION)
 
 
 def test_the_rule_groups_run_in_the_integration_s_order():
     """Tuya's datapoint rules before its ZCL ones, and every Tuya rule before Sengled's (families/__init__.py)."""
-    assert RULES == (*hue.RULES, *tuya.DATAPOINT_RULES, *tuya.ZCL_RULES, *sengled.RULES, *sonoff.RULES)
+    assert RULES == (*hue.RULES, *ikea.RULES, *tuya.DATAPOINT_RULES, *tuya.ZCL_RULES, *sengled.RULES, *sonoff.RULES)
 
 
 def test_every_rule_names_a_class_but_the_default():

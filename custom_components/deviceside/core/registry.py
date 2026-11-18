@@ -145,7 +145,7 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
         raise ValueError(f"{cls.__name__} holds {info.key}'s default class {info.default_class!r} as Verified")
 
 
-def served(cls: type[Adapter], info: IntegrationInfo) -> set[tuple[str | None, str]]:
+def served(cls: type[Adapter] | Adapter, info: IntegrationInfo) -> set[tuple[str | None, str]]:
     """What an adapter serves, as (class, domain): each class its scope serves (AdapterScope.admits) on each of its
     domains the class can be (IntegrationInfo.classes); (None, domain) for each domain where the integration names no
     classes."""
@@ -158,6 +158,14 @@ def served(cls: type[Adapter], info: IntegrationInfo) -> set[tuple[str | None, s
         for domain in scope.domains
         if domain in info.classes[name] and scope.admits(name, domain)
     }
+
+
+def served_domains(cls: type[Adapter] | Adapter, info: IntegrationInfo) -> set[str]:
+    """The entity domains where an adapter serves at least one class (`served`): the only ones an action's UI picker
+    filter (services.yaml), the README's icons and the evidence block's Items show, so no user is offered a domain
+    whose every class is refused. The scope keeps such a domain, so a call that skips the picker still reads the
+    refusal's reason."""
+    return {domain for _, domain in served(cls, info)}
 
 
 def check_queries(adapters: Iterable[tuple[type[Adapter], Action]], info: IntegrationInfo) -> None:

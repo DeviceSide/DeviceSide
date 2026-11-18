@@ -93,9 +93,10 @@ def get_entry(hass) -> str:
 
 
 @pytest.mark.parametrize("adapter", ADAPTERS, ids=lambda adapter: adapter.action)
-def test_hue_is_verified_and_other_experimental_on_every_adapter(adapter):
-    # The step 8 PR argues each: no action passes the Documented test for other (plan Decision 2).
-    assert adapter.scope.capabilities == {"hue": Level.VERIFIED, "other": Level.EXPERIMENTAL}
+def test_hue_is_verified_and_other_not_built_on_every_adapter(adapter):
+    # No action passes the Documented test for other (plan Decision 2), and no pass or research puts it on trial
+    # (docs/evidence.md, On trial).
+    assert adapter.scope.capabilities == {"hue": Level.VERIFIED}
 
 
 def test_only_set_scene_lists_smart_scenes_and_none_harms():
@@ -109,23 +110,22 @@ def test_only_set_scene_lists_smart_scenes_and_none_harms():
     assert not any(adapter.scope.harms(failure_harms[adapter.action]) for adapter in ADAPTERS)
 
 
-async def test_another_makers_light_runs_only_with_experimental_features(hass, bridge):
+async def test_another_makers_light_is_not_built_even_with_experimental_features(hass, bridge):
     entity_id = await lamp(hass, bridge, manufacturer=IKEA)
+    allow_experimental(hass)
 
     with pytest.raises(TargetNotSupported) as raised:
         await call_service(hass, "stop", {"entity_id": entity_id})
-    assert raised.value.reason == "experimental_off"
-
-    allow_experimental(hass)
-    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
-    assert bridge.puts == [("light/light-1", STOP)]
+    assert raised.value.reason == "not_built"
+    assert bridge.puts == []
 
 
-async def mixed_room(hass, bridge, *, entity_for_two: bool = True) -> str:
-    """light.room over a Hue light (one) and an IKEA light (two), both on at 60 %; `entity_for_two` False leaves the
-    IKEA light without a light entity in HA, as the bridge still lists it."""
+async def mixed_room(hass, bridge, *, entity_for_two: bool = True, two: str | None = IKEA) -> str:
+    """light.room over a Hue light (one) and a second light (two, an IKEA one unless `two` names another maker), both
+    on at 60 %; `entity_for_two` False leaves the second light without a light entity in HA, as the bridge still
+    lists it."""
     bridge.light("one", on=True)
-    bridge.light("two", on=True, manufacturer=IKEA)
+    bridge.light("two", on=True, **({"manufacturer": two} if two else {}))
     bridge.room("grouped-1", ["one", "two"], brightness=60.0)
     entry = await hue_entry(hass, bridge)
     members = [add_hue_entity(hass, entry, "light.one", "one", state="on")]
@@ -145,18 +145,14 @@ async def test_a_room_with_another_makers_light_falls_back_to_its_members(hass, 
     assert bridge.puts == [("light/one", STOP)]
 
 
-async def test_a_room_runs_whole_with_experimental_features(hass, bridge):
-    await mixed_room(hass, bridge)
-    allow_experimental(hass)
+async def test_a_room_runs_whole_and_names_each_member_class(hass, bridge):
+    await mixed_room(hass, bridge, two=None)
 
     response = await call_service(hass, "stop", {"entity_id": "light.room"})
 
     assert response == {
         "light.room": result(
-            "hue",
-            "sent",
-            capabilities=["hue", "other"],
-            member_capabilities={"light.one": "hue", "light.two": "other"},
+            "hue", "sent", capabilities=["hue"], member_capabilities={"light.one": "hue", "light.two": "hue"}
         )
     }
     assert bridge.puts == [("grouped_light/grouped-1", STOP)]
@@ -165,13 +161,12 @@ async def test_a_room_runs_whole_with_experimental_features(hass, bridge):
 async def test_a_room_light_with_no_entity_is_left_out_of_the_member_map(hass, bridge):
     # Its class counts in the room's capabilities, as the room's write reaches it, but it has no entity of its own to
     # show the call reached it, so member_capabilities names only the light that has one (docs/action-behavior.md).
-    await mixed_room(hass, bridge, entity_for_two=False)
-    allow_experimental(hass)
+    await mixed_room(hass, bridge, entity_for_two=False, two=None)
 
     response = await call_service(hass, "stop", {"entity_id": "light.room"})
 
     assert response == {
-        "light.room": result("hue", "sent", capabilities=["hue", "other"], member_capabilities={"light.one": "hue"})
+        "light.room": result("hue", "sent", capabilities=["hue"], member_capabilities={"light.one": "hue"})
     }
     assert bridge.puts == [("grouped_light/grouped-1", STOP)]
 

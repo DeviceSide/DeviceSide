@@ -506,8 +506,8 @@
     "clamped_to": null,
     "classes": [
      "hue",
-     "other",
-     "tuya_zcl"
+     "ikea",
+     "other"
     ],
     "data": null,
     "detail": null,
@@ -578,7 +578,7 @@
     "clamped_to": null,
     "classes": [
      "hue",
-     "tuya_zcl"
+     "other"
     ],
     "data": null,
     "detail": null,

@@ -15,7 +15,7 @@ from .addressing import (
     timer_matches,
     unsupported_reason,
 )
-from .classes import TURN_ON_FOR
+from .classes import TURN_ON_FOR, TURN_ON_FOR_NOT_BUILT
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.errors import describe
@@ -43,6 +43,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
         duration=_TIMER_LIMITS,
         fields=verified(),
         capabilities=TURN_ON_FOR,
+        not_built=TURN_ON_FOR_NOT_BUILT,
         confirmable=True,
     )
 

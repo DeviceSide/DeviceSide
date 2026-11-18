@@ -1044,8 +1044,8 @@
    "request": {},
    "targets": [
     [
-     "light.ikea",
-     "light.ikea",
+     "light.innr",
+     "light.innr",
      false
     ]
    ]
@@ -1056,7 +1056,7 @@
     "classes": "other",
     "data": null,
     "detail": null,
-    "entity_id": "light.ikea",
+    "entity_id": "light.innr",
     "integration": "zha",
     "member_classes": null,
     "status": "sent"
@@ -1087,7 +1087,7 @@
      "service",
      "homeassistant.update_entity",
      {
-      "entity_id": "light.ikea"
+      "entity_id": "light.innr"
      },
      {
       "blocking": true

@@ -4,10 +4,8 @@ from collections.abc import Iterable
 from statistics import mean
 from typing import TYPE_CHECKING, ClassVar
 
-from homeassistant.components.light import ATTR_COLOR_MODE, ATTR_COLOR_TEMP_KELVIN, ColorMode
-from homeassistant.const import STATE_ON, Platform
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.util.color import color_temperature_mired_to_kelvin
 
 from .bridge import bridge_api, resource_id
@@ -22,43 +20,34 @@ from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
 
 if TYPE_CHECKING:
-    from aiohue.v2 import HueBridgeV2
     from aiohue.v2.models.light import Light
 
 
-def light_row(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache, light: Light) -> dict:
+def light_row(cache: HueTransitionCache, light: Light) -> dict:
     """One light's attributes, its brightness and color predicted while a move runs (the bridge reports the end
     value)."""
-    row = attributes(hass, api, cache, [light])
+    row = attributes(cache, [light])
     if light.dimming:
         row[BRIGHTNESS_FIELD] = round(cache.value(light.id, BRIGHTNESS_FIELD, light.dimming.brightness), 1)
     return row
 
 
-def in_color_temp_mode(hass: HomeAssistant, api: HueBridgeV2, light: Light) -> bool:
-    """Whether the light is in color temperature mode, as core's hue integration decides it (v2/light.py,
-    color_temp_active; internals.md, Device classes): a certified light's `mirek_valid`; for one that isn't, which
-    doesn't set the flag reliably, the color mode core shows for it while it is on, which follows core's own last
-    command (so not a DeviceSide set_attributes write, nor the Hue app's), else the flag. Never with no mirek, or 0,
-    which core treats as no value (and which would divide by zero)."""
+def in_color_temp_mode(light: Light) -> bool:
+    """Whether the light is in color temperature mode, as core's hue integration decides it for a certified light
+    (v2/light.py, color_temp_active; internals.md, Device classes): its `mirek_valid`. Never with no mirek, or 0, which
+    core treats as no value (and which would divide by zero). Only Signify's lights are served, and they are
+    certified; a non-certified light's mode is core's own last command, which no served class needs."""
     if not (feature := light.color_temperature) or not feature.mirek:
         return False
-    if (device := api.devices.get(light.owner.rid)) is None or device.product_data.certified:
-        return feature.mirek_valid
-    entity_id = er.async_get(hass).async_get_entity_id(Platform.LIGHT, "hue", light.id)
-    if (state := hass.states.get(entity_id) if entity_id else None) is None or state.state != STATE_ON:
-        # Core shows no color mode for a light that is off, or one it has no entity for: the bridge's flag is all
-        # there is, as for a certified light.
-        return feature.mirek_valid
-    return state.attributes.get(ATTR_COLOR_MODE) == ColorMode.COLOR_TEMP
+    return feature.mirek_valid
 
 
-def attributes(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache, lights: Iterable[Light]) -> dict:
+def attributes(cache: HueTransitionCache, lights: Iterable[Light]) -> dict:
     """The lights' attributes under HA's names, each averaged over the lights that have it.
 
     Brightness is Hue's percent, as hue_dimmer returned it, so a read can be written back with set_attributes.
-    Color temperature counts only lights in color temperature mode (in_color_temp_mode), as core's hue integration
-    decides it. Color is each light's predicted xy, so a light mid saturation fade reads where it is.
+    Color temperature counts only lights in color temperature mode (in_color_temp_mode).
+    Color is each light's predicted xy, so a light mid saturation fade reads where it is.
     """
     lights = list(lights)
     row: dict = {}
@@ -67,7 +56,7 @@ def attributes(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache,
     kelvins = [
         color_temperature_mired_to_kelvin(light.color_temperature.mirek)
         for light in lights
-        if in_color_temp_mode(hass, api, light)
+        if in_color_temp_mode(light)
     ]
     if kelvins:
         row[ATTR_COLOR_TEMP_KELVIN] = round(mean(kelvins))
@@ -106,13 +95,13 @@ class HueGetAttributes(Adapter[Request]):
                 if (light := api.lights.get(resource_id(target))) is None:
                     results.append(self.result(target, Status.REJECTED, detail="not_on_bridge"))
                 else:
-                    results.append(self.result(target, Status.CONFIRMED, data=light_row(hass, api, cache, light)))
+                    results.append(self.result(target, Status.CONFIRMED, data=light_row(cache, light)))
                 continue
 
             grouped = api.groups.grouped_light
             lights = grouped.get_lights(resource_id(target))
             on = [light for light in lights if light.on.on]
-            row = attributes(hass, api, cache, on or lights)
+            row = attributes(cache, on or lights)
             dimmable = [light for light in lights if light.dimming]
             if any(cache.tracks(light.id, BRIGHTNESS_FIELD) for light in dimmable):
                 # Mid-move the bridge reports end values; average the lit lights' predictions instead. A light

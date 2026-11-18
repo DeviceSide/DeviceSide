@@ -1,7 +1,7 @@
 """The class ZHA gives each listed device: the integration maintainer's guard on the families. A family owns its rules
 (families/<family>/), so a change there that moves a listed device to another class fails here until this file, which
-is the integration's, is edited too. It guards the catalog as well (zigbee/tuya.py), which Zigbee2MQTT's Tuya family
-shares: an edit made for the other stack that moves a device here fails here.
+is the integration's, is edited too. It guards the catalog as well (zigbee/tuya.py, zigbee/ikea.py), which
+Zigbee2MQTT's families share: an edit made for the other stack that moves a device here fails here.
 
 It lists a device of every class, one for each trap the order between the families' rule groups is there for
 (families/__init__.py), and one for each catalog string that alone decides a class. A family's own tests, under
@@ -24,7 +24,9 @@ DEVICES = [
     ("_TZ3210_abcdefgh", "TS0505B", ZIGPY, "tuya_zcl"),
     ("sengled", "E11-G13", ZIGPY, "sengled"),
     ("SONOFF", "SWV", ZIGPY, "sonoff_swv"),
-    ("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm", ZIGPY, "other"),
+    ("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm", ZIGPY, "ikea"),
+    ("IKEA of Sweden", "TRADFRI bulb GU10 WS 345lm", ZIGPY, "ikea_timer_harmed"),
+    ("innr", "RB 285 C", ZIGPY, "other"),
     # Datapoint before ZCL: a TS0601's model matches the ZCL model pattern, and a datapoint device with a ZCL
     # manufacturer string and a model of its own shows only by its quirk.
     ("Lidl", "TS0601", ZIGPY, "tuya_mcu"),

@@ -6,17 +6,18 @@ RULES is ordered, the first match winning; a device none places gets the integra
 (classes.device_class). tests/integrations/zha/test_classification.py pins the devices each constraint below is
 about."""
 
-from . import hue, sengled, sonoff, tuya
+from . import hue, ikea, sengled, sonoff, tuya
 from ..rules import FIELDS
 from ....core.rules import Rule, compose
 from ....core.scope import Family
 
-FAMILIES: tuple[Family, ...] = (hue.FAMILY, tuya.FAMILY, sengled.FAMILY, sonoff.FAMILY)
+FAMILIES: tuple[Family, ...] = (hue.FAMILY, ikea.FAMILY, tuya.FAMILY, sengled.FAMILY, sonoff.FAMILY)
 
 RULES: tuple[Rule, ...] = compose(
     FIELDS,
-    # Reads a manufacturer no Tuya device carries, so it could go anywhere.
+    # Each reads a manufacturer no Tuya device carries, so it could go anywhere.
     (hue.FAMILY, hue.RULES),
+    (ikea.FAMILY, ikea.RULES),
     # Before Tuya's ZCL rules: a TS0601's model matches their `TS` and four digits, and some datapoint devices carry a
     # `_TZ3000_…` or `_TZ3210_…` manufacturer, which the quirk rule catches.
     (tuya.FAMILY, tuya.DATAPOINT_RULES),

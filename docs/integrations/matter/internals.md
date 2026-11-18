@@ -96,6 +96,12 @@ subscription, so the node cache reads 0 mid-timer (Tested behavior). A timer is 
 On a WiZ Smart Plug (firmware v1.4), 2026-10-28: the node cache's `OnTime` read 0 before, during and after a 20 s
 timer, as the plug never reports it on its subscription. A plain `switch.turn_on` mid-timer left it running.
 
+Overlapping timers on the same plug, 2026-11-17 (Home Assistant 2026.10.4), a probe under the rig's Matter lock: a
+second `turn_on_for` while one runs keeps the longer of the two, as the spec's OnWithTimedOff sets OnTime to the
+larger of the two. 30 s, then 8 s at 3 s: off at 30.5 s, and the second call was `sent` (`timer_not_reported`), as
+OnTime read back 26.9 s, over the 8 s sent. 8 s, then 20 s at 2 s: off at 22.3 s, 20.2 s after the second, which was
+`confirmed`.
+
 Its device strings (2026-11-14, Home Assistant 2026.10.4): manufacturer `Signify`, model `WiZ Smart Plug`, `model_id`
 `8979`, `sw_version` and `hw_version` `v1.4`; Basic Information VendorID 4107, ProductID 8979, OnOff FeatureMap 1.
 Probe: [lab-probe](../zigbee2mqtt/research/2026-11-14-lab-probe.md), §1.

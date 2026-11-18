@@ -81,62 +81,6 @@
       ]
     },
     {
-      "id": "reads_a_running_timer[switch_plug]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_0zfrhq4i",
-          "firmware": "0122052017",
-          "class": "tuya_countdown_tz3000_0zfrhq4i"
-        }
-      ]
-    },
-    {
-      "id": "reads_a_running_timer[switch_plug-2]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
-          "class": "tuya_countdown_tz3000_typdpbpg"
-        }
-      ]
-    },
-    {
-      "id": "reads_a_running_timer[switch_plug-3]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
-          "class": "tuya_countdown_tz3000_gznh2xla"
-        }
-      ]
-    },
-    {
-      "id": "reads_a_running_timer[switch_plug-4]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_okaz9tjs",
-          "firmware": "500+TZSKT31BS102",
-          "class": "tuya_countdown_tz3000_okaz9tjs"
-        }
-      ]
-    },
-    {
       "id": "reads_a_running_timer[light_dimmable]",
       "domain": "light",
       "role": "light_dimmable",
@@ -147,62 +91,6 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
           "class": "hue"
-        }
-      ]
-    },
-    {
-      "id": "reads_no_timer_after_a_turn_off[switch_plug]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_0zfrhq4i",
-          "firmware": "0122052017",
-          "class": "tuya_countdown_tz3000_0zfrhq4i"
-        }
-      ]
-    },
-    {
-      "id": "reads_no_timer_after_a_turn_off[switch_plug-2]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
-          "class": "tuya_countdown_tz3000_typdpbpg"
-        }
-      ]
-    },
-    {
-      "id": "reads_no_timer_after_a_turn_off[switch_plug-3]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
-          "class": "tuya_countdown_tz3000_gznh2xla"
-        }
-      ]
-    },
-    {
-      "id": "reads_no_timer_after_a_turn_off[switch_plug-4]",
-      "domain": "switch",
-      "role": "switch_plug",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "TS011F",
-          "manufacturer": "_TZ3000_okaz9tjs",
-          "firmware": "500+TZSKT31BS102",
-          "class": "tuya_countdown_tz3000_okaz9tjs"
         }
       ]
     }

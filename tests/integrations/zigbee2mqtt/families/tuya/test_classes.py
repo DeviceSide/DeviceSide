@@ -9,7 +9,6 @@ import pytest
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.rules import match
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import Level, OnDomains
 from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION
 from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from custom_components.deviceside.zigbee import tuya as catalog
@@ -73,30 +72,10 @@ async def test_the_zigbee_strings_in_bridge_devices_place_a_rebadged_tuya_device
     assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_ts011f"
 
 
-def test_tuya_s_classes_are_untested_on_every_action_but_turn_on_for():
-    """turn_on_for's levels, on Tuya's countdown, are test_countdown.py's."""
-    levels = {
-        level
-        for action, scope in tuya.FAMILY.scopes.items()
-        if action != "turn_on_for"
-        for level in scope.capabilities.values()
-    }
-
-    assert {getattr(level, "level", level) for level in levels} == {Level.EXPERIMENTAL}
-
-
-def test_only_a_tuya_zcl_light_is_read():
-    """get_attributes reads only what another action serves (docs/evidence.md, "A read serves only"): no action serves a
-    Tuya ZCL switch or a TS011F off the countdown, and the countdown plugs' read has no known method (refusals.py)."""
-    assert tuya.FAMILY.scopes["get_attributes"].capabilities == {
-        tuya.TUYA_ZCL: OnDomains(Level.EXPERIMENTAL, frozenset({"light"}), only=True)
-    }
-
-
-def test_a_datapoint_device_is_left_out_of_raw_zcl_reads_and_writes():
-    left_out = {action for action, scope in tuya.FAMILY.scopes.items() if "tuya_mcu" not in scope.capabilities}
-
-    assert left_out == {"get_attributes", "set_attributes", "turn_on_for"}
+def test_turn_on_for_alone_serves_a_tuya_class():
+    """Not built on every other action (docs/evidence.md, On trial): no pass or research admits Tuya's firmware there.
+    turn_on_for's levels, on Tuya's countdown, are test_countdown.py's."""
+    assert tuya.FAMILY.scopes.keys() == {"turn_on_for"}
 
 
 @pytest.mark.parametrize(
