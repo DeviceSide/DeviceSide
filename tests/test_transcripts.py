@@ -309,6 +309,57 @@ def test_xdist_workers_hand_their_segments_to_the_controller(inner):
     assert run(inner, "-n", "2", "--transcripts=check").ret == 0
 
 
+NATIVE_GROUPS = """
+from dataclasses import replace
+from unittest.mock import patch
+
+from inner_helpers import run, execute
+from tests.conftest import call
+from tests.fakes.fake_integration import FakeTurnOnFor
+from tests.fixtures.fake import add_fake_entity, add_fake_native_group, fake_config_entry
+
+NATIVE = replace(FakeTurnOnFor.scope, native_groups=True)
+
+
+async def test_a_light(hass, setup_integration):
+    with patch.object(FakeTurnOnFor, "scope", NATIVE):
+        await run(hass)
+"""
+
+ON_A_GROUP = """
+
+async def test_a_group(hass, setup_integration):
+    entry = fake_config_entry(hass)
+    add_fake_entity(hass, entry, "light.b")
+    room = add_fake_native_group(hass, entry, "light.room", ["light.b"])
+    with patch.object(FakeTurnOnFor, "scope", NATIVE):
+        await call(hass, "turn_on_for", {"entity_id": room, "duration": 5})
+"""
+
+
+@pytest.mark.parametrize("workers", [pytest.param((), id="serial"), pytest.param(("-n", "2"), id="xdist")])
+def test_a_native_groups_action_with_no_group_segment_fails(inner, workers):
+    only(inner, NATIVE_GROUPS)
+
+    result = run(inner, *workers, "--transcripts=write")
+
+    assert result.ret == pytest.ExitCode.TESTS_FAILED
+    result.stdout.fnmatch_lines(
+        [
+            "native-groups actions with no group segment: test each on one of its integration's groups",
+            "  fake / turn_on_for",
+        ]
+    )
+
+
+def test_a_native_groups_action_tested_on_a_group_passes(inner):
+    only(inner, NATIVE_GROUPS + ON_A_GROUP)
+
+    assert run(inner, "--transcripts=write").ret == 0
+    assert any(target[2] for segment in segments(inner) for target in segment["request"]["targets"])
+    assert run(inner, "--transcripts=check").ret == 0
+
+
 def test_a_wrapper_forwards_attributes_and_is_gone_after_its_test(inner):
     only(
         inner,

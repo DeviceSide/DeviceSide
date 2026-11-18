@@ -1778,6 +1778,91 @@
     "brightness": null,
     "light": {
      "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.office",
+     "light.office",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "other"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.office",
+    "integration": "control4",
+    "member_classes": {
+     "light.left": "other",
+     "light.right": "other"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Navigator%20Dynamic%20Capabilities"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Navigator Dynamic Capabilities\", \"value\": {\"DynamicCapabilities\": {\"supports_color_correlated_temperature\": true, \"color_correlated_temperature_min\": 2203, \"color_correlated_temperature_max\": 6536}}}]"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/200/commands",
+      "SET_COLOR_TARGET",
+      {
+       "LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": 2700,
+       "LIGHT_COLOR_TARGET_MODE": 1
+      }
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent,Current%20CCT,Current%20Color%20Mode,Target%20CCT,Target%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Current CCT\", \"value\": 2700}, {\"id\": 200, \"varName\": \"Target CCT\", \"value\": 2700}, {\"id\": 200, \"varName\": \"Target Color Mode\", \"value\": 1}, {\"id\": 200, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
      "color_temp_kelvin": 3000,
      "hs_color": null,
      "rgb_color": null,
