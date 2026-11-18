@@ -21,9 +21,7 @@
 
 ## Checks
 
-- [ ] `.venv/bin/pytest`
-- [ ] `pre-commit run --all-files`
-- [ ] `scripts/gen_compat.py`, `scripts/gen_features.py` and `scripts/gen_codeowners.py` regenerated
+- [ ] CI passes
 
 ## Audit
 
@@ -31,6 +29,6 @@
 
 ## New integration only
 
-- [ ] The shared touch points CONTRIBUTING's Fast track step 3 lists
+- [ ] The shared files CONTRIBUTING's new-integration path lists
 - [ ] `IntegrationInfo.maintainers` names me
 - [ ] Not yours to tick: a repo maintainer invites the maintainers to Triage after merge ([docs/repo-maintainers.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/repo-maintainers.md))

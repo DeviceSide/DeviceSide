@@ -21,30 +21,91 @@ Everybody is invited and welcome to contribute.
 
 If you can build a change and test it on your own devices, open a pull request directly. You don't need an issue first. If you're unsure it fits, open a draft pull request early and ask. If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md): it holds the repo's rules.
 
-1. **Check the fit** against the development principles above.
-2. **Keep one concern per pull request.** Apart from a new integration's shared touch points in step 3, any change outside your integration's package (`core/`, `actions/`, `scripts/`, shared docs, another integration) goes in its own small pull request first, and yours says `Depends on #N`. Each pull request passes CI on its own; don't stack one on another's unmerged branch. If you need a helper that another integration has, copy it into your package or propose the move in its own pull request. If a core base class doesn't fit, ask for the hook (a draft pull request or an issue) before working around it; don't carry state around it, or depend on Home Assistant's private names or side effects.
-3. **Stay in your package:** `custom_components/deviceside/integrations/<x>/`, `tests/integrations/<x>/`, `tests/fixtures/<x>.py` and the docs bundle `docs/integrations/<x>/` (CLAUDE.md's "Where facts go" says which fact goes in which file). The models you tested go in your bundle's `devices.yaml` (`models`), and in `docs/models.yaml` only when another integration already lists them (move the entry there from its bundle). A new integration also touches these shared files, which the repo maintainers review:
-   - `custom_components/deviceside/services.yaml`: the integration's HA domain in each action's target filter
-   - `.github/ISSUE_TEMPLATE/device_report.yml`: its title in the Integration dropdown
-   - `docs/integrations.md`: a link to its page
-   - `scripts/gen_features.py`: a `NO_PATH` entry for each feature impossible on every device of the integration, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
-   - `pyproject.toml`: any library its tests need, in the `dev` group
-   - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a user option
+Every code pull request follows these steps:
 
-   If you also need changes to `README.md` outside its auto-generated sections (the feature table and device cards), propose them in a separate pull request that changes only `README.md`. If your integration needs a change to `manifest.json`, say so in the pull request.
-4. **Ship it behind `experimental`.** Every new action, integration, domain, capability and field starts flagged, as `experimental(...)` in its scope ([evidence rules](docs/evidence.md)). A class goes behind the flag only on the evidence [on trial](docs/evidence.md#no-known-method-not-built-yet-on-trial) names (your own probe or passing run counts); without it, it stays not built. Unit tests pin each payload you send: they record what each action sends on the wire, and what it makes of the replies, as its call transcript (`tests/integrations/<x>/calls/`), so a new integration names its wire boundary in `tests/integrations/<x>/wire.py` (`tests/transcripts.py` says how). Every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage.
-   - **What your integration can declare:** each hook and field, what it buys and where its rules live, in [design.md's "Writing an integration" table](docs/design.md#core-contract).
-   - **Name your classes** if devices behind your integration answer the same call differently by maker or firmware (the table's [`capability` row](docs/design.md#core-contract)), each with its own level in every scope's `capabilities`, the default class never Verified; otherwise argue in the pull request that it has one class ([device classes](docs/evidence.md#device-classes)).
-   - **Use the integration's own groups** if it has groups that take one command for all their lights (a Hue zone, a Zigbee2MQTT group, a Control4 light group): declare `is_group`, `expand_group` and `native_groups` (the table's [Groups row](docs/design.md#core-contract)); `expand_group` has no I/O, so cache the membership in `setup` if it needs a fetch. Test each `native_groups` action on one of your groups: a group's sign-off binds to that call transcript segment, so `--transcripts` fails an action without one. Without them, a group runs as a plain light: no group icon in the feature table, no credit on the card, and no fallback to its members.
-   - **Keep your lifecycle in your package** (the table's [`setup`, `remove` row](docs/design.md#core-contract)): register your integration's teardown with `entry.async_on_unload`, and put none of it in the component root.
-   - **Log for the first bug report**, following [docs/logging.md](docs/logging.md): a user's debug log is often all you'll get.
+1. **Check the fit** against the development principles above.
+2. **Keep one concern per pull request.** Apart from the shared files your path lists in [What your change touches](#what-your-change-touches), any change outside your integration's package (`core/`, `actions/`, `scripts/`, shared docs, another integration) goes in its own small pull request first, and yours says `Depends on #N`. Each pull request passes CI on its own; don't stack one on another's unmerged branch. If you need a helper that another integration has, copy it into your package or propose the move in its own pull request. If a core base class doesn't fit, ask for the hook (a draft pull request or an issue) before working around it; don't carry state around it, or depend on Home Assistant's private names or side effects.
+3. **Find your path** in [What your change touches](#what-your-change-touches) and touch only what it lists. Your integration's package is `custom_components/deviceside/integrations/<x>/`, `tests/integrations/<x>/`, `tests/fixtures/<x>.py` and the docs bundle `docs/integrations/<x>/` (CLAUDE.md's ["Where facts go"](CLAUDE.md#where-facts-go) says which fact goes in which file).
+4. **Ship it behind `experimental`.** Every new action, domain, capability (class level) and field starts flagged, as `experimental(...)` in its scope; a new integration flags every adapter's domains ([evidence rules](docs/evidence.md)). A class goes behind the flag only on the evidence [on trial](docs/evidence.md#no-known-method-not-built-yet-on-trial) names (your own probe or passing run counts); without it, it stays not built.
 5. **Probe only what you don't know.** If you bring a call sequence you have seen work on the device (your own automation, an upstream integration that ships it), cite it in your bundle's `internals.md` and build. If you're finding out whether or how the device takes the call, or you have only the vendor's documentation, probe first, before you build, and record what you find in your bundle's `internals.md`, dated ([evidence rules](docs/evidence.md#tenets), tenets 2 and 8).
-6. **Test your finished build.** Yours may be the only test your devices get, so test each item at the commit whose calls you'll ship, with the Experimental features option turned on, and put the results in the pull request's Testing evidence section. If review changes a call, or how you read the device's reply, test that item again; a change to neither needs no retest. Put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions. It still lands flagged. Your passing rig records, or a `_manual.json` row that `scripts/signoff.py` prints at the commit you tested, can land in the same pull request, as each cites the call transcripts it tested, not a commit, so long as those transcripts are unchanged since the run: if review changes one, even by an added segment, reprint the row with `scripts/signoff.py` after retesting, or rerun the suite ([release gate](docs/evidence.md#release-gate)). They let a maintainer lift the flag for the next release instead of letting it soak with opted-in users; whether to is their judgment ([evidence rules](docs/evidence.md#the-experimental-flag)).
-7. **Run the checks:** set up with `uv sync`, then run `.venv/bin/pytest -n auto --transcripts=check` and `pre-commit run --all-files`. When you change a call on purpose, or how an action reads the reply, regenerate the call transcripts with `scripts/gen_transcripts.py` and commit them: that reopens the action's sign-off ([release gate](docs/evidence.md#release-gate)). Regenerate the cards, the feature table and CODEOWNERS with `scripts/gen_compat.py`, `scripts/gen_features.py` and `scripts/gen_codeowners.py`; CI checks each one.
+6. **Test on your own devices.** This is the test that matters: yours may be the only hardware run your devices get before users do. With the Experimental features option on, test each item at the commit whose calls you'll ship, and put the results in the pull request's Testing evidence section; put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions. If review changes a call, or how you read the device's reply, test that item again. A passing rig run, or a `_manual.json` row from `scripts/signoff.py`, can land in the same pull request.
+7. **Pass CI.** Set up with `uv sync`. CI runs the unit tests with their call transcripts (`.venv/bin/pytest -n auto --transcripts=check`), at least 95% line coverage on every module under `core/` and `integrations/` bar `__init__.py`, `pre-commit run --all-files`, and the generated-file checks; each failure names the command that fixes it. Running them locally saves a round trip.
 8. **Audit once, on the final diff:** if you use Claude, run `/audit-code` on it; otherwise ask for an audit in the pull request. After a fix, audit only the fix. Fix every Critical and High finding. List each Medium and Low with its fix snippet for the maintainer, unless its fix is a line your change already touches; a re-audit's Mediums and Lows never start another fix round. A finding about how a device *might* behave is a probe to run, not code to write: handle it if the probe shows it, otherwise make sure the log would show it ([docs/logging.md](docs/logging.md)) and list it as open.
 9. **Open the pull request** against `main` (or a `release/vX.Y.Z` branch when one exists for the fix) and fill in the template.
 
-A new integration's pull request names you in its `IntegrationInfo.maintainers`, and once it merges you're its maintainer ([what that means](#maintaining-an-integration)).
+## What your change touches
+
+Each path lists the files it changes, beside the regenerated ones (the cards, the feature table, CODEOWNERS, the call transcripts), and who merges it. `<x>` is the integration's key and `<family>` the family's; `scripts/owners.py` says who maintains a path ([CLAUDE.md's Maintainers](CLAUDE.md#maintainers)).
+
+### A device or maker string in an existing class
+
+- **The rule that places it:** the integration's `classes.py`, or, on an integration with families (Zigbee2MQTT, ZHA), the family's `RULES` (as in `integrations/zigbee2mqtt/families/gledopto/__init__.py`), or the catalog module the rule reads (`custom_components/deviceside/zigbee/<family>.py`).
+- **Its test,** beside the rule's: `tests/integrations/<x>/test_classes.py`, the family's `tests/integrations/<x>/families/<family>/`, or the catalog's `tests/zigbee/test_<family>.py`.
+- **The classification snapshot** (`tests/integrations/<x>/test_classification.py`), only if the change moves a device it lists out of its class.
+- **The model you tested,** in your bundle's `devices.yaml` (`models`), or in `docs/models.yaml` when another integration already lists it (move the entry there from its bundle). A model is credited on the card only by a passing record or `_manual.json` row on an item that isn't flagged; your own run goes in Testing evidence.
+
+Merge: the family's maintainers when every file is the family's or the catalog's; the integration's when the snapshot or the bundle changes; a repo maintainer for `docs/models.yaml`.
+
+### A new class
+
+For devices that answer a class's call differently ([device classes](docs/evidence.md#device-classes)). To split devices off a class, [split off the exception](docs/evidence.md#no-known-method-not-built-yet-on-trial); a class that needs a different payload gets a call of its own ([the split rule](docs/evidence.md#the-split-rule)).
+
+- **Its rule,** as for a device above, **and its entity domains:** `IntegrationInfo.classes` (in the integration's `classes.py`), or the family's `Family.classes`.
+- **Its place in every adapter's scope:** a level in `capabilities` (a family's in its `FamilyScope`); a `no_known_method` entry where the call DeviceSide sends fails on it, or a `not_built` one where the action's failure harms and today's call would harm it, in `integrations/<x>/refusals.py` on an integration with families; or left out, as not built yet.
+- **Its card phrase and section** in your bundle's `devices.yaml` (`capabilities`), and a row in the classification snapshot where the integration has one.
+- **Its tests,** as for a device above.
+
+Merge: the integration's maintainers.
+
+### A new family
+
+A vendor's classes on an integration with families (Zigbee2MQTT, ZHA): [Family](docs/design.md#glossary) in design.md's glossary, and its row in the ["Writing an integration" table](docs/design.md#core-contract).
+
+- **`integrations/<x>/families/<family>/__init__.py`:** `FAMILY = Family(key=…, maintainers=(), classes=…, scopes=…)`, with a `FamilyScope` per action that serves its classes, and its `RULES`.
+- **`integrations/<x>/families/__init__.py`:** the family in `FAMILIES`, and its rule group's place in `RULES`, with a comment where the order matters.
+- **Each class** as in [a new class](#a-new-class): its `devices.yaml` entry, its snapshot row, and any refusal entry in `refusals.py`.
+- **Its tests** in `tests/integrations/<x>/families/<family>/`. The integration's own tests must pass without them: CI's `pytest-without-family-tests` leaves out every family's tests and the catalog's.
+- **Its research** in `docs/integrations/<x>/research/<family>/`.
+- **A catalog module,** `custom_components/deviceside/zigbee/<family>.py`, with its test in `tests/zigbee/test_<family>.py`, only when both Zigbee integrations read the same strings: patterns and facts only (`zigbee/__init__.py`).
+
+Leave `maintainers=()`. To maintain the family, say so in the pull request, and a repo maintainer appoints you ([Maintaining a family](#maintaining-a-family)). Merge: a repo maintainer, as `/merge` refuses a pull request that adds a `Family(...)`.
+
+### A new action on an existing integration
+
+An action DeviceSide has (`custom_components/deviceside/actions/`) that your integration doesn't serve yet:
+
+- **Its adapter,** `integrations/<x>/<action>.py`, with its `AdapterScope`.
+- **Its unit tests,** `tests/integrations/<x>/test_<action>.py`, and its call transcript, `tests/integrations/<x>/calls/<action>.json`: what it sends on the wire and what it makes of the replies, so the tests pin each payload.
+- **A boundary in `tests/integrations/<x>/wire.py`,** if it sends through one the file doesn't name yet.
+- **The action's target filter** in `custom_components/deviceside/services.yaml`: your integration's HA domain, with the entity domains the adapter serves.
+- **A rig step file** in `tests/integrations/<x>/rig/`, only for a case the shared steps in `tests/rig/steps/` don't cover ([CLAUDE.md's The rig](CLAUDE.md#the-rig)).
+
+A brand-new action (not yet in `actions/`, `services.yaml`, `strings.json` and `icons.json`) is a shared change: its own pull request first (step 2). Merge: a repo maintainer, as `services.yaml` is shared.
+
+### A new integration
+
+- **Your package,** with a bundle (`index.md`, `internals.md` and `devices.yaml`) and a test fixture (`tests/fixtures/<x>.py`). `IntegrationInfo.maintainers` names you, and once the pull request merges you're its maintainer ([what that means](#maintaining-an-integration)).
+- **`tests/integrations/<x>/wire.py`,** naming your wire boundary (`tests/transcripts.py` says how). Unit tests pin each payload you send: they record what each action sends on the wire, and what it makes of the replies, as its call transcript (`tests/integrations/<x>/calls/`). The transcript records a call through a Home Assistant service by itself, and any other call only at a boundary `wire.py` names; no check catches a missing one.
+- **These shared files,** which the repo maintainers review:
+  - `custom_components/deviceside/services.yaml`: the integration's HA domain in each action's target filter
+  - `.github/ISSUE_TEMPLATE/device_report.yml`: its title in the Integration dropdown
+  - `docs/integrations.md`: a link to its page
+  - `scripts/gen_features.py`: a `NO_PATH` entry for each feature impossible on every device of the integration, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
+  - `docs/models.yaml`: a model you tested that another integration already lists (move the entry there from its bundle)
+  - `pyproject.toml` and `uv.lock`: any library its tests need, added with `uv add --dev <lib>` (CI installs with `uv sync --locked`)
+  - only if it adds a user option: `const.py`, `config_flow.py` (the options form), `strings.json` and `translations/en.json` under `custom_components/deviceside/`, and `__init__.py` and `core/runtime.py` too if core reads it; an option only your integration reads, your `setup` reads from the entry (as Zigbee2MQTT's `lifecycle.py` does)
+
+  If you also need changes to `README.md` outside its auto-generated sections (the feature table and device cards), propose them in a separate pull request that changes only `README.md`. If your integration needs a change to `manifest.json`, say so in the pull request.
+
+What your integration declares:
+
+- **What your integration can declare:** each hook and field, what it buys and where its rules live, in [design.md's "Writing an integration" table](docs/design.md#core-contract).
+- **Name your classes** if devices behind your integration answer the same call differently by maker or firmware (the table's [`capability` row](docs/design.md#core-contract)), each with its own level in every scope's `capabilities`, the default class never Verified; otherwise argue in the pull request that it has one class ([device classes](docs/evidence.md#device-classes)).
+- **Use the integration's own groups** if it has groups that take one command for all their lights (a Hue zone, a Zigbee2MQTT group, a Control4 light group): declare `is_group`, `expand_group` and `native_groups` (the table's [Groups row](docs/design.md#core-contract)); `expand_group` has no I/O, so cache the membership in `setup` if it needs a fetch. Unit-test each `native_groups` action on one of your groups. Without them, a group runs as a plain light: no group icon in the feature table, no credit on the card, and no fallback to its members.
+- **Keep your lifecycle in your package** (the table's [`setup`, `remove` row](docs/design.md#core-contract)): register your integration's teardown with `entry.async_on_unload`, and put none of it in the component root.
+- **Log for the first bug report**, following [docs/logging.md](docs/logging.md): a user's debug log is often all you'll get.
+
+Merge: a repo maintainer.
 
 ## Maintaining an integration
 
@@ -63,6 +124,6 @@ Each integration in DeviceSide has one or more maintainers, named in its `Integr
 On an integration that fronts many vendors (Zigbee2MQTT, ZHA), each vendor's classes are a family with its own folder, `integrations/<x>/families/<family>/`, and a family can have maintainers of its own, named in its `Family.maintainers`. To maintain one, open an issue saying which; a repo maintainer appoints you. The integration's maintainers still own every family in it.
 
 - **What you look after:** the family's code, its tests (`tests/integrations/<x>/families/<family>/`) and its new research (`docs/integrations/<x>/research/<family>/`). Also the Zigbee strings your family shares with the same family on the other Zigbee integration (`custom_components/deviceside/zigbee/<family>.py`): they belong to the maintainers of either family and of either integration, so you merge a change to them without the other integration's maintainer, unless it fails that integration's tests or its classification snapshot, which are theirs to change.
-- **What you merge:** a pull request whose every file you own, with `/merge <sha>`, as an integration's maintainer does. That covers adding a rule or a maker string to one of your existing classes, changing your classes' levels (you lift a flag when you judge it ready), and adding an own call.
-- **A new class isn't yours alone:** its card phrase (`docs/integrations/<x>/devices.yaml`), its test records and the classification snapshot are the integration's, so that pull request needs the integration's maintainer.
+- **What you merge:** a pull request whose every file you own, with `/merge <sha>`, as an integration's maintainer does: a [device or maker string](#a-device-or-maker-string-in-an-existing-class) in one of your existing classes, your classes' levels (you lift a flag when you judge it ready), or an own call.
+- **A new class isn't yours alone:** [its files](#a-new-class) include the integration's, so that pull request needs the integration's maintainer.
 - **What needs the integration's maintainer:** anything else in the integration (its transport, another family, the rule order in `families/__init__.py`, the classification snapshot in `tests/integrations/<x>/test_classification.py`, its test records and pages, and its `refusals.py`, which holds every no known method and not built yet entry, your classes' included: [why](CLAUDE.md#maintainers)). If your rule change moves a device the snapshot lists, that pull request edits the snapshot, so it is theirs to merge.
