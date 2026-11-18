@@ -6,12 +6,12 @@
     "predicted_state"
   ],
   "result": "pass",
-  "date": "2026-11-17",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "2a500c44"
+    "commit": "c05e6168"
   },
-  "calls": "278a0dec6228966b35a590c18d89e0d0fd7a8244",
+  "calls": "886d7f8b141464d8d220ff559e92dceb271ba564",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -39,6 +39,12 @@
           "model": "LWA012",
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
           "class": "hue"
         },
         {
@@ -74,6 +80,12 @@
           "model": "LWA012",
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
           "class": "hue"
         },
         {

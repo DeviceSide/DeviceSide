@@ -3,12 +3,12 @@
   "integration": "zigbee2mqtt",
   "action": "turn_on_for",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "a27779ef"
+    "commit": "c05e6168"
   },
-  "calls": "226fed7961eba2fd414b471f93157256dccd76d4",
+  "calls": "39bbbdbe97f41e46d50f4ff10f06f6a8616374b9",
   "home_assistant": "2026.10.4",
   "tests": [
     {

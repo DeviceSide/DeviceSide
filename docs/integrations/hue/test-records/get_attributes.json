@@ -3,12 +3,12 @@
   "integration": "hue",
   "action": "get_attributes",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "source": {
     "kind": "rig",
-    "commit": "823065ec"
+    "commit": "c05e6168"
   },
-  "calls": "938cf964e1c9c9c5403d6d11541a6ef92b97f206",
+  "calls": "93e0e843a5e6504c33dc38203bbd272736ed7003",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -47,12 +47,6 @@
       "group": true,
       "devices": [
         {
-          "model": "LTA009",
-          "manufacturer": "Signify Netherlands B.V.",
-          "firmware": "1.163.1",
-          "class": "hue"
-        },
-        {
           "model": "LWA012",
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
@@ -62,6 +56,12 @@
           "model": "LCA016",
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
           "class": "hue"
         }
       ]
