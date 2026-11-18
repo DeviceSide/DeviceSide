@@ -561,9 +561,9 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
     """A relay, a switch or a light, takes the timer as either, and dimming only as a light. One entry
     would list dimming for every relay, so each of its domains gets its own, grouped with the entries of its feature
     set: as a light with the dimmers, as a switch alone."""
-    dimming = AdapterScope(capabilities=verified("RGBCCT") | experimental("Switch", "Light"))
+    dimming = AdapterScope(capabilities=verified("RGBCCT") | documented("Switch", "Light"))
     timer = AdapterScope(
-        domains=verified("light", "switch"), capabilities=verified("RGBCCT") | experimental("Switch", "Light")
+        domains=verified("light", "switch"), capabilities=verified("RGBCCT") | documented("Switch", "Light")
     )
     capabilities = copy.deepcopy(DATA["capabilities"])
     capabilities["zha"]["RGBCCT"]["phrase"] = "multicolor bulbs"
@@ -573,13 +573,13 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
         capabilities=capabilities,
     )
     assert card.lines[:3] == [
-        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🔍 turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🟡 turn on with timer, smooth dimming",
         f"[multicolor bulbs]({URL}#bulbs): 🟢 turn on with timer, smooth dimming",
-        f"[relays]({URL}#relays): 🔍 turn on with timer",
+        f"[relays]({URL}#relays): 🟡 turn on with timer",
     ]
     # Where both domains show the same features, the class keeps one line, by its phrase.
     both = zha_card(adapter("zha", "turn_on_for", timer), capabilities=capabilities)
-    assert both.lines[0] == f"[dimmers]({URL}#dimmers), [relays]({URL}#relays): 🔍 turn on with timer"
+    assert both.lines[0] == f"[dimmers]({URL}#dimmers), [relays]({URL}#relays): 🟡 turn on with timer"
     # A class that splits needs a phrase for each domain it shows.
     del capabilities["zha"]["Switch"]["domains"]
     with pytest.raises(SystemExit, match="zha Switch shows other features on each of its domains"):
@@ -852,7 +852,7 @@ def test_the_checked_in_readme_and_page_match_the_real_records():
 
 def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
-    text = gc.cards(registry, data(registry))
+    text = gc.cards(gc.card_list(registry, data(registry)))
     # The fixture's Old plug has no known method; nothing is tested, Documented, Experimental or caveated.
     assert "🟢 works<br>\n🔴 no known command works on it\n\n**ZHA**" in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
@@ -1307,7 +1307,7 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
     )
     timer = AdapterScope(
         domains=verified("light", "switch"),
-        capabilities=verified("Switch", "Light") | documented("other") | experimental("CCT", "RGB"),
+        capabilities=verified("Switch", "Light") | documented("other", "CCT", "RGB"),
     )
     dimming = AdapterScope(capabilities=experimental("CCT", "other", "Light"))
     capabilities = copy.deepcopy(DATA["capabilities"])
@@ -1320,8 +1320,8 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
     assert card.lines == [
         f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",  # native groups first
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",  # acme's tested line first
-        f"[RGB controllers]({URL}#dimmers): 🔍 turn on with timer",
-        f"[other Acme lights]({URL}#dimmers): 🔍 turn on with timer, smooth dimming",
+        f"[RGB controllers]({URL}#dimmers): 🟡 turn on with timer",
+        f"[other Acme lights]({URL}#dimmers): 🟡 turn on with timer · 🔍 smooth dimming",
         f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · 🔍 smooth dimming",  # Beta
         f"[other brands]({URL}#lights): 🟡 turn on with timer · 🔍 smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",
@@ -1397,3 +1397,110 @@ def test_a_lines_phrases_sort_like_lines_and_variants_join_with_or():
     children = [gc.Line((), {"S": ["other makers"]}, variant=True), gc.Line((), {"S": ["zeta"]}, variant=True)]
     (parent,) = gc.ordered([gc.Line((), {"S": ["plugs"]}, note="check", children=children)], lambda *_: (0, ""), set())
     assert [child.plain() for child in parent.children] == ["zeta", "other makers"]
+
+
+# The fold and the cap (docs/evidence.md, The experimental flag).
+
+
+def trial_card(*adapters, broken=None, **changes):
+    registry = classed_registry(*adapters)
+    registry.integrations["zha"].classes["RGBCCT"] = LIGHT
+    return gc.card("zha", registry, list(adapters), data(registry, **changes))
+
+
+def timer_trial(*classes, **scope):
+    return adapter("zha", "turn_on_for", AdapterScope(capabilities=experimental(*classes), **scope))
+
+
+def test_two_lines_that_show_only_experimental_fold_into_one_last_line(root):
+    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("Light")))
+    card = trial_card(timer_trial("Light", "CCT"), dimming)
+    # CCT controllers and dimmers are one section but show different features, so two lines; the fold goes after
+    # devices.yaml's entry, and the cap counts it as the one Experimental line it is.
+    assert card.lines == [
+        f"[Old plug]({URL}#old-plug): 🔴",
+        f"🔍 on trial: [CCT controllers]({URL}#dimmers) (turn on with timer);"
+        f" [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming)",
+    ]
+    assert (card.total, len(card.trial)) == (2, 1)
+
+
+def test_one_experimental_line_stays_as_it_is(root):
+    card = trial_card(timer_trial("CCT"))
+    assert card.lines == [f"[CCT controllers]({URL}#dimmers): 🔍 turn on with timer", f"[Old plug]({URL}#old-plug): 🔴"]
+    assert (card.total, len(card.trial)) == (2, 1)
+
+
+def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root):
+    """Classes of two brands never share a line (`brands`), so each is its own, and the fold joins them."""
+    adapters = (timer_trial("Light", "CCT"),)
+    registry = brand_registry(*adapters)
+    card = gc.card("zha", registry, list(adapters), data(registry))
+    assert card.lines[-1] == (
+        f"🔍 on trial: [CCT controllers]({URL}#dimmers), [dimmers]({URL}#dimmers) (turn on with timer)"
+    )
+
+
+def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
+    broken = {"CCT": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
+    off = adapter("zha", "turn_off_for", AdapterScope(capabilities=experimental("RGBCCT"), no_known_method=broken))
+    card = trial_card(timer_trial("CCT", "RGBCCT"), off)
+    assert card.lines[-1] == (
+        f"🔍 on trial: [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
+        f" [CCT controllers]({URL}#dimmers) (turn on with timer · 🔴 turn off with timer)"
+    )
+    assert len(card.trial) == 1
+
+
+def test_a_mixed_line_is_no_trial_line_and_never_folds_with_one(root):
+    """🟡 · 🔍 makes a real claim: it neither folds nor counts, so the one 🔍-only line beside it stays as it is."""
+    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=documented("Light") | experimental("CCT")))
+    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("Light")))
+    card = trial_card(timer, dimming)
+    assert card.lines[:2] == [
+        f"[CCT controllers]({URL}#dimmers): 🔍 turn on with timer",
+        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · 🔍 smooth dimming",
+    ]
+    assert (card.total, card.trial) == (3, [card.lines[0]])
+
+
+def test_a_variants_children_never_fold(root):
+    timer = AdapterScope(
+        domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("CCT", "RGB", "Light")
+    )
+    capabilities = copy.deepcopy(DATA["capabilities"])
+    for name, phrase in (("Switch", "maker A"), ("CCT", "maker B"), ("RGB", "no setting")):
+        capabilities["zha"][name] = {"phrase": phrase, "section": "Plug"}
+    sections = {"zha": {"Plug": {"phrase": "Plugs", "variants": "check Manufacturer on its page"}}}
+    adapters = (
+        adapter("zha", "turn_on_for", timer),
+        adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("Light", "RGBCCT"))),
+    )
+    registry = classed_registry(*adapters)
+    registry.integrations["zha"].classes.update({"RGB": LIGHT, "RGBCCT": LIGHT})
+    card = gc.card("zha", registry, list(adapters), data(registry, capabilities=capabilities, sections=sections))
+    parent = next(line for line in card.lines if line.startswith(f"[Plugs]({URL}#plug)"))
+    assert "  - [maker B, or no setting]" in parent and "🔍 turn on with timer" in parent
+    # The children stay under their parent and count as lines; the two top-level lines fold.
+    assert sum(line.startswith("🔍 on trial") for line in card.lines) == 1
+    assert (card.total, len(card.trial)) == (5, 2)
+
+
+def share(total, trial):
+    return [gc.Card("c", total=total, trial=["🔍 x"] * trial)]
+
+
+def test_the_cap_fails_over_a_quarter_and_names_the_share_and_the_lines():
+    assert gc.EXPERIMENTAL_SHARE_MAX == 0.25
+    gc.check_share(share(100, 25))
+    gc.check_share(share(0, 0))
+    with pytest.raises(SystemExit, match=r"26 of 100 card lines \(26%\) are Experimental, over the 25% cap[\s\S]*🔍 x"):
+        gc.check_share(share(100, 26))
+
+
+def test_the_cap_counts_every_card_together_and_runs_in_a_plain_run_and_in_check(root, monkeypatch):
+    registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=experimental("Switch"))))
+    run = write_files(root, registry, monkeypatch)
+    for argv in ([], ["--check"]):
+        with pytest.raises(SystemExit, match="of 2 card lines"):  # the Experimental line and devices.yaml's entry
+            run(argv)
