@@ -51,7 +51,7 @@ group expansion yields nothing for one.
 
 **Not yet classed** (`class_unknown`), where a call is known to harm a class, is refused the same way, raised if named
 and skipped if not, but it is usually transient: it holds only until the integration has reported the device or group
-([evidence.md](evidence.md#no-known-method-not-built-yet-untested)). That usually takes seconds, so an automation firing
+([evidence.md](evidence.md#no-known-method-not-built-yet-on-trial)). That usually takes seconds, so an automation firing
 at startup can get it; if the integration never reports it (DeviceSide couldn't connect to it), it holds until
 DeviceSide reloads, and a device that never finishes pairing holds until it is paired again. A target DeviceSide can't
 class at all (an entity with no device, a classifier that raised) is refused the same way, for good. A native group

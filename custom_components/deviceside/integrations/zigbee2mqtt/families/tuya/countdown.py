@@ -1,11 +1,12 @@
 """Tuya's countdown on Zigbee2MQTT: the call turn_on_for sends a countdown plug, one publish with `countdown`.
 
-Tuya's countdown plugs (COUNTDOWNS, in this family) get `{"state": "ON", "countdown": N}`, whole seconds, 1 to 43200:
-Z2M's converter A sends a plain On, then 0x42 `{0, N, N}`, which the plug runs as a toggle at expiry, so from on it
-ends off (internals.md, Tuya's countdown). One publish, not a state check first: 0x42 alone on an off plug turns it on
-at N for good (probe P1b), and converter A sends 0x42 only once the On's send has resolved, so a lost On sends nothing
-more and Z2M logs the set as failed (set_check.py makes it `rejected`). Neither the reads nor `on_time` are sent to
-it: it reports its state at expiry, and the time left can't be read (probe P6), so the result is `sent`.
+Tuya's countdown plugs with a record of their own (VERIFIED_COUNTDOWNS, in this family) get `{"state": "ON",
+"countdown": N}`, whole seconds, 1 to 43200: Z2M's converter A sends a plain On, then 0x42 `{0, N, N}`, which the plug
+runs as a toggle at expiry, so from on it ends off (internals.md, Tuya's countdown). One publish, not a state check
+first: 0x42 alone on an off plug turns it on at N for good (probe P1b), and converter A sends 0x42 only once the On's
+send has resolved, so a lost On sends nothing more and Z2M logs the set as failed (set_check.py makes it `rejected`).
+Neither the reads nor `on_time` are sent to it: it reports its state at expiry, and the time left can't be read (probe
+P6), so the result is `sent`.
 """
 
 from homeassistant.core import HomeAssistant

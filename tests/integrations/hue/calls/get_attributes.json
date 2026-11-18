@@ -360,69 +360,6 @@
    "request": {},
    "targets": [
     [
-     "light.lamp",
-     "light.lamp",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "other",
-    "data": {
-     "brightness": 50.0,
-     "color_temp_kelvin": 2702
-    },
-    "detail": null,
-    "entity_id": "light.lamp",
-    "integration": "hue",
-    "member_classes": null,
-    "status": "confirmed"
-   }
-  ],
-  "wire": []
- },
- {
-  "action": "get_attributes",
-  "integration": "hue",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {},
-   "targets": [
-    [
-     "light.lamp",
-     "light.lamp",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "other",
-    "data": {
-     "brightness": 50.0
-    },
-    "detail": null,
-    "entity_id": "light.lamp",
-    "integration": "hue",
-    "member_classes": null,
-    "status": "confirmed"
-   }
-  ],
-  "wire": []
- },
- {
-  "action": "get_attributes",
-  "integration": "hue",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {},
-   "targets": [
-    [
      "light.one",
      "light.one",
      false

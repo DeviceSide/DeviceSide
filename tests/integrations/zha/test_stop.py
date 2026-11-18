@@ -14,8 +14,8 @@ from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.zha import INTEGRATION as ZHA_INTEGRATION
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
-from .conftest import IEEE, IKEA, SENT, A, B, bulb, call, call_as, sent
-from ...conftest import advance, result, wall_clock_now
+from .conftest import IEEE, INNR, SENT, A, B, bulb, call, call_as, sent
+from ...conftest import advance, allow_experimental, result, wall_clock_now
 
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
@@ -219,14 +219,16 @@ async def test_one_light_of_three_failing_rejects_only_it(hass, commands, clock)
 
 
 async def test_another_brand_gets_a_hue_bulbs_commands(hass, commands, clock):
-    """`other` is Documented: with Experimental features off it runs, and gets exactly the Verified Hue call."""
+    """`other` is on trial (Zigbee 3.0 certification, docs/internals.md): with Experimental features on it gets exactly
+    the Verified Hue call."""
+    allow_experimental(hass)
     bulb(hass)
-    bulb(hass, "light.ikea", A, strings=IKEA)
-    for light in ("light.bulb", "light.ikea"):
+    bulb(hass, "light.innr", A, strings=INNR)
+    for light in ("light.bulb", "light.innr"):
         await call(hass, "stop", {"entity_id": light})
 
-    hue, ikea = (sent([c for c in commands if c.data["ieee"] == ieee]) for ieee in (IEEE, A))
-    assert ikea == hue == [LEVEL_STOP]
+    hue, innr = (sent([c for c in commands if c.data["ieee"] == ieee]) for ieee in (IEEE, A))
+    assert innr == hue == [LEVEL_STOP]
 
 
 async def test_a_stop_queued_behind_a_raise_from_off_halts_it(hass, commands, clock):

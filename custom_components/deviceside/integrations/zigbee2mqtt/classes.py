@@ -24,8 +24,7 @@ Unplaced until it is paired again, so its groups fall back for good, one call pe
 `capability` logs, at DEBUG, what an Unplaced device is waiting for.
 
 Each adapter's scope holds the families' levels, `other`'s below and the refusal entries in refusals.py
-(`class_scope`); why each class sits where it does is in index.md (Device classes) and the step 5 PR body (`other`'s
-Documented actions).
+(`class_scope`); why each class sits where it does is in index.md (Device classes) and the step 5 PR body.
 """
 
 import logging
@@ -44,7 +43,7 @@ from .rules import ZIGBEE, definition_fields, zigbee_strings
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
-from ...core.scope import OTHER, ClassDomains, ClassLevel, Unplaced, documented, experimental
+from ...core.scope import OTHER, ClassDomains, ClassLevel, Unplaced, experimental
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,28 +52,28 @@ CLASSES: ClassDomains = {OTHER: frozenset({Platform.LIGHT, Platform.SWITCH})} | 
     name: domains for family in FAMILIES for name, domains in family.classes.items()
 }
 
-# `other`'s level in each adapter's scope (index.md, Device classes): Documented where the call is the Verified one
-# and no known class departs, else untested.
-# Brightness fades and stop: the ZCL Level and Color commands Hue's are (native_control.py turns Philips' own off for
-# a brightness fade), and no class known to depart from them.
-_SAME_CALL = documented(OTHER)
-_UNTESTED = experimental(OTHER)
+# `other`'s level in each adapter's scope (index.md, Device classes; docs/evidence.md, On trial): on trial only where
+# research predicts most of it accepts the call, and not built elsewhere (an empty mapping). It spans vendors, so a
+# Hue bulb's pass makes it neither Documented nor on trial.
+# Brightness fades and stop: Level Control's Move, MoveToLevel and Stop, which a Zigbee 3.0 dimmable light must take
+# (docs/internals.md, Shared); native_control.py turns Philips' own off for a brightness fade.
+_CERTIFIED = experimental(OTHER)
+_NOT_BUILT: Mapping[str, ClassLevel] = {}
 OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
-    "raise_brightness": _SAME_CALL,
-    "lower_brightness": _SAME_CALL,
-    "stop": _SAME_CALL,
-    # Hue and saturation fades: a saturation fade is MoveToSaturation with Philips' own command held off, which holds
-    # a Hue bulb's hue; nothing shows other firmware does.
-    "raise_hue": _UNTESTED,
-    "lower_hue": _UNTESTED,
-    "raise_saturation": _UNTESTED,
-    "lower_saturation": _UNTESTED,
-    # Raw ZCL reads and writes. Other brands depart: a bulb without `onTime` can fail the read, and some come on, or
-    # at full, when written while off.
-    "get_attributes": _UNTESTED,
-    "set_attributes": _UNTESTED,
-    # Every other brand may depart (some never switch off).
-    "turn_on_for": _UNTESTED,
+    "raise_brightness": _CERTIFIED,
+    "lower_brightness": _CERTIFIED,
+    "stop": _CERTIFIED,
+    # Hue and saturation moves: no research predicts how other firmware takes them.
+    "raise_hue": _NOT_BUILT,
+    "lower_hue": _NOT_BUILT,
+    "raise_saturation": _NOT_BUILT,
+    "lower_saturation": _NOT_BUILT,
+    # Raw ZCL reads and writes: other brands depart (a bulb without `onTime` can fail the read, and some come on, or at
+    # full, when written while off).
+    "get_attributes": _NOT_BUILT,
+    "set_attributes": _NOT_BUILT,
+    # turn_on_for: its call harms some lights and most plugs, so the integration refuses `other` there (refusals.py).
+    "turn_on_for": _NOT_BUILT,
 }
 
 

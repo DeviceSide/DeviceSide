@@ -13,20 +13,28 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import (
     check_registry_placed,
     gledopto,
     hue,
+    ikea,
     sengled,
     tuya,
 )
 
 
-def test_the_integration_holds_the_four_families_and_the_registry_s_checks_pass():
+def test_the_integration_holds_the_five_families_and_the_registry_s_checks_pass():
     assert INTEGRATION.families is FAMILIES
-    assert [family.key for family in FAMILIES] == ["hue", "tuya", "sengled", "gledopto"]
+    assert [family.key for family in FAMILIES] == ["hue", "ikea", "tuya", "sengled", "gledopto"]
     check_families(INTEGRATION)
 
 
 def test_the_rule_groups_run_in_the_integration_s_order():
     """Tuya's Zigbee-string rules before the vendor rules, its registry rules last (families/__init__.py)."""
-    assert RULES == (*hue.RULES, *tuya.ZIGBEE_RULES, *sengled.RULES, *gledopto.RULES, *tuya.REGISTRY_RULES)
+    assert RULES == (
+        *hue.RULES,
+        *tuya.ZIGBEE_RULES,
+        *ikea.RULES,
+        *sengled.RULES,
+        *gledopto.RULES,
+        *tuya.REGISTRY_RULES,
+    )
 
 
 def test_every_rule_names_a_class_but_the_default():

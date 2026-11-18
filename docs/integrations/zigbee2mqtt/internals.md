@@ -83,8 +83,8 @@ probed on Z2M:
   `moveToLevelWithOnOff`.
 - `lower_brightness`, the hue and saturation ramps and `stop` send no Level command to an off light.
 
-`moveToLevelWithOnOff` from off is untested on the Sengled. Every `sengled` scope entry is `experimental(...)`, or
-left out on `turn_on_for`, until the Sengled lab run.
+`moveToLevelWithOnOff` from off is untested on the Sengled. The `sengled` family holds no scope, so no feature is
+built for it, until a Sengled run.
 
 ### `color_modes`
 

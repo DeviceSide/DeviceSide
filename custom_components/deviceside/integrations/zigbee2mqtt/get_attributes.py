@@ -33,7 +33,8 @@ class Z2MGetAttributes(Z2MAdapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Switches are Experimental, as in turn_on_for.
+        # Switches are Experimental, but no class is served on one (docs/evidence.md, "A read serves only"):
+        # turn_on_for serves only Tuya's countdown plugs there, which this read refuses (refusals.py).
         domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
         **class_scope("get_attributes"),
         confirmable=True,

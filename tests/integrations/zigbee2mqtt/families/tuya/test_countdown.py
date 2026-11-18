@@ -115,8 +115,9 @@ def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_tur
         # On switches alone, as Z2M shows a plug: one Z2M shows as a light has no record.
         assert scope.class_level(name, "switch") is Level.VERIFIED
         assert scope.class_level(name, "light") is Level.EXPERIMENTAL
-    assert scope.capabilities["tuya_countdown"] is Level.EXPERIMENTAL
-    assert set(scope.own_calls) == set(tuya.COUNTDOWNS)
+    # The rest of converter A's strings are not built: no pass names them (test_refusals.py).
+    assert "tuya_countdown" not in scope.capabilities
+    assert set(scope.own_calls) == set(tuya.VERIFIED_COUNTDOWNS)
     # One call object, so the countdown plugs of every string share a run.
     assert set(scope.own_calls.values()) == {countdown.COUNTDOWN}
     assert countdown.COUNTDOWN.limits is countdown.COUNTDOWN_LIMITS
@@ -125,8 +126,7 @@ def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_tur
 
 
 async def test_a_countdown_plug_gets_one_publish_with_the_countdown(hass, setup_production, broker):
-    entity_id = plug(hass, broker, UNLISTED)
-    allow_experimental(hass)
+    entity_id = plug(hass, broker, LAB)
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 30})
 
@@ -150,8 +150,7 @@ async def test_the_countdown_is_whole_seconds_from_1_to_43200(
     hass, setup_production, broker, duration, countdown, clamped_to
 ):
     """Z2M refuses anything else before sending (probe P7); a rounded or clamped one says what was sent."""
-    entity_id = plug(hass, broker, UNLISTED)
-    allow_experimental(hass)
+    entity_id = plug(hass, broker, LAB)
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": duration})
 
@@ -169,10 +168,12 @@ async def test_a_verified_string_runs_with_experimental_features_off(hass, setup
     assert commands(broker) == [(SET, {"state": "ON", "countdown": 5})]
 
 
-async def test_an_unrecorded_string_is_experimental(hass, setup_production, broker):
+async def test_an_unrecorded_string_is_not_built_even_with_experimental_on(hass, setup_production, broker):
+    """A pass admits only the maker string it ran on (docs/evidence.md, On trial): Z2M's own timer would leave it on."""
     entity_id = plug(hass, broker, UNLISTED)
+    allow_experimental(hass)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_built"
     assert commands(broker) == []
 
 
@@ -180,11 +181,11 @@ async def test_a_group_with_a_countdown_plug_falls_back_so_each_gets_its_own_cal
     """A Z2M group's call carries `on_time`, which Z2M would send the plug as a plain On or the spec's tenths, so the
     group falls back: the bulb gets on_time, the plug its countdown."""
     # The second member is the plug, which Z2M exposes as a light here, so it is a member HA can address.
-    tuya = {"manufacturer": "Tuya", "model_id": "TS011F_plug_1", "zigbee": (UNLISTED, "TS011F")}
+    tuya = {"manufacturer": "Tuya", "model_id": "TS011F_plug_1", "zigbee": (LAB, "TS011F")}
     entity_id = group(hass, broker, one={}, two=tuya)
     entry = next(device for device in broker.retained[DEVICES] if device["ieee_address"] == "0x02")
     entry["definition"] = {"model": "TS011F_plug_1", "exposes": [SWITCH, COUNTDOWN]}
-    assert placed_class(hass, "light.two") == "tuya_countdown"
+    assert placed_class(hass, "light.two") == "tuya_countdown_tz3000_0zfrhq4i"
     allow_experimental(hass)
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
@@ -240,8 +241,7 @@ async def test_a_switch_plug_named_beside_its_light_group_gets_its_countdown_and
 async def test_a_countdown_set_z2m_logs_failed_is_rejected(hass, setup_production, broker):
     """Z2M logs the set failed when the On isn't delivered, and sends no 0x42 after it (internals.md, Tuya's
     countdown): the plug took nothing, and the call says so."""
-    entity_id = plug(hass, broker, UNLISTED)
-    allow_experimental(hass)
+    entity_id = plug(hass, broker, LAB)
     answer(broker, SET, line=ON_UNDELIVERED)
 
     assert await failure(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == f"{entity_id}: send_failed"

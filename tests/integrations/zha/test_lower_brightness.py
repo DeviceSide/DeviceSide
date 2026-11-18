@@ -9,7 +9,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import soft_off_restores
 
-from .conftest import E11_G13, IEEE, IKEA, RESTORE_60, SENT, A, B, bulb, call, on_off_reads, sent, to
+from .conftest import IEEE, INNR, RESTORE_60, SENT, A, B, bulb, call, on_off_reads, sent, to
 from ...conftest import advance, allow_experimental, result, wall_clock_now
 from ...fixtures.zha import cluster
 
@@ -124,18 +124,6 @@ async def test_a_failed_soft_off_leaves_no_restore(hass):
     assert not soft_off_restores(hass)
 
 
-async def test_no_restore_on_a_model_that_drops_levels_while_off(hass, commands, bulbs):
-    allow_experimental(hass)
-    bulb(hass, strings=E11_G13)
-    start = wall_clock_now()
-
-    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
-    await advance(hass, start, 4.5)
-
-    assert len(commands) == 1
-    assert not on_off_reads(bulbs)
-
-
 async def test_a_raise_cancels_the_restore(hass, commands, bulbs, clock):
     bulb(hass)
     start = wall_clock_now()
@@ -165,12 +153,14 @@ async def test_a_lower_that_passes_an_off_member_by_goes_to_each_lit_one(
 
 @pytest.mark.parametrize("data", [{}, {"limit": 20}], ids=["soft_off", "to_a_limit"])
 async def test_another_brand_gets_a_hue_bulbs_commands(hass, commands, data):
-    """`other` is Documented: with Experimental features off it runs, and gets exactly the Verified Hue call."""
+    """`other` is on trial (Zigbee 3.0 certification, docs/internals.md): with Experimental features on it gets exactly
+    the Verified Hue call."""
+    allow_experimental(hass)
     bulb(hass)
-    bulb(hass, "light.ikea", A, strings=IKEA)
+    bulb(hass, "light.innr", A, strings=INNR)
 
     await call(hass, "lower_brightness", {"entity_id": "light.bulb", **data})
-    await call(hass, "lower_brightness", {"entity_id": "light.ikea", **data})
+    await call(hass, "lower_brightness", {"entity_id": "light.innr", **data})
 
-    hue, ikea = (sent([c for c in commands if c.data["ieee"] == ieee]) for ieee in (IEEE, A))
-    assert ikea == hue != []
+    hue, innr = (sent([c for c in commands if c.data["ieee"] == ieee]) for ieee in (IEEE, A))
+    assert innr == hue != []

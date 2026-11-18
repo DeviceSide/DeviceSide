@@ -7,7 +7,7 @@ from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
-from .conftest import BOTTOM, E11_G13, IKEA, SENT, A, B, bulb, call, sent, to
+from .conftest import BOTTOM, INNR, SENT, A, B, bulb, call, sent, to
 from ...conftest import allow_experimental, refusal
 from ...fixtures.zha import IEEE, add_cluster
 
@@ -61,16 +61,6 @@ async def test_a_lit_hue_bulb_gets_no_bottom(hass, commands, zha_gateway):
     assert not zha_gateway.requests
 
 
-async def test_from_off_on_a_model_that_drops_levels_while_off_skips_the_bottom(hass, commands):
-    """The E11-G13 jumps to full on a MoveToLevel while off, so it starts at its stored level instead."""
-    allow_experimental(hass)
-    bulb(hass, state="off", strings=E11_G13)
-
-    await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
-
-    assert sent(commands) == [(0x0008, 0x04, {"level": 254, "transition_time": 50})]
-
-
 async def test_a_transition_longer_than_zcl_holds_runs_at_the_most(hass, commands):
     bulb(hass)
 
@@ -111,11 +101,11 @@ async def test_an_off_member_is_put_at_the_bottom_on_its_own(hass, two_light_gro
 async def test_another_brand_runs_only_with_experimental_on(hass, commands):
     """From off a Hue bulb is turned on by Hue's own command and another brand by MoveToLevel with ExecuteIfOff, a
     call no record has run, so `other` is untested here."""
-    bulb(hass, "light.ikea", state="off", strings=IKEA)
+    bulb(hass, "light.innr", state="off", strings=INNR)
 
-    assert await refusal(hass, "raise_brightness", {"entity_id": "light.ikea"}) == "experimental_off"
+    assert await refusal(hass, "raise_brightness", {"entity_id": "light.innr"}) == "experimental_off"
     assert not commands
 
     allow_experimental(hass)
-    await call(hass, "raise_brightness", {"entity_id": "light.ikea"})
+    await call(hass, "raise_brightness", {"entity_id": "light.innr"})
     assert sent(commands)[0] == BOTTOM

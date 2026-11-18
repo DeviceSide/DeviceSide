@@ -6,8 +6,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
 
 ## Tenets
 
-1. **User experience is the north star.** Actions make devices do what users expect, quickly. If that holds, nothing
-   else matters.
+1. **User experience is the north star.** Actions make devices do what users expect, predictably and with low
+   latency, and DeviceSide offers only what's likely to meet that bar. If that holds, nothing else matters.
 2. **Probe before you build.** When unsure how a device responds to a call, run a cheap probe rather than assume.
    Record what it shows as a fact (the bundle's `internals.md`, dated). Where its source goes depends on whether a
    shipped call depends on the fact staying true:
@@ -68,9 +68,10 @@ transcript unchanged: every record stands. A fix to `stop`'s call lands next. It
 reopens `stop`'s evidence alone, and a rerun of the `stop` suite completes the sign-off.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
-That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA
-`turn_on_for`, and on Zigbee2MQTT each class holds its own level on switches: `hue` is Verified on lights alone. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
-light's call one plug stayed off while another switched on about ten times later than asked and stayed on
+That reopened "a Zigbee switch takes the light's timed-on call", and with research predicting most plugs and switches
+fail it, no class without a switch pass is on trial there: `turn_on_for` refuses every switch class without a pass
+as not built on ZHA and Zigbee2MQTT, and `hue` stays Verified on lights. A lab probe then root-caused it: the plug
+runs the timer only Tuya's way, and given the light's call one plug stayed off while another switched on about ten times later than asked and stayed on
 ([internals](internals.md#tested-behavior)). Research also found that even lights given the identical call differ by
 firmware: Hue replaces a running timer where the spec keeps the longer one, and some IKEA and Hue models turn on and
 never off ([2026-11-14](integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So a Hue bulb's record
@@ -85,9 +86,11 @@ domains ([the experimental flag](#the-experimental-flag)).
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
 - **Documented:** no known class departs, and the class takes either
-  - **a sibling's call:** it differs from a Verified class's call only in addressing. The PR argues the sibling
-    case, and a bug on the sibling reopens its Documented siblings in the same fix. A field is never Documented, as
-    it changes the call.
+  - **a sibling's call:** it differs from a Verified class's call only in addressing, and siblings share one vendor's
+    firmware, whose documentation gives the call identically for both (Shelly's components). A class spanning vendors
+    (`other`, a vendor-wide family) is never Documented by a sibling's pass, as a pass on one vendor's firmware proves
+    nothing about another's. The PR argues the sibling case, and a bug on the sibling reopens its Documented siblings
+    in the same fix. A field is never Documented, as it changes the call.
   - **a certified read:** certification sends the same read to every device the class holds, as the class keys on
     a marker certified devices carry and known uncertified ones don't, and on the one part the test runs on. A write
     never qualifies, as the test's field values are its own. The PR names the marker and what slips past it
@@ -97,9 +100,11 @@ A sign-off covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
+- **A failed report on a class on trial** is the class's result, handled as
+  [on trial](#no-known-method-not-built-yet-on-trial) says. The rest of this list is for a Verified or Documented class.
 - **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
   identity it names on that action, on the report alone, citing it. It's not built yet if a known or plausible call
-  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
+  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-on-trial)).
 - **The identity is the narrowest one a class rule can key on:** model ID with manufacturer string, plus firmware
   where that decides. A vendor is not normally refused whole on a single report; split off the exception. A rule
   keyed on a vendor needs research.
@@ -109,7 +114,8 @@ A sign-off covers only what was exercised; it never signs off untested code.
   finding.
 
 *Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet. Z2M
-#25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, so it stays Experimental.
+#25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, a different call, so it is no evidence
+against the device: it keeps `tuya_countdown`'s level, not built yet, until a pass on its maker string.
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -124,21 +130,25 @@ own branch. A scope holds a level per class, so each
 class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`,
-`tuya_countdown`, `tuya_mcu`, `sengled`, `gledopto`, `other`), and, where evidence is per identity, the identity: a
+`tuya_countdown`, `tuya_mcu`, `sengled`, `gledopto`, `ikea`, `other`), and, where evidence is per identity, the identity: a
 Zigbee2MQTT countdown plug's maker string with a record of its own is a class of its own.
 
 - **Unknown is flagged, never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
-  name yet is refused ([below](#no-known-method-not-built-yet-untested)). The default class may be Documented for an
-  action where the [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`.
+  name yet is refused ([below](#no-known-method-not-built-yet-on-trial)). As it spans vendors, the default class is Documented only by a
+  [certified read](#levels), never by a sibling's pass; it is otherwise `experimental(...)` where research predicts
+  most of it accepts the call (Zigbee 3.0 certification and the dimming commands:
+  [internals](internals.md#shared)), and is otherwise not built yet
+  ([below](#no-known-method-not-built-yet-on-trial)).
   Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
-  (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device no rule matches, and one maker's
+  (Zigbee2MQTT: `innr` for an Innr bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
 - **A level per class and domain.** A class's level holds on every domain the adapter serves, unless its entry names
   some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
   Experimental. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
-  on lights, as every record ran on a bulb, so a Hue plug, a switch, stays flagged.
+  on lights, as every record ran on a bulb, and a Hue plug, a switch, is not built on `turn_on_for`. A `NotBuilt`
+  entry can name domains too, refusing its class on those alone while its capability entry serves the rest.
 - **A class names its domains.** Each class declares the entity domains whose features its devices have (a TS011F
   plug: switch, even where Zigbee2MQTT shows it as a light; Gledopto: light; other brands: light and switch). The
   guarantee is per action: a scope never holds a class on an action that serves none of its domains, so an action for
@@ -162,11 +172,11 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   it gets no entry of its own, its members answer for it, each judged on its own, and it is refused only when none of
   them ran. One whose members the integration can't list can't fall back: it counts as Experimental, and is refused
   whole while Experimental features is off, and with it on where a call is known to harm
-  ([below](#no-known-method-not-built-yet-untested)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
+  ([below](#no-known-method-not-built-yet-on-trial)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
 
-### No known method, not built yet, untested
+### No known method, not built yet, on trial
 
-Three ways a class can't take an action, each handled differently. The first two are the kinds of not
+Three ways a class isn't served to everyone on an action, each handled differently. The first two are the kinds of not
 supported, where DeviceSide can't do the action for the class, each named for why:
 
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
@@ -174,10 +184,19 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
   `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
   it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
-- **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. The
-  integration names it, and the adapter's scope holds it in neither `capabilities` nor `no_known_method`. It is
-  refused (`not_built`), and the card leaves it out, as no one can list every feature that could be built.
-- **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
+- **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
+  class not admitted on trial (below), as research predicts most of it fails the default call or there is no research,
+  while another call is known or plausible. The integration names it, and the adapter's scope holds it in neither
+  `capabilities` nor `no_known_method`. It is refused (`not_built`), and the card leaves it out, as no one can list
+  every feature that could be built.
+- **On trial (Experimental):** a class still behind the flag, admitted on a reason to expect the call works: a pass on a
+  device of the class (the builder's own probe or run counts, tenet 2), or research predicting most of the class accepts
+  it. Research predicting most fail, or none at all, leaves it not built. A trial admits only what its evidence names:
+  a pass admits its class only where the class is one firmware family, and research admits the vendors or identities
+  it names, not the class around them; the rest of the class stays not built. On a failed report, the maintainer triaging it
+  takes on the fix, keeping the trial, or makes the class not built, as their time allows; one they stop fixing becomes
+  not built. A not built class returns with a contributor's PR and a passing run on their own device. The class is in
+  scope as `experimental(...)` and runs behind the flag.
 
 Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
 built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
@@ -186,7 +205,9 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
-  whole class drops a level only when no rule can tell the departing devices apart.
+  whole class drops a level only when no rule can tell the departing devices apart. Split off the exception only once
+  a pass shows the rest of the class works; a failure in a class with no pass is the class's result, not an
+  exception.
 - **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
   device's identity.
 - **When today's call harms a class.** A failure harms when it is deferred and unattended: the device ends in an
@@ -244,15 +265,16 @@ pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees
 at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it suffices
 (tenet 7), and it applies to integrations that name classes.
 
-*Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and `other`
-(and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on
-`other` it is `experimental(...)`, so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA
-bulb adds an `ikea` class, Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own
-countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, each
-with an entry, until the countdown call is built for them; the TS011F plugs it is built for take it as `tuya_countdown`,
-Experimental, and each maker string with a record of its own as its own class, Verified, so the check asks each string
-for its record; the Sengled, which ignores today's call, needs a call that isn't built, so it is not built yet too,
-with no entry, as today's call leaves it unharmed.
+*Example:* with Zigbee2MQTT's classes `hue`, `ikea`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and
+`other` (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue`
+alone. Research names IKEA's lights as running the timer, so `ikea` is `experimental(...)` on lights, with the two
+bulbs reported to stay on split off as not built; the other makers it names have a report or so each, too few to put them on trial, so `other`
+is not built yet, with an entry, as today's call would leave some of it on. A record on an Innr bulb adds an `innr` class, Verified on its own
+evidence, and `other` stays as it is. The Tuya classes, which Tuya's own countdown call drives but the Zigbee timer
+leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, each with an entry; the TS011F plugs the
+countdown call is built for take it only on each maker string with a record of its own, its own class, Verified, so
+the check asks each string for its record, and the rest of `tuya_countdown` is not built yet, with an entry. The
+Sengled, which ignores today's call, needs a call that isn't built, so it is not built yet too.
 
 ## The experimental flag
 
@@ -264,15 +286,18 @@ option. The dispatcher is the only gate: adapters never read the option, and tur
 other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
-users who opt in. A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
-lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
-maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
-few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
-`experimental(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item that qualifies as
-Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a
-change to the integration's package, so one of its maintainers approves it, as for any change there
-([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
-the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
+users who opt in. A class is admitted behind the flag only on a pass on one of its devices, the builder's own probe or
+run included, or research predicting most of it accepts the call; without either it stays not built
+([on trial](#no-known-method-not-built-yet-on-trial)), which also handles a failed report. A passing rig record or
+`_manual.json` sign-off on a flagged item is evidence a maintainer can use to lift its flag for the next release,
+skipping that soak; it is not a requirement to lift it. Whether to lift is the maintainer's judgment, by how complex the
+feature is and how complete its tests are: a developer may run the first few rig cases before the full suite exists, so
+a flagged item may have passing runs and stay flagged. Lifting makes `experimental(...)` into `verified(...)` (an
+adapter flagged whole: its domains); a flagged item that qualifies as Documented becomes `documented(...)` in a PR that
+argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the integration's package, so one of its
+maintainers approves it, as for any change there ([CLAUDE.md](../CLAUDE.md#maintainers)). A
+[family](design.md#glossary)'s maintainers set their own classes' levels the same way, but change no refusal entry
+([CLAUDE.md](../CLAUDE.md#maintainers)).
 
 For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The

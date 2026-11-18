@@ -2,8 +2,8 @@
 
 The integration maintainer's guard on the other families: a family owns its rules, and one family's rule can take
 another's device (families/__init__.py, the rule order), so a change that moves a device listed here fails until this
-file, outside every family, is edited. It guards the catalog too (zigbee/tuya.py), which ZHA's Tuya family shares: an
-edit made for the other stack that moves a device here fails here.
+file, outside every family, is edited. It guards the catalog too (zigbee/tuya.py, zigbee/ikea.py), which ZHA's families
+share: an edit made for the other stack that moves a device here fails here.
 
 It lists a device of every class, with every field a rule could read where another family's rule could take it, one
 for each trap the rule order names, and one for each catalog string that alone decides a class. A family's own tests,
@@ -63,8 +63,15 @@ DEVICES = {
     "sengled_listed": (listed(("Sengled", "E11-G13"), ("sengled", "E11-G13")), "sengled"),
     "gledopto": (device(("Gledopto", "GL-C-008")), "gledopto"),
     "gledopto_listed": (listed(("Gledopto", "GL-C-008"), ("GLEDOPTO", "GL-C-008")), "gledopto"),
-    "other": (device(("IKEA of Sweden", "LED1836G9")), "other"),
-    "other_listed": (listed(("IKEA of Sweden", "LED1836G9"), ("IKEA of Sweden", "TRADFRI bulb")), "other"),
+    "other": (device(("Innr", "RB 285 C")), "other"),
+    "other_listed": (listed(("Innr", "RB 285 C"), ("innr", "RB 285 C")), "other"),
+    # IKEA's rules read its Zigbee strings alone: `other` until bridge/devices lists them.
+    "ikea_before": (device(("IKEA", "LED1836G9")), "other"),
+    "ikea_listed": (listed(("IKEA", "LED1836G9"), ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm")), "ikea"),
+    "ikea_timer_harmed_listed": (
+        listed(("IKEA", "LED2005R5/LED2106R3"), ("IKEA of Sweden", "TRADFRI bulb GU10 WS 345lm")),
+        "ikea_timer_harmed",
+    ),
     "nothing_known": (device((None, None)), "other"),
     # A Tuya device under another vendor's definition: that vendor's class, or `other`, until its strings arrive, then
     # its Tuya class.

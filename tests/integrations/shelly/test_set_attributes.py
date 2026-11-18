@@ -9,12 +9,14 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.set_attributes import ShellySetAttributes
 
 from .conftest import call
-from ...conftest import allow_experimental, refusal, result
+from ...conftest import refusal, result
 from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
 
 KELVIN_RANGE = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
 BULB = {"entity_id": "light.bulb"}
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
+CONFIRMED_DROPPED = result("shelly", "confirmed", detail="fields_dropped")
+UNCHANGED_DROPPED = result("shelly", "unchanged", detail="fields_dropped")
 
 
 def _output(call_rpc) -> bool:
@@ -115,16 +117,30 @@ async def test_a_relay_is_not_built(hass, setup_production):
 @pytest.mark.parametrize(
     ("key", "component"), [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
 )
-async def test_other_light_components_are_experimental(hass, setup_production, key, component):
+async def test_other_light_components_are_documented(hass, setup_production, key, component):
     entry, call_rpc = shelly_device(hass, status={"output": False, "brightness": 40})
     add_shelly_entity(hass, entry, "light.other", key, attributes={"supported_color_modes": ["brightness"]})
     data = {"entity_id": "light.other", "brightness": 40}
 
-    assert await refusal(hass, "set_attributes", data) == "experimental_off"
-    assert not call_rpc.await_args_list
-    allow_experimental(hass)
     assert await call(hass, "set_attributes", data) == {"light.other": CONFIRMED}
     assert rpc_call(f"{component}.Set", {"id": 0, "brightness": 40}) in call_rpc.await_args_list
+
+
+@pytest.mark.parametrize(
+    ("key", "data", "sent", "expected"),
+    [
+        ("cct:0", {"color_temp_kelvin": 3000, "brightness": 40}, {"id": 0, "brightness": 40}, CONFIRMED_DROPPED),
+        ("rgb:0", {"rgb_color": [255, 0, 0], "brightness": 40}, {"id": 0, "brightness": 40}, CONFIRMED_DROPPED),
+        ("cct:0", {"color_temp_kelvin": 3000}, None, UNCHANGED_DROPPED),
+    ],
+)
+async def test_a_sibling_drops_the_color_and_ct_not_ported(hass, setup_production, key, data, sent, expected):
+    entry, call_rpc = shelly_device(hass, status={"output": False, "brightness": 40})
+    add_shelly_entity(hass, entry, "light.other", key, attributes={"supported_color_modes": ["color_temp", "rgb"]})
+
+    assert await call(hass, "set_attributes", {"entity_id": "light.other", **data}) == {"light.other": expected}
+    sets = [c for c in call_rpc.await_args_list if ".Set" in c.args[0]]
+    assert sets == ([] if sent is None else [rpc_call(f"{key[:-2].upper()}.Set", sent)])
 
 
 @pytest.mark.parametrize(
@@ -168,8 +184,8 @@ async def test_limits_with_a_color_still_send_the_color(hass, setup_production):
     assert rpc_call("RGBCCT.Set", {"id": 0, "ct": 3000, "mode": "cct"}) in call_rpc.await_args_list
 
 
-def test_rgbcct_alone_is_verified_and_the_other_light_components_are_flagged():
+def test_rgbcct_is_verified_and_the_other_light_components_documented():
     assert dict(ShellySetAttributes.scope.capabilities) == {
         "RGBCCT": Level.VERIFIED,
-        **dict.fromkeys(("Light", "CCT", "RGB", "RGBW"), Level.EXPERIMENTAL),
+        **dict.fromkeys(("Light", "CCT", "RGB", "RGBW"), Level.DOCUMENTED),
     }

@@ -1388,57 +1388,6 @@
    },
    "targets": [
     [
-     "light.ikea",
-     "light.ikea",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "other",
-    "data": null,
-    "detail": null,
-    "entity_id": "light.ikea",
-    "integration": "zigbee2mqtt",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/0x04/set",
-      "{\"state\": \"ON\", \"on_time\": 5.0}"
-     ],
-     {}
-    ],
-    null
-   ]
-  ]
- },
- {
-  "action": "turn_on_for",
-  "integration": "zigbee2mqtt",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "duration_s": 5.0,
-    "light": {
-     "brightness": null,
-     "color_temp_kelvin": null,
-     "hs_color": null,
-     "rgb_color": null,
-     "transition": null,
-     "xy_color": null
-    }
-   },
-   "targets": [
-    [
      "light.kitchen",
      "light.kitchen",
      false
@@ -1908,7 +1857,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "other",
+    "classes": "ikea",
     "data": null,
     "detail": null,
     "entity_id": "light.lamp",
@@ -2169,7 +2118,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "other",
+    "classes": "ikea",
     "data": null,
     "detail": null,
     "entity_id": "light.one",
@@ -2222,7 +2171,7 @@
     "clamped_to": null,
     "classes": [
      "hue",
-     "other"
+     "ikea"
     ],
     "data": null,
     "detail": null,
@@ -2230,7 +2179,7 @@
     "integration": "zigbee2mqtt",
     "member_classes": {
      "light.one": "hue",
-     "light.two": "other"
+     "light.two": "ikea"
     },
     "status": "sent"
    }
@@ -2279,7 +2228,7 @@
     "clamped_to": null,
     "classes": [
      "hue",
-     "other"
+     "ikea"
     ],
     "data": null,
     "detail": null,
@@ -2469,8 +2418,8 @@
    },
    "targets": [
     [
-     "switch.plug",
-     "switch.plug",
+     "light.tradfri",
+     "light.tradfri",
      false
     ]
    ]
@@ -2478,10 +2427,10 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "hue",
+    "classes": "ikea",
     "data": null,
     "detail": null,
-    "entity_id": "switch.plug",
+    "entity_id": "light.tradfri",
     "integration": "zigbee2mqtt",
     "member_classes": null,
     "status": "sent"
@@ -2492,7 +2441,7 @@
     [
      "mqtt.async_publish",
      [
-      "zigbee2mqtt/0x00124b0012345678/set",
+      "zigbee2mqtt/0x04/set",
       "{\"state\": \"ON\", \"on_time\": 5.0}"
      ],
      {}
@@ -3409,14 +3358,14 @@
    {
     "clamped_to": null,
     "classes": [
-     "other"
+     "ikea"
     ],
     "data": null,
     "detail": null,
     "entity_id": "light.downstairs",
     "integration": "zigbee2mqtt",
     "member_classes": {
-     "light.member": "other"
+     "light.member": "ikea"
     },
     "status": "sent"
    }
@@ -5220,7 +5169,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "other",
+    "classes": "ikea",
     "data": null,
     "detail": null,
     "entity_id": "light.lamp",
@@ -5680,7 +5629,7 @@
   "result": [
    {
     "clamped_to": 1,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "switch.plug",
@@ -5738,7 +5687,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "switch.plug",
@@ -5796,7 +5745,7 @@
   "result": [
    {
     "clamped_to": 10,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "switch.plug",
@@ -5854,7 +5803,7 @@
   "result": [
    {
     "clamped_to": 11,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "switch.plug",
@@ -5912,7 +5861,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "switch.plug",
@@ -5970,7 +5919,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "switch.plug",
@@ -6028,7 +5977,7 @@
   "result": [
    {
     "clamped_to": 43200,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "switch.plug",
@@ -6086,7 +6035,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "tuya_countdown",
+    "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,
     "entity_id": "light.two",

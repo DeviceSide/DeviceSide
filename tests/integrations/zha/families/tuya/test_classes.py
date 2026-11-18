@@ -8,7 +8,6 @@ import re
 import pytest
 
 from custom_components.deviceside.core.rules import match
-from custom_components.deviceside.core.scope import Level, OnDomains
 from custom_components.deviceside.integrations.zha import rules
 from custom_components.deviceside.integrations.zha.families import tuya
 from custom_components.deviceside.zigbee import tuya as catalog
@@ -81,22 +80,7 @@ def test_the_rules_read_the_catalog_s_strings():
     assert read["tuya_countdown", "model"].split("|")[0] == re.escape(catalog.TS011F_MODEL)
 
 
-def test_the_zcl_classes_are_untested_on_every_action_they_are_served_on():
-    """turn_on_for, which the integration refuses every Tuya class on (test_refusals.py), is left out."""
-    assert "turn_on_for" not in tuya.FAMILY.scopes
-    assert {
-        getattr(level, "level", level) for scope in tuya.FAMILY.scopes.values() for level in scope.capabilities.values()
-    } == {Level.EXPERIMENTAL}
-
-
-def test_only_a_tuya_zcl_light_is_read():
-    """get_attributes reads only what another action serves (docs/evidence.md, "A read serves only"): no action serves a
-    Tuya plug or switch yet."""
-    assert tuya.FAMILY.scopes["get_attributes"].capabilities == {
-        tuya.TUYA_ZCL: OnDomains(Level.EXPERIMENTAL, frozenset({"light"}), only=True)
-    }
-
-
-def test_the_datapoint_class_is_in_no_scope():
-    """Its quirk answers what DeviceSide sends itself, so it needs a call that isn't built."""
-    assert {action for action, scope in tuya.FAMILY.scopes.items() if tuya.TUYA_MCU in scope.capabilities} == set()
+def test_every_tuya_class_is_in_no_scope():
+    """Not built on every action (docs/evidence.md, On trial): no pass or research admits Tuya's firmware, and
+    turn_on_for's call harms each class, which the integration refuses there with a reason (test_refusals.py)."""
+    assert tuya.FAMILY.scopes == {}

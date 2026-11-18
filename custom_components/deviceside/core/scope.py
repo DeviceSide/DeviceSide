@@ -131,10 +131,19 @@ class NotBuilt:
     makes the scope refuse a target that could still be in it, as a NoKnownMethod entry does (AdapterScope.harms).
     Elsewhere a class not built yet needs no entry, as leaving it out of the scope refuses it the same way, and an
     entry would be a second home for that refusal.
+
+    `domains`: the entity domains it refuses the class on, None for every one. An entry on some alone can sit beside
+    the class's capability entry, which serves it on the rest: a bulb's timer runs, a plug of the same class ignores
+    it (docs/evidence.md, On trial). The card leaves the class out on those domains alone.
     """
 
     reason: str
     source: str
+    domains: frozenset[str] | None = None
+
+    def refuses(self, domain: str | None) -> bool:
+        """Whether it refuses its class in `domain`; in an unknown one (None), as it could be one of its domains."""
+        return self.domains is None or domain is None or domain in self.domains
 
 
 class Unplaced(str):
@@ -206,8 +215,9 @@ class AdapterScope:
     # Classes with no known method, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
     no_known_method: Mapping[str, NoKnownMethod] = field(default_factory=dict)
-    # Classes not built yet that the adapter's call would harm, refused with why; in neither of the above, and only on
-    # an action whose failure harms (the registry checks). Any other class not built yet is simply left out.
+    # Classes not built yet that the adapter's call would harm, refused with why; in neither of the above (but for an
+    # entry on some domains alone, beside the class's capability entry for the rest), and only on an action whose
+    # failure harms (the registry checks). Any other class not built yet is simply left out.
     not_built: Mapping[str, NotBuilt] = field(default_factory=dict)
     # Classes the adapter sends a call of their own (OwnCall), each with that call. Each is in capabilities. A native
     # group's call isn't theirs, so a group with a member of one falls back to its members (Reason.OWN_CALL), and the
@@ -226,8 +236,12 @@ class AdapterScope:
         self._check_unlisted()
         if both := self.no_known_method.keys() & (self.capabilities or {}).keys():
             raise ValueError(f"no_known_method names classes the scope serves: {sorted(both)}")
-        if both := self.not_built.keys() & ((self.capabilities or {}).keys() | self.no_known_method.keys()):
+        everywhere = {name for name, entry in self.not_built.items() if entry.domains is None}
+        if both := everywhere & (self.capabilities or {}).keys() | self.not_built.keys() & self.no_known_method.keys():
             raise ValueError(f"not_built names classes the scope serves or lists under no_known_method: {sorted(both)}")
+        for name, entry in self.not_built.items():
+            if entry.domains is not None and not (entry.domains and entry.domains <= self.domains.keys()):
+                raise ValueError(f"not_built {name!r} names no domain, or one the scope doesn't serve")
         if unserved := sorted(self.own_calls.keys() - (self.capabilities or {}).keys()):
             raise ValueError(f"own_calls names classes the scope doesn't serve: {unserved}")
         self._check_on_domains()
@@ -262,18 +276,24 @@ class AdapterScope:
 
     def admits(self, name: str, domain: str | None = None) -> bool:
         """Whether the scope serves the class, on `domain` when given: an `only` entry (OnDomains) on its domains
-        alone."""
+        alone, and never on one a not_built entry refuses it on."""
+        if domain is not None and (refused := self.not_built.get(name)) is not None and refused.refuses(domain):
+            return False
         entry = (self.capabilities or {}).get(name)
         if isinstance(entry, OnDomains) and entry.only and domain is not None:
             return domain in entry.domains
         return entry is not None
 
     def class_entries(self) -> list[tuple[str, Level, frozenset[str] | None]]:
-        """Each class the scope serves, with its level and the domains it holds it on, None for every domain."""
-        return [
-            (name, entry.level, entry.domains) if isinstance(entry, OnDomains) else (name, entry, None)
-            for name, entry in (self.capabilities or {}).items()
-        ]
+        """Each class the scope serves, with its level and the domains it holds it on, None for every domain; less
+        those a not_built entry refuses it on."""
+        found = []
+        for name, entry in (self.capabilities or {}).items():
+            level, domains = (entry.level, entry.domains) if isinstance(entry, OnDomains) else (entry, None)
+            if (refused := self.not_built.get(name)) is not None and refused.domains is not None:
+                domains = (self.domains.keys() if domains is None else domains) - refused.domains
+            found.append((name, level, domains))
+        return found
 
     def harms(self, failure_harms: bool) -> bool:
         """Whether the adapter's call harms a class it could reach: the action's failure harms (Action.failure_harms)
@@ -282,7 +302,13 @@ class AdapterScope:
         return failure_harms and bool(self.no_known_method or self.not_built)
 
     def refusal(
-        self, classes: Collection[str | None], group: bool = False, domain: str | None = None, *, failure_harms: bool
+        self,
+        classes: Collection[str | None],
+        group: bool = False,
+        domain: str | None = None,
+        *,
+        failure_harms: bool,
+        elsewhere: Collection[str | None] = (),
     ) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), in `domain` when given,
         with the reason the user reads, or None. `failure_harms` is the adapter's action's (Adapter.failure_harms),
@@ -293,16 +319,25 @@ class AdapterScope:
         its NotBuilt.reason when it has an entry. Elsewhere None is no refusal: the gate weighs it as Experimental, and
         an Unplaced class as the class it names. Last, for a native group whose members are listed (`group`),
         `own_call` when a member's class takes a call of its own (own_calls), so the group falls back to its
-        members."""
+        members. `elsewhere` holds the classes of a group's members outside `domain` (a stand-in: HA has no entity
+        for it there), judged as in an unknown domain, so an entry on some domains refuses them."""
         if self.capabilities is None:
             return None
         if self.harms(failure_harms) and any(name is None or isinstance(name, Unplaced) for name in classes):
             return Reason.CLASS_UNKNOWN, None
         if entry := next((self.no_known_method[name] for name in classes if name in self.no_known_method), None):
             return Reason.NO_KNOWN_METHOD, entry.reason
-        if entry := next((self.not_built[name] for name in classes if name in self.not_built), None):
+        judged = [(name, domain) for name in classes] + [(name, None) for name in elsewhere]
+        if entry := next(
+            (
+                self.not_built[name]
+                for name, where in judged
+                if name in self.not_built and self.not_built[name].refuses(where)
+            ),
+            None,
+        ):
             return Reason.NOT_BUILT, entry.reason
-        if any(name is not None and not self.admits(name, domain) for name in classes):
+        if any(name is not None and not self.admits(name, where) for name, where in judged):
             return Reason.NOT_BUILT, None
         if group and self.own_call(classes) is not None:
             return Reason.OWN_CALL, None

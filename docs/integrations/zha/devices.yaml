@@ -10,6 +10,11 @@ capabilities:
     phrase: Hue devices
     section: Device classes
     domains: {light: Hue lights, switch: Hue smart plugs}
+  ikea:
+    phrase: IKEA devices
+    section: IKEA
+    domains: {light: IKEA lights, switch: IKEA outlets}
+  ikea_timer_harmed: {phrase: "IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)", section: IKEA}
   tuya_countdown: {phrase: "Tuya countdown plugs and switches (TS011F, TS0001–TS0004, TS0011, TS0726)", section: Tuya}
   tuya_countdown_harmed: {phrase: Tuya TS011F _TZ3000_gjnozsaz, section: Tuya}
   tuya_zcl:

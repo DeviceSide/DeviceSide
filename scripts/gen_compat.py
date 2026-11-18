@@ -18,15 +18,15 @@ trust): a record never ages.
 card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's
 index.md), with "⚠️ Unmaintained" when every adapter is; the features of the adapters with each `caveat` (🔧 Untested
 fix, then ⚠️ Unmaintained, linking its reason); then a line per feature set, naming each class on one line, with its
-features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · 🌱 get attributes". Only classes of
+features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · 🔍 get attributes". Only classes of
 one brand share a line (`brand`): the class's family, else other brands; an integration with no families is one brand,
 its "Other brands" section the other brands. Native groups sort first, then lines by brand, alphabetically, then
 other brands, then models no class line takes; within a brand, tested lines first, "other …" lines last, the rest
 alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before its maker strings.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
-  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental; 🔴 for a scope's
+  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🔍 Experimental; 🔴 for a scope's
   `no_known_method` entry, which names a class devices.yaml gives no phrase by its `what`. A feature whose actions
-  differ in status names its parts ("🟡 smooth dimming down · 🌱 smooth dimming up"), so none shows twice. A feature not
+  differ in status names its parts ("🟡 smooth dimming down · 🔍 smooth dimming up"), so none shows twice. A feature not
   built yet on a class (in no scope, or a `not_built` entry) is left out, and a class with nothing left has no line.
   Where the integration names no classes, its domains stand in for them.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
@@ -104,7 +104,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
-from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     MANUAL,
@@ -142,8 +142,10 @@ OUTCOMES = (
     ("should", "🟡", "should work: same call pattern as a tested device"),
     (
         "experimental",
-        "🌱",
-        f"new or untested: enable Configure > Settings to try it out and [report whether it works]({REPORT_URL})",
+        "🔍",
+        "Experimental, on trial: enable Configure > Settings to try it and"
+        f" [report whether it works]({REPORT_URL}). A feature that fails on a device may be withdrawn until someone"
+        " builds it better",
     ),
     ("no_known_method", "🔴", "no known command works on it"),
 )
@@ -381,9 +383,9 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
     """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
-    its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block, which keeps the
-    harm's source: the card leaves the class's feature out, as it does any not built yet. One per class, reason and
-    source."""
+    its class's devices.yaml phrase (an entry on some domains alone, by its phrases for them), with the actions whose
+    adapters list it, for the evidence block, which keeps the harm's source: the card leaves the class's feature out,
+    as it does any not built yet. One per class, reason and source."""
     found: dict[tuple, dict] = {}
     for adapter in integration_adapters:
         for name, entry in adapter.scope.not_built.items():
@@ -394,6 +396,11 @@ def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]
             if name not in data.capabilities.get(key, {}):
                 fail(f"capabilities: no entry for {key} {name}, which a scope lists as not built yet")
             what = data.capabilities[key][name]["phrase"]
+            if entry.domains is not None:  # refused on some domains alone: named by their phrases ("Hue smart plugs")
+                phrases = data.capabilities[key][name].get("domains") or {}
+                if missing := sorted(entry.domains - phrases.keys()):
+                    fail(f"capabilities: {key} {name} needs a phrase for {', '.join(missing)}, where it is not built")
+                what = ", ".join(phrases[domain] for domain in sorted(entry.domains))
             section = data.section_phrases.get(key, {}).get(data.capabilities[key][name]["section"], {})
             if "variants" in section:  # a variant's phrase names it within its model: "no countdown setting"
                 what = f"{section['phrase']} ({what})"
@@ -644,14 +651,16 @@ def named(held: list[tuple[str, str]]) -> str:
     return "; ".join(f"{', '.join(names)} {noun}" for noun, names in by_noun.items())
 
 
-def level_rows(scope) -> list[tuple[Level, str]]:
-    """(level, items) per row: a row per level the scope holds, strongest first."""
+def level_rows(scope, served: set[str]) -> list[tuple[Level, str]]:
+    """(level, items) per row: a row per level the scope holds, strongest first. A domain is an item only where the
+    adapter serves some class (`served`, core/registry.py served_domains): one whose every class is refused isn't
+    offered."""
     found = []
     for level in sorted(Level, reverse=True):
         if held := [
             (f"{item} on {', '.join(sorted(domains))}" if domains else item, noun)
             for item_level, item, noun, domains in items(scope)
-            if item_level is level
+            if item_level is level and (noun != "entities" or item in served)
         ]:
             found.append((level, named(held)))
     return found
@@ -671,13 +680,13 @@ def described(item: Tested) -> str:
     return f"{name}, firmware `{item.firmware}`" if item.firmware else f"{name}, firmware unknown"
 
 
-def rows(adapter) -> list[str]:
+def rows(adapter, info) -> list[str]:
     """The action's rows: its records on the first; each tested model, and each group, on the row of the weakest
     level the scope holds its class and its test's domain at, else (neither held nor named: a format 1 record's) the
     first. A device with a null class, where the integration names classes, credits nothing (`Evidence.of`), so is on
-    no row."""
+    no row. `info` is the adapter's integration, whose classes say which domains it serves."""
     evidence = Evidence.of(adapter)
-    levels = level_rows(adapter.scope)
+    levels = level_rows(adapter.scope, served_domains(adapter, info))
     index = {level: number for number, (level, _) in enumerate(levels)}
     scope = adapter.scope
     entries = {name: (level, domains) for name, level, domains in scope.class_entries()}
@@ -731,7 +740,7 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
         parts.append("| Action | Level | Items | Tested models | Records |")
         parts.append("|---|---|---|---|---|")
         for adapter in integration_adapters:
-            parts += rows(adapter)
+            parts += rows(adapter, registry.integrations[key])
         if broken := [entry for entry in data.no_known_method if key in entry["integrations"]]:
             parts += ["", "| No known method | Why | Source |", "|---|---|---|"]
             parts += [
@@ -795,7 +804,7 @@ def part(action: str) -> str:
 
 def shape(by_status: dict[str, set[str]]) -> Shape:
     """The actions by status as a line names them, each feature under one status: one whose actions differ names its
-    parts instead ("🟡 smooth dimming down · 🌱 smooth dimming up"). `stop` rides the smooth moves, so it is named
+    parts instead ("🟡 smooth dimming down · 🔍 smooth dimming up"). `stop` rides the smooth moves, so it is named
     only on a line that names nothing else."""
     labels = {status: features(actions, fold_stop=False) for status, actions in by_status.items()}
     every = [label for found in labels.values() for label in found]

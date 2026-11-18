@@ -30,7 +30,7 @@ from homeassistant.helpers import device_registry as dr
 from .bridge import bridge_api, light_device, resource_id
 from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import OTHER, NoKnownMethod, experimental, verified
+from ...core.scope import OTHER, NoKnownMethod, verified
 
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
@@ -46,10 +46,10 @@ CLASSES = {
     SMART_SCENE: frozenset({Platform.SCENE}),
 }
 
-# Every adapter's levels: Verified on Hue, whose lights every record ran on; `other` Experimental on every action, as
-# none passes docs/evidence.md's Documented test (plan Decision 2): the bridge picks the Zigbee call, and other brands
+# Every adapter's levels: Verified on Hue, whose lights every record ran on. `other` is not built on every action
+# (docs/evidence.md, On trial): no pass or research predicts other brands take the calls the bridge picks, and they
 # are known to depart from the calls it plausibly sends (internals.md, Device classes; the step 8 PR body).
-LEVELS = verified(HUE) | experimental(OTHER)
+LEVELS = verified(HUE)
 
 _PAGE = DOCS_URL + "docs/integrations/hue/index.md"
 SET_SCENE_NO_KNOWN_METHOD = {
