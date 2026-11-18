@@ -1,4 +1,4 @@
-<!-- CONTRIBUTING.md's "Fast track" explains each section. Delete the ones that don't apply. -->
+<!-- CONTRIBUTING.md's "Fast track" and "What your change touches" explain each section. Delete the ones that don't apply. -->
 
 ## Summary
 
