@@ -6093,6 +6093,64 @@
   "result": [
    {
     "clamped_to": null,
+    "classes": "tuya_countdown",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"ON\", \"countdown\": 5}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 43200,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
     "classes": "tuya_countdown_tz3000_0zfrhq4i",
     "data": null,
     "detail": null,

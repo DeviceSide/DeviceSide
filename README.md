@@ -66,7 +66,7 @@ The compatibility list shows which devices are known or likely to work. Features
 - [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea): 🔍 turn on with timer, smooth dimming
 - [Tuya TS011F plugs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): check Manufacturer and the countdown setting on the plug's Zigbee2MQTT page
   - [_TZ3000_0zfrhq4i, _TZ3000_gznh2xla, _TZ3000_okaz9tjs, or _TZ3000_typdpbpg](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) ✔: 🟢 turn on with timer · 🔴 get attributes
-  - [other makers with a countdown setting](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): 🔴 get attributes
+  - [other makers with a countdown setting](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): 🔍 turn on with timer · 🔴 get attributes
 - [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands): 🔍 smooth dimming
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)**

@@ -159,8 +159,8 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
         # Reported failing Tuya's countdown with harm (Decision 41).
         ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
-        # The time left can't be read (probe P6); on turn_on_for no pass names its maker string.
-        ("tuya_countdown", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, {"get_attributes"}),
+        # The time left can't be read (probe P6); turn_on_for serves it on trial, on its kin's pass.
+        ("tuya_countdown", set(), {"get_attributes"}, {"get_attributes"}),
         ("tuya_mcu", {"turn_on_for"}, ALL, set()),
         ("sengled", set(), ALL, set()),
         ("gledopto", set(), ALL, set()),

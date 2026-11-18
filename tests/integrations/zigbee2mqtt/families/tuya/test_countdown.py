@@ -107,7 +107,7 @@ async def test_until_bridge_devices_lists_it_a_countdown_plug_waits(hass, setup_
     assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
 
 
-def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_turn_on_for_alone():
+def test_each_verified_string_has_a_class_of_its_own_verified_and_the_rest_are_on_trial_on_switches():
     scope = Z2MTurnOnFor.scope
     for string in tuya.VERIFIED_STRINGS:
         name = tuya.string_class(string)
@@ -115,9 +115,10 @@ def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_tur
         # On switches alone, as Z2M shows a plug: one Z2M shows as a light has no record.
         assert scope.class_level(name, "switch") is Level.VERIFIED
         assert scope.class_level(name, "light") is Level.EXPERIMENTAL
-    # The rest of converter A's strings are not built: no pass names them (test_refusals.py).
-    assert "tuya_countdown" not in scope.capabilities
-    assert set(scope.own_calls) == set(tuya.VERIFIED_COUNTDOWNS)
+    # The rest of converter A's strings are on trial, on the same call's pass on their kin (docs/evidence.md, On
+    # trial), on switches alone.
+    assert scope.class_level("tuya_countdown", "switch") is Level.EXPERIMENTAL
+    assert set(scope.own_calls) == {"tuya_countdown", *tuya.VERIFIED_COUNTDOWNS}
     # One call object, so the countdown plugs of every string share a run.
     assert set(scope.own_calls.values()) == {countdown.COUNTDOWN}
     assert countdown.COUNTDOWN.limits is countdown.COUNTDOWN_LIMITS
@@ -168,12 +169,22 @@ async def test_a_verified_string_runs_with_experimental_features_off(hass, setup
     assert commands(broker) == [(SET, {"state": "ON", "countdown": 5})]
 
 
-async def test_an_unrecorded_string_is_not_built_even_with_experimental_on(hass, setup_production, broker):
-    """A pass admits only the maker string it ran on (docs/evidence.md, On trial): Z2M's own timer would leave it on."""
+async def test_an_unrecorded_string_runs_the_countdown_on_trial_with_experimental_on(hass, setup_production, broker):
+    """On trial on its kin's pass of the same call (docs/evidence.md, On trial): the Experimental opt-in is consent."""
     entity_id = plug(hass, broker, UNLISTED)
     allow_experimental(hass)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_built"
+    assert await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == {
+        entity_id: {"status": "sent", "integration": "zigbee2mqtt"}
+    }
+    assert commands(broker) == [(SET, {"state": "ON", "countdown": 5})]
+
+
+async def test_an_unrecorded_string_is_refused_with_experimental_off(hass, setup_production, broker):
+    entity_id = plug(hass, broker, UNLISTED)
+    allow_experimental(hass, False)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
     assert commands(broker) == []
 
 

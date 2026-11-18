@@ -15,7 +15,7 @@ from homeassistant.const import Platform
 from .docs import RESEARCH
 from .families.hue import HUE
 from .families.ikea import IKEA, IKEA_TIMER_HARMED
-from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
+from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 
 # What the user reads after core's "can't take this action yet" (errors.py, the not_built key).
@@ -26,7 +26,7 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # 70 and 71): Z2M has no `on_time` converter for a definition built with `onOffCountdown`, or for a datapoint
     # device, so it sends a plain On and the device stays on. Each has a call that would work, Z2M's `countdown`, which
     # isn't built for them: converter A's for a TS011F Z2M shows no `countdown` for and the TS011F's kin (v0.1.0
-    # builds it for the countdown plugs alone, plan Decision 72), the datapoint one for TS0601 devices (v0.1.x,
+    # serves it to the countdown plugs alone, Verified or on trial, plan Decision 72), the datapoint one for TS0601 devices (v0.1.x,
     # docs/plans/2026-11-15-tuya-datapoint-countdown.md). The action's failure harms, so the dispatcher refuses a device
     # not yet placed as well, which could be one of them (plan Decision 26).
     "turn_on_for": {
@@ -56,14 +56,6 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
             reason="It is reported to turn on with the timer and never turn off, and DeviceSide's own off, which would "
             "serve it, isn't built",
             source="https://github.com/Koenkk/zigbee2mqtt/issues/29158",
-        ),
-        # Converter A's TS011Fs without a record of their own (docs/evidence.md, On trial: a pass admits only the
-        # maker string it ran on). Route A holds about 200 strings, each an OEM build, and some are reported to ignore
-        # the countdown. Tuya's countdown is built; what it lacks is a pass on the string.
-        TUYA_COUNTDOWN: NotBuilt(
-            reason="Tuya's own timer, which DeviceSide sends the plugs it was tested on, is untested on its maker "
-            "string, and Zigbee2MQTT's timer would leave it on",
-            source=RESEARCH + "2026-11-15-converter-seed-list.md",
         ),
         # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
         TUYA_TS011F: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-lab-probe.md"),
