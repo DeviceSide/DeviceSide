@@ -62,20 +62,16 @@ The compatibility list shows which devices are known or likely to work. If you o
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔: 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#device-classes) ([Hue White Ambiance E27 1100lm](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔, [Hue Essential White and Color Ambiance A60](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔, [Hue White A60 B22](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔): 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
-- [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea): ⚪ smooth dimming
-- [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea): ⚪ turn on with timer, smooth dimming
 - [Tuya TS011F plugs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): check Manufacturer and the countdown setting on the plug's Zigbee2MQTT page
   - [_TZ3000_0zfrhq4i, _TZ3000_gznh2xla, _TZ3000_okaz9tjs, or _TZ3000_typdpbpg](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) ✔: 🟢 turn on with timer · 🔴 get attributes
-  - [other makers with a countdown setting](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): 🔴 get attributes
-- [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands): ⚪ smooth dimming
+  - [other makers with a countdown setting](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): ⚪ turn on with timer · 🔴 get attributes
+- ⚪ on trial: [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea) (turn on with timer, smooth dimming); [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea), [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands) (smooth dimming)
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)**
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔: 🟢 turn on with timer, smooth dimming, set without turning on
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#device-classes) ([Hue White Ambiance E27 1100lm](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔, [Hue Essential White and Color Ambiance A60](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔, [Hue White A60 B22](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔): 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
-- [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea): ⚪ smooth dimming
-- [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea): ⚪ turn on with timer, smooth dimming
-- [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#other-brands): ⚪ smooth dimming
+- ⚪ on trial: [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea) (turn on with timer, smooth dimming); [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea), [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#other-brands) (smooth dimming)
 
 **[Shelly](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md)** (Gen2+)
 
@@ -96,8 +92,7 @@ The compatibility list shows which devices are known or likely to work. If you o
 
 **[Control4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md)**
 
-- [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#control4-lights): ⚪ smooth dimming, set without turning on, get attributes
-- [lights whose driver can't stop a ramp](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp): ⚪ set without turning on, get attributes · 🔴 smooth dimming
+- ⚪ on trial: [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#control4-lights) (smooth dimming, set without turning on, get attributes); [lights whose driver can't stop a ramp](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp) (set without turning on, get attributes · 🔴 smooth dimming)
 
 Details per integration are in [docs/integrations.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md).
 

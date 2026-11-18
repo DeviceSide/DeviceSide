@@ -32,7 +32,6 @@ def test_turn_on_for_alone_refuses_classes_not_built_and_harms_there_alone():
         "tuya_zcl",
         "tuya_mcu",
         "tuya_countdown_harmed",
-        "tuya_countdown",
         "ikea",
         "ikea_timer_harmed",
     }

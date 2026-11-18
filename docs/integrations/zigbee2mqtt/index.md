@@ -37,7 +37,7 @@ publishes as it connects. Every feature says how well it is proven for each
 
 Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). Most run
 Tuya's own countdown instead of the Zigbee timer, and Zigbee2MQTT turns the Zigbee timer into a plain on. So turn on
-with timer uses Tuya's countdown on the TS011F plugs below that have passed it, and isn't built yet on the rest: the
+with timer uses Tuya's countdown on the TS011F plugs below, and isn't built yet on the rest: the
 Zigbee timer would turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)).
 Their other features aren't built yet either, as none has passed on a Tuya device and nothing predicts Tuya's
 firmware takes the standard commands. DeviceSide refuses them, even with Experimental features on.
@@ -50,10 +50,11 @@ setting for the plug). Turn on with timer uses that countdown:
 - **Verified one maker string at a time** (the Zigbee manufacturer Zigbee2MQTT shows for the plug), each by its own
   test record: `_TZ3000_0zfrhq4i`, `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` and `_TZ3000_okaz9tjs`. Plugs of the same
   model answer the countdown differently by maker, so one string's test proves nothing about another's.
-- **Not built yet on every other maker string,** even with Experimental features on: about 200 maker strings share
-  the plugs' Zigbee2MQTT definitions, each a different maker's build, and some are reported to ignore the countdown
-  ([research](research/2026-11-15-converter-seed-list.md)). A string returns with a contributor's passing run on their
-  own plug ([evidence](../../evidence.md#no-known-method-not-built-yet-on-trial)).
+- **Every other maker string:** other TS011F plugs with a countdown setting are on trial: turn on
+  Experimental features to try one, and report whether it works. About 200 maker strings share the plugs'
+  Zigbee2MQTT definitions, each a different maker's build, and some are reported to ignore the countdown
+  ([research](research/2026-11-15-converter-seed-list.md)); a string moves to Verified with its own passing run
+  ([evidence](../../evidence.md#no-known-method-not-built-yet-on-trial)).
 - **Untested** on a Verified string Zigbee2MQTT shows as a light (still a plug to DeviceSide, with no record as a
   light): it runs only with Experimental features on.
 - **Not built yet on `_TZ3000_gjnozsaz`,** even with Experimental features on: its countdown is reported to restart
@@ -190,7 +191,7 @@ sends the same `OnWithTimedOff` (untested on Zigbee2MQTT).
 
 `get_attributes` reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can be stale.
 A group returns one entry, averaged over the lights that are on, as Hue averages a room. It reads only Hue's lights
-yet: other brands' reads aren't built. Tuya's countdown plugs, which Turn on with timer runs on where they've passed, are refused: their
+yet: other brands' reads aren't built. Tuya's countdown plugs, which Turn on with timer runs on, are refused: their
 time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 
 ## Sharp edges

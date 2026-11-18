@@ -193,6 +193,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 
 ## After v0.1.0
 
+- [ ] **Repair notice when a trial first runs** (DeviceSide/DeviceSide#515): the first time an Experimental call
+  runs on a device, one repair issue asks the user to report whether it worked, so trials not on the README cards still
+  return a signal ([plan](docs/plans/2026-11-18-experimental-listing.md), Decision 6).
 - [ ] **Per-family test records and docs**: a family's maintainers own its code, unit tests and new research, while the
   test records, `index.md`, `internals.md` and `devices.yaml` stay whole and the integration's
   ([CLAUDE.md](CLAUDE.md#maintainers)). Split them by family once a family maintainer signs off their own classes:

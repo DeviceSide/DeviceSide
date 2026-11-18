@@ -52,6 +52,13 @@ alphabetically, and a line's names sort the same way (`ordered`), a variant's pl
 A model or blocker drops the integration's name where it leads, as the card's name already gives it. Cards show
 features, not fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
 
+**The fold and the cap** (docs/evidence.md, The experimental flag). A card's top-level lines that show only ⚪
+(🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ on trial: [class] (features);
+[class], [class] (features)": classes with the same features share a parenthesis, a 🔴 part stays inside it, and a
+variants parent's children never fold. `check_share` then fails when the Experimental lines (⚪ with no 🟢 or 🟡),
+counted across every card, children included, are over `EXPERIMENTAL_SHARE_MAX` of all the lines, so the cards can't
+again read as a list of untried classes.
+
 **Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
 flagged whole has one), the first with the evidence's records; each row carries the adapter's caveat. A model tested on
 a class is listed with it, on the row of the weakest level the scope holds its class and its test's domain at, so each
@@ -147,6 +154,11 @@ OUTCOMES = (
     ),
     ("no_known_method", "🔴", "no known command works on it"),
 )
+# The most card lines, as a share of all of them across the README's cards, that may be Experimental: ⚪ with no 🟢
+# or 🟡 (docs/evidence.md, The experimental flag). The number is directional: the failure it prevents is the earlier
+# card list of more than half untried classes, which read as a claim that DeviceSide was ready for them.
+EXPERIMENTAL_SHARE_MAX = 0.25
+TRIAL = f"{next(icon for key, icon, _ in OUTCOMES if key == 'experimental')} on trial"
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.EXPERIMENTAL: "experimental"}
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
@@ -923,6 +935,36 @@ class Line:
         found = " · ".join(f"{icons[status]} {', '.join(labels)}" for status, labels in self.shape)
         return f"{self.name(card, key, data, rig)}: {found}"
 
+    def on_trial(self) -> bool:
+        """Shows ⚪ and no 🟢 or 🟡 (🔴 may sit beside it): a line that claims nothing yet."""
+        statuses = {status for status, _ in self.shape}
+        return self.note is None and "experimental" in statuses and not statuses & {"works", "should"}
+
+
+def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> tuple[list[Line], str | None]:
+    """Two or more top-level lines that are on trial (`Line.on_trial`) leave `lines` for one folded line:
+    "⚪ on trial: [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside it
+    after " · ", and a group sits where its last line does, so one holding an "other brands" line comes last.
+    A variants parent's children, and a single such line, stay where they are."""
+    trial = [line for line in lines if line.on_trial() and not line.variant]
+    if len(trial) < 2:
+        return lines, None
+    icons = {status: icon for status, icon, _ in OUTCOMES}
+    groups: dict[Shape, list[str]] = {}
+    for line in trial:
+        groups.setdefault(line.shape, []).append(line.name(card, key, data, rig))
+    # A group sits where its last line does, so a group with an "other brands" line comes last, as on the card.
+    last = {found: max(i for i, line in enumerate(lines) if line.shape == found and line in trial) for found in groups}
+    parts = []
+    for found in sorted(groups, key=last.get):
+        names = groups[found]
+        inside = " · ".join(
+            ", ".join(labels) if status == "experimental" else f"{icons[status]} {', '.join(labels)}"
+            for status, labels in found
+        )
+        parts.append(f"{', '.join(names)} ({inside})")
+    return [line for line in lines if line not in trial], f"{TRIAL}: {'; '.join(parts)}"
+
 
 def class_lines(
     key: str,
@@ -1141,6 +1183,8 @@ class Card:
     # Every adapter is unmaintained, so the heading says so.
     all_unmaintained: bool = False
     lines: list[str] = field(default_factory=list)
+    total: int = 0  # the lines the cap counts: each line, a variants parent's children too
+    trial: list[str] = field(default_factory=list)  # those that are Experimental, as rendered
     # What the evidence tested, as the lines name it: each model (✔ when the rig tested it), then native groups.
     tested: list[str] = field(default_factory=list)
 
@@ -1220,13 +1264,23 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         extra.append(Line(shape({"works": groups.actions}), label=label))
         result.tested.append(label)
     lines = ordered([*lines, *extra], brand, rig)
+    lines, folded = fold(lines, result, key, data, rig)
     result.lines = [line.render(result, key, data, rig) for line in lines]
+    result.total = sum(1 + len(line.children) for line in lines)
+    result.trial = [
+        shown.render(result, key, data, rig) for line in lines for shown in (line, *line.children) if shown.on_trial()
+    ]
     # devices.yaml's and models.yaml's no_known_method entries name no class or action: each a line of its own.
     result.lines += [
         f"{anchor(result.short(entry['what']), data.url(key, entry['section']))}: {OUTCOMES[-1][1]}"
         for entry in data.no_known_method
         if key in entry["integrations"] and not entry.get("actions")
     ]
+    result.total += len(result.lines) - len(lines)
+    if folded:
+        result.lines.append(folded)
+        result.total += 1
+        result.trial.append(folded)
     return result
 
 
@@ -1244,10 +1298,27 @@ def legend(text: str) -> str:
     return "<br>\n".join(lines)
 
 
-def cards(registry: AdapterRegistry, data: Data) -> str:
+def card_list(registry: AdapterRegistry, data: Data) -> list[Card]:
+    return [card(key, registry, adapters, data) for key, adapters in by_integration(registry).items()]
+
+
+def check_share(built: list[Card]) -> None:
+    """Fails when the Experimental lines (`Line.on_trial`), after each card's fold, are over EXPERIMENTAL_SHARE_MAX of
+    all the cards' lines (docs/evidence.md, The experimental flag)."""
+    total = sum(card.total for card in built)
+    trial = [line for card in built for line in card.trial]
+    if total and len(trial) / total > EXPERIMENTAL_SHARE_MAX:
+        listed = "\n".join(f"  {line}" for line in trial)
+        raise SystemExit(
+            f"{len(trial)} of {total} card lines ({len(trial) / total:.0%}) are Experimental, over the"
+            f" {EXPERIMENTAL_SHARE_MAX:.0%} cap (docs/evidence.md, The experimental flag):\n{listed}"
+        )
+
+
+def cards(built: list[Card]) -> str:
     body = []
-    for key, integration_adapters in by_integration(registry).items():
-        body += [card(key, registry, integration_adapters, data).render(), ""]
+    for entry in built:
+        body += [entry.render(), ""]
     parts = [
         CARDS[0],
         "<!-- Generated by scripts/gen_compat.py. Do not edit; run the script. -->",
@@ -1325,16 +1396,18 @@ def main(
     registry = registry or AdapterRegistry.discover()
     data = load(registry, models)
     check_models(registry, data)
+    built = card_list(registry, data)
     # Both are computed before either is written, so a failure leaves neither half-updated.
     updates = {}
     for path, markers, block in (
         (page, EVIDENCE, evidence(registry, data)),
-        (readme, CARDS, cards(registry, data)),
+        (readme, CARDS, cards(built)),
         (readme, REQUIREMENTS, requirements(registry, data)),
     ):
         text = updates[path][1] if path in updates else path.read_text()
         updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, block, path.name))
     check_sections(updates[page][1], data)
+    check_share(built)
     # The coverage check warns here, on every PR, and fails only at cut-release (check_release.py --signoffs).
     for gap in coverage_gaps(registry):
         print(f"warning: {gap}", file=sys.stderr)

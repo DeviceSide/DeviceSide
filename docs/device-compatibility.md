@@ -98,8 +98,8 @@ with a passing run on their own device ([how to help](../CONTRIBUTING.md#how-to-
 
 ### Zigbee plugs and switches
 
-Turn on with timer runs on a Zigbee plug or switch only where it has passed on that plug: the Zigbee2MQTT Tuya TS011F
-maker strings with a passing run, which DeviceSide sends Tuya's countdown
+Turn on with timer runs on a Zigbee plug or switch only where Tuya's countdown serves it: the Zigbee2MQTT Tuya TS011F
+plugs with a countdown setting, Verified on the maker strings with a passing run and on trial on the rest
 ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)). Research predicts most other plugs fail
 the Zigbee timed-on command: plugs needn't implement it, and many run a countdown of their own instead. So on ZHA, and
 on every other Zigbee2MQTT plug, a Hue or IKEA one included, it isn't built yet, even with Experimental features on: it
@@ -112,8 +112,8 @@ passes can add it ([evidence](evidence.md#levels)).
 A Zigbee plug whose timer runs only Tuya's way, so DeviceSide's timer can leave it off, or turn it on long after the
 time asked and leave it on. Tuya's own call would serve it. On ZHA it isn't built yet, so DeviceSide refuses turn on
 with timer on it, even with Experimental features on. On Zigbee2MQTT DeviceSide sends it only to the
-maker strings that have passed on it, among the TS011F plugs Zigbee2MQTT drives by Tuya's countdown
-([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and refuses the rest. What was measured: [internals](internals.md#tested-behavior).
+TS011F plugs Zigbee2MQTT drives by Tuya's countdown, Verified on the maker strings that have passed and on trial on
+the rest ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and refuses the others. What was measured: [internals](internals.md#tested-behavior).
 
 ## Evidence
 
@@ -141,7 +141,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | `stop` | Experimental | other, ikea, ikea_timer_harmed classes | | |
 | `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102`<br>`LWA012` (`hue`), firmware `1.163.1`<br>`LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | ikea on light classes | | |
+| `turn_on_for` | Experimental | ikea on light, tuya_countdown on switch classes | | |
 
 | No known method | Why | Source |
 |---|---|---|
@@ -153,7 +153,6 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | Hue smart plugs (`turn_on_for`) | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | IKEA outlets (`turn_on_for`) | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum) (`turn_on_for`) | It is reported to turn on with the timer and never turn off, and DeviceSide's own off, which would serve it, isn't built | [source](https://github.com/Koenkk/zigbee2mqtt/issues/29158) |
-| Tuya TS011F plugs (other makers with a countdown setting) (`turn_on_for`) | Tuya's own timer, which DeviceSide sends the plugs it was tested on, is untested on its maker string, and Zigbee2MQTT's timer would leave it on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-15-converter-seed-list.md) |
 | Tuya TS011F plugs (no countdown setting) (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | other Tuya devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya datapoint devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
