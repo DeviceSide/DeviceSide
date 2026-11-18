@@ -5,7 +5,7 @@ Everybody is invited and welcome to contribute.
 ## How to help
 
 * **Add what's missing:** propose a call sequence you've got working reliably on your own devices, including for new integrations. Share your working YAML at Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Propose a device or integration, or [build it yourself](#fast-track-build-it-yourself).
-* **Adopt an integration or device family:** help us build faster by taking on an existing integration (e.g. Zigbee2MQTT, ZHA) or an integration's family (e.g. IKEA devices on ZHA). We'll gladly bring you on as a co-maintainer or primary maintainer, depending on how involved you want to be. Open an issue to get in touch.
+* **Adopt an integration or device family:** help us build faster by taking on an existing integration (e.g. Matter) or family (e.g. IKEA devices on ZHA). We'll gladly bring you on as a co-maintainer or primary maintainer, depending on how involved you want to be. Open an issue to get in touch.
 * **Test your devices:** if you discover a device that works on DeviceSide and isn't on the [compatible list](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md) or doesn't work as expected, please tell us. Go to Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test result or bug.
 * **Report bugs:** for a bug that isn't about a device, open a [blank issue](https://github.com/DeviceSide/DeviceSide/issues/new).
 
