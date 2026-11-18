@@ -111,7 +111,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   repo-maintainer file. Add `IntegrationInfo` setup and teardown hooks. Before the runs.
 - [x] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
   fixes landed, so no run repeats for a fix the audit would have found. The RC's second pass covers what lands after.
-- [ ] **Sign-offs** for v0.1.0, one per action (`check_release.py --signoffs`), each a rig run from ha-rig `main`. Only
+- [x] **Sign-offs** for v0.1.0, one per action (`check_release.py --signoffs`), each a rig run from ha-rig `main`. Only
   format 3 records, bound to the call transcripts, sign off: the format 2 runs below are rebound where their calls are
   shown unchanged since, else rerun (#486). The runs for
   the formerly release-flagged adapters need these `--profile lab` cases, run watched, the A60 visiting each network:
