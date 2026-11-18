@@ -5,6 +5,7 @@ import logging
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import voluptuous as vol
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
@@ -51,8 +52,8 @@ async def report_for(
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
     assert result["type"] is FlowResultType.FORM
-    if step == "report_device" and isinstance(entity_ids, str):
-        entity_ids = [entity_ids]  # the report form takes a list of devices; the proposal form takes one
+    if isinstance(entity_ids, str):
+        entity_ids = [entity_ids]  # both forms take a list of devices
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"entity_id": entity_ids})
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == link_step
@@ -301,14 +302,29 @@ async def test_a_report_for_an_entity_outside_the_registry_leaves_the_integratio
     assert fields["title"] == "Device report"
 
 
-@pytest.mark.parametrize(("step", "multiple"), [("report_device", True), ("propose_device", False)])
-async def test_each_issue_step_offers_only_lights_and_switches(hass: HomeAssistant, step, multiple):
+@pytest.mark.parametrize(("step", "domains"), [("report_device", ["light", "switch"]), ("propose_device", None)])
+async def test_the_report_picker_offers_only_lights_and_switches_and_the_proposal_picker_any_entity(
+    hass: HomeAssistant, step, domains
+):
     entry = await load_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
     selector = result["data_schema"].schema["entity_id"]
-    assert selector.config["domain"] == ["light", "switch"]
-    assert selector.config["multiple"] is multiple
+    assert selector.config.get("domain") == domains
+    assert selector.config["multiple"] is True
+
+
+async def test_a_proposal_takes_a_fan_but_a_report_does_not(hass: HomeAssistant):
+    entry = await load_entry(hass)
+    hass.states.async_set("fan.desk", "off")
+    for step, accepted in (("propose_device", True), ("report_device", False)):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
+        if accepted:
+            assert result["data_schema"]({"entity_id": ["fan.desk"]}) == {"entity_id": ["fan.desk"]}
+        else:
+            with pytest.raises(vol.Invalid):
+                result["data_schema"]({"entity_id": ["fan.desk"]})
 
 
 async def test_a_z2m_device_deviceside_cannot_serve_still_reports_as_zigbee2mqtt(hass: HomeAssistant):
@@ -397,7 +413,7 @@ async def test_a_report_leaves_experimental_features_out_when_deviceside_is_not_
     assert "experimental_features" not in parse_qs(urlparse(url).query)
 
 
-async def test_a_proposal_carries_the_device_but_not_the_versions(hass: HomeAssistant):
+async def test_a_proposal_carries_the_devices_line_but_not_the_versions(hass: HomeAssistant):
     """The proposal form has no version fields: DeviceSide doesn't run the device yet."""
     entry = await load_entry(hass)
     add_mqtt_light(hass, "tasmota_ABC123")
@@ -407,10 +423,31 @@ async def test_a_proposal_carries_the_device_but_not_the_versions(hass: HomeAssi
     assert fields == {
         "template": "propose_device_or_integration.yml",
         "title": "Proposal: Bulb (mqtt)",
-        "integration": "mqtt",
-        "model": "Bulb",
-        "firmware": "2.0",
+        "devices": "mqtt \u00b7 Bulb \u00b7 2.0",
     }
+
+
+async def test_a_proposal_carries_the_zigbee_manufacturer_string(hass: HomeAssistant, zha, monkeypatch):
+    """The maker string is what family and Tuya class rules key on."""
+    entry = await load_entry(hass)
+
+    fields, url = await report_for(hass, entry, tuya_plug(hass, zha, monkeypatch), "propose_device", "proposal_link")
+
+    assert fields["devices"] == f"zha \u00b7 Tuya Smart plug \u00b7 TS011F \u00b7 {TUYA}"
+    assert fields["title"] == "Proposal: Smart plug TS011F (zha)"
+    for private in ("switch.plug", IEEE, "00%3A17"):
+        assert private not in url
+
+
+async def test_a_proposal_for_two_devices_lists_one_line_each(hass: HomeAssistant, zha):
+    entry = await load_entry(hass)
+    add_zha_entity(hass, zha, "light.a", strings=(None, None))
+    add_mqtt_light(hass, "tasmota_ABC123")
+
+    fields, _ = await report_for(hass, entry, ["light.a", "light.desk"], "propose_device", "proposal_link")
+
+    assert fields["devices"] == "zha\nmqtt \u00b7 Bulb \u00b7 2.0"
+    assert fields["title"] == "Proposal: zha, Bulb (mqtt)"
 
 
 async def test_a_device_report_needs_a_device(hass: HomeAssistant):

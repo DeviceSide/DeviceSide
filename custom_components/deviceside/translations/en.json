@@ -50,9 +50,9 @@
       },
       "propose_device": {
         "title": "Propose a device or integration",
-        "description": "Choose the light or switch you're proposing, and DeviceSide will prefill its details. Proposals need a known YAML solution, running stably on your Home Assistant, that you're willing to share.",
+        "description": "Choose an entity of the device you're proposing, and DeviceSide will prefill its details. Proposals need a call sequence you've got working reliably on your own devices, and are willing to share.",
         "data": {
-          "entity_id": "Light or switch"
+          "entity_id": "Entity"
         }
       },
       "proposal_link": {
