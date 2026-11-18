@@ -53,7 +53,7 @@ Every code pull request follows these steps:
    </details>
 
    <details>
-   <summary><b>A new family (e.g. Tuya devices on Zigbee2MQTT)</b></summary>
+   <summary><b>A new family (e.g. IKEA devices on Zigbee2MQTT)</b></summary>
 
    A vendor's classes on an integration with families (Zigbee2MQTT, ZHA): [Family](docs/design.md#glossary) in design.md's glossary, and its row in the ["Writing an integration" table](docs/design.md#core-contract).
 
