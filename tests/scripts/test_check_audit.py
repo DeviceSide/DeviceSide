@@ -5,16 +5,22 @@ import yaml
 
 from scripts import check_audit
 
+from .conftest import from_template
+
 RC = "v0.0.2rc1"
 HINT = "; was the audit PR squashed or rebased? Merge it with a merge commit"
 
 
-@pytest.fixture
-def audited(repo):
-    """v0.0.1 on main, one code commit on top, audited in one pass. Returns (repo, base, audited sha)."""
+def build_audited(repo):
     base = repo.commit()
     repo.git("tag", "v0.0.1")
-    return repo, base, repo.commit()
+    return base, repo.commit()
+
+
+@pytest.fixture
+def audited(repo, tmp_path_factory):
+    """v0.0.1 on main, one code commit on top, audited in one pass. Returns (repo, base, audited sha)."""
+    return repo, *from_template(repo, build_audited, tmp_path_factory)
 
 
 def record(repo, rc=RC, base=None, passes=(), findings=(), **extra) -> str:

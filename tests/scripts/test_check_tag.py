@@ -6,18 +6,24 @@ import pytest
 
 from scripts import check_tag
 
+from .conftest import from_template
+
 
 def ship(repo, version: str) -> str:
     """Commit manifest.json with this version, as the commit a cut-* workflow tags has it."""
     return repo.commit(str(check_tag.MANIFEST), json.dumps({"domain": "deviceside", "version": version}))
 
 
-@pytest.fixture
-def released(repo):
+def build_released(repo):
     ship(repo, "0.0.1")
     repo.git("tag", "v0.0.1")
     repo.git("tag", "v0.0.10rc1")  # an RC never counts as the latest release
     repo.commit()
+
+
+@pytest.fixture
+def released(repo, tmp_path_factory):
+    from_template(repo, build_released, tmp_path_factory)
     return repo
 
 

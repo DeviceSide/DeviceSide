@@ -9,6 +9,8 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 from scripts import gen_codeowners
 from scripts import owners as ow
 
+from .conftest import from_template
+
 PATHS = ow.package_paths()
 PKG = "custom_components/deviceside/integrations/acme/"
 TUYA_DIR = PKG + "families/tuya/"
@@ -35,17 +37,21 @@ def family(key, maintainers):
     return f"FAMILY = Family(key={key!r}, maintainers={maintainers!r}, classes=CLASSES)\n"
 
 
-@pytest.fixture
-def tree(repo, monkeypatch):
-    """`main`: `acme` (alice) with a `tuya` family (tina) and a `hue` one with no maintainers of its own, `zeta`
-    (zoe) with a `tuya` family (zed), and the catalog file the `tuya` families share."""
-    monkeypatch.chdir(repo.path)
+def build_tree(repo):
     repo.commit(ow.INIT.format(key="acme"), integration("acme", ("alice",)))
     repo.commit(ow.INIT.format(key="zeta"), integration("zeta", ("zoe",)))
     repo.commit(ow.FAMILY_INIT.format(key="acme", family="tuya"), family("tuya", ("tina",)))
     repo.commit(ow.FAMILY_INIT.format(key="acme", family="hue"), family("hue", ()))
     repo.commit(ow.FAMILY_INIT.format(key="zeta", family="tuya"), family("tuya", ("zed",)))
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
+
+
+@pytest.fixture
+def tree(repo, monkeypatch, tmp_path_factory):
+    """`main`: `acme` (alice) with a `tuya` family (tina) and a `hue` one with no maintainers of its own, `zeta`
+    (zoe) with a `tuya` family (zed), and the catalog file the `tuya` families share."""
+    monkeypatch.chdir(repo.path)
+    from_template(repo, build_tree, tmp_path_factory)
     return repo
 
 

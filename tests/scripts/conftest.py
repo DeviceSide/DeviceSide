@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -32,6 +33,20 @@ class GitRepo:
         self.git("add", "-A")
         self.git("commit", "-q", "-m", f"change {file}")
         return self.head()
+
+
+_TEMPLATES: dict = {}
+
+
+def from_template(repo: GitRepo, build, tmp_path_factory: pytest.TempPathFactory):
+    """Fill `repo` with a history `build(GitRepo)` made once in this process, and return what `build` returned.
+    A test's repository is a copy of it, instead of dozens of git spawns."""
+    if build not in _TEMPLATES:
+        template = GitRepo(tmp_path_factory.mktemp("template"))
+        _TEMPLATES[build] = (template.path, build(template))
+    path, result = _TEMPLATES[build]
+    shutil.copytree(path, repo.path, dirs_exist_ok=True)
+    return result
 
 
 @pytest.fixture

@@ -21,6 +21,7 @@ from custom_components.deviceside.core.scope import (
 )
 from scripts import check_release as cr
 
+from .conftest import from_template
 from .record_files import (
     BLOB,
     bound,
@@ -386,17 +387,21 @@ def test_names_classes_is_the_integrations_capability_for_every_adapter():
 # The release gate.
 
 
+def build_released(repo):
+    touch(repo, f"{FAKE}/stop.py", f"{FAKE}/transport.py", f"{CORE}/dispatcher.py")
+    pin(repo, "stop", "a")
+    pin(repo, "turn_on_for", "a")
+    pin(repo, "turn_on_for", "a", integration="other")
+    repo.git("tag", "v0.1.0")
+    repo.commit()
+    repo.git("tag", "v0.2.0rc1")  # an RC is never the last release
+
+
 @pytest.fixture
-def released(fake_repo):
+def released(fake_repo, tmp_path_factory):
     """fake's stop and turn_on_for and other's turn_on_for, each with a transcript of one segment, and a package,
     released as v0.1.0, with a later RC tag."""
-    touch(fake_repo, f"{FAKE}/stop.py", f"{FAKE}/transport.py", f"{CORE}/dispatcher.py")
-    pin(fake_repo, "stop", "a")
-    pin(fake_repo, "turn_on_for", "a")
-    pin(fake_repo, "turn_on_for", "a", integration="other")
-    fake_repo.git("tag", "v0.1.0")
-    fake_repo.commit()
-    fake_repo.git("tag", "v0.2.0rc1")  # an RC is never the last release
+    from_template(fake_repo, build_released, tmp_path_factory)
     return fake_repo
 
 
