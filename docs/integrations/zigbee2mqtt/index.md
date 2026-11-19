@@ -57,7 +57,7 @@ setting for the plug). Turn on with timer uses that countdown:
   If you try one, please report whether it works: a string gets a class of its own with a passing run
   ([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)).
 - **Shown as a light:** a plug of a string with its own class that Zigbee2MQTT shows as a light is still a plug to
-  DeviceSide, but no run has tried one shown as a light.
+  DeviceSide, but no run has tried one shown as a light, so turn on with timer runs on it only with Labs on.
 - **Not built yet on `_TZ3000_gjnozsaz`,** even with Labs on: its countdown is reported to restart
   at random, so it could stay on ([Zigbee2MQTT #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)).
 
@@ -107,12 +107,13 @@ refuses them, even with Labs on.
 
 IKEA's TRÅDFRI lights (Zigbee manufacturer `IKEA of Sweden`, which Zigbee2MQTT publishes as it connects; until then
 an IKEA light counts as another brand's). Most run the Zigbee timer, by what they report when paired and by users'
-reports ([research](research/2026-11-14-timed-on-call-patterns.md), §3), so turn on with timer is offered on them. Two GU10
+reports ([research](research/2026-11-14-timed-on-call-patterns.md), §3), so they take the Zigbee timer. Two GU10
 white spectrum bulbs, LED2005R5 and LED2106R3, are reported to turn on with it and never turn off
 ([Zigbee2MQTT #29158](https://github.com/Koenkk/zigbee2mqtt/issues/29158)), so DeviceSide refuses them there, even
 with Labs on. IKEA's outlets get no turn on with timer, as no plug has passed
 ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)). Smooth dimming and stop rest on
-the Zigbee 3.0 rule, as for other brands (below); the other features aren't built yet.
+the standard commands every Zigbee 3.0 certified dimmable light must take, as for [other brands](#other-brands); the
+other features aren't built yet.
 
 On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
 ([evidence](../hue/internals.md#device-classes)).
@@ -121,7 +122,7 @@ On IKEA lights, lower brightness to off may stop at the lowest level instead of 
 
 Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable
 light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they get
-exactly as a Hue bulb does, so smooth dimming and stop are offered on them. Their other features aren't built yet: nothing
+exactly as a Hue bulb does, so they take smooth dimming and stop. Their other features aren't built yet: nothing
 predicts how other brands take color moves, reads and writes, and on turn on with timer some lights turn on and never
 off, and most plugs ignore the timer. If you try dimming, please report it whether it works or not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test

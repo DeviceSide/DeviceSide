@@ -308,7 +308,9 @@ def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
 
 # A heading that states a level. An integration's page gives each class's reasons under `## Device classes`; its
 # levels are the generated page's alone, so a hand-written one can't go stale.
-LEVEL_HEADING = re.compile(r"^#+ .*\b(Tested devices|Should work|Try it|Labs|Verified|Documented)\b.*$", re.MULTILINE)
+LEVEL_HEADING = re.compile(
+    r"^#+ .*\b(Tested devices|Should work|Try it|Labs|Verified|Documented)\b.*$", re.MULTILINE | re.IGNORECASE
+)
 # Control4's page keeps its level headings until its own PR tidies it (plan 2026-11-19-compat-page, step 6): remove
 # this exemption in that PR.
 LEVEL_HEADING_EXEMPT = frozenset({"control4"})

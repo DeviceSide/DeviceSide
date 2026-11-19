@@ -26,7 +26,7 @@ shared home named in parentheses.
 
 | Fact | Home |
 |---|---|
-| User-facing limits and device classes | `<x>/index.md` (shared: `docs/integrations.md`; a model's: generated on `docs/device-compatibility.md` from `docs/models.yaml` and `<x>/devices.yaml`) |
+| User-facing limits and device classes | `<x>/index.md` (shared: `docs/integrations.md`) |
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
 | A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
 | Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |

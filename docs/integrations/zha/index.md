@@ -31,7 +31,8 @@ how ZHA's device handler for it sends commands.
 ### Hue
 
 Signify's Hue devices (manufacturer `Signify Netherlands B.V.` or `Philips`). Raising brightness from off sends a Hue
-bulb Hue's own command.
+bulb Hue's own command. A Hue smart plug gets no turn on with timer: most plugs ignore the timer or read it as a
+delayed toggle, so it could stay on ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)).
 
 ### Tuya
 
@@ -83,13 +84,14 @@ don't apply to a valve.
 ### IKEA
 
 IKEA's TRÅDFRI lights (manufacturer `IKEA of Sweden`). Most run the Zigbee timer, by what they report when paired and
-by users' reports ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3), so turn on
-with timer is offered on them. Two GU10 white spectrum bulbs, LED2005R5 and
+by users' reports ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3), so they take
+the Zigbee timer. Two GU10 white spectrum bulbs, LED2005R5 and
 LED2106R3, are reported to turn on with it and never turn off
 ([Z2M #29158](https://github.com/Koenkk/zigbee2mqtt/issues/29158)), so DeviceSide refuses them there, even with
 Labs on. IKEA's outlets get no turn on with timer, as no plug has passed
 ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)). Smooth dimming and stop rest on
-the Zigbee 3.0 rule, as for other brands (below); the other features aren't built yet.
+the standard commands every Zigbee 3.0 certified dimmable light must take, as for [other brands](#other-brands); the
+other features aren't built yet.
 
 On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
 ([evidence](../hue/internals.md#device-classes)).
@@ -98,7 +100,7 @@ On IKEA lights, lower brightness to off may stop at the lowest level instead of 
 
 Lights of every other brand, such as Innr, Ledvance or Sonoff, and their plugs and switches. A Zigbee 3.0 certified
 dimmable light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they
-get exactly as a Hue bulb does, so smooth dimming and stop are offered on them. Raising brightness from off sets them to their
+get exactly as a Hue bulb does, so they take smooth dimming and stop. Raising brightness from off sets them to their
 lowest level first, where a Hue bulb gets Hue's own command. Their other features aren't built yet: nothing
 predicts how other brands take color moves, reads and writes, and on turn on with timer some lights turn on and never
 off, and most plugs ignore the timer. If you try dimming, please report it whether it works or not: Integrations >

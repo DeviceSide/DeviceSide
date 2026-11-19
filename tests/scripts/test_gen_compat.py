@@ -719,7 +719,9 @@ def test_an_integration_without_a_user_page_fails(root, monkeypatch):
         gc.load(FakeRegistry(), models)
 
 
-@pytest.mark.parametrize("heading", ["## Tested devices", "### Should work", "## Try it: Labs", "### Verified plugs"])
+@pytest.mark.parametrize(
+    "heading", ["## Tested devices", "### Should work", "## Try it: Labs", "### Verified plugs", "## tested devices"]
+)
 def test_an_integration_page_heading_that_states_a_level_fails_naming_the_file(root, monkeypatch, heading):
     models = write_bundles(root, monkeypatch)
     (root / "docs" / "integrations" / "hue" / "index.md").write_text(f"# Hue\n\n## Device classes\n\n{heading}\n")
