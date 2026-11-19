@@ -217,12 +217,12 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 
 ### services.yaml, strings, icons
 
-- `services.yaml` holds only target filters and field selectors; names and descriptions are in `strings.json`.
+- `services.yaml` holds only target filters and field selectors; names and descriptions are in `translations/en.json`.
   Target filters list exactly the integrations with an adapter for the action. They are a UI convenience: adapters
   enforce scope through `supports()`.
 - Field filters can only test `supported_features` and attributes, not domain, so light fields copy
   `light/services.yaml`'s `supported_color_modes` filters; a switch-only selection shows just `duration`.
-- Adding an action means a block each in `services.yaml`, `strings.json` and `icons.json`;
+- Adding an action means a block each in `services.yaml`, `translations/en.json` and `icons.json`;
   `tests/core/test_actions_setup.py` checks all three.
 
 ## Release gates

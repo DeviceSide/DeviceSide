@@ -1,4 +1,4 @@
-"""Every discovered action has a block in services.yaml, strings.json and icons.json, and nothing else does."""
+"""Every discovered action has a block in services.yaml, translations/en.json and icons.json, and nothing else does."""
 
 import json
 from pathlib import Path
@@ -19,7 +19,7 @@ def _load_json(name: str) -> dict:
 ACTIONS = discover()
 ACTION_KEYS = {action.key for action in ACTIONS}
 SERVICES_YAML = yaml.safe_load((PACKAGE / "services.yaml").read_text()) or {}
-STRINGS = _load_json("strings.json")
+STRINGS = _load_json("translations/en.json")
 
 
 def test_services_yaml_matches_features():
@@ -32,10 +32,6 @@ def test_strings_match_actions():
 
 def test_icons_match_actions():
     assert set(_load_json("icons.json")["services"]) == ACTION_KEYS
-
-
-def test_translation_is_a_copy_of_strings():
-    assert _load_json("translations/en.json") == STRINGS
 
 
 @pytest.mark.parametrize("action", ACTIONS, ids=lambda action: action.key)
