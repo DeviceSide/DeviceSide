@@ -132,6 +132,10 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
     [
         # Not built yet on turn_on_for, with an entry: today's call would leave them on (Decision 70). Not built on
         # every other action either, as no pass or research admits Tuya's firmware (docs/evidence.md, In Labs).
+        # Another brand's lights and plugs: no pass, and a plug that never turns off would take on_time.
+        ("other", {"turn_on_for"}, ALL - CERTIFIED, set()),
+        # Hue's plug, on the switch domain alone; its bulbs keep their own level.
+        ("hue", {"turn_on_for"}, set(), set()),
         ("tuya_zcl", {"turn_on_for"}, ALL, set()),
         # Nor a TS011F off the countdown, so get_attributes doesn't read it.
         ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
