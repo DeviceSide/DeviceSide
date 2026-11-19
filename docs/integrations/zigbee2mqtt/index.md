@@ -57,7 +57,7 @@ setting for the plug). Turn on with timer uses that countdown:
   If you try one, please report whether it works: a string gets a class of its own with a passing run
   ([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)).
 - **Shown as a light:** a plug of a string with its own class that Zigbee2MQTT shows as a light is still a plug to
-  DeviceSide, but no run has tried one shown as a light, so turn on with timer runs on it only with Labs on.
+  DeviceSide, but no run has tried one shown as a light.
 - **Not built yet on `_TZ3000_gjnozsaz`,** even with Labs on: its countdown is reported to restart
   at random, so it could stay on ([Zigbee2MQTT #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)).
 

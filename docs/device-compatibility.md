@@ -10,8 +10,8 @@ Claims follow evidence, per class of device: devices that get the same command a
 such as Hue bulbs on Zigbee2MQTT. A test on one class says nothing about another, because makers' firmware answers the
 same command differently ([the rules](evidence.md#levels)).
 
-- 🟢 **Verified:** a maintainer tested it on a real device. ✔ marks a run on the automated rig; a device without it
-  was tested by hand.
+- 🟢 **Verified:** a maintainer tested it on a real device, or signed off on users' working reports of it. ✔ marks a
+  run on the automated rig, "by hand" a maintainer's own test, and "by report" users' reports, each linking its issue.
 - 🟡 **Documented:** no device of the class has been tested, but it gets the same call as a Verified device of the
   same maker's firmware, or certification tests the same read on every device of the class.
 - ⚪ **Labs:** built but not yet proven. It stays off until you turn on **Labs** in **Configure > Settings**, and may
