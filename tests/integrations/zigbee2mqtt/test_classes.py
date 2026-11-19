@@ -27,7 +27,7 @@ from ...conftest import allow_labs, refusal
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
-STRINGS = Path(__file__).parents[3] / "custom_components" / "deviceside" / "strings.json"
+STRINGS = Path(__file__).parents[3] / "custom_components" / "deviceside" / "translations" / "en.json"
 IKEA = ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm")
 # Gledopto's GL-SPI-206P: Gledopto's definition, Tuya datapoint firmware (families/__init__.py, the rule order).
 GLEDOPTO_TUYA = {"manufacturer": "Gledopto", "model_id": "GL-SPI-206P", "zigbee": (TUYA_MCU, "TS0601")}

@@ -78,7 +78,7 @@ Every code pull request follows these steps:
    - **A boundary in `tests/integrations/<x>/wire.py`,** if it sends through one the file doesn't name yet.
    - **The action's target filter** in `custom_components/deviceside/services.yaml`: your integration's HA domain, with the entity domains the adapter serves.
 
-   A brand-new action (not yet in `actions/`, `services.yaml`, `strings.json` and `icons.json`) is a shared change: its own pull request first (step 3). Merge: a repo maintainer, as `services.yaml` is shared.
+   A brand-new action (not yet in `actions/`, `services.yaml`, `translations/en.json` and `icons.json`) is a shared change: its own pull request first (step 3). Merge: a repo maintainer, as `services.yaml` is shared.
 
    </details>
 
@@ -94,7 +94,7 @@ Every code pull request follows these steps:
      - `scripts/gen_features.py`: a `NO_PATH` entry for each feature impossible on every device of the integration, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
      - `docs/models.yaml`: a model you tested that another integration already lists (move the entry there from its bundle)
      - `pyproject.toml` and `uv.lock`: any library its tests need, added with `uv add --dev <lib>` (CI installs with `uv sync --locked`)
-     - only if it adds a user option: `const.py`, `config_flow.py` (the options form), `strings.json` and `translations/en.json` under `custom_components/deviceside/`, and `__init__.py` and `core/runtime.py` too if core reads it; an option only your integration reads, your `setup` reads from the entry (as Zigbee2MQTT's `lifecycle.py` does)
+     - only if it adds a user option: `const.py`, `config_flow.py` (the options form), `translations/en.json` under `custom_components/deviceside/`, and `__init__.py` and `core/runtime.py` too if core reads it; an option only your integration reads, your `setup` reads from the entry (as Zigbee2MQTT's `lifecycle.py` does)
 
      If you also need changes to `README.md` outside its auto-generated sections (the feature table and device cards), propose them in a separate pull request that changes only `README.md`. If your integration needs a change to `manifest.json`, say so in the pull request.
 
