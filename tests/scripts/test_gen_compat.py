@@ -1,5 +1,5 @@
 """scripts/gen_compat.py: evidence from the records and `_manual.json`, models from devices.yaml, the README cards, the
-evidence block, and the stale check."""
+page's generated block, and the stale check."""
 
 import copy
 import re
@@ -1617,3 +1617,66 @@ def test_a_documented_or_labs_class_needs_its_section_on_its_integrations_page(r
     index.write_text(index.read_text().replace("### Lights\n\n", ""))
     with pytest.raises(SystemExit, match="no heading or file for lights"):
         run([])
+
+
+def test_a_class_refused_by_two_actions_links_each_cell_to_its_own_row(root):
+    refused = {
+        "lower_brightness": NoKnownMethod("Old plug", "It ignores a ramp", "https://x.y/ramp"),
+        "stop": NoKnownMethod("Old plug", "It ignores a stop", "https://x.y/stop"),
+    }
+    adapters = tuple(
+        adapter("zha", action, AdapterScope(capabilities=verified("Switch"), no_known_method={"RGB": entry}))
+        for action, entry in refused.items()
+    )
+    registry = classed_registry(*adapters)
+    registry.integrations["zha"].classes["RGB"] = LIGHT
+    block, *_ = page_of(*adapters, registry=registry, no_known_method=[])
+    reasons = {
+        re.search(r'id="([^"]+)"', row)[1]: row.split(" | ")[3] for row in table_after(block, "## Not supported")[2:]
+    }
+    (row,) = (row for row in table_after(block, "### ZHA") if row.startswith("| [RGB controllers]"))
+    ramp, stop = (cell.split("(#")[1].rstrip(") |") for cell in row.split(" | ")[1:3])
+    assert (reasons[ramp], reasons[stop]) == ("It ignores a ramp", "It ignores a stop")
+
+
+def test_tested_devices_lists_a_model_a_row_names_though_no_card_credits_it(root):
+    """A hand-tested model in a Labs class, and a hand-tested group a null-class member keeps off the cards, are on the
+    page: it lists every model with a record row, and the matrix keeps the levels the code sets."""
+    manual_file(
+        root,
+        rows=[
+            signoff(devices=(("LTA009", "Light"),), calls=bound("stop")),
+            signoff(devices=(("P1", "Switch"), ("LTA009", None)), calls=bound("stop"), group=True),
+        ],
+    )
+    block, registry, found = page_of(adapter("zha", "stop", AdapterScope(capabilities=labs("Light", "Switch"))))
+    (card,) = gc.card_list(registry, found)
+    assert (card.reached, card.groups) == ({}, None)
+    manual_link = "[stop](integrations/zha/test-records/_manual.json)"
+    assert table_after(block, "### Hue lamp")[2] == f"| [ZHA](#zha) | {manual_link} | | by hand |"
+    assert table_after(block, "### Native groups")[2] == f"| [ZHA](#zha) | {manual_link} | by hand |"
+    assert "🟢" not in "\n".join(table_after(block, "### ZHA"))
+
+
+def test_a_features_parts_read_in_the_same_order_in_the_matrix_and_under_tested_devices(root):
+    for action in ("lower_brightness", "raise_brightness"):
+        record2(root, "zha", action, ran("light", device("LTA009", "1", "Light")))
+    scope = AdapterScope(capabilities=verified("Light"))
+    block, *_ = page_of(adapter("zha", "lower_brightness", scope), adapter("zha", "raise_brightness", scope))
+    parts = (
+        "[up](integrations/zha/test-records/raise_brightness.json)"
+        " [down](integrations/zha/test-records/lower_brightness.json)"
+    )
+    assert f"smooth dimming: {parts}" in table_after(block, "### Hue lamp")[2]
+    assert parts in table_after(block, "### ZHA")[2]
+
+
+def test_a_line_of_several_sections_links_one_why_per_cell_and_all_its_classes_in_its_name(root):
+    adapters = (adapter("zha", "stop", AdapterScope(capabilities=labs("Light", "RGBCCT"))),)
+    registry = classed_registry(*adapters)
+    registry.integrations["zha"].classes["RGBCCT"] = LIGHT
+    block, *_ = page_of(*adapters, registry=registry, no_known_method=[])
+    (row,) = table_after(block, "### ZHA")[2:]
+    name, stop = row.split(" | ")
+    assert "index.md#dimmers" in name and "index.md#bulbs" in name
+    assert stop.count("[why]") == 1

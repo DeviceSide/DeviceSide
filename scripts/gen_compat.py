@@ -70,10 +70,12 @@ again read as a list of untried classes.
 **The page.** The block between the evidence markers of docs/device-compatibility.md, in three parts; every device fact
 in it comes from the model above, so one change in code, devices.yaml, models.yaml or a record moves the README and the
 page together, and `--check` proves both.
-- *Tested devices*: a `###` per tested model, headed by its `section` (its `name`, by default: the heading every card
-  links, `Data.model_url`), with its type and ids, then a table of Integration (linking its matrix below), Features
-  tested (each linking its records, a split feature's parts apart), Firmware (the distinct values the records name) and
-  How (✔ rig, by hand). Then `### Native groups`, the same table per integration without the firmware.
+  - *Tested devices*: a `###` per model a record row names, credited to a card or not (a hand-tested model in a Labs
+  class is listed; the matrix's levels are the code's alone), headed by its `section` (its `name` by default: the
+  heading every card links, `Data.model_url`), with its type and ids, then a table of Integration (linking its matrix
+  below), Features tested (each linking its records, a split feature's parts apart, in README order), Firmware (the
+  distinct values the records name) and How (✔ rig, by hand). Then `### Native groups`, the same table per integration
+  without the firmware.
 - *By integration*: a `###` per integration, by its title, the card's caveats under it, then a matrix: a row per
   unfolded card line (native groups first, a variants parent's children indented under it), a column per feature in the
   README's order (`stop` last), a cell holding the status and its proof. 🟢 links its records (the line's tested
@@ -95,20 +97,21 @@ its integration's default class where that is in Labs: the pass can never lift a
 of its own; this warning never fails anywhere.
 
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
-integrations, `type`, optional `section`; a model only one integration names is in its bundle's devices.yaml), and
-`no_known_method` and `not_built` entries that name their `integrations` (`what`, `reason`, `source`, optional
-`section`), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as an
-unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
+integrations, `type`, optional `section`: the model's heading on the generated page, its `name` by default; a model
+only one integration names is in its bundle's devices.yaml), and `no_known_method` and `not_built` entries that name
+their `integrations` (`what`, `reason`, `source`, optional `section`: the anchor id of its Not supported row, its
+`what` by default), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as
+an unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
 `column_order` (the README feature table's, read by gen_features, and the Requirements line's), `requirements_name`
 (optional: the Requirements line's name for the integration, its title by default), `requires` (shown after the card's
 name), `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
-classes, and per class a scope lists as not built yet; `domains`, a phrase per entity domain, for a class the card
-splits), `sections` (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes, or
-with `variants`, what to check to tell its classes apart) and
-`no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call DeviceSide sends, not
-what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) and `not_built` (NotBuilt) are the
-code's home for these, and join them here; the devices.yaml and models.yaml entries move to them, class by class.
-Every integration needs a bundle.
+classes, and per class a scope lists as not built yet; `section` is a heading of the integration's page, which a
+Documented or Labs class must have; `domains`, a phrase per entity domain, for a class the card splits), `sections`
+(optional: a `phrase`, and `domains`, per page section, for a line holding all its classes, or with `variants`, what
+to check to tell its classes apart) and `no_known_method` (`what`, `reason`, `source`, optional `section`, as above:
+devices that fail the call DeviceSide sends, not what isn't built). A scope's `no_known_method` (core/scope.py,
+NoKnownMethod) and `not_built` (NotBuilt) are the code's home for these, and join them here; the devices.yaml and
+models.yaml entries move to them, class by class. Every integration needs a bundle.
 
 **Links.** A card links each class or blocker to the heading its `section` names (default: the blocker's `what`): on the
 card's integration page when that has the heading, else the same anchor on docs/device-compatibility.md, where a Not
@@ -542,13 +545,20 @@ class Evidence:
     tested: list[tuple[str, Tested]]
 
     @classmethod
-    def of(cls, adapter, clean: Clean | None = None, by_hand: Callable[[str | None], bool] | None = None) -> Evidence:
+    def of(
+        cls,
+        adapter,
+        clean: Clean | None = None,
+        by_hand: Callable[[str | None], bool] | None = None,
+        listed: bool = False,
+    ) -> Evidence:
         """The adapter's evidence: with `clean`, only the record tests it accepts; with `by_hand`, only the manual
         devices whose class it accepts (a group row, only when it accepts every member's). Where the integration names
         classes (`names_classes`), a device with a null class credits nothing, flagged or not (docs/evidence.md, The
         coverage check), so it is left out, as is a group with such a member. A manual group row is one group, tested
-        by hand."""
-        names = names_classes(adapter)
+        by hand. `listed` keeps a null-class device and group too: the page lists every model a record row names,
+        credited or not."""
+        names = names_classes(adapter) and not listed
         records = passing(adapter.integration, adapter.action)
         found = [
             (path.relative_to(REPO).as_posix(), item)
@@ -760,20 +770,18 @@ def status_cell(
             # A class with no model of its own on the action (a scene is classed by its lights) takes the integration's.
             links = record_links(proofs(held, actions) or proofs(everything, actions), part_named=label != feature)
         elif status == "no_known_method":
-            refused = [card.broken[name] for name, _ in line.items if name in card.broken]
+            refused = [
+                card.broken[(name, action)]
+                for name, _ in line.items
+                for action in feature_actions(feature, label)
+                if (name, action) in card.broken
+            ]
             links = f"[why](#{ids[refused[0]]})" if refused and refused[0] in ids else ""
         else:
-            sections = list(line.sections)
-            links = " ".join(
-                f"[{'why' if len(sections) == 1 else text_of(line.sections[section])}]({data.url(card.key, section)})"
-                for section in sections
-            )
+            # A line of several sections (Shelly's dimmers, LED controllers) links the first: the Class column has all.
+            links = f"[why]({data.url(card.key, next(iter(line.sections)))})"
         found.append(f"{text} {links}".strip())
     return " · ".join(found)
-
-
-def text_of(phrases: list[str]) -> str:
-    return text(phrases)
 
 
 def local(text: str) -> str:
@@ -825,7 +833,7 @@ def matrix(card: Card, data: Data, ids: dict) -> list[str]:
 def tested_features(held: Reached) -> str:
     """The features a model (or native groups) was tested on, in README order, each with its records."""
     by_feature: dict[str, list[str]] = {}
-    for action in held.by_action:
+    for action in sorted(held.by_action, key=list(FEATURES).index):
         by_feature.setdefault(FEATURES[action], []).append(action)
     order = {feature: number for number, feature in enumerate(dict.fromkeys(FEATURES.values()))}
     found = []
@@ -834,7 +842,7 @@ def tested_features(held: Reached) -> str:
         links = record_links(pairs)
         found.append(
             f"[{feature}]({links[links.index('(') + 1 : links.index(')')]})"
-            if len(set(pairs)) == 1
+            if links.count("](") == 1
             else f"{feature}: {links}"
         )
     return "<br>".join(found)
@@ -850,11 +858,12 @@ def firmware(held: Reached) -> str:
 
 
 def devices_section(built: list[Card], data: Data) -> list[str]:
-    """A `###` per tested model (by its `section`: the heading every card links), a table of the integrations
-    and features that tested it; then native groups the same way."""
+    """A `###` per model a record row names, credited or not (`Card.listed`; by its `section`: the heading every card
+    links), a table of the integrations and features that tested it; then native groups the same way. The matrix's
+    levels stay as the code sets them: a model a flagged class holds is listed here and credits nothing there."""
     by_model: dict[str, list[tuple[Card, Reached]]] = {}
     for card in built:
-        for name, held in card.reached.items():
+        for name, held in card.listed.items():
             by_model.setdefault(name, []).append((card, held))
     by_name = {model["name"]: model for model in data.models.values()}
     parts = ["## Tested devices", ""]
@@ -873,7 +882,7 @@ def devices_section(built: list[Card], data: Data) -> list[str]:
         ]
         parts += [*table(["Integration", "Features tested", "Firmware", "How"], rows), ""]
     parts += [f"### {GROUPS_ENTRY[1]}", ""]
-    if grouped := [(card, card.groups) for card in built if card.groups]:
+    if grouped := [(card, card.listed_groups) for card in built if card.listed_groups]:
         rows = [[f"[{card.title}](#{slug(card.title)})", tested_features(held), how(held)] for card, held in grouped]
         parts += [*table(["Integration", "Features tested", "How"], rows), ""]
     else:
@@ -1341,13 +1350,15 @@ class Proof:
     by_hand: bool = False
 
 
-def works(integration_adapters: list, data: Data) -> tuple[dict[str, Reached], Reached | None]:
-    """The models the adapters' evidence tested (`card_evidence`), by device type, then first seen, and native groups,
-    each with where and on which actions."""
+def works(
+    integration_adapters: list, data: Data, credit: Callable = card_evidence
+) -> tuple[dict[str, Reached], Reached | None]:
+    """The models the adapters' evidence tested (`credit`: `card_evidence`, what a card credits), by device type, then
+    first seen, and native groups, each with where and on which actions."""
     models: dict[str, Reached] = {}
     groups: Reached | None = None
     for adapter in integration_adapters:
-        evidence = card_evidence(adapter)
+        evidence = credit(adapter)
         for item in evidence.devices():
             if item.group:
                 groups = groups or Reached()
@@ -1464,6 +1475,9 @@ class Card:
     field_notes: list[tuple[str, str, tuple[str, ...]]] = field(default_factory=list)
     reached: dict[str, Reached] = field(default_factory=dict)
     groups: Reached | None = None
+    # Every model and group a record row names, credited or not (`Evidence.of`, `listed`): the page's Tested devices.
+    listed: dict[str, Reached] = field(default_factory=dict)
+    listed_groups: Reached | None = None
     # The rendered view (`show`), folded as the README shows it.
     lines: list[str] = field(default_factory=list)
     total: int = 0  # the lines the cap counts: each line, a variants parent's children too
@@ -1585,8 +1599,11 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.key = key
     result.entries = ordered([*lines, *extra], brand, rig)
     result.reached, result.groups = models, groups
+    result.listed, result.listed_groups = works(
+        integration_adapters, data, lambda found: Evidence.of(found, listed=True)
+    )
     result.broken = {
-        name: (entry.what, entry.reason, entry.source)
+        (name, adapter.action): (entry.what, entry.reason, entry.source)
         for adapter in integration_adapters
         for name, entry in adapter.scope.no_known_method.items()
     }
@@ -1706,11 +1723,10 @@ LINK = re.compile(r"\]\(([^)\s]+)\)")
 
 def check_sections(block: str, shown: str, data: Data, built: list[Card]) -> None:
     """Every link the generated block (`block`) and the README's cards (`shown`) emit resolves, so a renamed heading
-    fails here rather than leaving a dead link. A 🟡 or ⚪ class must have its section on its integration's page (a
-    class that is a model's, or a blocker, may answer to the generated page instead; they claim no level a reader
-    would check). A link to PAGE answers to a heading or an anchor id of the generated block (a model's or native
-    groups' heading, a Not supported row), one to an integration's page to a heading there, a relative one to a file
-    of docs/ and its heading."""
+    fails here rather than leaving a dead link. A 🟡 or ⚪ class must have its section on its integration's page, with
+    no exemption. Any other link to PAGE (a Verified class that is a model's, a blocker) answers to a heading or an
+    anchor id of the generated block (a model's or native groups' heading, a Not supported row), one to an
+    integration's page to a heading there, a relative one to a file of docs/ and its heading."""
     bare = sorted(
         {
             f"{section} ({card.key})"
