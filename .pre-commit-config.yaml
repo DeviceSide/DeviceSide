@@ -78,13 +78,10 @@ repos:
   # -------------------------
   # Household details (terms from gitignored files; a no-op without them)
   # -------------------------
-  - repo: local
+  - repo: https://github.com/jasonmx/pre-commit-hooks
+    rev: v1.0.0
     hooks:
       - id: check-private
-        name: check private details
-        entry: python scripts/check_private.py
-        language: python
-        stages: [pre-commit, commit-msg]
 
   # -------------------------
   # Log lines (docs/logging.md: no addresses, caught exceptions through describe)
