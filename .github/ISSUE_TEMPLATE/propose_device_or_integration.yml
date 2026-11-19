@@ -74,7 +74,7 @@ body:
       label: How involved do you want to be?
       options:
         - I want to build it and maintain it.
-        - "Experienced coders only: I want to submit the PR myself."
+        - I want to build it
         - I want to help code the change, with some guidance.
         - I want to test only.
     validations:

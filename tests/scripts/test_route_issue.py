@@ -1,4 +1,5 @@
-"""scripts/route_issue.py: the Integration dropdown's choices become labels and assignees, read without importing."""
+"""scripts/route_issue.py: the Integration dropdown's choices and the Devices lines' keys become labels and assignees,
+read without importing."""
 
 import pytest
 
@@ -11,8 +12,8 @@ KNOWN = {
 }
 
 
-def body(choices: str) -> str:
-    return f"### Integration\n\n{choices}\n\n### Devices\n\nhue · lamp · LTA009 · 1.2\n"
+def body(choices: str, devices: str = "") -> str:
+    return f"### Integration\n\n{choices}\n\n### Devices\n\n{devices or ri.EMPTY}\n"
 
 
 @pytest.mark.parametrize(
@@ -31,7 +32,22 @@ def test_choices_route_to_labels_and_maintainers(choices, labels, assignees):
 
 
 def test_a_body_without_the_dropdown_routes_nowhere():
-    assert ri.route("### Devices\n\nHue\n", KNOWN) == ([], [])
+    assert ri.route("### Notes\n\nHue\n", KNOWN) == ([], [])
+
+
+@pytest.mark.parametrize(
+    ("choices", "devices", "labels", "assignees"),
+    [
+        # The prefilled link leaves the dropdown to the user, who may pick OTHER.
+        (ri.OTHER, "hue · Signify Hue lamp · LTA009 · 1.2", ["integration:hue"], ["jasonmx"]),
+        ("Hue", "hue · lamp\nhue · lamp 2", ["integration:hue"], ["jasonmx"]),
+        ("Control4", "hue · lamp", ["integration:control4", "integration:hue"], ["alice", "jasonmx"]),
+        # A platform DeviceSide doesn't cover, and a line typed by hand, route nowhere.
+        (ri.OTHER, "tuya · plug\nPhilips Hue lamp", [], []),
+    ],
+)
+def test_devices_lines_route_by_their_key(choices, devices, labels, assignees):
+    assert ri.route(body(choices, devices), KNOWN) == (labels, assignees)
 
 
 def test_the_last_field_is_read_to_the_end():
@@ -65,7 +81,7 @@ def test_an_unreadable_integration_is_an_error(tmp_path, source, error):
 
 def test_main_writes_the_step_outputs(tmp_path, monkeypatch):
     output = tmp_path / "out"
-    monkeypatch.setenv("ISSUE_BODY", body("Hue Bridge"))
+    monkeypatch.setenv("ISSUE_BODY", body("Hue Bridge", "hue · lamp"))
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     assert ri.main() == 0
     assert output.read_text() == "labels=integration:hue\nassignees=jasonmx\n"
