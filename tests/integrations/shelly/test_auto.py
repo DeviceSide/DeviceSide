@@ -177,7 +177,7 @@ def test_the_auto_adapters_prove_switch_and_rgbcct_and_document_the_other_lights
     """The rig tests auto-off/on on a relay and on the Multicolor Bulb, which clears the flag; the other light
     components ride them as Documented."""
     for adapter in (ShellySetAuto, ShellyClearAuto):
-        assert not adapter.scope.all_experimental
+        assert not adapter.scope.all_labs
         assert adapter.scope.capabilities == {
             "Switch": Level.VERIFIED,
             "RGBCCT": Level.VERIFIED,

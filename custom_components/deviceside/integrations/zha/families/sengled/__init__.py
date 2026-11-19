@@ -17,6 +17,6 @@ FAMILY = Family(
     maintainers=(),
     classes={SENGLED: frozenset({Platform.LIGHT})},
     # In no scope: not built on every action. Its probe found it departs (it drops a level while off, refuses the
-    # timer), and no pass or research predicts it takes the rest (docs/evidence.md, On trial); turn_on_for's call harms
+    # timer), and no pass or research predicts it takes the rest (docs/evidence.md, In Labs); turn_on_for's call harms
     # it, so the integration refuses it there with a reason (refusals.py).
 )

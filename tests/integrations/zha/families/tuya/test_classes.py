@@ -81,6 +81,6 @@ def test_the_rules_read_the_catalog_s_strings():
 
 
 def test_every_tuya_class_is_in_no_scope():
-    """Not built on every action (docs/evidence.md, On trial): no pass or research admits Tuya's firmware, and
+    """Not built on every action (docs/evidence.md, In Labs): no pass or research admits Tuya's firmware, and
     turn_on_for's call harms each class, which the integration refuses there with a reason (test_refusals.py)."""
     assert tuya.FAMILY.scopes == {}

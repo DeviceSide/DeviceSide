@@ -89,15 +89,15 @@ dimming, set without turning on, and get attributes.
 
 Gen2+ dimmers (the `Light` component) take the relay's and bulb's timer, auto-off and auto-on calls
 ([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)). On them, get
-attributes reports the timer, auto-off, auto-on and brightness. Smooth dimming is Experimental: see
-[Try it: Experimental features](#try-it-experimental-features).
+attributes reports the timer, auto-off, auto-on and brightness. Smooth dimming is in Labs: see
+[Try it: Labs](#try-it-labs).
 
 ### Shelly LED controllers
 
 CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components) take the same calls as the dimmers, brightness
 but not color or color temperature yet ([above](#shelly)). A record proves one component, so each needs its own.
 
-## Try it: Experimental features
+## Try it: Labs
 
 ### Shelly dimmers and LED controllers: smooth dimming
 

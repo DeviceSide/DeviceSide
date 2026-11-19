@@ -8,7 +8,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers.event import async_call_later
 from homeassistant.util.hass_dict import HassKey
 
-from ..const import DOMAIN, EXPERIMENTAL_DEFAULT, PREDICTED_STATE_DEFAULT
+from ..const import DOMAIN, LABS_DEFAULT, PREDICTED_STATE_DEFAULT
 
 if TYPE_CHECKING:
     from .dispatcher import Dispatcher
@@ -40,8 +40,8 @@ class DeviceSideData:
     listeners: dict[str, tuple[object, CALLBACK_TYPE]] = field(default_factory=dict)
     # The entry's predicted_state option: Hue fades show DeviceSide's predictions in HA.
     predicted_state: bool = PREDICTED_STATE_DEFAULT
-    # The entry's experimental_features option: calls touching an Experimental scope item are let through.
-    experimental_features: bool = EXPERIMENTAL_DEFAULT
+    # The entry's labs option: calls touching a scope item in Labs are let through.
+    labs: bool = LABS_DEFAULT
 
     def semaphore(self, key: str, limit: int) -> asyncio.Semaphore:
         if (semaphore := self.semaphores.get(key)) is None:

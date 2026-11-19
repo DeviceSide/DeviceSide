@@ -11,7 +11,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS
 from custom_components.deviceside.integrations.zigbee2mqtt.refusals import REFUSALS
 
 from .conftest import DEVICES, PLUG, TUYA, commands, interviewed, light
-from ...conftest import allow_experimental
+from ...conftest import allow_labs
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 
@@ -25,11 +25,9 @@ def test_turn_on_for_alone_harms():
     ]
 
 
-async def test_turn_on_for_refuses_another_brand_s_light_as_not_built_with_experimental_on(
-    hass, setup_production, broker
-):
-    """No pass, and research names only some makers' lights as running the timer (docs/evidence.md, On trial)."""
-    allow_experimental(hass)
+async def test_turn_on_for_refuses_another_brand_s_light_as_not_built_with_labs_on(hass, setup_production, broker):
+    """No pass, and research names only some makers' lights as running the timer (docs/evidence.md, In Labs)."""
+    allow_labs(hass)
     entity_id = light(hass, broker, manufacturer="Innr", model_id="RB 285 C")
 
     with pytest.raises(TargetNotSupported) as raised:
@@ -41,7 +39,7 @@ async def test_turn_on_for_refuses_another_brand_s_light_as_not_built_with_exper
 
 
 async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_production, broker):
-    allow_experimental(hass)
+    allow_labs(hass)
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
     broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
 

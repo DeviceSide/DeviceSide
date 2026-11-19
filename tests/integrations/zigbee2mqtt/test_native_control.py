@@ -16,7 +16,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.fade import AT_THE_BO
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
 from .conftest import DEVICES, SET, call, light, target
-from ...conftest import allow_experimental, refusal
+from ...conftest import allow_labs, refusal
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
@@ -104,7 +104,7 @@ async def test_other_brands_are_left_alone(hass, setup_production, broker, turn_
     broker.retained[DEVICES] = [
         {"ieee_address": IEEE, "manufacturer": "IKEA of Sweden", "model_id": "TRADFRI", "interview_completed": True}
     ]
-    allow_experimental(hass)  # class `other`
+    allow_labs(hass)  # class `other`
 
     await call(hass, "turn_on_for", RED)
 
@@ -231,8 +231,8 @@ async def test_a_group_bridge_groups_doesn_t_list_is_sent_whole(hass, setup_prod
     group_with_member(hass, "Philips")
     broker.retained[GROUPS] = [{"id": 3, "members": []}]
 
-    assert await refusal(hass, "turn_on_for", DOWNSTAIRS) == "experimental_off"
-    allow_experimental(hass)
+    assert await refusal(hass, "turn_on_for", DOWNSTAIRS) == "labs_off"
+    allow_labs(hass)
     await call(hass, "turn_on_for", DOWNSTAIRS)
 
     assert broker.requests() == []
@@ -246,7 +246,7 @@ async def test_a_group_with_no_hue_member_is_left_alone(hass, setup_production, 
     broker.retained[DEVICES] = [
         {"ieee_address": MEMBER, "manufacturer": "IKEA of Sweden", "model_id": "TRADFRI", "interview_completed": True}
     ]
-    allow_experimental(hass)  # an `other` member
+    allow_labs(hass)  # an `other` member
 
     await call(hass, "turn_on_for", DOWNSTAIRS)
 
@@ -256,9 +256,9 @@ async def test_a_group_with_no_hue_member_is_left_alone(hass, setup_production, 
 
 async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, broker, turn_ons, caplog, harmless):
     group_with_member(hass, "Philips")
-    # bridge/groups isn't held, so the group's members can't be listed: it counts as Experimental, and turn_on_for's
+    # bridge/groups isn't held, so the group's members can't be listed: it counts as a Labs item, and turn_on_for's
     # refusal of it (test_classes.py) is patched out, to reach native control.
-    allow_experimental(hass)
+    allow_labs(hass)
 
     response = await call(hass, "turn_on_for", DOWNSTAIRS)
 

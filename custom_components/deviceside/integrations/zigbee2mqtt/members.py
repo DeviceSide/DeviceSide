@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
     """Zigbee2MQTT's IntegrationInfo.expand_group: the group's members, from the bridge cache's bridge/groups, so sync
     and with no I/O. The dispatcher classes a group by them, and falls back to them when one's class is refused, or
-    Experimental with the option off (docs/design.md, Groups).
+    in Labs with the option off (docs/design.md, Groups).
 
     A member with a device but no entity in the group's domain that HA resolves (a Tuya plug Z2M exposes as a switch,
     a disabled light) is still classed by its device, through a stand-in no action reaches (`_stand_in`): left out,
@@ -32,7 +32,7 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
     `[]` only for a group bridge/groups lists with no members, which the dispatcher skips as empty. None, membership
     unknowable, while the cache holds no bridge/groups (before Z2M's publish after a connect), when there is no cache
     (its subscribe failed, which bridge_cache warns of once), when bridge/groups doesn't list the group, or when a
-    member it lists has no device in HA; the group then counts as Experimental, and the dispatcher refuses it where
+    member it lists has no device in HA; the group then counts as a Labs item, and the dispatcher refuses it where
     the call harms a class (turn_on_for).
     """
     if (gid := group_id(target)) is None or (cache := bridge_cache.get(hass)) is None:

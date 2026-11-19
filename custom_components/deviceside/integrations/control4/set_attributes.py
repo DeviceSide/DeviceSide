@@ -31,7 +31,7 @@ from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.readback import read_back
-from ...core.scope import AdapterScope, experimental
+from ...core.scope import AdapterScope, labs
 
 _LOGGER = logging.getLogger(__name__)
 _READ_BACK = (*LEVEL_VARIABLES, CURRENT_CCT, COLOR_MODE, TARGET_CCT, TARGET_COLOR_MODE)
@@ -58,8 +58,8 @@ class Control4SetAttributes(Adapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "control4"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=experimental(Platform.LIGHT),
-        fields=experimental(ATTR_COLOR_TEMP_KELVIN),
+        domains=labs(Platform.LIGHT),
+        fields=labs(ATTR_COLOR_TEMP_KELVIN),
         unlisted=frozenset({ATTR_COLOR_TEMP_KELVIN}),
         capabilities=LEVELS,
         confirmable=True,

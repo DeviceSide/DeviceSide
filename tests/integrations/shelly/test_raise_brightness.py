@@ -10,7 +10,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 
 from .conftest import BULB, SENT, call, dimmable_bulb
-from ...conftest import allow_experimental, refusal, result
+from ...conftest import allow_labs, refusal, result
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
@@ -88,16 +88,16 @@ async def test_a_relay_shown_as_a_light_drops_brightness(hass, setup_production)
 
 
 @pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
-async def test_other_light_components_are_experimental(hass, setup_production, key, component):
+async def test_other_light_components_are_labs(hass, setup_production, key, component):
     """Only RGBCCT is rig-proven: DimStop halting a timed fade is documented for none of them. The rest take the
     same calls, addressed to their own component."""
     entry, call_rpc = shelly_device(hass, status={"output": True, "brightness": 40})
     add_shelly_entity(hass, entry, "light.lamp", key, state="on")
 
-    assert await refusal(hass, "raise_brightness", {"entity_id": "light.lamp"}) == "experimental_off"
+    assert await refusal(hass, "raise_brightness", {"entity_id": "light.lamp"}) == "labs_off"
     assert not call_rpc.await_args_list
 
-    allow_experimental(hass)
+    allow_labs(hass)
     assert await call(hass, "raise_brightness", {"entity_id": "light.lamp"}) == {"light.lamp": SENT}
     assert call_rpc.await_args_list == [
         rpc_call(f"{component}.GetStatus", {"id": 0}),
@@ -118,10 +118,10 @@ async def test_a_device_error_rejects_the_target(hass, setup_production, verb):
 
 @pytest.mark.parametrize(
     ("component", "level"),
-    [("RGBCCT", Level.VERIFIED), ("Switch", None), *((c, Level.EXPERIMENTAL) for _, c in OTHER_LIGHT_COMPONENTS)],
+    [("RGBCCT", Level.VERIFIED), ("Switch", None), *((c, Level.LABS) for _, c in OTHER_LIGHT_COMPONENTS)],
 )
 def test_scope(component, level):
     scope = ShellyRaiseBrightness.scope
-    assert not scope.all_experimental
+    assert not scope.all_labs
     assert scope.fields == {"brightness": Level.VERIFIED}
     assert scope.capabilities.get(component) is level

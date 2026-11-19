@@ -8,7 +8,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
 
-from ...conftest import allow_experimental, call, refusal, sent
+from ...conftest import allow_labs, call, refusal, sent
 from ...fixtures.matter import (
     NODE_ID,
     add_matter_entity,
@@ -24,10 +24,10 @@ pytestmark = pytest.mark.usefixtures("mock_chip", "setup_production")
 
 
 @pytest.fixture(autouse=True)
-def experimental_on(hass, setup_production):
+def labs_on(hass, setup_production):
     """turn_on_for is Verified on the WiZ plug alone; every other Matter class (the light and plug tests here) is
-    Experimental, so these tests run the call with Experimental features on."""
-    allow_experimental(hass)
+    in Labs, so these tests run the call with Labs on."""
+    allow_labs(hass)
 
 
 @pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])

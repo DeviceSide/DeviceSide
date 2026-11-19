@@ -17,7 +17,7 @@ from custom_components.deviceside.core.scope import (
     CaveatKind,
     IntegrationInfo,
     Level,
-    experimental,
+    labs,
     verified,
 )
 from scripts import check_release as cr
@@ -760,8 +760,8 @@ def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released,
 
 @pytest.mark.parametrize(
     "scope",
-    [AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)), AdapterScope(domains=experimental("light"))],
-    ids=["unmaintained", "experimental"],
+    [AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)), AdapterScope(domains=labs("light"))],
+    ids=["unmaintained", "labs"],
 )
 def test_no_other_caveat_nor_the_flag_stands_in(released, gate, scope):
     pin(released, "stop", "b")
@@ -865,7 +865,7 @@ def classes_record_v3(repo, action: str, *tests: dict) -> None:
     path.write_text(text(record_v3("fake", action, list(tests))))
 
 
-SCOPE = AdapterScope(capabilities=verified("hue", "ikea") | experimental("other"))
+SCOPE = AdapterScope(capabilities=verified("hue", "ikea") | labs("other"))
 
 
 def test_a_verified_class_no_format_1_record_reaches_is_a_gap(fake_repo):
@@ -966,7 +966,7 @@ def test_a_record_naming_a_class_on_an_integration_that_names_none_is_an_error(r
 
 
 def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap(fake_repo):
-    flagged = AdapterScope(domains=experimental("light"), capabilities=verified("hue"))
+    flagged = AdapterScope(domains=labs("light"), capabilities=verified("hue"))
     assert cr.coverage_gaps(classed(turn_on_for=flagged)) == []
     assert cr.coverage_gaps(FakeRegistry({("turn_on_for", "fake"): AdapterScope()})) == []
 
@@ -984,7 +984,7 @@ def credit_other(repo) -> None:
     (repo.path / MANUAL).write_text(manual_file(signoff(devices=(("LCA001", "other"),), calls=bound("turn_on_for"))))
 
 
-def test_a_model_credited_in_an_experimental_default_class_warns(fake_repo):
+def test_a_model_credited_in_a_labs_default_class_warns(fake_repo):
     """Each source on its own: the record credits LTA009 and the manual row LCA001."""
     credit_other(fake_repo)
     assert cr.default_class_credits(default_classed(SCOPE)) == [

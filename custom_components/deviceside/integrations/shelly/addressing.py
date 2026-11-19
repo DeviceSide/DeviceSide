@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from ...core.errors import Reason
 from ...core.fields import BRIGHTNESS_FIELD, COLOR_TEMP, COLORS, TRANSITION
 from ...core.models import Target
-from ...core.scope import documented, experimental, verified
+from ...core.scope import documented, labs, verified
 
 # Relays and lights carry unique_id "{mac}-{key}" (shelly/switch.py RpcRelaySwitch, shelly/light.py
 # RpcShellyLightBase). Every other Shelly switch (virtual booleans, scripts, circuit breakers) has another suffix
@@ -57,11 +57,11 @@ AUTO_CAPABILITIES = verified("Switch", "RGBCCT") | documented("Light", "CCT", "R
 
 # The components raise_brightness, lower_brightness and stop address. DimStop halting a Set's fade is the rig's
 # finding on RGBCCT (fw 2.0.3), documented by Shelly for none of them, and one user reports a Gen3 Dimmer jumping on
-# DimStop: the others take the same calls, so they stay flagged experimental until a maintainer, with a passing run
+# DimStop: the others take the same calls, so they stay in Labs until a maintainer, with a passing run
 # among the evidence, judges them ready and makes them verified(...). That one unconfirmed report keeps Light from
 # Documented, not from the flag: the option is opt-in, and a jump is what testers report (docs/evidence.md, The
-# experimental flag).
-DIMMING_CAPABILITIES = verified("RGBCCT") | experimental("Light", "CCT", "RGB", "RGBW")
+# Labs flag).
+DIMMING_CAPABILITIES = verified("RGBCCT") | labs("Light", "CCT", "RGB", "RGBW")
 
 
 @dataclass(frozen=True, slots=True)

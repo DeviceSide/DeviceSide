@@ -18,7 +18,7 @@ from .members import member_lights, unaddressable
 from .read import Reader, reader
 from ...core.errors import Reason
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope, experimental, verified
+from ...core.scope import AdapterScope, labs, verified
 from ...core.zcl_row import average, zcl_row
 
 
@@ -33,9 +33,9 @@ class Z2MGetAttributes(Z2MAdapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Switches are Experimental, but no class is served on one (docs/evidence.md, "A read serves only"):
+        # Switches are in Labs, but no class is served on one (docs/evidence.md, "A read serves only"):
         # turn_on_for serves only Tuya's countdown plugs there, which this read refuses (refusals.py).
-        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
+        domains=verified(Platform.LIGHT) | labs(Platform.SWITCH),
         **class_scope("get_attributes"),
         confirmable=True,
         native_groups=True,  # read through its members, which only Z2M's bridge/groups knows

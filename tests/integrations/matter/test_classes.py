@@ -19,7 +19,7 @@ from custom_components.deviceside.integrations.matter.classes import (
 from custom_components.deviceside.integrations.matter.get_attributes import MatterGetAttributes
 from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
 
-from ...conftest import allow_experimental, call, refusal
+from ...conftest import allow_labs, call, refusal
 from ...fixtures.matter import WIZ_PRODUCT_ID, WIZ_VENDOR_ID, add_matter_entity, matter_device
 
 WIZ = {"0/40/2": WIZ_VENDOR_ID, "0/40/4": WIZ_PRODUCT_ID}
@@ -73,10 +73,10 @@ async def test_capability_is_none_without_a_vendor_id(hass):
 
 @pytest.mark.usefixtures("mock_chip", "setup_production")
 async def test_a_node_with_no_vendor_id_is_class_unknown_until_it_reports(hass):
-    """No class to name: refused as class_unknown even with Experimental features on, until it reports a VendorID."""
+    """No class to name: refused as class_unknown even with Labs on, until it reports a VendorID."""
     entry, send_cmd, _ = matter_device(hass, vendor_id=None, product_id=None)
     add_matter_entity(hass, entry, "switch.plug")
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "class_unknown"
     send_cmd.assert_not_awaited()
@@ -101,8 +101,8 @@ async def test_capability_is_none_when_the_node_lookup_raises(hass):
 
 def test_levels():
     """Both actions: the WiZ plug Verified by its records, `other` Documented by certification of the reads and, for the
-    timer call, on trial (plan Decision 75). Bridges, multi-endpoint and uncertified nodes not built on both
-    (docs/evidence.md, On trial)."""
+    timer call, in Labs (plan Decision 75). Bridges, multi-endpoint and uncertified nodes not built on both
+    (docs/evidence.md, In Labs)."""
     for adapter in (MatterTurnOnFor, MatterGetAttributes):
         held = adapter.scope.capabilities
         assert held.keys() == {WIZ_PLUG, OTHER}
@@ -113,7 +113,7 @@ def test_levels():
     assert MatterTurnOnFor.scope.not_built.keys() == {BRIDGED, UNCERTIFIED, MULTI_ENDPOINT}
     assert not MatterGetAttributes.scope.not_built
     assert MatterTurnOnFor.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
-    assert MatterTurnOnFor.scope.capabilities[OTHER] is Level.EXPERIMENTAL
+    assert MatterTurnOnFor.scope.capabilities[OTHER] is Level.LABS
     assert MatterTurnOnFor.scope.level("switch", [WIZ_PLUG]) is Level.VERIFIED
     assert MatterGetAttributes.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
     assert MatterGetAttributes.scope.capabilities[OTHER] is Level.DOCUMENTED
@@ -128,7 +128,7 @@ def test_levels():
     ids=["wiz_plug", "other"],
 )
 @pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
-async def test_certified_reads_with_experimental_off(hass, node, expected, entity_id):
+async def test_certified_reads_with_labs_off(hass, node, expected, entity_id):
     entry, _, read_attr = matter_device(hass, **node)
     add_matter_entity(hass, entry, entity_id)
 
@@ -157,11 +157,11 @@ BRIDGE_NODE = {"vendor_id": 4757, "attributes": AGGREGATOR}
     ids=["uncertified-read", "bridged-read", "multi_endpoint-read", "uncertified", "bridged", "multi_endpoint"],
 )
 async def test_classes_with_no_pass_or_research_are_not_built(hass, node, action):
-    """No pass or research predicts they take the call (docs/evidence.md, On trial): refused even with Experimental
+    """No pass or research predicts they take the call (docs/evidence.md, In Labs): refused even with Labs
     features on."""
     entry, send_cmd, read_attr = matter_device(hass, **node)
     add_matter_entity(hass, entry, "switch.plug")
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, action, _data(action, "switch.plug")) == "not_built"
     send_cmd.assert_not_awaited()
@@ -169,15 +169,15 @@ async def test_classes_with_no_pass_or_research_are_not_built(hass, node, action
 
 
 @pytest.mark.usefixtures("mock_chip", "setup_production")
-async def test_the_timer_waits_for_experimental_on_other(hass):
-    """Certification sends OnWithTimedOff, with another OffWaitTime (plan Decision 75): on trial."""
+async def test_the_timer_waits_for_labs_on_other(hass):
+    """Certification sends OnWithTimedOff, with another OffWaitTime (plan Decision 75): in Labs."""
     entry, send_cmd, read_attr = matter_device(hass, vendor_id=4874, product_id=80)
     add_matter_entity(hass, entry, "switch.plug")
     data = _data("turn_on_for", "switch.plug")
 
-    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+    assert await refusal(hass, "turn_on_for", data) == "labs_off"
     send_cmd.assert_not_awaited()
-    allow_experimental(hass)
+    allow_labs(hass)
     response = await call(hass, "turn_on_for", data)
 
     assert response["switch.plug"]["capability"] == OTHER

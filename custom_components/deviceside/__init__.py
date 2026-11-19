@@ -9,10 +9,10 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
-    CONF_EXPERIMENTAL,
+    CONF_LABS,
     CONF_PREDICTED_STATE,
     DOMAIN,
-    EXPERIMENTAL_DEFAULT,
+    LABS_DEFAULT,
     PREDICTED_STATE_DEFAULT,
 )
 from .core import ha_watch
@@ -26,6 +26,10 @@ from .migrations import async_check_migrations, async_watch_legacy_calls
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
+
+# The Labs option's key in v0.1.0's release candidates, which minor version 2 renamed to CONF_LABS. Delete it, with
+# async_migrate_entry's minor 1 branch, in v0.2.0, once no rc install is left (as migrations.py's checks go then).
+_RC_LABS_KEY = "experimental_features"
 
 
 # The setup warning per caveat (docs/evidence.md, Caveats): integration, action, then the caveat's reason.
@@ -85,11 +89,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
     return True
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Bring an entry an older build saved up to the config flow's version. Minor 2 renamed the Labs option's key,
+    keeping its value; an entry without the option stays without it. A major version above 1 is from a newer build,
+    which this one can't read: HA refuses it before calling here, and so does this."""
+    if entry.version > 1:
+        return False
+    if entry.minor_version < 2:
+        options = dict(entry.options)
+        if _RC_LABS_KEY in options:
+            options[CONF_LABS] = options.pop(_RC_LABS_KEY)
+        hass.config_entries.async_update_entry(entry, options=options, minor_version=2)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # An entry saved before the option existed has no options: it gets the default.
     runtime = get_runtime(hass)
     runtime.predicted_state = entry.options.get(CONF_PREDICTED_STATE, PREDICTED_STATE_DEFAULT)
-    runtime.experimental_features = entry.options.get(CONF_EXPERIMENTAL, EXPERIMENTAL_DEFAULT)
+    runtime.labs = entry.options.get(CONF_LABS, LABS_DEFAULT)
     # Per entry, not in async_setup: unloading detaches every listener, and a reload runs only this again.
     runtime.listen("ha_watch", hass, lambda: ha_watch.attach(hass, runtime.registry.call_resolvers()))
     for info in runtime.registry.available_integrations():

@@ -25,24 +25,23 @@ Code and docs use these terms. Each one's rules live where its link points.
 - **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
   (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
-  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial); when a
+  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); when a
   device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
 - **Not supported**: DeviceSide can't do this action for the target (`target_not_supported`,
   `integration_not_supported`); for a class, either no known method or not built yet.
 - **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. Rules:
-  [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial).
+  [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs).
 - **Not built yet**: a class a known or plausible call would serve for an action, and nobody has built it. Rules:
-  [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial).
+  [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, classes and fields an adapter is built for, each at its level; outside it, a call is
   refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
-- **Level**: how a scope item is proven: Verified, Documented or Experimental. Rules: [evidence.md](evidence.md#levels).
+- **Level**: how a scope item is proven: Verified, Documented or Labs. Rules: [evidence.md](evidence.md#levels).
   User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Experimental**: the lowest level, and the flag on a scope item (`experimental(...)`) not yet judged ready for
-  everyone. Rules: [evidence.md](evidence.md#the-experimental-flag).
-- **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
-  item through. Only the dispatcher reads it.
+- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) not yet judged ready for everyone; also the
+  option (`labs`, off by default) that lets calls touching a flagged item through. Only the dispatcher reads the
+  option. Rules: [evidence.md](evidence.md#the-labs-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
   `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
   [device-compatibility.md](device-compatibility.md#maintainers).
@@ -60,7 +59,7 @@ Code and docs use these terms. Each one's rules live where its link points.
 - **Test record**: the evidence that an adapter works on real hardware, in
   `docs/integrations/<integration>/test-records/`. Format: [evidence.md](evidence.md#sign-off-format).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
-  the GitHub issue is its record. How it counts: [evidence.md](evidence.md#the-experimental-flag); contrary reports:
+  the GitHub issue is its record. How it counts: [evidence.md](evidence.md#the-labs-flag); contrary reports:
   [Levels](evidence.md#levels).
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
@@ -169,7 +168,7 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 |---|---|---|
 | `IntegrationInfo.capability`, `classes`, `default_class` | Each target's class, so each class stands on its own evidence. `capability` is sync and cheap, no I/O; it gives the default class to a device no rule matches, `Unplaced` to one not yet placed, `None` only to one it can't class at all. Every adapter sees the same class and maps the classes it serves to its own branch: a class is a device class, not a call pattern, as patterns are per action. `classes` gives each class the entity domains a device in it can be (a family's from its `Family`), so no scope holds a class on an action none of those domains reaches. | [evidence.md](evidence.md#device-classes); `Unplaced` in `core/scope.py`; the registry's checks: `check_integration` and `check_classes` in `core/registry.py` |
 | **Family**: `IntegrationInfo.families` (`Family`, `FamilyScope`), `integrations/<x>/refusals.py` | A vendor's classes as one path with its own maintainers: a `Family` names its classes and holds their rules, levels and own calls. Opt-in: an integration with none holds its classes itself. The integration keeps the transport, the default class, the rule order between families (`families/__init__.py`) and every refusal entry (`refusals.py`, merged in by `class_scope`). | `Family`, `FamilyScope` and `class_scope` in `core/scope.py`; `check_families` in `core/registry.py`; `core/rules.py`; [CLAUDE.md](../CLAUDE.md#maintainers) |
-| **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone, say) goes to the device as one command. `is_group` recognizes one; `expand_group` lists its members, sync and with no I/O; an adapter with `native_groups` gets the group as one target. `expand_group`'s members give the group its classes and are what it falls back to when a member's class is refused, takes a call of its own, or is Experimental with the option off; an adapter without `native_groups` gets them as its targets. | `core/dispatcher.py`'s module docstring, Native groups; [evidence.md](evidence.md#device-classes), Groups |
+| **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone, say) goes to the device as one command. `is_group` recognizes one; `expand_group` lists its members, sync and with no I/O; an adapter with `native_groups` gets the group as one target. `expand_group`'s members give the group its classes and are what it falls back to when a member's class is refused, takes a call of its own, or is in Labs with the option off; an adapter without `native_groups` gets them as its targets. | `core/dispatcher.py`'s module docstring, Native groups; [evidence.md](evidence.md#device-classes), Groups |
 | `IntegrationInfo.setup`, `remove` | `setup` starts what the integration keeps running while the entry is loaded, as the entry's background task, and registers its own teardown with `entry.async_on_unload`; `remove` undoes what it changed outside HA as DeviceSide is deleted. A hook that raises is logged and isolated. The component root names no integration. | `IntegrationInfo` in `core/scope.py`; `_guarded` in `__init__.py` |
 | `IntegrationInfo.detect` | Picks this integration over a generic sibling on the same `ha_domain` (Zigbee2MQTT over plain MQTT): a different gateway or API is an integration of its own. | [evidence.md](evidence.md#the-split-rule); Resolver, below |
 | `IntegrationInfo.unsupported` | Refuses a gateway or API DeviceSide never supports, as `integration_not_supported` with its reason: listed in its sibling's module as `UNSUPPORTED`, it claims entities by `detect`, has no adapters, and is kept out of the cards and gates. | `IntegrationInfo` in `core/scope.py`; `AdapterRegistry` in `core/registry.py` |
@@ -179,7 +178,7 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 | `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). Flagging every domain flags the whole adapter. | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
 | `AdapterScope.drops`, `unlisted` | Fields the integration can never send, dropped as a lacked field is; fields its devices take though the light's state says they can't. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): Lacks a field, Unlisted fields depart from core |
 | `AdapterScope.capabilities` | A level per class, and per domain where its entry names some (`OnDomains`). | [evidence.md](evidence.md#device-classes) |
-| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`). A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm, on an action whose failure harms (`Action.failure_harms`, which the registry checks). A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial); `AdapterScope.refusal` and `harms` in `core/scope.py` |
+| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`). A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm, on an action whose failure harms (`Action.failure_harms`, which the registry checks). A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); `AdapterScope.refusal` and `harms` in `core/scope.py` |
 | `AdapterScope.own_calls` | A class's own call (`OwnCall`), which the dispatcher hands the adapter in place of `execute`, optionally with its own duration limits (else the scope's `duration`). Each class in it must be in `capabilities`. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
 | `AdapterScope.duration` | The durations the call can carry (`DurationLimits`): a request outside them is clamped, and the result says so. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): A value the device can't reach; `core/duration.py` |
 | `AdapterScope.confirmable`, `options`, `notes` | Declarations core doesn't act on, read by the rig: `confirmable`, that a run expects status `confirmed`, not `sent`; `options`, the DeviceSide options that change what it does (`predicted_state`), whose rig records are `<action>-<option>.json`; `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) |
@@ -198,7 +197,7 @@ Core around them:
   light.
 - **Dispatcher.** HA groups are always expanded, in one place (`core/groups.py`), because no device can address them;
   members carry `via_group`. Then it resolves each target, buckets targets by adapter, drops the fields a target
-  lacks, checks `supports()`, the class and the Experimental gate, clamps durations, runs every adapter concurrently
+  lacks, checks `supports()`, the class and the Labs gate, clamps durations, runs every adapter concurrently
   under `ADAPTER_TIMEOUT_S`, and raises or skips per [action-behavior.md](action-behavior.md). The rules, native
   groups' included: `core/dispatcher.py`'s module docstring.
 - **Results.** Commands answer optionally, per entity: `{status, integration, capability?, clamped_to?, detail?}`

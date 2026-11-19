@@ -51,7 +51,7 @@ group expansion yields nothing for one.
 
 **Not yet classed** (`class_unknown`), where a call is known to harm a class, is refused the same way, raised if named
 and skipped if not, but it is usually transient: it holds only until the integration has reported the device or group
-([evidence.md](evidence.md#no-known-method-not-built-yet-on-trial)). That usually takes seconds, so an automation firing
+([evidence.md](evidence.md#no-known-method-not-built-yet-in-labs)). That usually takes seconds, so an automation firing
 at startup can get it; if the integration never reports it (DeviceSide couldn't connect to it), it holds until
 DeviceSide reloads, and a device that never finishes pairing holds until it is paired again. A target DeviceSide can't
 class at all (an entity with no device, a classifier that raised) is refused the same way, for good. A native group
@@ -64,7 +64,7 @@ them. Why: DeviceSide fills design gaps between an upstream integration and HA
 ([integrations.md](integrations.md)): an integration that leaves a mode out of `supported_color_modes` shouldn't stop
 a device that has it. HA's own UI still shows the light without the mode, and
 `light.turn_on` still drops the field. An unlisted field must be in the adapter's `fields`, at its own level: fields are
-never Documented, so it starts Experimental. A `switch` still lacks every light field.
+never Documented, so it starts in Labs. A `switch` still lacks every light field.
 
 **A value the device can't reach** passes the schema but lies outside what the device can do: a timer longer than its
 counter, or a `sweep_time` outside what the device's native move takes. It is clamped
@@ -106,7 +106,7 @@ raises or the entity is skipped.
   address alone, or a stand-in (a member device with no entity in the group's domain, as a plug in a light group),
   answers for nothing: it is skipped and logged, named by its device, a stand-in unless a target on its device ran.
   The group is refused, raised if named, only when none of its members runs: with the refusal its members' classes
-  gave it, or `experimental_off`; one that fell back because a member's class takes a call of its own (`own_call`),
+  gave it, or `labs_off`; one that fell back because a member's class takes a call of its own (`own_call`),
   with its most useful skipped member's reason. The rules: `core/dispatcher.py`'s module docstring, Native groups. A
   named target whose class has no known method, or is not built yet and is harmed by today's call, raises with the
   reason why.

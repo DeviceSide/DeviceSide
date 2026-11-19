@@ -34,7 +34,7 @@ reached it in a passing record of the action (format 2 and 3: a device of the te
 test crediting each member's; format 1: the test's `classes`), or a `_manual.json` row naming the action (format 3: in
 `calls`; format 2: in `passed`) one of whose devices has the class. `scripts/gen_compat.py` prints the same gaps as
 warnings on every run (`coverage_gaps`), with a warning (`default_class_credits`) for each model a passing record or
-manual row credits in the integration's default class where that is Experimental, as its pass can never lift a flag.
+manual row credits in the integration's default class where that is in Labs, as its pass can never lift a flag.
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the
 integrations with a changed action that has no sign-off, and every adapter with an Untested fix caveat. Empty when
@@ -258,7 +258,7 @@ def coverage_gaps(registry) -> list[str]:
     so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified."""
     gaps = []
     for _, adapter in adapters(registry):
-        if not names_classes(adapter) or adapter.scope.all_experimental:
+        if not names_classes(adapter) or adapter.scope.all_labs:
             continue
         found = reached(adapter.integration, adapter.action)
         for item, level, domains in sorted(adapter.scope.class_entries(), key=lambda entry: entry[0]):
@@ -291,7 +291,7 @@ def credited_models(integration: str, action: str) -> set[tuple[str, str]]:
 
 def default_class_credits(registry) -> list[str]:
     """Each model the evidence of an action credits in its integration's default class (`IntegrationInfo.default_class`)
-    where the adapter's scope holds that class Experimental in some domain: the default class is never Verified, so the
+    where the adapter's scope holds that class in Labs in some domain: the default class is never Verified, so the
     pass can never lift a flag, and the model needs a class of its own. A default class held Documented (Matter's
     certified read) in every domain is no such trap, and an integration with no default class, or an adapter that
     doesn't serve it, has none. Advice to a contributor, as the coverage gaps are: a model also credited in a named
@@ -303,7 +303,7 @@ def default_class_credits(registry) -> list[str]:
         scope = adapter.scope
         if not names_classes(adapter) or default not in (scope.capabilities or {}):
             continue
-        if all(scope.class_level(default, domain) is not Level.EXPERIMENTAL for domain in scope.domains):
+        if all(scope.class_level(default, domain) is not Level.LABS for domain in scope.domains):
             continue
         pairs = credited_models(adapter.integration, adapter.action)
         named = {model for model, cls in pairs if cls != default}

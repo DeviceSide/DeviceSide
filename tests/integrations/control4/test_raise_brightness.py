@@ -8,7 +8,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.control4.raise_brightness import Control4RaiseBrightness
 
 from .conftest import HALT, LAMP, READ, SENT, dimmable_lamp, ramp
-from ...conftest import allow_experimental, call, refusal, result, sent
+from ...conftest import allow_labs, call, refusal, result, sent
 from ...fixtures.control4 import FakeDirector, add_control4_light, control4_entry, failing
 
 
@@ -243,11 +243,11 @@ async def test_an_on_off_light_drops_brightness(hass):
     assert not director.send_get_request.await_args_list
 
 
-async def test_refused_while_the_experimental_option_is_off(hass):
+async def test_refused_while_the_labs_option_is_off(hass):
     director = dimmable_lamp(hass)
-    allow_experimental(hass, on=False)
+    allow_labs(hass, on=False)
 
-    assert await refusal(hass, "raise_brightness", LAMP) == "experimental_off"
+    assert await refusal(hass, "raise_brightness", LAMP) == "labs_off"
     assert not director.send_get_request.await_args_list
 
 
@@ -293,8 +293,8 @@ async def test_the_ramp_is_logged_without_the_item_id(hass, wire):
 
 def test_scope():
     scope = Control4RaiseBrightness.scope
-    assert scope.all_experimental
-    assert scope.domains == {"light": Level.EXPERIMENTAL}
-    assert scope.fields == {"brightness": Level.EXPERIMENTAL}
-    assert scope.capabilities == {"other": Level.EXPERIMENTAL}
+    assert scope.all_labs
+    assert scope.domains == {"light": Level.LABS}
+    assert scope.fields == {"brightness": Level.LABS}
+    assert scope.capabilities == {"other": Level.LABS}
     assert scope.no_known_method.keys() == {"no_stop"}

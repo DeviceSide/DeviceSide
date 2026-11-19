@@ -13,7 +13,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.hue import ADAPTERS, INTEGRATION, classes
 
 from .conftest import SENT, STOP, call, lamp
-from ...conftest import allow_experimental, result
+from ...conftest import allow_labs, result
 from ...conftest import call as call_service
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry, light_action
 
@@ -94,8 +94,8 @@ def get_entry(hass) -> str:
 
 @pytest.mark.parametrize("adapter", ADAPTERS, ids=lambda adapter: adapter.action)
 def test_hue_is_verified_and_other_not_built_on_every_adapter(adapter):
-    # No action passes the Documented test for other (plan Decision 2), and no pass or research puts it on trial
-    # (docs/evidence.md, On trial).
+    # No action passes the Documented test for other (plan Decision 2), and no pass or research puts it in Labs
+    # (docs/evidence.md, In Labs).
     assert adapter.scope.capabilities == {"hue": Level.VERIFIED}
 
 
@@ -110,9 +110,9 @@ def test_only_set_scene_lists_smart_scenes_and_none_harms():
     assert not any(adapter.scope.harms(failure_harms[adapter.action]) for adapter in ADAPTERS)
 
 
-async def test_another_makers_light_is_not_built_even_with_experimental_features(hass, bridge):
+async def test_another_makers_light_is_not_built_even_with_labs(hass, bridge):
     entity_id = await lamp(hass, bridge, manufacturer=IKEA)
-    allow_experimental(hass)
+    allow_labs(hass)
 
     with pytest.raises(TargetNotSupported) as raised:
         await call_service(hass, "stop", {"entity_id": entity_id})
@@ -136,7 +136,7 @@ async def mixed_room(hass, bridge, *, entity_for_two: bool = True, two: str | No
 
 
 async def test_a_room_with_another_makers_light_falls_back_to_its_members(hass, bridge):
-    # Experimental features off: the Hue light runs on its own, the IKEA one is skipped, and the room gets no result.
+    # Labs off: the Hue light runs on its own, the IKEA one is skipped, and the room gets no result.
     await mixed_room(hass, bridge)
 
     response = await call(hass, "stop", {"entity_id": "light.room"})
@@ -189,7 +189,7 @@ async def test_a_room_light_with_no_entity_still_classes_the_room(hass, bridge):
 
 
 async def test_a_room_light_ha_has_no_device_for_classes_the_room_unknown(hass, bridge):
-    # Its class can't be named, so the room counts as Experimental: with the option off it falls back to its lights
+    # Its class can't be named, so the room counts as a Labs item: with the option off it falls back to its lights
     # that have entities, and set_attributes still writes them.
     await mixed_room(hass, bridge, entity_for_two=False)
     devices = dr.async_get(hass)

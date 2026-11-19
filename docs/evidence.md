@@ -43,7 +43,7 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
      the bundle's `internals.md`. A vendor's document alone still needs the probe;
    - *a foundation:* before further steps build on a design no verified fact covers, one run of the rig cases whose
      failure would discard that work;
-   - *lifting a flag* ([the experimental flag](#the-experimental-flag));
+   - *lifting a Labs flag* ([the Labs flag](#the-labs-flag));
    - *a surprise:* the run that root-causes it (tenet 4);
    - *a release:* the sign-off, due before the last RC, or the one that clears a caveat ([release gate](#release-gate)).
 
@@ -69,7 +69,7 @@ reopens `stop`'s evidence alone, and a rerun of the `stop` suite completes the s
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
 That reopened "a Zigbee switch takes the light's timed-on call", and with research predicting most plugs and switches
-fail it, no class without a switch pass is on trial there: `turn_on_for` refuses every switch class that call would
+fail it, no class without a switch pass is in Labs there: `turn_on_for` refuses every switch class that call would
 reach without a pass as not built on ZHA and Zigbee2MQTT, and `hue` stays Verified on lights. A lab probe then
 root-caused it: the plug runs the timer only Tuya's way, and given the light's call one plug stayed off while another
 switched on about ten times later than asked and stayed on ([internals](internals.md#tested-behavior)). Research also
@@ -80,9 +80,8 @@ the call on the `hue` class, not on every Zigbee light.
 
 ## Levels
 
-A scope item (an entity domain, class or field of an adapter) is Verified, Documented or Experimental; an
-Experimental item is refused unless Experimental features is on. To flag a whole adapter, flag its
-domains ([the experimental flag](#the-experimental-flag)).
+A scope item (an entity domain, class or field of an adapter) is Verified, Documented or in Labs; an item in Labs
+is refused unless the Labs option is on. To flag a whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
@@ -101,11 +100,11 @@ A sign-off covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
-- **A failed report on a class on trial** is the class's result, handled as
-  [on trial](#no-known-method-not-built-yet-on-trial) says. The rest of this list is for a Verified or Documented class.
+- **A failed report on a class in Labs** is the class's result, handled as
+  [in Labs](#no-known-method-not-built-yet-in-labs) says. The rest of this list is for a Verified or Documented class.
 - **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
   identity it names on that action, on the report alone, citing it. It's not built yet if a known or plausible call
-  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-on-trial)).
+  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-in-labs)).
 - **The identity is the narrowest one a class rule can key on:** model ID with manufacturer string, plus firmware
   where that decides. A vendor is not normally refused whole on a single report; split off the exception. A rule
   keyed on a vendor needs research.
@@ -116,7 +115,7 @@ A sign-off covers only what was exercised; it never signs off untested code.
 
 *Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet. Z2M
 #25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, a different call, so it is no evidence
-against the device: it keeps `tuya_countdown`'s level, on trial, until a pass on its maker string.
+against the device: it keeps `tuya_countdown`'s level, in Labs, until a pass on its maker string.
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -128,7 +127,7 @@ A **class** is the set of devices that get the same call and run the same firmwa
 its classes (`IntegrationInfo.classes`) and names each target's (`IntegrationInfo.capability`; in code a scope's
 `capabilities`), and every adapter of the integration sees the same one; an adapter maps the classes it serves to its
 own branch. A scope holds a level per class, so each class stands on its own evidence: a record on one class proves
-nothing about another, except that it puts the class's kin on trial ([below](#no-known-method-not-built-yet-on-trial)).
+nothing about another, except that it puts the class's kin in Labs ([below](#no-known-method-not-built-yet-in-labs)).
 On a single-vendor API the class is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the
 call and the firmware family decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 `tuya_zcl`, `tuya_ts011f`, `tuya_countdown`, `tuya_mcu`, `sengled`, `gledopto`, `ikea`, `other`), and, where evidence is
@@ -139,17 +138,17 @@ firmware family, and differ only in whose evidence they hold.
 - **Unknown is flagged, never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
-  name yet is refused ([below](#no-known-method-not-built-yet-on-trial)). As it spans vendors, the default class is Documented only by a
-  [certified read](#levels), never by a sibling's pass; it is otherwise `experimental(...)` where research predicts
+  name yet is refused ([below](#no-known-method-not-built-yet-in-labs)). As it spans vendors, the default class is Documented only by a
+  [certified read](#levels), never by a sibling's pass; it is otherwise `labs(...)` where research predicts
   most of it accepts the call (Zigbee 3.0 certification and the dimming commands:
   [internals](internals.md#shared)), and is otherwise not built yet
-  ([below](#no-known-method-not-built-yet-on-trial)).
+  ([below](#no-known-method-not-built-yet-in-labs)).
   Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
   (Zigbee2MQTT: `innr` for an Innr bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
 - **A level per class and domain.** A class's level holds on every domain the adapter serves, unless its entry names
   some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
-  Experimental. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
+  in Labs. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
   on lights, as every record ran on a bulb, and a Hue plug, a switch, is not built on `turn_on_for`. A `NotBuilt`
   entry can name domains too, refusing its class on those alone while its capability entry serves the rest.
 - **A class names its domains.** Each class declares the entity domains whose features its devices have (a TS011F
@@ -171,13 +170,13 @@ firmware family, and differ only in whose evidence they hold.
   (`not_built`) entries live in the integration's package, and the cards are generated from them; where each
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. When a member's class is refused,
-  takes a call of its own, or is Experimental while Experimental features is off, the group falls back to its members:
+  takes a call of its own, or is in Labs while the Labs option is off, the group falls back to its members:
   it gets no entry of its own, its members answer for it, each judged on its own, and it is refused only when none of
-  them ran. One whose members the integration can't list can't fall back: it counts as Experimental, and is refused
-  whole while Experimental features is off, and with it on where a call is known to harm
-  ([below](#no-known-method-not-built-yet-on-trial)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
+  them ran. One whose members the integration can't list can't fall back: it counts as in Labs, and is refused
+  whole while the Labs option is off, and with it on where a call is known to harm
+  ([below](#no-known-method-not-built-yet-in-labs)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
 
-### No known method, not built yet, on trial
+### No known method, not built yet, in Labs
 
 Three ways a class isn't served to everyone on an action, each handled differently. The first two are the kinds of not
 supported, where DeviceSide can't do the action for the class, each named for why:
@@ -188,21 +187,21 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
   it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
-  class not admitted on trial (below), as research predicts most of it fails the default call or no pass (on it or its
+  class not admitted to Labs (below), as research predicts most of it fails the default call or no pass (on it or its
   kin) or research admits it, while another call is known or plausible. The integration names it, and the adapter's
   scope holds it in neither `capabilities` nor `no_known_method`. It is refused (`not_built`), and the card leaves it
   out, as no one can list every feature that could be built.
-- **On trial (Experimental):** a class still behind the flag, admitted on a reason to expect the call works: a pass on a
+- **In Labs:** a class still behind the flag, admitted on a reason to expect the call works: a pass on a
   device of the class (the builder's own probe or run counts, tenet 2), a pass of the exact call it would get on its kin
   ([above](#device-classes)), or research predicting most of the class accepts it. Without any of these, or with
-  research predicting most fail, it stays not built. A trial admits only what its evidence names: a pass, on the class
+  research predicting most fail, it stays not built. Labs admits only what its evidence names: a pass, on the class
   or its kin, admits a class only where it is one firmware family, and research admits the vendors or identities it
   names, not the class around them; the rest of the class stays not built. On an action whose failure harms, turning on
-  Experimental features is the user's consent to its trials, so a class on trial there runs with the option on. An
-  identity reported harmed there is split off as not built (`NotBuilt`, below), and a target not yet placed is still
-  refused (`class_unknown`, below). On a failed report, the maintainer triaging it takes on the fix, keeping the trial,
-  or makes the class not built, as their time allows; one they stop fixing becomes not built. A not built class returns
-  with a contributor's PR and a passing run on their own device. The class is in scope as `experimental(...)` and runs
+  Labs is the user's consent to what's in it, so a class in Labs there runs with the option on. An identity reported
+  harmed there is split off as not built (`NotBuilt`, below), and a target not yet placed is still refused
+  (`class_unknown`, below). On a failed report, the maintainer triaging it takes on the fix, keeping the class in
+  Labs, or makes the class not built, as their time allows; one they stop fixing becomes not built. A not built class
+  returns with a contributor's PR and a passing run on their own device. The class is in scope as `labs(...)` and runs
   behind the flag.
 
 Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
@@ -226,12 +225,12 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
   (`Action.failure_harms`), for every adapter of that action.
 - **Where a call is known to harm, a class not yet known is refused.** An adapter whose action's failure harms and
   whose scope holds a `no_known_method` or `not_built` entry refuses a target whose class rests on information
-  DeviceSide doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device
+  DeviceSide doesn't have yet, even with the Labs option on: a group whose membership isn't listed, or a device
   not yet placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
-  harmed by (one it can't class, as Experimental; Unknown is flagged, never Verified, above). The refusal is
+  harmed by (one it can't class, in Labs; Unknown is flagged, never Verified, above). The refusal is
   `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core
   applies it: `core/dispatcher.py`'s module docstring, Planning, and `AdapterScope.refusal`; when a device counts as
   placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue
@@ -274,33 +273,32 @@ at `cut-release`, with the other release gates. Like every gate, it checks that 
 
 *Example:* with Zigbee2MQTT's classes `hue`, `ikea`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and
 `other` (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue`
-alone. Research names IKEA's lights as running the timer, so `ikea` is `experimental(...)` on lights, with the two
-bulbs reported to stay on split off as not built; the other makers it names have a report or so each, too few to put them on trial, so `other`
+alone. Research names IKEA's lights as running the timer, so `ikea` is `labs(...)` on lights, with the two
+bulbs reported to stay on split off as not built; the other makers it names have a report or so each, too few to put them in Labs, so `other`
 is not built yet, with an entry, as today's call would leave some of it on. A record on an Innr bulb adds an `innr` class, Verified on its own
 evidence, and `other` stays as it is. The Tuya classes, which Tuya's own countdown call drives but the Zigbee timer
 leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, each with an entry; the TS011F plugs the
 countdown call is built for take it Verified on each maker string with a record of its own, its own class, so the
-check asks each string for its record, and the rest of `tuya_countdown` takes it on trial, as those strings are its
+check asks each string for its record, and the rest of `tuya_countdown` takes it in Labs, as those strings are its
 kin, with the string reported harmed split off as not built, with an entry. The Sengled, which ignores today's call,
 needs a call that isn't built, so it is not built yet too.
 
-## The experimental flag
+## The Labs flag
 
-Experimental is the lowest [level](#levels), and the flag is that level: the item is not yet judged ready for
-everyone. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and `documented(...)`. A call
-takes the weakest level among the items it touches, its domain always among them, so an adapter whose domains are all
-`experimental(...)` is flagged whole. A flagged item is refused unless the user turns on the Experimental features
-option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
+Labs is the lowest [level](#levels), and the Labs flag is that level: the item is not yet judged ready for everyone.
+In code it is the per-axis marker `labs(...)`, beside `verified(...)` and `documented(...)`. A call takes the weakest
+level among the items it touches, its domain always among them, so an adapter whose domains are all `labs(...)` is
+flagged whole. A flagged item is refused unless the user turns on the Labs option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
 other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
-users who opt in. A class is admitted behind the flag only on the evidence [on
-trial](#no-known-method-not-built-yet-on-trial) names (a pass on the class or its kin, or research), which also handles
+users who opt in. A class is admitted behind the flag only on the evidence [in
+Labs](#no-known-method-not-built-yet-in-labs) names (a pass on the class or its kin, or research), which also handles
 a failed report; without it, it stays not built. A passing rig record or `_manual.json` sign-off on a flagged item is
 evidence a maintainer can use to lift its flag for the next release, skipping that soak; it is not a requirement to lift
 it. Whether to lift is the maintainer's judgment, by how complex the feature is and how complete its tests are: a
 developer may run the first few rig cases before the full suite exists, so a flagged item may have passing runs and stay
-flagged. Lifting makes `experimental(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item
+flagged. Lifting makes `labs(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item
 that qualifies as Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting
 a flag is a change to the integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels the
@@ -310,12 +308,11 @@ For an item no maintainer can test, users' working reports can verify it through
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
 maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
-The cards never credit a tested model from a pass on a flagged item while its flag stands, and keep Experimental lines
+The cards never credit a tested model from a pass on a flagged item while its flag stands, and keep Labs lines
 (⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) to at most a quarter of all card lines, counted across every card,
-folding two or more top-level ones on a card into one "⚪ on trial" line (`scripts/gen_compat.py`, which fails over
-the cap).
+folding two or more top-level ones on a card into one ⚪ line (`scripts/gen_compat.py`, which fails over the cap).
 
-*Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
+*Example:* Shelly dimming on `Light` is `labs("Light")`: a user's report of a Gen3 Dimmer jumping on
 `DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
 lets a Shelly maintainer lift the flag, once they judge the tests complete: their PR makes it `verified("Light")`.
 
@@ -380,10 +377,10 @@ what it does on a group reopens no evidence.
   to test. But `cut-release` checks the latest RC's commit, so land the sign-offs or Untested fix caveats before the
   last RC.
 - **No sign-off at the cut:** `cut-release` fails unless each changed action without one carries 🔧 Untested fix on
-  its adapter; no other caveat, nor the `experimental` flag alone, stands in. A repo maintainer picks whichever is most
+  its adapter; no other caveat, nor the Labs flag alone, stands in. A repo maintainer picks whichever is most
   likely to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the
   current code mostly works; ship it marked 🔧 Untested fix when the current code is broken and the fix is low-risk;
-  or, when it is risky, put it behind `experimental` and mark it 🔧 Untested fix.
+  or, when it is risky, put it behind the Labs flag and mark it 🔧 Untested fix.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 

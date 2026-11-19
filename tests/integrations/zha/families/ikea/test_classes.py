@@ -38,15 +38,15 @@ def test_the_rules_read_the_catalog_s_strings():
     assert harmed.conditions["model"].split("|") == [re.escape(model) for model in catalog.TIMER_HARMED_MODELS]
 
 
-def test_on_trial_on_the_brightness_fades_stop_and_turn_on_for_on_lights_alone():
+def test_in_labs_on_the_brightness_fades_stop_and_turn_on_for_on_lights_alone():
     """Level Control's moves on Zigbee 3.0 certification, as `other`'s; turn_on_for on research naming IKEA's lights
     (plan Decision 14), its outlets and the reported bulbs refused there by the integration. Not built elsewhere."""
     scopes = {action: dict(scope.capabilities) for action, scope in ikea.FAMILY.scopes.items()}
-    certified = {ikea.IKEA: Level.EXPERIMENTAL, ikea.IKEA_TIMER_HARMED: Level.EXPERIMENTAL}
+    certified = {ikea.IKEA: Level.LABS, ikea.IKEA_TIMER_HARMED: Level.LABS}
 
     assert scopes == {
         "lower_brightness": certified,
         "raise_brightness": certified,
         "stop": certified,
-        "turn_on_for": {ikea.IKEA: OnDomains(Level.EXPERIMENTAL, frozenset({Platform.LIGHT}))},
+        "turn_on_for": {ikea.IKEA: OnDomains(Level.LABS, frozenset({Platform.LIGHT}))},
     }

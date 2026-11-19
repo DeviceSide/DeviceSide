@@ -20,19 +20,19 @@ proven for each ([levels of proof](../../device-compatibility.md#levels-of-proof
 
 - **Hue bulbs** (manufacturer `Signify Netherlands B.V.` or `Philips`) are tested: every feature on this page has
   passed on them.
-- A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Experimental
-  features off, one on trial, falls back to its lights, each on its own; with them on, it runs as one group.
+- A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Labs off, one in
+  Labs, falls back to its lights, each on its own; with Labs on, it runs as one group.
   Turn on with timer sends a group one command only when its lights are every device in it, so a plug in the group
   with no light (a plug ZHA shows as a switch, say), or a light it refused, never gets the group's timer: the lights
   get one command each instead, a fraction of a second apart.
 - A device whose manufacturer or model ZHA couldn't read when it paired (ZHA shows `unk_manufacturer` or
-  `unk_model`) can't be placed, so turn on with timer refuses it (`class_unknown`), even with Experimental features
+  `unk_model`) can't be placed, so turn on with timer refuses it (`class_unknown`), even with Labs
   on, as it could be a Tuya datapoint device. Reconfigure it from its ZHA device page, or pair it again.
 
 ### Tuya
 
 Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). No feature
-is built for them yet, and DeviceSide refuses them, even with Experimental features on: none has passed on one, and
+is built for them yet, and DeviceSide refuses them, even with Labs on: none has passed on one, and
 nothing predicts Tuya's firmware takes the standard commands. Their timer isn't the standard Zigbee one, so turn on
 with timer would leave them on or turn them on late; why, for each kind, is below.
 
@@ -67,26 +67,26 @@ E11-G13; Sengled's other bulbs don't list the command either,
 them yet: with a brightness or color temperature, or in a group, the bulb would turn on and stay on. Their other
 features aren't built either, as the E11-G13 departs from the standard commands (written while off, it jumps to full
 brightness: [Flash-free turn-on](#flash-free-turn-on)) and nothing predicts which it takes. DeviceSide refuses them,
-even with Experimental features on.
+even with Labs on.
 
 ### Sonoff SWV
 
 Sonoff's SWV water valve reads the Zigbee timer in seconds rather than tenths, so it would stay open about ten times
 longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). Turn on with timer isn't
-built for it yet, and DeviceSide refuses it, even with Experimental features on. The light features
+built for it yet, and DeviceSide refuses it, even with Labs on. The light features
 don't apply to a valve.
 
 ### IKEA
 
 IKEA's TRÅDFRI lights (manufacturer `IKEA of Sweden`). Most run the Zigbee timer, by what they report when paired and
 by users' reports ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3), so turn on with
-timer is on trial on them: it runs with Experimental features on
-([try it](../../device-compatibility.md#try-it-experimental-features)). Two GU10 white spectrum bulbs, LED2005R5 and
+timer is in Labs on them: it runs with Labs on
+([try it](../../device-compatibility.md#try-it-labs)). Two GU10 white spectrum bulbs, LED2005R5 and
 LED2106R3, are reported to turn on with it and never turn off
 ([Z2M #29158](https://github.com/Koenkk/zigbee2mqtt/issues/29158)), so DeviceSide refuses them there, even with
-Experimental features on. IKEA's outlets get no turn on with timer, as no plug has passed
-([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)). Smooth dimming and stop are on
-trial, as for other brands (below); the other features aren't built yet.
+Labs on. IKEA's outlets get no turn on with timer, as no plug has passed
+([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)). Smooth dimming and stop are in
+Labs, as for other brands (below); the other features aren't built yet.
 
 On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
 ([evidence](../hue/internals.md#device-classes)).
@@ -95,8 +95,8 @@ On IKEA lights, lower brightness to off may stop at the lowest level instead of 
 
 Lights of every other brand, such as Innr, Ledvance or Sonoff, and their plugs and switches. A Zigbee 3.0 certified
 dimmable light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they
-get exactly as a Hue bulb does, so smooth dimming and stop are on trial on them: they run with Experimental features
-on ([try it](../../device-compatibility.md#try-it-experimental-features)). Raising brightness from off sets them to
+get exactly as a Hue bulb does, so smooth dimming and stop are in Labs on them: they run with Labs on
+([try it](../../device-compatibility.md#try-it-labs)). Raising brightness from off sets them to
 their lowest level first, where a Hue bulb gets Hue's own command. Their other features aren't built yet: nothing
 predicts how other brands take color moves, reads and writes, and on turn on with timer some lights turn on and never
 off, and most plugs ignore the timer. If you try dimming, please report it whether it works or not: Integrations >

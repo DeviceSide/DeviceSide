@@ -12,7 +12,7 @@ from homeassistant.util import dt as dt_util
 from custom_components.deviceside.integrations.zigbee2mqtt import read
 
 from .conftest import call
-from ...conftest import allow_experimental, refusal, sent
+from ...conftest import allow_labs, refusal, sent
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
@@ -427,7 +427,7 @@ async def test_group_leaves_out_unavailable_members_and_those_ha_lacks(hass, bro
     )
     hass.states.async_set("light.two", "unavailable")
     # A member HA lacks leaves membership unknowable (members.expand_group), so the group runs only flagged.
-    allow_experimental(hass)
+    allow_labs(hass)
 
     response = await call(hass, "get_attributes", {"entity_id": "light.room"})
 
@@ -480,19 +480,19 @@ async def test_empty_group_is_skipped_silently(hass, broker, caplog):
     assert "skipped" not in caplog.text
 
 
-async def test_a_group_bridge_groups_doesn_t_list_is_experimental(hass, broker):
+async def test_a_group_bridge_groups_doesn_t_list_is_labs(hass, broker):
     """Membership unknown, not empty: Z2M may not have published the group yet."""
     group(hass, broker, one={}, two={}, members=[])
     broker.retained[GROUPS] = [{"id": 3, "members": []}]
 
-    assert await refusal(hass, "get_attributes", {"entity_id": "light.room"}) == "experimental_off"
+    assert await refusal(hass, "get_attributes", {"entity_id": "light.room"}) == "labs_off"
 
 
 async def test_no_bridge_groups_fails_the_group(hass, broker):
     group(hass, broker, one={}, two={})
     del broker.retained[GROUPS]
-    assert await refusal(hass, "get_attributes", {"entity_id": "light.room"}) == "experimental_off"
-    allow_experimental(hass)
+    assert await refusal(hass, "get_attributes", {"entity_id": "light.room"}) == "labs_off"
+    allow_labs(hass)
 
     with pytest.raises(HomeAssistantError) as raised:
         await call(hass, "get_attributes", {"entity_id": "light.room"})
@@ -512,11 +512,11 @@ async def test_device_without_a_name_is_not_addressable(hass, broker):
     assert await refusal(hass, "get_attributes", {"entity_id": "light.lamp"}) == "not_addressable"
 
 
-@pytest.mark.parametrize("experimental", [False, True])
-async def test_a_switch_is_not_read(hass, broker, experimental):
+@pytest.mark.parametrize("labs", [False, True])
+async def test_a_switch_is_not_read(hass, broker, labs):
     """No action serves a Hue plug or an `other` switch, so get_attributes reads lights alone."""
     bulb(hass, broker, "switch.plug", modes=[], genOnOff={"onTime": 50})
-    allow_experimental(hass, experimental)
+    allow_labs(hass, labs)
 
     assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "not_built"
     assert not broker.reads()

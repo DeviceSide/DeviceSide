@@ -193,8 +193,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 
 ## After v0.1.0
 
-- [ ] **Repair notice when a trial first runs** (DeviceSide/DeviceSide#515): the first time an Experimental call
-  runs on a device, one repair issue asks the user to report whether it worked, so trials not on the README cards still
+- [ ] **Repair notice when a Labs call first runs** (DeviceSide/DeviceSide#515): the first time a Labs call runs on
+  a device, one repair issue asks the user to report whether it worked, so Labs items not on the README cards still
   return a signal ([plan](docs/plans/2026-11-18-experimental-listing.md), Decision 6).
 - [ ] **Per-family test records and docs**: a family's maintainers own its code, unit tests and new research, while the
   test records, `index.md`, `internals.md` and `devices.yaml` stay whole and the integration's
@@ -213,8 +213,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [x] **Code comments cite the bundles** (pre-run audit): each comment that cited `docs/integration-internals.md` or
   `docs/integrations.md` points at its bundle, and `tests/scripts/test_doc_anchors.py` checks page-only citations too.
 
-- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it: Experimental
-  features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
+- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it:
+  Labs](docs/device-compatibility.md#try-it-labs) and check every link resolves (the issue forms,
   `docs/device-compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the
   heading's anchor, which Discourse names after the post id.
 - [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml` and set

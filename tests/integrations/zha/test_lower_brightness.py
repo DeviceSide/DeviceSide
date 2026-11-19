@@ -10,7 +10,7 @@ from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import soft_off_restores
 
 from .conftest import IEEE, INNR, RESTORE_60, SENT, A, B, bulb, call, on_off_reads, sent, to
-from ...conftest import advance, allow_experimental, result, wall_clock_now
+from ...conftest import advance, allow_labs, result, wall_clock_now
 from ...fixtures.zha import cluster
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
@@ -153,9 +153,9 @@ async def test_a_lower_that_passes_an_off_member_by_goes_to_each_lit_one(
 
 @pytest.mark.parametrize("data", [{}, {"limit": 20}], ids=["soft_off", "to_a_limit"])
 async def test_another_brand_gets_a_hue_bulbs_commands(hass, commands, data):
-    """`other` is on trial (Zigbee 3.0 certification, docs/internals.md): with Experimental features on it gets exactly
+    """`other` is in Labs (Zigbee 3.0 certification, docs/internals.md): with Labs on it gets exactly
     the Verified Hue call."""
-    allow_experimental(hass)
+    allow_labs(hass)
     bulb(hass)
     bulb(hass, "light.innr", A, strings=INNR)
 

@@ -14,6 +14,6 @@ FAMILY = Family(
     maintainers=(),
     classes={SENGLED: frozenset({Platform.LIGHT})},
     # In no scope: not built on every action. ZHA's probe of its E11-G13 found it departs (it drops a level while off,
-    # refuses the timer), and no pass or research predicts it takes the rest (docs/evidence.md, On trial). On
+    # refuses the timer), and no pass or research predicts it takes the rest (docs/evidence.md, In Labs). On
     # turn_on_for it needs a host-side off, which nobody has built.
 )

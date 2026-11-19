@@ -39,23 +39,23 @@ from .refusals import REFUSALS
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
-from ...core.scope import OTHER, ClassDomains, ClassLevel, experimental
+from ...core.scope import OTHER, ClassDomains, ClassLevel, labs
 
 # Every class with its domains (IntegrationInfo.classes): `other`, any brand's light, plug or switch, and the families'.
 CLASSES: ClassDomains = {OTHER: frozenset({Platform.LIGHT, Platform.SWITCH})} | {
     name: domains for family in FAMILIES for name, domains in family.classes.items()
 }
 
-# `other`'s level in each adapter's scope (index.md, Device classes; docs/evidence.md, On trial): on trial only where
+# `other`'s level in each adapter's scope (index.md, Device classes; docs/evidence.md, In Labs): in Labs only where
 # research predicts most of it accepts the call, and not built elsewhere (an empty mapping). It spans vendors, so a
-# Hue bulb's pass makes it neither Documented nor on trial.
+# Hue bulb's pass makes it neither Documented nor in Labs.
 _NOT_BUILT: Mapping[str, ClassLevel] = {}
 OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     # Brightness fades and stop: Level Control's Move, MoveToLevel and Stop, which a Zigbee 3.0 dimmable light must
     # take (docs/internals.md, Shared). raise_brightness from off sends MoveToLevel with ExecuteIfOff (fade.py).
-    "lower_brightness": experimental(OTHER),
-    "raise_brightness": experimental(OTHER),
-    "stop": experimental(OTHER),
+    "lower_brightness": labs(OTHER),
+    "raise_brightness": labs(OTHER),
+    "stop": labs(OTHER),
     # Hue and saturation moves, reads and writes: no research predicts how other firmware takes them, and other
     # brands depart on reads and writes (a bulb without OnTime, one that comes on at full when written while off).
     "lower_hue": _NOT_BUILT,

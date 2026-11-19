@@ -13,7 +13,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families.tuya import 
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
 from ...conftest import DEVICES, GROUPS, SET, answer, call, commands, failure, group
-from .....conftest import allow_experimental, refusal
+from .....conftest import allow_labs, refusal
 from .....fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 
 LAB = "_TZ3000_0zfrhq4i"  # the lab plug (research/2026-11-15-tuya-countdown-probe.md)
@@ -101,23 +101,23 @@ async def test_until_bridge_devices_lists_it_a_countdown_plug_waits(hass, setup_
     """The registry can't show the expose, so the plug keeps tuya_ts011f's refusal, provisionally, until it fills."""
     entity_id = plug(hass, broker)
     del broker.retained[DEVICES]
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert placed_class(hass, entity_id) == Unplaced("tuya_ts011f")
     assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
 
 
-def test_each_verified_string_has_a_class_of_its_own_verified_and_the_rest_are_on_trial_on_switches():
+def test_each_verified_string_has_a_class_of_its_own_verified_and_the_rest_are_in_labs_on_switches():
     scope = Z2MTurnOnFor.scope
     for string in tuya.VERIFIED_STRINGS:
         name = tuya.string_class(string)
         assert name in INTEGRATION.classes
         # On switches alone, as Z2M shows a plug: one Z2M shows as a light has no record.
         assert scope.class_level(name, "switch") is Level.VERIFIED
-        assert scope.class_level(name, "light") is Level.EXPERIMENTAL
-    # The rest of converter A's strings are on trial, on the same call's pass on their kin (docs/evidence.md, On
-    # trial), on switches alone.
-    assert scope.class_level("tuya_countdown", "switch") is Level.EXPERIMENTAL
+        assert scope.class_level(name, "light") is Level.LABS
+    # The rest of converter A's strings are in Labs, on the same call's pass on their kin (docs/evidence.md, In
+    # Labs), on switches alone.
+    assert scope.class_level("tuya_countdown", "switch") is Level.LABS
     assert set(scope.own_calls) == {"tuya_countdown", *tuya.VERIFIED_COUNTDOWNS}
     # One call object, so the countdown plugs of every string share a run.
     assert set(scope.own_calls.values()) == {countdown.COUNTDOWN}
@@ -160,7 +160,7 @@ async def test_the_countdown_is_whole_seconds_from_1_to_43200(
     assert commands(broker) == [(SET, {"state": "ON", "countdown": countdown})]
 
 
-async def test_a_verified_string_runs_with_experimental_features_off(hass, setup_production, broker):
+async def test_a_verified_string_runs_with_labs_off(hass, setup_production, broker):
     entity_id = plug(hass, broker, LAB)
 
     assert await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == {
@@ -169,10 +169,10 @@ async def test_a_verified_string_runs_with_experimental_features_off(hass, setup
     assert commands(broker) == [(SET, {"state": "ON", "countdown": 5})]
 
 
-async def test_an_unrecorded_string_runs_the_countdown_on_trial_with_experimental_on(hass, setup_production, broker):
-    """On trial on its kin's pass of the same call (docs/evidence.md, On trial): the Experimental opt-in is consent."""
+async def test_an_unrecorded_string_runs_the_countdown_in_labs_with_labs_on(hass, setup_production, broker):
+    """In Labs on its kin's pass of the same call (docs/evidence.md, In Labs): the Labs opt-in is consent."""
     entity_id = plug(hass, broker, UNLISTED)
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == {
         entity_id: {"status": "sent", "integration": "zigbee2mqtt"}
@@ -180,11 +180,11 @@ async def test_an_unrecorded_string_runs_the_countdown_on_trial_with_experimenta
     assert commands(broker) == [(SET, {"state": "ON", "countdown": 5})]
 
 
-async def test_an_unrecorded_string_is_refused_with_experimental_off(hass, setup_production, broker):
+async def test_an_unrecorded_string_is_refused_with_labs_off(hass, setup_production, broker):
     entity_id = plug(hass, broker, UNLISTED)
-    allow_experimental(hass, False)
+    allow_labs(hass, False)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "labs_off"
     assert commands(broker) == []
 
 
@@ -197,7 +197,7 @@ async def test_a_group_with_a_countdown_plug_falls_back_so_each_gets_its_own_cal
     entry = next(device for device in broker.retained[DEVICES] if device["ieee_address"] == "0x02")
     entry["definition"] = {"model": "TS011F_plug_1", "exposes": [SWITCH, COUNTDOWN]}
     assert placed_class(hass, "light.two") == "tuya_countdown_tz3000_0zfrhq4i"
-    allow_experimental(hass)
+    allow_labs(hass)
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
@@ -265,7 +265,7 @@ async def test_get_attributes_has_no_known_method_on_a_countdown_plug(hass, setu
     entity_id = plug(hass, broker, manufacturer)
     hass.states.async_set(entity_id, "on", {})
     broker.devices[IEEE] = ("plug", {"genOnOff": {"onOff": 1, "onTime": 600}})
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, "get_attributes", {"entity_id": entity_id}) == "no_known_method"
     assert commands(broker) == []
@@ -282,7 +282,7 @@ async def test_get_attributes_doesn_t_read_a_ts011f_no_other_action_serves(hass,
     """No other action serves it, so there is nothing to read back around (docs/evidence.md, "A read serves only"):
     not built."""
     entity_id = plug(hass, broker, **entry)
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, "get_attributes", {"entity_id": entity_id}) == "not_built"
     assert commands(broker) == []

@@ -49,7 +49,7 @@ def test_turn_on_for_serves_hue_and_ikea_alone():
 
 
 def test_turn_on_for_serves_no_switch_and_no_other_brand():
-    """Plugs and switches of every brand are not built on it (docs/evidence.md, On trial): research predicts most fail
+    """Plugs and switches of every brand are not built on it (docs/evidence.md, In Labs): research predicts most fail
     (research/2026-11-14-timed-on-call-patterns.md), and no switch has a pass. Hue's bulbs keep their level; every
     other brand's light is not built, as no pass or research admits the default class."""
     scope = next(adapter.scope for adapter in ADAPTERS if adapter.action == "turn_on_for")

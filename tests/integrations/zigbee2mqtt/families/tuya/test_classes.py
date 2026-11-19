@@ -15,7 +15,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from custom_components.deviceside.zigbee import tuya as catalog
 
 from ...conftest import TUYA, TUYA_MCU, commands, light
-from .....conftest import allow_experimental, refusal
+from .....conftest import allow_labs, refusal
 
 
 def test_the_zigbee_string_rules_read_the_catalog_s_strings():
@@ -82,7 +82,7 @@ async def test_the_zigbee_strings_in_bridge_devices_place_a_rebadged_tuya_device
 )
 async def test_a_datapoint_device_s_raw_zcl_read_and_write_are_not_built(hass, setup_production, broker, action, data):
     """Rather than send raw ZCL a datapoint device can't take."""
-    allow_experimental(hass)
+    allow_labs(hass)
     entity_id = light(hass, broker, manufacturer="Tuya", model_id="TS0601_dimmer")
 
     assert await refusal(hass, action, {"entity_id": entity_id, **data}) == "not_built"

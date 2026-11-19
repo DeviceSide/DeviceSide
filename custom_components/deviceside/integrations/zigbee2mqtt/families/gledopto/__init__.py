@@ -20,5 +20,5 @@ FAMILY = Family(
     classes={GLEDOPTO: frozenset({Platform.LIGHT})},
     # In no scope: not built on every action. Its converter departs from the standard calls (it turns on when its color
     # is set while off, and no converter takes `on_time`), and no pass or research predicts it takes them
-    # (docs/evidence.md, On trial).
+    # (docs/evidence.md, In Labs).
 )

@@ -7,7 +7,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.control4.get_attributes import Control4GetAttributes
 
 from .conftest import LAMP, dimmable_lamp
-from ...conftest import allow_experimental, call, refusal
+from ...conftest import allow_labs, call, refusal
 from ...fixtures.control4 import FakeDirector, add_control4_light, control4_entry, failing
 
 
@@ -106,19 +106,19 @@ async def test_a_light_that_cant_be_addressed_is_refused(hass):
     assert await refusal(hass, "get_attributes", {"entity_id": "light.odd"}) == "not_addressable"
 
 
-async def test_refused_while_the_experimental_option_is_off(hass):
+async def test_refused_while_the_labs_option_is_off(hass):
     director = dimmable_lamp(hass)
-    allow_experimental(hass, on=False)
+    allow_labs(hass, on=False)
 
-    assert await refusal(hass, "get_attributes", LAMP) == "experimental_off"
+    assert await refusal(hass, "get_attributes", LAMP) == "labs_off"
     assert not director.send_get_request.await_args_list
 
 
 def test_scope():
     scope = Control4GetAttributes.scope
-    assert scope.all_experimental
+    assert scope.all_labs
     assert scope.confirmable
-    assert scope.domains == {"light": Level.EXPERIMENTAL}
+    assert scope.domains == {"light": Level.LABS}
 
 
 async def test_the_read_is_logged_with_what_the_director_reported(hass, wire):

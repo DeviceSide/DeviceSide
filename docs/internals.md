@@ -28,7 +28,7 @@ repeated here; result and detail codes are in the code.
   replaces that kept level: on Z2M by publishing `{"state": null, "brightness": <level>, "transition": 0.4}`, which
   the off light ignores; on ZHA and Hue on the light entity, and on the group or room entity for an explicit
   `brightness` there.
-- **Zigbee 3.0 certification and the dimming commands.** Why ZHA's and Zigbee2MQTT's `other` is on trial on
+- **Zigbee 3.0 certification and the dimming commands.** Why ZHA's and Zigbee2MQTT's `other` is in Labs on
   `raise_brightness`, `lower_brightness` and `stop`. A Level Control server must take Move to Level, Move, Step and
   Stop, and their With On/Off forms (ZCL Rev 8, 07-5123-08, §3.10.2.3, Table 3-59: all M,
   https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf); a Dimmable Light, and
@@ -39,7 +39,7 @@ repeated here; result and detail codes are in the code.
   (https://docs.silabs.com/zigbee/9.0.2/certifying-zigbee-3-devices/). So a certified dimmable light takes a fade and
   its stop (checked in the PDF: [research](research/2026-11-17-zcl-rev8-level-and-onoff.md)). The prediction covers
   certified lights; `other` also holds uncertified ones, which DeviceSide can't tell
-  apart, and a failure there shows at once, so it is triaged as the trial's result.
+  apart, and a failure there shows at once, so it is triaged as the class's result.
 
 ## Tested behavior
 

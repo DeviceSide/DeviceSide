@@ -35,9 +35,9 @@ class Level(IntEnum):
     """How well a scope item is proven, weakest first (docs/evidence.md). A call's level is the weakest among the
     in-scope items it touches."""
 
-    # The experimental flag on one item, not yet judged ready for everyone: refused unless the Experimental features
-    # option is on. A maintainer lifts it when they judge it ready (docs/evidence.md, The experimental flag).
-    EXPERIMENTAL = 0
+    # The Labs flag on one item, not yet judged ready for everyone: refused unless the Labs option is on. A maintainer
+    # lifts it when they judge it ready (docs/evidence.md, The Labs flag).
+    LABS = 0
     # Reaches the same capability as a Verified item, differing only in addressing, or a read a certification tests on
     # every certified device, its class keyed on a marker (docs/evidence.md, Levels); unit tests pin the payload.
     DOCUMENTED = 10
@@ -48,7 +48,7 @@ class Level(IntEnum):
 @dataclass(frozen=True, slots=True)
 class OnDomains:
     """A class's level on some of the adapter's domains alone (docs/evidence.md, Device classes): on any other its
-    class has no entry, so counts as Experimental, as a class outside the scope does. A record on the class in one
+    class has no entry, so counts as a Labs item, as a class outside the scope does. A record on the class in one
     domain proves nothing about it in another: a Hue bulb's `turn_on_for` isn't a Hue plug's.
 
     `only`: the adapter serves the class on those domains alone, and refuses it as not built yet on the rest, as it
@@ -81,10 +81,10 @@ def documented(*items: str, domains: Collection[str] | None = None, only: bool =
     return _levels(items, Level.DOCUMENTED, domains, only)
 
 
-def experimental(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
-    """Each item Experimental; a class's on `domains` alone when given (OnDomains), and served nowhere else if
+def labs(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
+    """Each item in Labs; a class's on `domains` alone when given (OnDomains), and served nowhere else if
     `only`."""
-    return _levels(items, Level.EXPERIMENTAL, domains, only)
+    return _levels(items, Level.LABS, domains, only)
 
 
 class CaveatKind(Enum):
@@ -134,7 +134,7 @@ class NotBuilt:
 
     `domains`: the entity domains it refuses the class on, None for every one. An entry on some alone can sit beside
     the class's capability entry, which serves it on the rest: a bulb's timer runs, a plug of the same class ignores
-    it (docs/evidence.md, On trial). The card leaves the class out on those domains alone.
+    it (docs/evidence.md, In Labs). The card leaves the class out on those domains alone.
     """
 
     reason: str
@@ -153,7 +153,7 @@ class Unplaced(str):
     harms a class (AdapterScope.harms): there AdapterScope.refusal refuses it as class_unknown, as it may be one.
 
     Why a flag on the class, not a class of its own or None: None is a permanent "can't class" (a Shelly entity with
-    no RPC component, a classifier that raised, a group whose members can't be listed), weighed as Experimental, and
+    no RPC component, a classifier that raised, a group whose members can't be listed), weighed as a Labs item, and
     refused as class_unknown too where the call harms a class, as it could be the harmed one; and a class of its own
     would change what every other adapter does with a device for the seconds until the integration reports it, where
     only the harmful call needs to wait.
@@ -189,10 +189,10 @@ class OwnCall:
 class AdapterScope:
     """The entity domains, capabilities and fields an adapter is built for, each at its Level, plus its settings.
 
-    An Experimental item is gated at runtime: the dispatcher refuses a call that touches one unless the Experimental
-    features option is on; to flag the whole adapter, flag its domains (`all_experimental`). An item that is not
-    built, or built but not unit-tested, is left out of scope and refused. `caveat` changes no call: setup warns and
-    the card says so.
+    A Labs item is gated at runtime: the dispatcher refuses a call that touches one unless the Labs option is on; to
+    flag the whole adapter, flag its domains (`all_labs`). An item that is not
+    built, or built but not unit-tested, is left out of scope and refused. `caveat` changes no call: setup warns and the
+    card says so.
     """
 
     caveat: Caveat | None = None
@@ -207,9 +207,9 @@ class AdapterScope:
     unlisted: frozenset[str] = frozenset()
     # The classes the adapter serves (docs/evidence.md, Device classes), as IntegrationInfo.capability names them;
     # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
-    # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
+    # the class, so each stands on its own evidence: a sibling's untested one is in Labs unless it is Documented.
     # A class the integration names in neither this nor no_known_method is not built yet, and refused. A class's
-    # level holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental, or,
+    # level holds on every domain unless its entry names some (OnDomains): elsewhere it counts as a Labs item, or,
     # with `only`, is refused as not built yet (admits).
     capabilities: Mapping[str, ClassLevel] | None = None
     # Classes with no known method, refused with why; never in capabilities. Per adapter, as one class can fail one
@@ -251,15 +251,15 @@ class AdapterScope:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
     @property
-    def all_experimental(self) -> bool:
-        """Whether the adapter is flagged whole: every domain it serves is Experimental, so every call is (level())."""
-        return bool(self.domains) and all(level is Level.EXPERIMENTAL for level in self.domains.values())
+    def all_labs(self) -> bool:
+        """Whether the adapter is flagged whole: every domain it serves is in Labs, so every call is (level())."""
+        return bool(self.domains) and all(level is Level.LABS for level in self.domains.values())
 
     def level(self, domain: str, classes: Collection[str | None] = (), fields: Collection[str] = ()) -> Level:
         """The weakest level among the in-scope items a call touches: its domain, its classes (when the scope lists
         capabilities: the target's, or a native group's members') and the fields it carries. Domain and fields must
         be in scope, as supports() has checked; a class outside the scope, or None (one the integration couldn't
-        name, or a group whose members it can't list), counts as Experimental, so a call let past on another ground
+        name, or a group whose members it can't list), counts as a Labs item, so a call let past on another ground
         fails safe instead of raising."""
         levels = [self.domains[domain], *(self.fields[name] for name in fields)]
         if self.capabilities is not None:
@@ -268,11 +268,11 @@ class AdapterScope:
 
     def class_level(self, name: str | None, domain: str) -> Level:
         """A class's level in a domain: its entry's, where that holds the domain (an OnDomains entry names some alone),
-        else Experimental, as for a class outside the scope or None."""
+        else Labs, as for a class outside the scope or None."""
         entry = (self.capabilities or {}).get(name)
         if isinstance(entry, OnDomains):
-            return entry.level if domain in entry.domains else Level.EXPERIMENTAL
-        return Level.EXPERIMENTAL if entry is None else entry
+            return entry.level if domain in entry.domains else Level.LABS
+        return Level.LABS if entry is None else entry
 
     def admits(self, name: str, domain: str | None = None) -> bool:
         """Whether the scope serves the class, on `domain` when given: an `only` entry (OnDomains) on its domains
@@ -314,9 +314,9 @@ class AdapterScope:
         with the reason the user reads, or None. `failure_harms` is the adapter's action's (Adapter.failure_harms),
         required so no caller leaves it out. Where the call harms a class (`harms`), first `class_unknown` when one is
         Unplaced, or None (the integration couldn't name it, or a group's membership is unknown), as it could be the
-        harmed class, with Experimental features on or off. Then `no_known_method` and its NoKnownMethod.reason when
+        harmed class, with Labs on or off. Then `no_known_method` and its NoKnownMethod.reason when
         one is listed as having none, else `not_built` when one is named but not served (in `domain`: admits), with
-        its NotBuilt.reason when it has an entry. Elsewhere None is no refusal: the gate weighs it as Experimental, and
+        its NotBuilt.reason when it has an entry. Elsewhere None is no refusal: the gate weighs it as a Labs item, and
         an Unplaced class as the class it names. Last, for a native group whose members are listed (`group`),
         `own_call` when a member's class takes a call of its own (own_calls), so the group falls back to its
         members. `elsewhere` holds the classes of a group's members outside `domain` (a stand-in: HA has no entity

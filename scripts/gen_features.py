@@ -10,8 +10,8 @@ entry's to the heading that explains it.
 The columns come from each integration's bundle: `column` (the README label) and `column_order` in
 `docs/integrations/<integration>/devices.yaml`. An integration without one is an error naming the file to add.
 
-What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Experimental features
-option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand, one whole cell
+What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Labs option
+off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand, one whole cell
 each. A blank cell means possible on some device, or not built yet.
 
 Usage: scripts/gen_features.py [--check]
@@ -103,8 +103,8 @@ LEGEND = (
     (("scene",), "native scene", "scenes", "README.md", "set-scene-without-turning-on"),
     (
         ("light-grey", "switch-grey"),
-        "Experimental",
-        "on trial",
+        "Labs",
+        "Labs",
         "docs/device-compatibility.md",
         "levels-of-proof",
     ),
@@ -160,22 +160,19 @@ def integration_columns(registry: AdapterRegistry) -> dict[str, str]:
     return columns(sorted({*registry.integrations, *(adapter.integration for _, adapter in adapters(registry))}))
 
 
-def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[str]:
-    """The icon keys an adapter covers: its domains at any Level but Experimental (Verified and Documented ship with
-    the option off) where some class that isn't Experimental can be on it (a class entry held on the domain, which
+def keys(adapter, registry: AdapterRegistry, labs: bool = False) -> set[str]:
+    """The icon keys an adapter covers: its domains at any Level but Labs (Verified and Documented ship with
+    the option off) where some class that isn't in Labs can be on it (a class entry held on the domain, which
     the class declares in `IntegrationInfo.classes`; with no classes named, any domain), plus `group` when it takes
     lights and the dispatcher passes it native groups, natively or expanded to their members
-    (`_expand_native_groups`). Empty when the adapter is flagged whole (every domain Experimental), or the scope
-    lists capabilities and every one is Experimental: then no call works with the option off. With `experimental`,
+    (`_expand_native_groups`). Empty when the adapter is flagged whole (every domain in Labs), or the scope
+    lists capabilities and every one is in Labs: then no call works with the option off. With `labs`,
     what it covers with the option on: every domain. Either way, only domains it serves some class on
     (`served_domains`)."""
     capabilities = adapter.scope.capabilities
-    if not experimental and (
-        adapter.scope.all_experimental
-        or (
-            capabilities is not None
-            and all(level is Level.EXPERIMENTAL for _, level, _ in adapter.scope.class_entries())
-        )
+    if not labs and (
+        adapter.scope.all_labs
+        or (capabilities is not None and all(level is Level.LABS for _, level, _ in adapter.scope.class_entries()))
     ):
         return set()
     info = registry.integrations[adapter.integration]
@@ -183,15 +180,15 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
     found = {
         domain
         for domain, level in adapter.scope.domains.items()
-        if (experimental or level is not Level.EXPERIMENTAL) and domain in served
+        if (labs or level is not Level.LABS) and domain in served
     }
     declared = info.classes
-    if not experimental and capabilities is not None and declared:
+    if not labs and capabilities is not None and declared:
         found = {
             domain
             for domain in found
             if any(
-                level is not Level.EXPERIMENTAL and (on is None or domain in on) and domain in declared.get(name, ())
+                level is not Level.LABS and (on is None or domain in on) and domain in declared.get(name, ())
                 for name, level, on in adapter.scope.class_entries()
             )
         }
@@ -202,10 +199,10 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
 
 
 def built(
-    registry: AdapterRegistry, experimental: bool = False, cols: dict[str, str] | None = None
+    registry: AdapterRegistry, labs: bool = False, cols: dict[str, str] | None = None
 ) -> dict[tuple[str, str], set[str]]:
-    """(feature label, integration) -> icon keys every one of the row's actions covers, with the Experimental features
-    option on when `experimental`. Every integration has a column."""
+    """(feature label, integration) -> icon keys every one of the row's actions covers, with the Labs option
+    on when `labs`. Every integration has a column."""
     by_pair = {(adapter.action, adapter.integration): adapter for _, adapter in adapters(registry)}
     actions = {action for action, _ in by_pair}
     if cols is None:
@@ -217,7 +214,7 @@ def built(
         for integration in cols:
             found = [by_pair.get((action, integration)) for action in row_actions]
             cells[label, integration] = (
-                set.intersection(*(keys(adapter, registry, experimental) for adapter in found)) if all(found) else set()
+                set.intersection(*(keys(adapter, registry, labs) for adapter in found)) if all(found) else set()
             )
     return cells
 
@@ -232,8 +229,8 @@ def href(file: str, anchor: str | None) -> str:
     return DOC_URL.format(file, anchor) if anchor else DOC_URL.format(file, "").removesuffix("#")
 
 
-def cell(have: set[str], blocked: bool = False, trial: set[str] = frozenset(), link: str = "", why: str = "") -> str:
-    """An icon per built key, amber, or grey when it works only with the Experimental features option on, linking to
+def cell(have: set[str], blocked: bool = False, in_labs: set[str] = frozenset(), link: str = "", why: str = "") -> str:
+    """An icon per built key, amber, or grey when it works only with the Labs option on, linking to
     `link`; or, for a `blocked` cell, one prohibited sign linking to `why`, and nothing else."""
     if blocked:
         return img("no", "not possible", why)
@@ -241,8 +238,8 @@ def cell(have: set[str], blocked: bool = False, trial: set[str] = frozenset(), l
     for key in ICONS:
         if key in have:
             icons.append(img(key, ICONS[key], link))
-        elif key in trial:
-            icons.append(img(f"{key}-grey", f"{ICONS[key]}: Experimental", link))
+        elif key in in_labs:
+            icons.append(img(f"{key}-grey", f"{ICONS[key]}: Labs", link))
     return " ".join(icons)
 
 
@@ -261,12 +258,12 @@ def generate(registry: AdapterRegistry) -> str:
     why = href(INTEGRATIONS, IMPOSSIBLE)
     cols = integration_columns(registry)
     cells = built(registry, cols=cols)
-    trial = built(registry, experimental=True, cols=cols)
+    in_labs = built(registry, labs=True, cols=cols)
     labels = {label for label, *_ in FEATURES}
     for label, integration in NO_PATH:
         if label not in labels or integration not in cols:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no README row or column")
-        if found := trial[label, integration]:
+        if found := in_labs[label, integration]:
             raise SystemExit(
                 f"{label} on {cols[integration]}: {', '.join(sorted(found))} is built, so not impossible; "
                 "drop it from NO_PATH"
@@ -283,7 +280,7 @@ def generate(registry: AdapterRegistry) -> str:
             cell(
                 cells[label, integration],
                 (label, integration) in NO_PATH,
-                trial[label, integration],
+                in_labs[label, integration],
                 cell_link(integration, topic),
                 why,
             )

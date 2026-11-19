@@ -5,7 +5,7 @@ in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
-Scope comes from the design, the device's capabilities and the `experimental` flag (Evidence below), never from the
+Scope comes from the design, the device's capabilities and the Labs flag (Evidence below), never from the
 README: it records what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README
 after the work lands.
 
@@ -59,14 +59,14 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 6. Simplify relentlessly: a new guardrail needs evidence its failure happens; a new rule or guardrail names the
    user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
-8. Test to decide: a hardware run needs a decision its result takes (a design choice, a foundation, lifting a flag, a
-   surprise, a release), run at the last point that can take it: the release's run for a device a maintainer
+8. Test to decide: a hardware run needs a decision its result takes (a design choice, a foundation, lifting a Labs flag,
+   a surprise, a release), run at the last point that can take it: the release's run for a device a maintainer
    reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
    on a run without naming the decision.
 9. Retest what the change exercises: only the cases whose call or reply handling changed. Evidence binds to the
    action's call transcript, and a change reopens it only when a segment it was tested on changes or goes.
 
-The levels (Verified, Documented, Experimental), device classes, caveats, the release gate and the sign-off
+The levels (Verified, Documented, Labs), device classes, caveats, the release gate and the sign-off
 format:
 [`docs/evidence.md`](docs/evidence.md).
 
@@ -118,7 +118,7 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
   household check). A call or reply handling changed on purpose: `docs/evidence.md`, Release gate.
 - Audits: as the global `## Code audits` rule says, then `owner-findings` (Maintainers, Changing someone else's
   code). The binding-rule surface that puts an Opus auditor on the PR
-  audit is `docs/evidence.md`, the `experimental` flag and `AdapterScope`, `Level.DOCUMENTED`,
+  audit is `docs/evidence.md`, the Labs flag (`labs(...)`) and `AdapterScope`, `Level.DOCUMENTED`,
   `scripts/check_release.py`, `docs/test-records.schema.json`, `docs/integrations/*/test-records/`, and rule text in
   `CLAUDE.md` or `docs/design.md`.
 

@@ -23,7 +23,7 @@ def init(maintainers=("alice",)):
     return f'INTEGRATION = IntegrationInfo(key="acme", title="Acme", maintainers={maintainers!r})\n'
 
 
-def family(key="tuya", maintainers=("tina",), body='SCOPE = FamilyScope(capabilities=experimental("tuya_zcl"))\n'):
+def family(key="tuya", maintainers=("tina",), body='SCOPE = FamilyScope(capabilities=labs("tuya_zcl"))\n'):
     return f"FAMILY = Family(key={key!r}, maintainers={maintainers!r}, classes=CLASSES)\n{body}"
 
 
@@ -33,7 +33,7 @@ def family_init(integration="acme", name="tuya"):
 
 def build_pr(repo):
     repo.commit(INIT, init())
-    repo.commit(SCOPE, "scope = AdapterScope(domains=experimental('light'))\n")
+    repo.commit(SCOPE, "scope = AdapterScope(domains=labs('light'))\n")
     repo.commit(owners.README, README)
     repo.commit(owners.COMPAT, COMPAT)
     repo.git("branch", "pr")
@@ -129,7 +129,7 @@ def test_compatibility_page_text_outside_its_block_is_refused(pr):
 @pytest.mark.parametrize(
     "text",
     [
-        'scope = AdapterScope(domains=experimental("light"), caveat=Caveat("https://x/1"))\n',
+        'scope = AdapterScope(domains=labs("light"), caveat=Caveat("https://x/1"))\n',
         'c = core.Caveat("why")\n',
     ],
 )

@@ -9,7 +9,7 @@ Lights on the core `control4` integration: dimmers and light groups alike. A gro
 [Light Group driver](https://github.com/skialpine/control4-group-lighting) is a native group: it gets one command for
 all its lights. A change to its lights in Composer shows once the Control4 integration reloads. DeviceSide uses that
 integration's own connection to the controller, so it needs no sign-in of its own. A light it can't tie to a Control4
-item is refused (`not_addressable`). Every action here is Experimental ([try it](#try-it-experimental-features)).
+item is refused (`not_addressable`). Every action here is in Labs ([try it](#try-it-labs)).
 
 ## Device classes
 
@@ -63,7 +63,7 @@ temperature for these lights.
 - Control4 keeps color temperature in tens of kelvin, so a light set to 2203 reads 2200.
 - A light that is off reports no brightness.
 
-## Try it: Experimental features
+## Try it: Labs
 
 ### Control4 lights
 
@@ -76,4 +76,4 @@ report per driver.
 ### Hue White Ambiance 5/6" Retrofit Downlight
 
 `LTD010` (Philips 5996411U5), joined to Control4 over Zigbee on its "Zigbee 3 Light" driver, three of them in a
-Control4 light group. Flagged experimental like every Control4 light, so the card doesn't list it as tested.
+Control4 light group. In Labs like every Control4 light, so the card doesn't list it as tested.

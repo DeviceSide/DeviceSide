@@ -27,8 +27,8 @@ from custom_components.deviceside.core.scope import (
     Unplaced,
     class_scope,
     documented,
-    experimental,
     family_scope,
+    labs,
     verified,
 )
 
@@ -37,20 +37,22 @@ ANYWHERE = frozenset(
 )  # a test class's domains: every one a test scope serves
 
 PACKAGE = Path(__file__).resolve().parents[2] / "custom_components" / "deviceside"
-# What reads the Experimental features option: only the option's definition, the entry setup and the dispatcher may.
-OPTION_NAMES = {"CONF_EXPERIMENTAL", "EXPERIMENTAL_DEFAULT", "experimental_features"}
+# What reads the Labs option: only the option's definition, the entry setup and the dispatcher may. Its constants by
+# name; its key and Runtime field, "labs", only as an attribute or a string, as the scope marker labs(...) is a name.
+OPTION_NAMES = {"CONF_LABS", "LABS_DEFAULT"}
+OPTION_FIELD = "labs"
 OPTION_READERS = {"const.py", "__init__.py", "config_flow.py", "core/runtime.py", "core/dispatcher.py"}
 
 
 def test_levels_order_weakest_first():
-    assert Level.EXPERIMENTAL < Level.DOCUMENTED < Level.VERIFIED
+    assert Level.LABS < Level.DOCUMENTED < Level.VERIFIED
 
 
 def test_helpers_merge_into_one_mapping():
-    assert verified("a") | documented("c") | experimental("d") == {
+    assert verified("a") | documented("c") | labs("d") == {
         "a": Level.VERIFIED,
         "c": Level.DOCUMENTED,
-        "d": Level.EXPERIMENTAL,
+        "d": Level.LABS,
     }
 
 
@@ -64,12 +66,12 @@ def test_defaults_are_a_verified_light_with_every_capability():
 @pytest.mark.parametrize(
     ("domain", "classes", "level"),
     [
-        ("switch", (None,), Level.EXPERIMENTAL),  # a class the integration couldn't name fails safe
+        ("switch", (None,), Level.LABS),  # a class the integration couldn't name fails safe
         ("switch", ("Switch",), Level.VERIFIED),
         ("switch", ("Light",), Level.DOCUMENTED),  # the weaker class lowers a Verified domain
         ("light", ("Switch",), Level.DOCUMENTED),  # and a Documented domain lowers a Verified class
         ("switch", ("Switch", "Light"), Level.DOCUMENTED),  # a native group takes its weakest member's
-        ("switch", ("Switch", None), Level.EXPERIMENTAL),
+        ("switch", ("Switch", None), Level.LABS),
         ("switch", (), Level.VERIFIED),  # an empty group has no class to weigh
     ],
 )
@@ -87,11 +89,11 @@ def test_level_is_the_weakest_item_touched(domain, classes, level):
     [
         ((), Level.VERIFIED),
         (("brightness",), Level.VERIFIED),
-        (("brightness", "transition"), Level.EXPERIMENTAL),
+        (("brightness", "transition"), Level.LABS),
     ],
 )
 def test_level_folds_in_the_fields_the_call_carries(fields, level):
-    scope = AdapterScope(fields=verified("brightness") | experimental("transition"))
+    scope = AdapterScope(fields=verified("brightness") | labs("transition"))
 
     assert scope.level("light", (), fields) is level
 
@@ -99,24 +101,24 @@ def test_level_folds_in_the_fields_the_call_carries(fields, level):
 @pytest.mark.parametrize(
     ("scope", "flagged"),
     [
-        (AdapterScope(domains=experimental("light", "switch"), capabilities=verified("A")), True),
-        (AdapterScope(domains=experimental("light") | verified("switch")), False),  # flags only its domain's calls
+        (AdapterScope(domains=labs("light", "switch"), capabilities=verified("A")), True),
+        (AdapterScope(domains=labs("light") | verified("switch")), False),  # flags only its domain's calls
         (AdapterScope(domains=verified("light")), False),
         (AdapterScope(domains={}), False),  # no domain, no call to flag
-        # A class or field at Experimental flags only the calls that touch it, never the adapter whole.
-        (AdapterScope(capabilities=experimental("A")), False),
-        (AdapterScope(fields=experimental("transition")), False),
+        # A class or field in Labs flags only the calls that touch it, never the adapter whole.
+        (AdapterScope(capabilities=labs("A")), False),
+        (AdapterScope(fields=labs("transition")), False),
     ],
 )
-def test_an_adapter_is_flagged_whole_when_every_domain_is_experimental(scope, flagged):
-    assert scope.all_experimental is flagged
+def test_an_adapter_is_flagged_whole_when_every_domain_is_labs(scope, flagged):
+    assert scope.all_labs is flagged
 
 
-def test_a_class_outside_the_scope_counts_as_experimental():
+def test_a_class_outside_the_scope_counts_as_labs():
     """The gate must not raise on a class the refusal didn't stop."""
     scope = AdapterScope(capabilities=verified("RGBCCT"))
 
-    assert scope.level("light", ("Switch",)) is Level.EXPERIMENTAL
+    assert scope.level("light", ("Switch",)) is Level.LABS
 
 
 NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source")
@@ -126,7 +128,7 @@ NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.
     ("classes", "reason"),
     [
         (("hue",), None),
-        ((None,), None),  # unnamed: the gate weighs it, as Experimental
+        ((None,), None),  # unnamed: the gate weighs it, as a Labs item
         ((), None),
         (("tuya_mcu",), (Reason.NOT_BUILT, None)),  # named, in neither capabilities nor no_known_method
         (("tuya_zcl",), (Reason.NO_KNOWN_METHOD, "It never switches on")),  # with the reason the user reads
@@ -225,11 +227,11 @@ ON_SWITCHES = NotBuilt("It ignores the timer", "https://example.com/source", dom
 
 
 def test_a_not_built_entry_on_some_domains_refuses_the_class_there_alone():
-    """A class's bulbs keep their trial while its plugs are not built (docs/evidence.md, On trial): the entry sits
+    """A class's bulbs stay in Labs while its plugs are not built (docs/evidence.md, In Labs): the entry sits
     beside the class's capability entry, which serves the rest."""
     scope = AdapterScope(
-        domains=verified("light") | experimental("switch"),
-        capabilities=experimental("other") | verified("hue"),
+        domains=verified("light") | labs("switch"),
+        capabilities=labs("other") | verified("hue"),
         not_built={"other": ON_SWITCHES},
     )
 
@@ -241,7 +243,7 @@ def test_a_not_built_entry_on_some_domains_refuses_the_class_there_alone():
     assert not scope.admits("other", "switch")
     assert scope.admits("other", "light")
     assert scope.admits("other")
-    assert scope.class_entries() == [("other", Level.EXPERIMENTAL, frozenset({"light"})), ("hue", Level.VERIFIED, None)]
+    assert scope.class_entries() == [("other", Level.LABS, frozenset({"light"})), ("hue", Level.VERIFIED, None)]
 
 
 def test_a_not_built_entry_on_some_domains_narrows_an_on_domains_level():
@@ -259,7 +261,7 @@ def test_a_not_built_entry_names_domains_the_scope_serves(domains):
     with pytest.raises(ValueError, match="names no domain, or one the scope doesn't serve"):
         AdapterScope(
             domains=verified("light", "switch"),
-            capabilities=experimental("other"),
+            capabilities=labs("other"),
             not_built={"other": NotBuilt("It would stay on", "https://example.com/source", domains=domains)},
         )
 
@@ -298,7 +300,7 @@ def test_a_class_is_never_both_served_and_no_known_method():
         AdapterScope(capabilities=verified("hue"), no_known_method={"hue": NO_METHOD})
 
 
-def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
+def test_a_class_held_on_some_domains_alone_is_labs_on_the_rest():
     """A Hue bulb's record proves nothing about a Hue plug: `hue` on lights alone leaves a Hue switch flagged."""
     scope = AdapterScope(
         domains=verified("light", "switch"),
@@ -307,7 +309,7 @@ def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
 
     assert scope.capabilities["hue"] == OnDomains(Level.VERIFIED, frozenset({Platform.LIGHT}))
     assert scope.level("light", ["hue"]) is Level.VERIFIED
-    assert scope.level("switch", ["hue"]) is Level.EXPERIMENTAL
+    assert scope.level("switch", ["hue"]) is Level.LABS
     assert scope.level("switch", ["other"]) is Level.DOCUMENTED  # an entry on every domain, as before
     assert scope.class_entries() == [
         ("hue", Level.VERIFIED, frozenset({Platform.LIGHT})),
@@ -319,11 +321,9 @@ def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
 def test_a_class_served_on_some_domains_alone_is_refused_on_the_rest():
     """`only`: a Tuya ZCL device read as a light, which other actions serve, but not as a switch
     (docs/evidence.md, "A read serves only")."""
-    scope = AdapterScope(
-        domains=verified("light", "switch"), capabilities=experimental("tuya", domains=("light",), only=True)
-    )
+    scope = AdapterScope(domains=verified("light", "switch"), capabilities=labs("tuya", domains=("light",), only=True))
 
-    assert scope.capabilities["tuya"] == OnDomains(Level.EXPERIMENTAL, frozenset({Platform.LIGHT}), only=True)
+    assert scope.capabilities["tuya"] == OnDomains(Level.LABS, frozenset({Platform.LIGHT}), only=True)
     assert scope.admits("tuya", "light")
     assert not scope.admits("tuya", "switch")
     assert scope.admits("tuya")  # served somewhere
@@ -336,7 +336,7 @@ def test_a_class_served_on_some_domains_alone_is_refused_on_the_rest():
 
 def test_only_takes_domains():
     with pytest.raises(ValueError, match="only takes domains"):
-        experimental("tuya", only=True)
+        labs("tuya", only=True)
 
 
 @pytest.mark.parametrize(
@@ -366,7 +366,7 @@ UNTIMED = OwnCall(_send)
 def test_a_class_with_a_call_of_its_own_gets_its_limits_and_keeps_a_group_apart():
     scope = AdapterScope(
         duration=DurationLimits(min_s=0, max_s=100),
-        capabilities=verified("A") | experimental("B", "C"),
+        capabilities=verified("A") | labs("B", "C"),
         own_calls={"B": TIMED, "C": UNTIMED},
     )
 
@@ -401,7 +401,7 @@ FAMILIES = (
         key="first",
         classes=dict.fromkeys({"A", "B", "D"}, ANYWHERE),
         scopes={
-            "turn_on_for": FamilyScope(capabilities=verified("A") | experimental("B"), own_calls={"B": TIMED}),
+            "turn_on_for": FamilyScope(capabilities=verified("A") | labs("B"), own_calls={"B": TIMED}),
             "stop": FamilyScope(capabilities=documented("A")),
         },
     ),
@@ -413,7 +413,7 @@ FAMILIES = (
     ),
 )
 # The integration's own tables: its default class's level per action, and its refusal entries per action and class.
-DEFAULT_LEVELS = {"turn_on_for": experimental("O"), "stop": documented("O")}
+DEFAULT_LEVELS = {"turn_on_for": labs("O"), "stop": documented("O")}
 D_NO_METHOD = NoKnownMethod("Plug D", "It never switches on", "https://example.com/d")
 E_NOT_BUILT = NotBuilt("It would stay on", "https://example.com/e")
 REFUSALS = {"turn_on_for": {"D": D_NO_METHOD, "E": E_NOT_BUILT}}
@@ -421,7 +421,7 @@ REFUSALS = {"turn_on_for": {"D": D_NO_METHOD, "E": E_NOT_BUILT}}
 
 def test_family_scope_merges_the_families_parts_for_one_action():
     assert family_scope(FAMILIES, "turn_on_for") == FamilyScope(
-        capabilities=verified("A") | experimental("B") | documented("C"), own_calls={"B": TIMED}
+        capabilities=verified("A") | labs("B") | documented("C"), own_calls={"B": TIMED}
     )
 
 
@@ -443,7 +443,7 @@ def test_class_scope_is_an_adapter_scope_s_class_entries_with_the_default_class_
     entries = class_scope("turn_on_for", families=FAMILIES, default_levels=DEFAULT_LEVELS, refusals=REFUSALS)
 
     assert entries == {
-        "capabilities": experimental("O") | verified("A") | experimental("B") | documented("C"),
+        "capabilities": labs("O") | verified("A") | labs("B") | documented("C"),
         "no_known_method": {"D": D_NO_METHOD},
         "not_built": {"E": E_NOT_BUILT},
         "own_calls": {"B": TIMED},
@@ -473,7 +473,7 @@ def test_class_scope_needs_the_default_class_s_level_for_the_action():
 
 def test_a_class_a_family_serves_and_the_integration_refuses_fails():
     """A family can't serve a class past the integration's refusal: AdapterScope takes a class in one or the other."""
-    serving = replace(FAMILIES[0], scopes={"turn_on_for": FamilyScope(capabilities=experimental("D"))})
+    serving = replace(FAMILIES[0], scopes={"turn_on_for": FamilyScope(capabilities=labs("D"))})
 
     with pytest.raises(ValueError, match=r"no_known_method names classes the scope serves: \['D'\]"):
         AdapterScope(
@@ -486,25 +486,25 @@ def test_a_documented_field_is_refused():
         AdapterScope(fields=documented("brightness"))
 
 
-@pytest.mark.parametrize("helper", [verified, experimental])
-def test_a_field_may_be_verified_or_experimental(helper):
+@pytest.mark.parametrize("helper", [verified, labs])
+def test_a_field_may_be_verified_or_labs(helper):
     assert AdapterScope(fields=helper("brightness")).fields == helper("brightness")
 
 
 def test_an_unlisted_field_takes_its_level_from_fields():
     scope = AdapterScope(
-        fields=verified("brightness") | experimental("color_temp_kelvin"), unlisted=frozenset({"color_temp_kelvin"})
+        fields=verified("brightness") | labs("color_temp_kelvin"), unlisted=frozenset({"color_temp_kelvin"})
     )
-    assert scope.level("light", fields={"color_temp_kelvin"}) is Level.EXPERIMENTAL
+    assert scope.level("light", fields={"color_temp_kelvin"}) is Level.LABS
 
 
 @pytest.mark.parametrize(
     ("scope", "message"),
     [
-        pytest.param({"fields": experimental("duration")}, "never lacks", id="not_a_lackable_field"),
+        pytest.param({"fields": labs("duration")}, "never lacks", id="not_a_lackable_field"),
         pytest.param({"fields": {}}, "outside the scope's fields", id="not_in_fields"),
         pytest.param(
-            {"fields": experimental("transition"), "drops": frozenset({"transition"})}, "the scope drops", id="dropped"
+            {"fields": labs("transition"), "drops": frozenset({"transition"})}, "the scope drops", id="dropped"
         ),
     ],
 )
@@ -529,7 +529,7 @@ def _adapters() -> list[Adapter]:
     return [adapter for _, _, adapter in AdapterRegistry.discover().matrix() if adapter is not None]
 
 
-def test_only_the_dispatcher_and_entry_setup_read_the_experimental_option():
+def test_only_the_dispatcher_and_entry_setup_read_the_labs_option():
     """The dispatcher is the one gate: an adapter, action or other core module that read the option could change how
     a proven item behaves."""
     found = [
@@ -538,9 +538,9 @@ def test_only_the_dispatcher_and_entry_setup_read_the_experimental_option():
         if path.relative_to(PACKAGE).as_posix() not in OPTION_READERS
         for node in ast.walk(ast.parse(path.read_text()))
         if (isinstance(node, ast.Name) and node.id in OPTION_NAMES)
-        or (isinstance(node, ast.Attribute) and node.attr in OPTION_NAMES)
+        or (isinstance(node, ast.Attribute) and node.attr in {*OPTION_NAMES, OPTION_FIELD})
         or (isinstance(node, ast.alias) and node.name in OPTION_NAMES)
-        or (isinstance(node, ast.Constant) and node.value == "experimental_features")
+        or (isinstance(node, ast.Constant) and node.value == OPTION_FIELD)
     ]
     assert found == []
 
@@ -556,7 +556,7 @@ def _covers(stop: AdapterScope | None, items: str, item: str, level: Level) -> b
 
 def test_every_move_has_a_stop_at_least_as_strong():
     """A raise or lower that starts where stop is refused, or gated behind the option, can't be halted. Item levels
-    alone (an adapter flagged whole has every domain Experimental): group reach (native_groups against expand_group)
+    alone (an adapter flagged whole has every domain in Labs): group reach (native_groups against expand_group)
     and refusals in supports() that don't come from scope are not compared."""
     adapters = _adapters()
     stops = {adapter.integration: adapter.scope for adapter in adapters if adapter.action == "stop"}

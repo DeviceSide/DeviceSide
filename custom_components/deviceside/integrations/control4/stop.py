@@ -19,7 +19,7 @@ from .director import (
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.readback import read_back
-from ...core.scope import AdapterScope, experimental
+from ...core.scope import AdapterScope, labs
 
 
 class Control4Stop(Adapter[Request]):
@@ -42,7 +42,7 @@ class Control4Stop(Adapter[Request]):
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "control4"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=experimental(Platform.LIGHT),
+        domains=labs(Platform.LIGHT),
         capabilities=MOVE_LEVELS,
         no_known_method=STOP_NO_KNOWN_METHOD,
         confirmable=True,

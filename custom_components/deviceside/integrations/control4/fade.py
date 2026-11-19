@@ -24,15 +24,15 @@ from .director import (
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.level_fade import LevelFade, Reading
 from ...core.models import Target
-from ...core.scope import AdapterScope, experimental
+from ...core.scope import AdapterScope, labs
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def fade_scope() -> AdapterScope:
     return AdapterScope(
-        domains=experimental(Platform.LIGHT),
-        fields=experimental(BRIGHTNESS_FIELD),
+        domains=labs(Platform.LIGHT),
+        fields=labs(BRIGHTNESS_FIELD),
         capabilities=MOVE_LEVELS,
         no_known_method=MOVE_NO_KNOWN_METHOD,
         native_groups=True,
