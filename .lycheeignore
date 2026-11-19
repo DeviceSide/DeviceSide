@@ -1,0 +1,3 @@
+# Patterns lychee skips (regexes, one per line). Every entry needs a # reason above it.
+# Nothing is ignored yet. Careful with broad patterns: a `file://` pattern silently
+# disables every relative-link check.

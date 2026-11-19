@@ -1,0 +1,64 @@
+# Monthly external link check: a rolling `links` issue, never a red check. From the dotfiles links-monthly.yaml
+# template. Relative links and anchors are checked offline on every PR by lint.yml's lychee-system hook.
+name: Links
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lycheecache
+          key: lychee-${{ github.run_id }}
+          restore-keys: lychee-
+
+      - name: Check links
+        id: lychee
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          fail: false
+          output: lychee/out.md
+          # Dated plans and audit reports are historical records, as in the pre-commit hook.
+          args: >-
+            --cache --max-cache-age 1d --max-retries 3 --accept 200,206,429
+            --exclude-path 'docs/(plans|audits)/' --format markdown
+            './**/*.md' './**/*.html'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update the rolling issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          LYCHEE_EXIT: ${{ steps.lychee.outputs.exit_code }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          number=$(gh issue list --label links --state open --json number --jq '.[0].number // empty')
+          if [ "$LYCHEE_EXIT" != "0" ]; then
+            if [ -n "$number" ]; then
+              gh issue edit "$number" --body-file lychee/out.md
+              gh issue comment "$number" --body "Updated by $RUN_URL"
+            else
+              gh label create links --description "Broken links found by the monthly check" 2>/dev/null || true
+              gh issue create --label links --title "Broken links" --body-file lychee/out.md
+            fi
+          elif [ -n "$number" ]; then
+            gh issue close "$number" --comment "Clean as of $(date -u +%F) ($RUN_URL)"
+          fi

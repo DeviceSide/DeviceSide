@@ -206,7 +206,7 @@ An opt-in, attended probe a user starts from the options flow [inference through
 `_manual.json` row, which `check_release` accepts only from a maintainer. The report is evidence; the maintainer
 signs. Four gaps [repo]:
 
-- **G1. A manual row can't cite a report.** [`docs/evidence.md`](../evidence.md#the-experimental-flag) says users'
+- **G1. A manual row can't cite a report.** [`docs/evidence.md`](../evidence.md#the-labs-flag) says users'
   reports are "cited in a maintainer's `_manual.json` sign-off", but the schema's `manual_row` has
   `additionalProperties: false` and only `date`, `commit`, `tester`, `devices`, `passed`, `no_call_changed`
   ([schema](../test-records.schema.json)). No `_manual.json` exists yet, so adding a field breaks nothing.

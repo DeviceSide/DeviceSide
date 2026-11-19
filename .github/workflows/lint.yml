@@ -21,6 +21,11 @@ jobs:
     permissions:
       contents: read
 
+    env:
+      # The pre-commit hook's rev too: the job fails when they differ.
+      LYCHEE_VERSION: "0.24.2"
+      LYCHEE_SHA256: "1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a"
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,8 +52,40 @@ jobs:
           # A config change restores the last envs: pre-commit reuses the unchanged hooks' and installs the rest.
           restore-keys: pre-commit-${{ runner.os }}-py3.14-
 
+      - name: Check the hook pins the same lychee
+        run: |
+          grep -q "rev: lychee-v${LYCHEE_VERSION}$" .pre-commit-config.yaml || {
+            echo "::error::.pre-commit-config.yaml pins a different lychee than v${LYCHEE_VERSION}"
+            exit 1
+          }
+
+      # The lychee-system hook runs this binary. Cached by version, as betterleaks is below.
+      - name: Cache lychee
+        id: lychee-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0 # zizmor: ignore[cache-poisoning] publishes no artifacts, binary is sha256-checked
+        with:
+          path: ~/lychee-bin
+          key: lychee-${{ env.LYCHEE_VERSION }}-${{ env.LYCHEE_SHA256 }}
+
+      - name: Install lychee
+        if: steps.lychee-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o lychee.tar.gz \
+            "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${LYCHEE_SHA256}  lychee.tar.gz" | sha256sum -c -
+          mkdir -p ~/lychee-bin
+          tar -xzf lychee.tar.gz -C ~/lychee-bin --strip-components=1 lychee-x86_64-unknown-linux-gnu/lychee
+          rm lychee.tar.gz
+
+      - name: Add lychee to PATH
+        run: echo "$HOME/lychee-bin" >> "$GITHUB_PATH"
+
       - name: Run pre-commit
         run: pre-commit run --all-files
+
+      # Its own step: --hook-stage manual on the run above would drop hooks limited to other stages (check-private).
+      - name: Check relative links and anchors
+        run: pre-commit run --all-files --hook-stage manual lychee-system
 
   # The pre-commit hook only sees the working tree; this catches a secret committed and later deleted.
   secrets-history:
