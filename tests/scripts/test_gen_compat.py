@@ -471,6 +471,17 @@ def test_a_model_tested_by_hand_works_without_the_rig_mark(root):
     assert card.tested == [f"[Hue lamp]({URL}#hue-lamp) ✔", f"[Plug]({URL}#plug)"]
 
 
+def test_a_model_keeps_each_actions_records_firmware_and_rig_and_by_hand(root):
+    manual_file(root)  # names P1 and LTA009 on stop, by hand
+    path = record(root, "zha", "stop", devices=[old_device("LTA009", "1.2")])
+    reached = zha_card(adapter("zha", "stop")).reached["Hue lamp"]
+    manual = "docs/integrations/zha/test-records/_manual.json"
+    proof = reached.by_action["stop"]
+    assert proof.records == [path.relative_to(root).as_posix(), manual]
+    assert proof.firmware == ["1.2"]  # a manual row names none
+    assert (proof.rig, proof.by_hand, reached.rig, reached.by_hand) == (True, True, True, True)
+
+
 def test_a_card_puts_flagged_adapters_under_labs_and_leaves_out_failing_records(root):
     record(root, "zha", "stop")
     record(root, "zha", "turn_on_for", result="fail", devices=[old_device("P1", "1")])
@@ -1525,17 +1536,19 @@ def test_the_model_keeps_the_unfolded_lines_with_parents_and_per_feature_status(
     assert len(card.entries) > len(card.lines) - 1
     (parent,) = (line for line in card.entries if line.children)
     assert all(child.parent is parent and child.variant for child in parent.children)
-    assert [line.by_feature() for line in parent.children][0] == {
-        "turn on with timer": (("works", "turn on with timer"),)
-    }
+    assert parent.children[0].features == {"turn on with timer": (("works", "turn on with timer"),)}
 
 
 def test_a_feature_whose_actions_differ_has_a_status_per_part():
-    line = gc.Line((("should", ("smooth dimming down",)), ("labs", ("smooth dimming up", "stop"))))
-    assert line.by_feature() == {
+    statuses = {"should": {"lower_brightness", "stop"}, "labs": {"raise_brightness", "stop"}}
+    assert gc.feature_statuses(statuses) == {
         "smooth dimming": (("should", "smooth dimming down"), ("labs", "smooth dimming up")),
-        "stop": (("labs", "stop"),),
+        "stop": (("should", "stop"), ("labs", "stop")),
     }
+    assert gc.shape(statuses) == (
+        ("should", ("smooth dimming down",)),
+        ("labs", ("smooth dimming up",)),
+    )  # the README line still folds stop
 
 
 def share(total, labs_lines):

@@ -53,9 +53,10 @@ A model or blocker drops the integration's name where it leads, as the card's na
 features, not fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
 
 **The model.** `card` builds each card's model before anything is folded or rendered: `Card.entries`, the ordered,
-unfolded `Line`s (class phrases and page sections, items with their domains, a variant's `parent`, `by_feature()` for
-per-feature status, `models` the tested models), `Card.reached` (each tested model's places, actions and rig or by
-hand), `Card.refused` and `Card.marks` (the caveats). `show` renders the README's lines from it, folding last, so
+unfolded `Line`s (class phrases and page sections, items with their domains, a variant's `parent`, `features` for
+per-feature status with `stop` in its own column, `models` the tested models), `Card.reached` (each tested model's
+places and actions, and per action its `Proof`: record paths, firmware, rig and by hand, each kept when both
+tested it), `Card.refused` and `Card.marks` (the caveats). `show` renders the README's lines from it, folding last, so
 another render (the page's matrix) reads the same unfolded lines.
 
 **The fold and the cap** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
@@ -819,10 +820,13 @@ def part(action: str) -> str:
 PART_FEATURE = {part(action): FEATURES[action] for action in FEATURES}
 
 
-def shape(by_status: dict[str, set[str]]) -> Shape:
-    """The actions by status as a line names them, each feature under one status: one whose actions differ names its
-    parts instead ("🟡 smooth dimming down · ⚪ smooth dimming up"). `stop` rides the smooth moves, so it is named
-    only on a line that names nothing else."""
+# A line's features with their statuses, `stop` included: {feature: ((status, label), ...)}, in README feature order.
+type Features = dict[str, tuple[tuple[str, str], ...]]
+
+
+def labelled(by_status: dict[str, set[str]]) -> dict[str, tuple[str, ...]]:
+    """The actions by status as labels, each feature under one status: one whose actions differ names its parts
+    instead ("🟡 smooth dimming down · ⚪ smooth dimming up"). `stop` is named wherever it is."""
     labels = {status: features(actions, fold_stop=False) for status, actions in by_status.items()}
     every = [label for found in labels.values() for label in found]
     split = {label for label in every if every.count(label) > 1}
@@ -835,6 +839,35 @@ def shape(by_status: dict[str, set[str]]) -> Shape:
             )
         ]
         labels[status] = tuple(dict.fromkeys(parts))
+    return labels
+
+
+def feature_statuses(by_status: dict[str, set[str]]) -> Features:
+    """Each feature the actions hold with its status, one (status, label) pair per part for a split feature, and `stop`
+    with its own status beside the others (the README line folds it; a matrix column of its own doesn't)."""
+    found: dict[str, list[tuple[str, str]]] = {}
+    for status, labels in labelled(by_status).items():
+        for label in labels:
+            found.setdefault(PART_FEATURE.get(label, label), []).append((status, label))
+    return join_features({}, {feature: tuple(pairs) for feature, pairs in found.items()})
+
+
+def join_features(into: Features, more: Features) -> Features:
+    """`into` with `more`'s pairs added where it lacks them, in README feature order (then unlisted actions')."""
+    joined = {feature: list(pairs) for feature, pairs in into.items()}
+    for feature, pairs in more.items():
+        have = joined.setdefault(feature, [])
+        have += [pair for pair in pairs if pair not in have]
+    order = list(dict.fromkeys(FEATURES.values()))
+    rank = {feature: i for i, feature in enumerate(order)}
+    return {feature: tuple(joined[feature]) for feature in sorted(joined, key=lambda x: rank.get(x, len(order)))}
+
+
+def shape(by_status: dict[str, set[str]]) -> Shape:
+    """The actions by status as a line names them (`labelled`), except that `stop` rides the smooth moves, so it is
+    named only on a line that names nothing else."""
+    labels = labelled(by_status)
+    every = [label for found in labels.values() for label in found]
     if set(every) - {"stop"}:
         labels = {status: tuple(label for label in found if label != "stop") for status, found in labels.items()}
     return tuple((key, labels[key]) for key, *_ in OUTCOMES if labels.get(key))
@@ -914,17 +947,9 @@ class Line:
     variant: bool = False
     at: dict[Item, str] = field(default_factory=dict)  # each item's page section
     parent: Line | None = field(default=None, repr=False, compare=False)  # a variant's parent line
-
-    def by_feature(self) -> dict[str, tuple[tuple[str, str], ...]]:
-        """The line's features, each with its statuses (OUTCOMES keys), in `shape` order: a feature whose actions differ
-        has one (status, part) pair per part ("smooth dimming": (("should", "smooth dimming down"), ("labs", "smooth
-        dimming up"))), else one pair holding the feature's own label. A view of `shape`, so a reader of the unfolded
-        lines needs nothing recomputed."""
-        found: dict[str, list[tuple[str, str]]] = {}
-        for status, labels in self.shape:
-            for label in labels:
-                found.setdefault(PART_FEATURE.get(label, label), []).append((status, label))
-        return {feature: tuple(pairs) for feature, pairs in found.items()}
+    # Per-feature status (OUTCOMES keys), `stop` included, unlike `shape`: "smooth dimming": (("should", "smooth dimming
+    # down"), ("labs", "smooth dimming up")); a feature whose actions agree has one pair holding its own label.
+    features: Features = field(default_factory=dict)
 
     def plain(self) -> str:
         """The name as text, for sorting."""
@@ -1001,7 +1026,7 @@ def class_lines(
     once per domain it shows on, by its `domains` phrase, so a plug never reads as dimmable. A class with no entry
     that a scope's no_known_method names is named by its `what` (`broken`). A section with `variants` gets a parent
     line, its classes child lines of their own, which never merge with another section's. Unsorted (`ordered`)."""
-    by_item, members = by_home(found, class_domains)
+    by_item, members, full = by_home(found, class_domains)
     lines: dict[tuple[tuple, Shape], Line] = {}
     sections: dict[Item, str] = {}  # each item's page section
     found_phrases = data.section_phrases.get(key, {})
@@ -1029,6 +1054,8 @@ def class_lines(
             # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
             if phrase not in phrases:
                 phrases.append(phrase)
+            for home in homes:
+                line.features = join_features(line.features, full[item][home])
             line.items += [(item, domain) for domain in domains]
             line.at |= {(item, domain): entry["section"] for domain in domains}
             sections |= line.at
@@ -1048,9 +1075,13 @@ def domain_home(domains: frozenset, domain: str | None) -> str | None:
 
 def by_home(
     found: dict[Item, dict[str, set[str]]], class_domains: ClassDomains
-) -> tuple[dict[str, dict[str | None, Shape]], dict[str, dict[str | None, list[str | None]]]]:
-    """Each item's features per domain a line names it by (`domain_home`, a scene folded into light), and the domains
-    each of those holds."""
+) -> tuple[
+    dict[str, dict[str | None, Shape]],
+    dict[str, dict[str | None, list[str | None]]],
+    dict[str, dict[str | None, Features]],
+]:
+    """Each item's features per domain a line names it by (`domain_home`, a scene folded into light), the domains
+    each of those holds, and the same features with each one's status, `stop` included (`feature_statuses`)."""
     merged_found: dict[str, dict[str | None, dict[str, set[str]]]] = {}
     members: dict[str, dict[str | None, list[str | None]]] = {}
     for (item, domain), by_status in found.items():
@@ -1060,11 +1091,13 @@ def by_home(
         for status, actions in by_status.items():
             into.setdefault(status, set()).update(actions)
     by_item: dict[str, dict[str | None, Shape]] = {}
+    full: dict[str, dict[str | None, Features]] = {}
     for item, homes in merged_found.items():
         for home, by_status in homes.items():
             if found_shape := shape(by_status):
                 by_item.setdefault(item, {})[home] = found_shape
-    return by_item, members
+                full.setdefault(item, {})[home] = feature_statuses(by_status)
+    return by_item, members, full
 
 
 def naming(
@@ -1098,11 +1131,28 @@ def section_phrases(line: Line, sections: dict[Item, str], phrases: dict[str, di
 @dataclass
 class Reached:
     """What a card's evidence tested of one model: where (its class and domain, a domain alone where the integration
-    names no classes), on which actions, and whether the rig did."""
+    names no classes), on which actions, and what proves each: `by_action`."""
 
     places: list[tuple[str | None, str | None]] = field(default_factory=list)
     actions: set[str] = field(default_factory=set)
+    rig: bool = False  # the rig tested it on some action (`Proof.rig`)
+    by_action: dict[str, Proof] = field(default_factory=dict)
+
+    @property
+    def by_hand(self) -> bool:
+        """A `_manual.json` row tested it on some action; the rig may have too (`rig`)."""
+        return any(proof.by_hand for proof in self.by_action.values())
+
+
+@dataclass
+class Proof:
+    """What proves one model on one action: the passing records and manual rows that tested it (repo paths, in
+    evidence order), the firmware they name (a manual row names none), and whether the rig, a person, or both did."""
+
+    records: list[str] = field(default_factory=list)
+    firmware: list[str] = field(default_factory=list)
     rig: bool = False
+    by_hand: bool = False
 
 
 def works(integration_adapters: list, data: Data) -> tuple[dict[str, Reached], Reached | None]:
@@ -1111,7 +1161,8 @@ def works(integration_adapters: list, data: Data) -> tuple[dict[str, Reached], R
     models: dict[str, Reached] = {}
     groups: Reached | None = None
     for adapter in integration_adapters:
-        for item in card_evidence(adapter).devices():
+        evidence = card_evidence(adapter)
+        for item in evidence.devices():
             if item.group:
                 groups = groups or Reached()
                 tested = groups
@@ -1121,6 +1172,16 @@ def works(integration_adapters: list, data: Data) -> tuple[dict[str, Reached], R
                     tested.places.append((item.cls, item.domain))
             tested.actions.add(adapter.action)
             tested.rig = tested.rig or item.rig
+        manual = (test_records_dir(adapter.integration) / MANUAL).relative_to(REPO).as_posix()
+        for path, item in evidence.tested:
+            held = groups if item.group else models[data.models[item.model]["name"]]
+            proof = held.by_action.setdefault(adapter.action, Proof())
+            if (path if path != MANUAL else manual) not in proof.records:
+                proof.records.append(path if path != MANUAL else manual)
+            if item.firmware and item.firmware not in proof.firmware:
+                proof.firmware.append(item.firmware)
+            proof.rig = proof.rig or item.rig
+            proof.by_hand = proof.by_hand or not item.rig
     by_name = {model["name"]: model for model in data.models.values()}
     ordered = sorted(models, key=lambda name: TYPES.index(by_name[name]["type"]))
     return {name: models[name] for name in ordered}, groups
@@ -1298,6 +1359,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         if not on:
             found_shape = shape({"works": tested.actions})
             on = [unplaced.setdefault(found_shape, Line(found_shape))]
+            on[0].features = join_features(on[0].features, feature_statuses({"works": tested.actions}))
         for line in on:
             line.models.append(name)
     for line in unplaced.values():
@@ -1306,7 +1368,9 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.tested = [result.model(name, key, data, rig) for name in models]
     if groups is not None:
         label = anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1])) + (f" {VERIFIED}" if groups.rig else "")
-        extra.append(Line(shape({"works": groups.actions}), label=label))
+        extra.append(
+            Line(shape({"works": groups.actions}), label=label, features=feature_statuses({"works": groups.actions}))
+        )
         result.tested.append(label)
     result.key = key
     result.entries = ordered([*lines, *extra], brand, rig)
