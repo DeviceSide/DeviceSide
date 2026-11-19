@@ -1009,6 +1009,13 @@ def test_a_model_credited_in_a_named_class_does_not_warn(fake_repo):
     assert cr.default_class_credits(default_classed(SCOPE)) == []
 
 
+def test_a_model_also_credited_in_a_named_class_by_another_source_is_silent(fake_repo):
+    """LTA009 passes in `other` in a record and in `hue` in a manual row: the old pass is never edited."""
+    classes_record_v3(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", "other")))
+    (fake_repo.path / MANUAL).write_text(manual_file(signoff(devices=(("LTA009", "hue"),), calls=bound("turn_on_for"))))
+    assert cr.default_class_credits(default_classed(SCOPE)) == []
+
+
 def test_signoffs_fail_on_a_gap(released, gate):
     classes_record(released, "turn_on_for", ["hue"])
     code, _, err = gate(on=classed(turn_on_for=SCOPE))

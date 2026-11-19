@@ -294,8 +294,9 @@ def default_class_credits(registry) -> list[str]:
     where the adapter's scope holds that class Experimental in some domain: the default class is never Verified, so the
     pass can never lift a flag, and the model needs a class of its own. A default class held Documented (Matter's
     certified read) in every domain is no such trap, and an integration with no default class, or an adapter that
-    doesn't serve it, has none. Advice to a contributor, as the coverage gaps are: a model credited in a named class
-    as well as the default class warns all the same, as the pass on the default class lifts nothing."""
+    doesn't serve it, has none. Advice to a contributor, as the coverage gaps are: a model also credited in a named
+    class by the same action's evidence (another record or a manual row) is silent, as old records and rows are never
+    edited and the warning could not otherwise clear."""
     found = []
     for _, adapter in adapters(registry):
         default = registry.integrations[adapter.integration].default_class
@@ -304,7 +305,9 @@ def default_class_credits(registry) -> list[str]:
             continue
         if all(scope.class_level(default, domain) is not Level.EXPERIMENTAL for domain in scope.domains):
             continue
-        models = sorted(model for model, cls in credited_models(adapter.integration, adapter.action) if cls == default)
+        pairs = credited_models(adapter.integration, adapter.action)
+        named = {model for model, cls in pairs if cls != default}
+        models = sorted({model for model, cls in pairs if cls == default} - named)
         found += [
             f"{adapter.integration} {adapter.action}: {model} passed in the default class `{default}`, which is never"
             " Verified, so its pass can't lift a flag; name a class for it (docs/evidence.md, Device classes)"
