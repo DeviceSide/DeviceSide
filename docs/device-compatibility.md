@@ -217,7 +217,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `turn_on_for` | Verified | light, switch entities; Switch, RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, transition, xy_color fields | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S4SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3SW-001X8EU` (`Switch`), firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_on_for.json) |
 | `turn_on_for` | Documented | Light, CCT, RGB, RGBW classes | | |
 
-### Hue
+### Hue Bridge
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
