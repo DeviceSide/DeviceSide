@@ -9,7 +9,7 @@ capabilities:
   # features, one per domain, by `domains`), so each phrase says what sets the class apart from its neighbors.
   hue:
     phrase: Hue devices
-    section: Device classes
+    section: Hue
     domains: {light: Hue lights, switch: Hue smart plugs}
   ikea:
     phrase: IKEA devices

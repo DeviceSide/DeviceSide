@@ -26,22 +26,23 @@ back on with no timer ([internals](internals.md#what-decides-the-call)).
 
 On Matter the device answers DeviceSide's call itself, so a test on one product proves nothing about another
 ([internals](internals.md#what-decides-the-call)). DeviceSide tells them apart by what the device reports when it
-pairs: its vendor and product IDs, and whether it is a bridge. Every feature says how well it is proven for each
-([levels of proof](../../device-compatibility.md#levels-of-proof)).
-
-### WiZ Smart Plug
-
-A Matter plug, rig-tested with turn on with timer and get attributes. It never reports its running timer on its own,
-so DeviceSide reads it back ([turn on with timer](#turn-on-with-timer)).
+pairs: its vendor and product IDs, and whether it is a bridge. A product a run has tried, such as the WiZ Smart Plug,
+is a class of its own.
 
 ### Certified devices
 
 A device certified by the Connectivity Standards Alliance, with one on/off part, has passed a test of the timer reads
-that get attributes makes, so get attributes runs on it with Labs off. The certification test sends the timer command
-with other settings than DeviceSide's, so turn on with timer is in Labs: turn on Labs to try it.
+that get attributes makes, so get attributes inherits that test. The certification test sends the timer command
+with other settings than DeviceSide's, so it says nothing about turn on with timer.
 DeviceSide counts a device as certified by its vendor ID, which an uncertified product from a registered vendor also
 carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting
 feature.
+
+### Lights
+
+A Matter light takes the same `OnWithTimedOff` command and timer reads as a plug, so it falls in the class its
+vendor and product IDs give it, as a plug does, and inherits that class's features. It is on/off only, and its
+endpoint needs the Lighting feature, as [above](#matter).
 
 ### Multi-outlet devices
 
@@ -61,12 +62,3 @@ apps, bridge or not), and the odd uncertified product. Nothing has tested its ti
 them yet, even with Labs on. A device that hasn't reported its vendor ID yet is refused turn on
 with timer, as unknown, until it does. An app built on matter.js forgets a running timer when it restarts, and the device stays on
 ([internals](internals.md#upstream-defects)).
-
-## Should work
-
-### Matter lights
-
-A Matter light takes the plug's `OnWithTimedOff` command and reads, so they are Documented on it, at most as proven
-as its class above. Its endpoint needs the On/Off cluster's Lighting feature, which the timer
-needs; one without it is refused (`no_lt_feature`). On/off only: brightness and color are refused on a Matter light
-until tested.

@@ -120,7 +120,8 @@ groups' heading is on that page alone, generated there, so a card always links i
 every generation and fails on a dead link: a 🟡 or ⚪ class whose section is not a heading of its integration's page;
 any link of the generated block or the README's cards to a heading or anchor id of the block, to a heading of an
 integration's page, or to a file under docs/ (a record, an integration page) that isn't there. The page's own links
-are relative, the README's absolute (HACS renders it inside Home Assistant).
+are relative, the README's absolute (HACS renders it inside Home Assistant). An integration's page never states a
+level, which only the matrix does: `check_headings` fails a heading that does, naming the file.
 
 Usage: scripts/gen_compat.py [--check]
 
@@ -291,15 +292,37 @@ def fail(message: str) -> None:
 
 
 def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
-    """docs/models.yaml and every integration's bundle: its devices.yaml merged in, its page's headings read."""
+    """docs/models.yaml and every integration's bundle: its devices.yaml merged in, its page's headings read and
+    checked (`check_headings`)."""
     shared = yaml.safe_load(models.read_text()) or {}
     bundles = {key: bundle(key) for key in sorted(registry.integrations)}
     data = load_raw(merge(shared, bundles), registry)
     for key in bundles:
         if not (path := REPO / page(key)).is_file():
             raise SystemExit(f"no {page(key)}; add the {key} bundle's user page")
-        data.pages[key] = anchors(path.read_text())
+        text = path.read_text()
+        check_headings(key, text)
+        data.pages[key] = anchors(text)
     return data
+
+
+# A heading that states a level. An integration's page gives each class's reasons under `## Device classes`; its
+# levels are the generated page's alone, so a hand-written one can't go stale.
+LEVEL_HEADING = re.compile(r"^#+ .*\b(Tested devices|Should work|Try it|Labs|Verified|Documented)\b.*$", re.MULTILINE)
+# Control4's page keeps its level headings until its own PR tidies it (plan 2026-11-19-compat-page, step 6): remove
+# this exemption in that PR.
+LEVEL_HEADING_EXEMPT = frozenset({"control4"})
+
+
+def check_headings(key: str, text: str) -> None:
+    """Fail an integration page heading that states a level (`LEVEL_HEADING`), naming the file."""
+    if key in LEVEL_HEADING_EXEMPT:
+        return
+    if found := [match.group(0) for match in LEVEL_HEADING.finditer(text)]:
+        raise SystemExit(
+            f"{page(key)}: {', '.join(repr(heading) for heading in found)} states a level; levels are"
+            " docs/device-compatibility.md's alone, so give the class's reasons under ## Device classes"
+        )
 
 
 def read_names(raw: dict, key: str, data: dict, where: str) -> None:

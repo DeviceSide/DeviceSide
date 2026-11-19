@@ -719,6 +719,21 @@ def test_an_integration_without_a_user_page_fails(root, monkeypatch):
         gc.load(FakeRegistry(), models)
 
 
+@pytest.mark.parametrize("heading", ["## Tested devices", "### Should work", "## Try it: Labs", "### Verified plugs"])
+def test_an_integration_page_heading_that_states_a_level_fails_naming_the_file(root, monkeypatch, heading):
+    models = write_bundles(root, monkeypatch)
+    (root / "docs" / "integrations" / "hue" / "index.md").write_text(f"# Hue\n\n## Device classes\n\n{heading}\n")
+    with pytest.raises(SystemExit, match=f"docs/integrations/hue/index.md: '{heading}' states a level"):
+        gc.load(FakeRegistry(), models)
+
+
+def test_control4s_page_is_exempt_from_the_level_heading_check_until_its_own_pr():
+    gc.check_headings("control4", "# Control4\n\n## Try it: Labs\n")  # passes
+    gc.check_headings("hue", "# Hue\n\nLabs and Verified in prose pass; a heading doesn't.\n")
+    with pytest.raises(SystemExit, match="docs/integrations/hue/index.md: '## Try it: Labs' states a level"):
+        gc.check_headings("hue", "# Hue\n\n## Try it: Labs\n")
+
+
 def test_the_checked_in_readme_and_page_match_the_real_records():
     """Both are generated: run the real check so local pytest catches a record or scope that drifts them."""
     assert gc.main(["--check"]) == 0

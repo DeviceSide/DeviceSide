@@ -26,7 +26,7 @@ shared home named in parentheses.
 
 | Fact | Home |
 |---|---|
-| User-facing limits and device classes | `<x>/index.md` (shared: `docs/device-compatibility.md`) |
+| User-facing limits and device classes | `<x>/index.md` (shared: `docs/integrations.md`; a model's: generated on `docs/device-compatibility.md` from `docs/models.yaml` and `<x>/devices.yaml`) |
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
 | A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
 | Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |
@@ -43,8 +43,10 @@ shared home named in parentheses.
 | Rule evidence | the PR body |
 | Repo settings and repo-maintainer steps | `docs/repo-maintainers.md` |
 
-`index.md` holds only what changes what a user does or expects, in the shape of Hue's page (Shelly's for "Try it":
-what was tried, on what, one report per class). Timings, odds and why a limit exists go in `internals.md`. A behavior
+`index.md` holds only what changes what a user does or expects, in the shape of Hue's page: a `###` per class under
+`## Device classes`, saying what sets it apart and why it inherits or was admitted (or what was tried, on what), with
+its source. It never states a level: `docs/device-compatibility.md` does, and `scripts/gen_compat.py` fails a level
+heading. Timings, odds and why a limit exists go in `internals.md`. A behavior
 every integration shares is in `docs/integrations.md`: add your value there, don't restate it.
 
 ## Evidence
