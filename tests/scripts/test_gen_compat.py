@@ -1409,19 +1409,19 @@ def test_a_lines_phrases_sort_like_lines_and_variants_join_with_or():
 # The fold and the cap (docs/evidence.md, The Labs flag).
 
 
-def trial_card(*adapters, broken=None, **changes):
+def labs_card(*adapters, broken=None, **changes):
     registry = classed_registry(*adapters)
     registry.integrations["zha"].classes["RGBCCT"] = LIGHT
     return gc.card("zha", registry, list(adapters), data(registry, **changes))
 
 
-def timer_trial(*classes, **scope):
+def timer_labs(*classes, **scope):
     return adapter("zha", "turn_on_for", AdapterScope(capabilities=labs(*classes), **scope))
 
 
 def test_two_lines_that_show_only_labs_fold_into_one_last_line(root):
     dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
-    card = trial_card(timer_trial("Light", "CCT"), dimming)
+    card = labs_card(timer_labs("Light", "CCT"), dimming)
     # CCT controllers and dimmers are one section but show different features, so two lines; the fold goes after
     # devices.yaml's entry, and the cap counts it as the one Labs line it is.
     assert card.lines == [
@@ -1433,14 +1433,14 @@ def test_two_lines_that_show_only_labs_fold_into_one_last_line(root):
 
 
 def test_one_labs_line_stays_as_it_is(root):
-    card = trial_card(timer_trial("CCT"))
+    card = labs_card(timer_labs("CCT"))
     assert card.lines == [f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer", f"[Old plug]({URL}#old-plug): 🔴"]
     assert (card.total, len(card.labs_lines)) == (2, 1)
 
 
 def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root):
     """Classes of two brands never share a line (`brands`), so each is its own, and the fold joins them."""
-    adapters = (timer_trial("Light", "CCT"),)
+    adapters = (timer_labs("Light", "CCT"),)
     registry = brand_registry(*adapters)
     card = gc.card("zha", registry, list(adapters), data(registry))
     assert card.lines[-1] == (f"⚪ [CCT controllers]({URL}#dimmers), [dimmers]({URL}#dimmers) (turn on with timer)")
@@ -1464,7 +1464,7 @@ def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_l
 def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
     broken = {"CCT": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     off = adapter("zha", "turn_off_for", AdapterScope(capabilities=labs("RGBCCT"), no_known_method=broken))
-    card = trial_card(timer_trial("CCT", "RGBCCT"), off)
+    card = labs_card(timer_labs("CCT", "RGBCCT"), off)
     assert card.lines[-1] == (
         f"⚪ [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
         f" [CCT controllers]({URL}#dimmers) (turn on with timer · 🔴 turn off with timer)"
@@ -1472,11 +1472,11 @@ def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
     assert len(card.labs_lines) == 1
 
 
-def test_a_mixed_line_is_no_trial_line_and_never_folds_with_one(root):
+def test_a_mixed_line_is_no_labs_line_and_never_folds_with_one(root):
     """🟡 · ⚪ makes a real claim: it neither folds nor counts, so the one ⚪-only line beside it stays as it is."""
     timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=documented("Light") | labs("CCT")))
     dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
-    card = trial_card(timer, dimming)
+    card = labs_card(timer, dimming)
     assert card.lines[:2] == [
         f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer",
         f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
