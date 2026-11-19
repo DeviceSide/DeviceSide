@@ -37,8 +37,8 @@ so DeviceSide reads it back ([turn on with timer](#turn-on-with-timer)).
 ### Certified devices
 
 A device certified by the Connectivity Standards Alliance, with one on/off part, has passed a test of the timer reads
-that get attributes makes, so get attributes runs on it with Experimental features off. The certification test sends the timer command
-with other settings than DeviceSide's, so turn on with timer is on trial: it runs with Experimental features on.
+that get attributes makes, so get attributes runs on it with Labs off. The certification test sends the timer command
+with other settings than DeviceSide's, so turn on with timer is in Labs: turn on Labs to try it.
 DeviceSide counts a device as certified by its vendor ID, which an uncertified product from a registered vendor also
 carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting
 feature.
@@ -46,20 +46,19 @@ feature.
 ### Multi-outlet devices
 
 A certified device with more than one on/off part, such as a power strip or a two-gang switch. Certification tests
-one of its parts, and DeviceSide can't tell which, so neither feature is built for them yet, even with Experimental
-features on.
+one of its parts, and DeviceSide can't tell which, so neither feature is built for them yet, even with Labs on.
 
 ### Matter bridges
 
 Devices a bridge exposes on Matter, such as Zigbee lights behind a hub. The bridge answers the timer, either by
 running it itself or by passing it on to the device, so how it behaves depends on the bridge. Neither feature is
-built for them yet, even with Experimental features on. A bridge's own light or plug counts here too.
+built for them yet, even with Labs on. A bridge's own light or plug counts here too.
 
 ### Uncertified devices
 
 A device that reports a test vendor ID: development kits, apps that share other devices on Matter (Matterbridge-style
 apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so neither feature is built for
-them yet, even with Experimental features on. A device that hasn't reported its vendor ID yet is refused turn on
+them yet, even with Labs on. A device that hasn't reported its vendor ID yet is refused turn on
 with timer, as unknown, until it does. An app built on matter.js forgets a running timer when it restarts, and the device stays on
 ([internals](internals.md#upstream-defects)).
 

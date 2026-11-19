@@ -213,8 +213,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [x] **Code comments cite the bundles** (pre-run audit): each comment that cited `docs/integration-internals.md` or
   `docs/integrations.md` points at its bundle, and `tests/scripts/test_doc_anchors.py` checks page-only citations too.
 
-- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it: Experimental
-  features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
+- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it:
+  Labs](docs/device-compatibility.md#try-it-labs) and check every link resolves (the issue forms,
   `docs/device-compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the
   heading's anchor, which Discourse names after the post id.
 - [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml` and set

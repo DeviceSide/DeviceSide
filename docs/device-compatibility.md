@@ -16,8 +16,8 @@ same command differently. Each claim is at one of two levels of proof:
   addressing, or certification tests the same read on every device of the class. A class holding many makers' devices
   is never Documented by another maker's test.
 
-**Experimental** is a trial, not a promise. A trial may be withdrawn: a class that fails and isn't fixed is taken
-off until someone builds it better. Experimental features stay off until you turn on **Experimental features** in
+**Labs** is a trial, not a promise. A trial may be withdrawn: a class that fails and isn't fixed is taken
+off until someone builds it better. Labs features stay off until you turn on **Labs** in
 **Configure > Settings**. A trial covers only what its evidence names, so a device DeviceSide can't place in a known
 class gets a feature only where its integration's page says so. Whether they work or not, please tell us
 with **Report a device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
@@ -42,7 +42,7 @@ On the cards, ✔ marks what the automated rig verified; a model without it was 
 
 A model works on the integrations and features its records and maintainers' hand tests (`_manual.json`) cover; the
 [evidence](#evidence) lists them per action, with the firmware tested. Other models may work too, but makers implement
-these features inconsistently: if yours isn't here and its class is Experimental, please try it and [report the
+these features inconsistently: if yours isn't here and its class is in Labs, please try it and [report the
 result](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
 
 ### Hue White Ambiance E27 1100lm
@@ -83,12 +83,12 @@ it sets attributes ([integrations](integrations/hue/index.md)).
 
 Documented ([levels of proof](#levels-of-proof)).
 
-## Try it: Experimental features
+## Try it: Labs
 
-These classes are on trial ([levels of proof](#levels-of-proof)): built and unit-tested, and some may have passed a maintainer's first tests. Turn on
-Experimental features to try them, then report the result, whether they work or not: a working report helps ship them
+These classes are in Labs ([levels of proof](#levels-of-proof)): built and unit-tested, and some may have passed a maintainer's first tests. Turn on
+Labs to try them, then report the result, whether they work or not: a working report helps ship them
 to everyone, and a "doesn't work" one goes to the integration's maintainers, who decide whether to fix it, find it a maintainer, or
-turn it off ([on trial](evidence.md#no-known-method-not-built-yet-on-trial)).
+turn it off ([in Labs](evidence.md#no-known-method-not-built-yet-on-trial)).
 
 ## Not built yet
 
@@ -99,10 +99,10 @@ with a passing run on their own device ([how to help](../CONTRIBUTING.md#how-to-
 ### Zigbee plugs and switches
 
 Turn on with timer runs on a Zigbee plug or switch only where Tuya's countdown serves it: the Zigbee2MQTT Tuya TS011F
-plugs with a countdown setting, Verified on the maker strings with a passing run and on trial on the rest
+plugs with a countdown setting, Verified on the maker strings with a passing run and in Labs on the rest
 ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)). Research predicts most other plugs fail
 the Zigbee timed-on command: plugs needn't implement it, and many run a countdown of their own instead. So on ZHA, and
-on every other Zigbee2MQTT plug, a Hue or IKEA one included, it isn't built yet, even with Experimental features on: it
+on every other Zigbee2MQTT plug, a Hue or IKEA one included, it isn't built yet, even with Labs on: it
 waits for DeviceSide's own timer or a plug's auto-off. Get attributes reads no Zigbee plug, as it reads only what
 another feature runs on, and a Zigbee2MQTT countdown plug's time left can't be read. A contributor with a plug that
 passes can add it ([evidence](evidence.md#levels)).
@@ -111,8 +111,8 @@ passes can add it ([evidence](evidence.md#levels)).
 
 A Zigbee plug whose timer runs only Tuya's way, so DeviceSide's timer can leave it off, or turn it on long after the
 time asked and leave it on. Tuya's own call would serve it. On ZHA it isn't built yet, so DeviceSide refuses turn on
-with timer on it, even with Experimental features on. On Zigbee2MQTT DeviceSide sends it only to the
-TS011F plugs Zigbee2MQTT drives by Tuya's countdown, Verified on the maker strings that have passed and on trial on
+with timer on it, even with Labs on. On Zigbee2MQTT DeviceSide sends it only to the
+TS011F plugs Zigbee2MQTT drives by Tuya's countdown, Verified on the maker strings that have passed and in Labs on
 the rest ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and refuses the others. What was measured: [internals](internals.md#tested-behavior).
 
 ## Evidence

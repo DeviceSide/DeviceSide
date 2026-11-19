@@ -36,11 +36,11 @@ proof](../../device-compatibility.md#levels-of-proof)).
 ### Other brands
 
 Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get no
-feature yet, even with Experimental features on. The Hue lights' tests don't prove them, as other brands are known to
+feature yet, even with Labs on. The Hue lights' tests don't prove them, as other brands are known to
 answer the same Zigbee commands differently: some fade only one of brightness and color at a time, some come on when
 written while off, and some don't report color temperature as Hue lights do
 ([internals](internals.md#device-classes)). Nothing predicts which of the bridge's commands they take, so no feature
-is on trial on them. A contributor's passing run on one adds a class for its brand
+is in Labs on them. A contributor's passing run on one adds a class for its brand
 ([evidence](../../evidence.md#no-known-method-not-built-yet-on-trial)).
 
 ## Smooth dimming

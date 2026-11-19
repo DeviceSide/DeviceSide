@@ -282,7 +282,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callab
         # as Experimental, and turn_on_for refuses it and every device but a Hue one for good (classes.placed).
         _LOGGER.warning(
             "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh, Zigbee2MQTT groups run "
-            "only with Experimental features on, and turn on with timer refuses them and every device but Hue's: %s",
+            "only with Labs on, and turn on with timer refuses them and every device but Hue's: %s",
             describe(err),
         )
         cache.stop()
