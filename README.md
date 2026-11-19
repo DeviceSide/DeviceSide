@@ -2,7 +2,7 @@
 
 [![Latest Version](https://img.shields.io/github/v/release/DeviceSide/DeviceSide?sort=date)](https://github.com/DeviceSide/DeviceSide/releases) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=deviceside.total&url=https://analytics.home-assistant.io/custom_integrations.json) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-DeviceSide unlocks native features in your lights, switches and plugs on Zigbee, Shelly, Philips Hue and Matter.
+DeviceSide unlocks features that run natively on your devices, on Zigbee, Shelly, Hue, Matter and Control4.
 
 ## Key Features
 
