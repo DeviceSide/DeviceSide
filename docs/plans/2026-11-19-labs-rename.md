@@ -29,16 +29,20 @@ rules. Two names for one thing leak back into user docs with every contributor P
    its bullet "On trial (Experimental)" becomes "In Labs". "A trial admits only what its evidence names" becomes "Labs
    admits only what its evidence names"; "the user's consent to its trials" becomes "the user's consent to what's in
    it". The anchor changes to `#no-known-method-not-built-yet-in-labs`: every link to the old anchor moves with it,
-   outside dated files (Decision 6). Plain-English "trial" that isn't the level's name (none known) may stay.
-4. **Flag/lift stays, with Labs named at first use.** "The Labs flag" and "lifting the flag" stay, including tenet 8's
-   "lifting a flag" in CLAUDE.md. Where a document first says "flag", it says "the Labs flag" (or otherwise ties the
+   outside research files (Decision 6). Plain-English "trial" that isn't the level's name (none known) may stay.
+4. **Flag/lift stays, with Labs named at first use.** "The Labs flag" and "lifting the flag" stay. Tenet 8 in
+   CLAUDE.md says "lifting a Labs flag", and so does its echo in `docs/evidence.md` (the release-gate decision list,
+   "*lifting a Labs flag*"), as agents read the tenet on its own. Where a document first says "flag", it says "the Labs flag" (or otherwise ties the
    flag to Labs in that sentence); later uses may say "the flag". The evidence.md section "The experimental flag"
    becomes "The Labs flag" (`#the-labs-flag`).
 5. **Migrate the stored key.** The option `experimental_features` becomes `labs` in config-entry options, via a
    config-entry minor-version migration (below). A rollback to an older build sees no `experimental_features` and
    reads Labs as off, the safe default; accepted.
-6. **Dated files stay.** `docs/plans/*` (other than this one), `docs/research/**`, `docs/integrations/*/research/**`,
-   `docs/audits/*` and test records are history: never edited. Links in them to renamed anchors go stale; accepted.
+6. **History keeps its words; only research is never edited.** Research files (`docs/research/**`,
+   `docs/integrations/*/research/**`) are dated sources, never edited (CLAUDE.md, Where facts go): the one link in them
+   to a renamed anchor (`docs/research/2026-11-14-timer-units-at-scale.md`, `#the-experimental-flag`) goes stale and
+   lands at the top of evidence.md; accepted. Earlier plans, `docs/audits/*` and test records keep their wording, as
+   rewriting what they said then gains nothing; they hold no link to a renamed anchor today, and any found is fixed.
 7. **Response and error key.** The refusal key `experimental_off` (`core/errors.py` `EXPERIMENTAL_OFF`, the
    `exceptions` translation key, the reason `docs/action-behavior.md` names) becomes `labs_off`. It reaches users'
    responses and logs, so it is named in the release notes; pre-v0.1.0, so no alias.
@@ -113,12 +117,13 @@ in the migration (step 1) and its tests.
 - `docs/design.md`: glossary. Merge the Experimental, Experimental features and (new) Labs entries into one **Labs**
   entry (the level, the flag `labs(...)` and the option `labs`, off by default, only the dispatcher reads it), and
   fix the glossary's links to the renamed anchors.
-- `CLAUDE.md`: line 8 "`experimental` flag" → "Labs flag"; line 69 levels "(Verified, Documented, Labs)"; the
+- `CLAUDE.md`: line 8 "`experimental` flag" → "Labs flag"; tenet 8 "lifting a Labs flag" (Decision 4); line 69 levels
+  "(Verified, Documented, Labs)"; the
   binding-rule surface line names "the Labs flag (`labs(...)`)". No other change to rule text.
 - `CONTRIBUTING.md` step 4 ("Ship behind `labs`", first use names the Labs flag) and step 6; `docs/action-behavior.md`
   (`labs_off`); `docs/internals.md`, `docs/icons/README.md`, `TODO.md`'s
   undated lines (TODO.md's ticked items describe what shipped and may keep their wording); every link to
-  `#no-known-method-not-built-yet-on-trial` or `#the-experimental-flag` outside Decision 6's dated files.
+  `#no-known-method-not-built-yet-on-trial` or `#the-experimental-flag` outside research files (Decision 6).
 - Model: **opus** (binding rule text; no check proves wording).
 
 ## Checks (every step)
