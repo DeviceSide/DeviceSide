@@ -147,8 +147,8 @@ firmware family, and differ only in whose evidence they hold.
   (Zigbee2MQTT: `innr` for an Innr bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
 - **A level per class and domain.** A class's level holds on every domain the adapter serves, unless its entry names
-  some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
-  in Labs. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
+  some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as a Labs item.
+  A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
   on lights, as every record ran on a bulb, and a Hue plug, a switch, is not built on `turn_on_for`. A `NotBuilt`
   entry can name domains too, refusing its class on those alone while its capability entry serves the rest.
 - **A class names its domains.** Each class declares the entity domains whose features its devices have (a TS011F
@@ -172,7 +172,7 @@ firmware family, and differ only in whose evidence they hold.
 - **Groups.** A native group takes the weakest level among its members' classes. When a member's class is refused,
   takes a call of its own, or is in Labs while the Labs option is off, the group falls back to its members:
   it gets no entry of its own, its members answer for it, each judged on its own, and it is refused only when none of
-  them ran. One whose members the integration can't list can't fall back: it counts as in Labs, and is refused
+  them ran. One whose members the integration can't list can't fall back: it counts as a Labs item, and is refused
   whole while the Labs option is off, and with it on where a call is known to harm
   ([below](#no-known-method-not-built-yet-in-labs)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
 
