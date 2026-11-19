@@ -114,8 +114,8 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 
 - Base: `main`, or a `release/vX.Y.Z` fix branch when one exists for the change.
 - Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`, as the next sync removes it.
-- Before each push: `.venv/bin/pytest -n auto --transcripts=check` and `pre-commit run --all-files` (ruff and the
-  household check). A call or reply handling changed on purpose: `docs/evidence.md`, Release gate.
+- Before each push: `.venv/bin/pytest -n auto --transcripts=check`. A call or reply handling changed on purpose:
+  `docs/evidence.md`, Release gate.
 - Audits: as the global `## Code audits` rule says, then `owner-findings` (Maintainers, Changing someone else's
   code). The binding-rule surface that puts an Opus auditor on the PR
   audit is `docs/evidence.md`, the Labs flag (`labs(...)`) and `AdapterScope`, `Level.DOCUMENTED`,
