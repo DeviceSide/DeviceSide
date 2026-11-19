@@ -10,6 +10,7 @@ Lights on the core `control4` integration: dimmers and light groups alike. A gro
 all its lights. A change to its lights in Composer shows once the Control4 integration reloads. DeviceSide uses that
 integration's own connection to the controller, so it needs no sign-in of its own. A light it can't tie to a Control4
 item is refused (`not_addressable`).
+
 ## Device classes
 
 DeviceSide sends every Control4 light the same commands, and the light's driver decides what they do, so it tells
