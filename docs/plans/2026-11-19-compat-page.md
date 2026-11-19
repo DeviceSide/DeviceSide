@@ -171,15 +171,15 @@ docs/integrations/*/test-records/_manual.json (not control4), .github/ISSUE_TEMP
 
 ## Handoff
 
-- **Done:** steps 1-5, each implemented, plan-reviewed and fixed. Every step's last commit carries its `Plan review:` note. Branch `wt/compat-page`, worktree `/Users/jason/projects/ha/deviceside-wt/compat-page`, draft PR #564. The checks pass at HEAD.
-- **Decisions made while implementing (recorded in the review commits):**
-  - Tested devices lists every model that has a record row, credited or not, so Control4's LTD010 shows "by hand".
-  - Not supported rows carry `<a id>` anchors, and 🔴 cells link them, keyed by (class, action).
-  - The TS011F `_TZ3000_gjnozsaz` reasons were aligned, so they merge into one row.
-  - CLAUDE.md's shared home for user-facing limits is now `docs/integrations.md`.
-  - `signoff.py --reports` requires `--at`.
-- **Next:**
-  1. Step 6: a separate Control4 PR off `main`, which depends on #564 (put `Depends-on: #564` in its draft; use its own `wt/` worktree and `pr-draft --title … --intent …`). It tidies Control4's page, renames `_manual.json` `tester` to `signed_by`, drops `tester` from the schema, and removes `LEVEL_HEADING_EXEMPT` in `scripts/gen_compat.py`. The PR body opens with the step 6 text, filling in #564.
-  2. Step 7: file the two issues. For the ha-rig one, use `gh issue create -R jasonmx/ha-rig`, about Zigbee2MQTT records writing the Z2M version as firmware. The TS011F naming one is already fixed in step 2, so file only what's left. Each issue gets a fix-shape and model comment.
-  3. #564: run the audit (`audit-gate brief pr`). The binding-rule surface (evidence.md, the schema, check_release, CLAUDE.md) puts an Opus auditor on it. Then run `owner-findings`, fix the Criticals and Highs, rerun `pr-draft` (Touches gained `scripts/signoff.py` tests and the zha/zigbee2mqtt refusals.py files), and do the `TODO.md` tick if an item matches. Write the PR summary, then `gh pr ready`. Read all PR comments first. Merging is Jason's call: ask.
-- **Open:** the owner-notice on #564 may name @skialpine if anything touches Control4's paths. If so, ask Jason how to handle it (per the maintainer rules).
+- **Done:** steps 1-7. #564 (steps 1-5) is audited (report 1: one High, fixed; delta re-audit clean) and ready for
+  review. Step 6 is #565, branch `wt/control4-page`, worktree `/Users/jason/projects/ha/deviceside-wt/control4-page`,
+  stacked on `wt/compat-page` (Decision 11). Step 7: jasonmx/HA-rig#104 (Zigbee2MQTT firmware), with its fix-shape
+  comment. The TS011F naming item was already fixed in step 2.
+- **Decisions made while implementing:**
+  - 11. Step 6's PR is stacked on `wt/compat-page` (base `wt/compat-page`, `Depends-on: #564`), not branched off
+    `main`: the code it changes (the `tester` fallback, `LEVEL_HEADING_EXEMPT`) exists only on #564's branch.
+    GitHub retargets it to `main` when #564 merges and its branch is deleted.
+  - Earlier ones (Tested devices lists every model with a record row; Not supported anchors keyed by (class, action);
+    aligned TS011F reasons; CLAUDE.md's shared home for limits is `docs/integrations.md`; `--reports` needs `--at`)
+    are in the step review commits.
+- **Next:** merging #564, then #565, is Jason's call. After #564 merges, check that #565 retargeted to `main`.
