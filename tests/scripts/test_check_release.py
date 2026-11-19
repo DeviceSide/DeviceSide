@@ -985,8 +985,8 @@ def credit_other(repo) -> None:
 
 
 def test_a_model_credited_in_an_experimental_default_class_warns(fake_repo):
-    credit_other(fake_repo)
     """Each source on its own: the record credits LTA009 and the manual row LCA001."""
+    credit_other(fake_repo)
     assert cr.default_class_credits(default_classed(SCOPE)) == [
         "fake turn_on_for: LCA001 passed in the default class `other`, which is never Verified, so its pass can't lift"
         " a flag; name a class for it (docs/evidence.md, Device classes)",
