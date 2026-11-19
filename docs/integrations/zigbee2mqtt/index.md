@@ -139,7 +139,8 @@ DeviceSide sets three Zigbee2MQTT options:
   DeviceSide sets the Home Assistant override of every full-color light and group to announce both XY and HS, plus
   color temperature where the light has it. The bulb itself is untouched. Lights with one color model, lights on an
   endpoint (`light_l1`), and lights with an override of your own are left alone. Turning the option off in
-  DeviceSide's options puts back the modes Zigbee2MQTT announced itself.- **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had
+  DeviceSide's options puts back the modes Zigbee2MQTT announced itself.
+- **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had
   it. A `turn_on_for` with a color goes out with it on: without it, a Hue bulb that is off drops
   the color and lights at its last one first. A brightness move goes out with it off: with it, a Hue bulb runs a
   long fade faster than asked, and reports off at once during a fade to off. DeviceSide sets the option, sends the
