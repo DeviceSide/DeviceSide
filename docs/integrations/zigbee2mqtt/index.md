@@ -64,7 +64,7 @@ The timer runs in whole seconds, up to 12 hours: a duration is rounded to the ne
 rounded or longer than 12 hours reports `clamped_to`, the value sent. Turning the plug off, its button or a new timer
 cancels it. The plug's time left can't be read, so get attributes refuses it, with no known method. A TS011F that
 Zigbee2MQTT shows no `countdown` for, or a multi-socket one, isn't built yet: the Zigbee timer was tested on the
-Tuya TS011F and left it on. A TS011F is a plug even where Zigbee2MQTT
+Tuya TS011F and left it on ([internals](../../internals.md#tested-behavior)). A TS011F is a plug even where Zigbee2MQTT
 shows it as a light, so the actions for lights alone, such as stop, refuse it there as not built yet; turn on with
 timer still takes it.
 
@@ -139,10 +139,7 @@ DeviceSide sets three Zigbee2MQTT options:
   DeviceSide sets the Home Assistant override of every full-color light and group to announce both XY and HS, plus
   color temperature where the light has it. The bulb itself is untouched. Lights with one color model, lights on an
   endpoint (`light_l1`), and lights with an override of your own are left alone. Turning the option off in
-  DeviceSide's options puts back the modes Zigbee2MQTT announced itself. The rig can't cleanly remove the override
-  the option writes, so turning the option off is tested by unit tests only
-  ([internals](internals.md#tested-behavior)).
-- **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had
+  DeviceSide's options puts back the modes Zigbee2MQTT announced itself.- **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had
   it. A `turn_on_for` with a color goes out with it on: without it, a Hue bulb that is off drops
   the color and lights at its last one first. A brightness move goes out with it off: with it, a Hue bulb runs a
   long fade faster than asked, and reports off at once during a fade to off. DeviceSide sets the option, sends the

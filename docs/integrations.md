@@ -54,4 +54,4 @@ Verified on those that have passed on it, and in Labs on the rest, which run wit
 IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F's runs only Tuya's way:
 DeviceSide sends it Tuya's countdown on Zigbee2MQTT, and [doesn't support](integrations/zha/index.md#tuya-plugs-and-switches) its
 timer on ZHA yet). A contributor with a plug that passes can add it
-([evidence](evidence.md#levels)).
+([how to help](../CONTRIBUTING.md#how-to-help)).

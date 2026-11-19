@@ -17,15 +17,15 @@ same command differently ([the rules](evidence.md#levels)).
 - ⚪ **Labs:** built but not yet proven. It stays off until you turn on **Labs** in **Configure > Settings**, and may
   be withdrawn if it fails and isn't fixed ([the Labs flag](evidence.md#the-labs-flag)).
 - 🔴 **Not supported:** no known command works on it, or it isn't built yet. DeviceSide refuses it rather than leave
-  the device doing something you didn't ask for. A contributor's pull request can build it
+  the device doing something you didn't ask for. Where it isn't built yet, a contributor's pull request can build it
   ([how to help](../CONTRIBUTING.md#how-to-help)).
 
 **⚠️ Unmaintained** marks a feature no one is fixing: it still works as it did, but a bug in it stays unfixed until
 someone fixes it or takes over the integration. **🔧 Untested fix** marks a feature changed in a release before anyone
 could test it on a device ([caveats](evidence.md#caveats)).
 
-DeviceSide is run by volunteers. If your device isn't here, or a feature doesn't work, please tell us with **Report a
-device test result or bug** in the same menu, or [open a report](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml).
+DeviceSide is run by volunteers. If your device isn't here, or a feature doesn't work, please tell us with **Integrations > DeviceSide > Configure > Report a
+device test result or bug**, or [open a report](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml).
 It goes to the maintainers of the integration you choose, and works or not, it helps: a working report helps ship a
 Labs feature to everyone, and a "doesn't work" one goes to the people who decide whether to fix it, find it a
 maintainer, or turn it off.
