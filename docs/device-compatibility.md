@@ -1,125 +1,34 @@
 # Device compatibility
 
 Will DeviceSide work with your device? The [README's cards](../README.md#will-it-work-with-my-device) give the short
-answer per integration. This page has the detail: what is known about each device and class of device, where that
-comes from, and the evidence behind every claim.
+answer per integration. This page has the detail: each tested device, each class of device by integration, and what
+can't be done. Every mark links its proof.
 
 ## Levels of proof
 
 Claims follow evidence, per class of device: devices that get the same command and run the same family of firmware,
 such as Hue bulbs on Zigbee2MQTT. A test on one class says nothing about another, because makers' firmware answers the
-same command differently. Each claim is at one of two levels of proof:
+same command differently ([the rules](evidence.md#levels)).
 
-- **Verified:** a maintainer tested it on a real device, on the automated rig or by hand.
-- **Documented:** no device of the class has been tested, and no known class of devices handles the call differently.
-  Either DeviceSide sends it the same call as a Verified device of the same maker's firmware, differing only in
-  addressing, or certification tests the same read on every device of the class. A class holding many makers' devices
-  is never Documented by another maker's test.
+- 🟢 **Verified:** a maintainer tested it on a real device. ✔ marks a run on the automated rig; a device without it
+  was tested by hand.
+- 🟡 **Documented:** no device of the class has been tested, but it gets the same call as a Verified device of the
+  same maker's firmware, or certification tests the same read on every device of the class.
+- ⚪ **Labs:** built but not yet proven. It stays off until you turn on **Labs** in **Configure > Settings**, and may
+  be withdrawn if it fails and isn't fixed ([the Labs flag](evidence.md#the-labs-flag)).
+- 🔴 **Not supported:** no known command works on it, or it isn't built yet. DeviceSide refuses it rather than leave
+  the device doing something you didn't ask for. A contributor's pull request can build it
+  ([how to help](../CONTRIBUTING.md#how-to-help)).
 
-**Labs** is not a promise. What's in Labs may be withdrawn: a class that fails and isn't fixed is taken
-off until someone builds it better. Labs features stay off until you turn on **Labs** in
-**Configure > Settings**. Labs admits only what its evidence names, so a device DeviceSide can't place in a known
-class gets a feature only where its integration's page says so. Whether they work or not, please tell us
-with **Report a device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
-[evidence rules](evidence.md#no-known-method-not-built-yet-in-labs).
+**⚠️ Unmaintained** marks a feature no one is fixing: it still works as it did, but a bug in it stays unfixed until
+someone fixes it or takes over the integration. **🔧 Untested fix** marks a feature changed in a release before anyone
+could test it on a device ([caveats](evidence.md#caveats)).
 
-## Maintainers
-
-DeviceSide is run by volunteers. Each integration's maintainers look after it: they review changes
-to it and fix bugs in it as they can. Please
-[report a bug](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml); the report goes to the
-maintainers of the integration you choose. A report that a feature doesn't work is still useful: it goes to the
-integration's maintainers, who decide whether to fix it, find it a maintainer, or turn it off; a fix may need someone
-with the device.
-
-**⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
-someone fixes it or takes over the integration, so use it at your own risk. **🔧 Untested fix** marks a feature
-changed in a release before anyone could test it on a device: please report how it works for you.
-
-On the cards, ✔ marks what the automated rig verified; a model without it was verified by a maintainer by hand.
-
-## Tested devices
-
-A model works on the integrations and features its records and maintainers' hand tests (`_manual.json`) cover; the
-[evidence](#evidence) lists them per action, with the firmware tested. Other models may work too, but makers implement
-these features inconsistently: if yours isn't here and its class is in Labs, please try it and [report the
-result](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
-
-### Hue White Ambiance E27 1100lm
-
-A color temperature bulb, rig-tested on Hue, ZHA and Zigbee2MQTT. Its Zigbee model ID is `LTA009`, which the records
-name it by on every integration; Zigbee2MQTT shows it as `9290024684`, mapping one to the other
-([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
-Smooth dimming is tested on all three, and turn on with timer on ZHA and Zigbee2MQTT (the Hue bridge has no usable
-timer: see [integrations](integrations/hue/index.md)).
-
-On a Hue bridge, a room fade can leave one of these bulbs last reported at a mid-fade brightness, with nothing after,
-while the bulb reaches the end; and mid-fade, a bulb can report the color temperature it really holds, correcting the
-bridge's earlier report (rig runs, 2026-11-11: Hue [Tested behavior](integrations/hue/internals.md#tested-behavior)).
-
-### Hue Essential White and Color Ambiance A60
-
-A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: Zigbee model ID `LCA016`, which Zigbee2MQTT shows as
-`8720169392182`
-([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
-It carries the smooth saturation and hue tests, and Zigbee2MQTT's color mode override
-([research](integrations/zigbee2mqtt/research/2026-10-28-color-modes.md)). Turning that option off is unit-tested only: the rig can't
-cleanly remove the override the option writes.
-
-### Hue White A60 B22
-
-A white (dimmable) bulb, rig-tested with turn on with timer and get attributes on ZHA and Zigbee2MQTT: Zigbee model
-ID `LWA012`, which Zigbee2MQTT shows as `9290018217`
-([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
-
-### Native groups
-
-A Hue room or zone, a ZHA group or a Zigbee2MQTT group, commanded as one, as the integration does it. The features a
-group takes are in the README's feature table. A ZHA group command gives no delivery feedback, as is the way of a
-Zigbee groupcast, and a Hue room write misses lights that are off, so DeviceSide writes a Hue room light by light when
-it sets attributes ([integrations](integrations/hue/index.md)).
-
-## Should work
-
-Documented ([levels of proof](#levels-of-proof)).
-
-## Try it: Labs
-
-These classes are in Labs ([levels of proof](#levels-of-proof)): built and unit-tested, and some may have passed a maintainer's first tests. Turn on
-Labs to try them, then report the result, whether they work or not: a working report helps ship them
-to everyone, and a "doesn't work" one goes to the integration's maintainers, who decide whether to fix it, find it a maintainer, or
-turn it off ([in Labs](evidence.md#no-known-method-not-built-yet-in-labs)).
-
-## Not built yet
-
-A class of device that needs a command DeviceSide hasn't built yet. DeviceSide refuses it, rather than send a command
-that would leave it doing something you didn't ask for. A class returns when a contributor's pull request builds it
-with a passing run on their own device ([how to help](../CONTRIBUTING.md#how-to-help)).
-
-### Zigbee plugs and switches
-
-Turn on with timer runs on a Zigbee plug or switch only where Tuya's countdown serves it: the Zigbee2MQTT Tuya TS011F
-plugs with a countdown setting, Verified on the maker strings with a passing run and in Labs on the rest
-([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)). Research predicts most other plugs fail
-the Zigbee timed-on command: plugs needn't implement it, and many run a countdown of their own instead. So on ZHA, and
-on every other Zigbee2MQTT plug, a Hue or IKEA one included, it isn't built yet, even with Labs on: it
-waits for DeviceSide's own timer or a plug's auto-off. Get attributes reads no Zigbee plug, as it reads only what
-another feature runs on, and a Zigbee2MQTT countdown plug's time left can't be read. A contributor with a plug that
-passes can add it ([evidence](evidence.md#levels)).
-
-### Tuya TS011F
-
-A Zigbee plug whose timer runs only Tuya's way, so DeviceSide's timer can leave it off, or turn it on long after the
-time asked and leave it on. Tuya's own call would serve it. On ZHA it isn't built yet, so DeviceSide refuses turn on
-with timer on it, even with Labs on. On Zigbee2MQTT DeviceSide sends it only to the
-TS011F plugs Zigbee2MQTT drives by Tuya's countdown, Verified on the maker strings that have passed and in Labs on
-the rest ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and refuses the others. What was measured: [internals](internals.md#tested-behavior).
-
-## Evidence
-
-Per integration, a row per action and level of proof its entities, classes and fields hold, with the models and
-records behind the action (a rig record, or a maintainer's test by hand); ⚠️ Unmaintained and 🔧 Untested fix mark an
-action's caveat. A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
+DeviceSide is run by volunteers. If your device isn't here, or a feature doesn't work, please tell us with **Report a
+device test result or bug** in the same menu, or [open a report](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml).
+It goes to the maintainers of the integration you choose, and works or not, it helps: a working report helps ship a
+Labs feature to everyone, and a "doesn't work" one goes to the people who decide whether to fix it, find it a
+maintainer, or turn it off.
 
 <!-- evidence:start -->
 <!-- Generated by scripts/gen_compat.py from the bundles' records and devices.yaml, docs/models.yaml and the adapters' scopes. Do not edit; run the script. -->

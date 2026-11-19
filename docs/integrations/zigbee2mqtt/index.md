@@ -17,7 +17,7 @@ publishes as it connects. Every feature says how well it is proven for each
 ([levels of proof](../../device-compatibility.md#levels-of-proof)).
 
 - **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them. A Hue smart plug
-  hasn't, and turn on with timer isn't built for it ([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)).
+  hasn't, and turn on with timer isn't built for it ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)).
 - A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Labs
   off, one in Labs, falls back to its lights, each on its own; with Labs on, it runs as one group. A member
   Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya plug in a
@@ -64,7 +64,7 @@ The timer runs in whole seconds, up to 12 hours: a duration is rounded to the ne
 rounded or longer than 12 hours reports `clamped_to`, the value sent. Turning the plug off, its button or a new timer
 cancels it. The plug's time left can't be read, so get attributes refuses it, with no known method. A TS011F that
 Zigbee2MQTT shows no `countdown` for, or a multi-socket one, isn't built yet: the Zigbee timer was tested on the
-[Tuya TS011F](../../device-compatibility.md#tuya-ts011f) and left it on. A TS011F is a plug even where Zigbee2MQTT
+Tuya TS011F and left it on. A TS011F is a plug even where Zigbee2MQTT
 shows it as a light, so the actions for lights alone, such as stop, refuse it there as not built yet; turn on with
 timer still takes it.
 
@@ -107,11 +107,11 @@ refuses them, even with Labs on.
 IKEA's TRÅDFRI lights (Zigbee manufacturer `IKEA of Sweden`, which Zigbee2MQTT publishes as it connects; until then
 an IKEA light counts as another brand's). Most run the Zigbee timer, by what they report when paired and by users'
 reports ([research](research/2026-11-14-timed-on-call-patterns.md), §3), so turn on with timer is in Labs on them: it
-runs with Labs on ([try it](../../device-compatibility.md#try-it-labs)). Two GU10
+runs with Labs on ([Labs](../../device-compatibility.md#levels-of-proof)). Two GU10
 white spectrum bulbs, LED2005R5 and LED2106R3, are reported to turn on with it and never turn off
 ([Zigbee2MQTT #29158](https://github.com/Koenkk/zigbee2mqtt/issues/29158)), so DeviceSide refuses them there, even
 with Labs on. IKEA's outlets get no turn on with timer, as no plug has passed
-([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)). Smooth dimming and stop are in
+([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)). Smooth dimming and stop are in
 Labs, as for other brands (below); the other features aren't built yet.
 
 On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
@@ -122,7 +122,7 @@ On IKEA lights, lower brightness to off may stop at the lowest level instead of 
 Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable
 light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they get
 exactly as a Hue bulb does, so smooth dimming and stop are in Labs on them: they run with Labs on
-([try it](../../device-compatibility.md#try-it-labs)). Their other features aren't built yet: nothing
+([Labs](../../device-compatibility.md#levels-of-proof)). Their other features aren't built yet: nothing
 predicts how other brands take color moves, reads and writes, and on turn on with timer some lights turn on and never
 off, and most plugs ignore the timer. If you try dimming, please report it whether it works or not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
@@ -139,7 +139,9 @@ DeviceSide sets three Zigbee2MQTT options:
   DeviceSide sets the Home Assistant override of every full-color light and group to announce both XY and HS, plus
   color temperature where the light has it. The bulb itself is untouched. Lights with one color model, lights on an
   endpoint (`light_l1`), and lights with an override of your own are left alone. Turning the option off in
-  DeviceSide's options puts back the modes Zigbee2MQTT announced itself.
+  DeviceSide's options puts back the modes Zigbee2MQTT announced itself. The rig can't cleanly remove the override
+  the option writes, so turning the option off is tested by unit tests only
+  ([internals](internals.md#tested-behavior)).
 - **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had
   it. A `turn_on_for` with a color goes out with it on: without it, a Hue bulb that is off drops
   the color and lights at its last one first. A brightness move goes out with it off: with it, a Hue bulb runs a
