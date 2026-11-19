@@ -65,7 +65,7 @@ def test_an_unreadable_integration_is_an_error(tmp_path, source, error):
 
 def test_main_writes_the_step_outputs(tmp_path, monkeypatch):
     output = tmp_path / "out"
-    monkeypatch.setenv("ISSUE_BODY", body("Hue"))
+    monkeypatch.setenv("ISSUE_BODY", body("Hue Bridge"))
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     assert ri.main() == 0
     assert output.read_text() == "labels=integration:hue\nassignees=jasonmx\n"
