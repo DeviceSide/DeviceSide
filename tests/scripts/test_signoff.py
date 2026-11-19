@@ -118,6 +118,14 @@ def test_at_binds_the_tags_commit_and_blobs_and_reports_ride_along(head, capsys)
     assert "reports" not in printed(capsys, "fake", "stop", "--signed-by", "t", "--device", DEVICE)
 
 
+def test_reports_need_at(head, capsys):
+    """A report row binds the release the reporters ran, never HEAD by default."""
+    issue = "https://github.com/DeviceSide/DeviceSide/issues/3"
+    with pytest.raises(SystemExit):
+        signoff.main(["fake", "stop", "--signed-by", "t", "--device", DEVICE, "--reports", issue], FakeRegistry())
+    assert "--reports needs --at" in capsys.readouterr().err
+
+
 def test_at_a_revision_that_names_no_commit_fails_by_name(head):
     with pytest.raises(SystemExit, match="--at 'v9.9.9' names no commit"):
         signoff.main(["fake", "stop", "--signed-by", "t", "--device", DEVICE, "--at", "v9.9.9"], FakeRegistry())

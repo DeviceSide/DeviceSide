@@ -93,11 +93,20 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     parser.add_argument(
         "--reports", nargs="+", metavar="url", help="the issues of the users' working reports the row rests on"
     )
-    parser.add_argument("--at", default="HEAD", metavar="tag", help="the release tested: its commit and transcripts")
+    parser.add_argument("--at", metavar="tag", help="the release tested (default HEAD; --reports needs it)")
     args = parser.parse_args(argv)
+    if args.reports and args.at is None:
+        parser.error("--reports needs --at: the row binds the release the reporters ran")
     registry = registry or AdapterRegistry.discover()
     found = row(
-        args.integration, args.actions, args.signed_by, args.devices, registry, args.group, args.reports, args.at
+        args.integration,
+        args.actions,
+        args.signed_by,
+        args.devices,
+        registry,
+        args.group,
+        args.reports,
+        args.at or "HEAD",
     )
     print(json.dumps(found, indent=2))
     return 0
