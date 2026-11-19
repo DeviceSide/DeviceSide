@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the README's device table and the evidence block of docs/device-compatibility.md, from the test records,
+"""Generate the README's device table and the generated block of docs/device-compatibility.md, from the test records,
 the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integrations/<integration>/. The rules
 the cards show (levels, caveats) are in docs/evidence.md.
 
@@ -47,17 +47,18 @@ alphabetically, and a line's names sort the same way (`ordered`), a variant's pl
   domain and, with a class flagged, names unflagged classes only; and, unless a domain is flagged (a manual row names
   none), each `_manual.json` model whose class is unflagged.
 - devices.yaml's and models.yaml's `no_known_method` entries, which name no class, each get a 🔴 line; models.yaml's
-  `not_built` ones are on no card. The evidence block lists both, and the scopes' `not_built` entries, with why and
-  the source.
+  `not_built` ones are on no card. The page's Not supported table lists both, and the scopes' `not_built` entries,
+  with why and the source.
 A model or blocker drops the integration's name where it leads, as the card's name already gives it. Cards show
-features, not fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
+features, not fields: a flagged or Documented field shows on the integration's page and in the page's footnote only.
 
 **The model.** `card` builds each card's model before anything is folded or rendered: `Card.entries`, the ordered,
 unfolded `Line`s (class phrases and page sections, items with their domains, a variant's `parent`, `features` for
 per-feature status with `stop` in its own column, `models` the tested models), `Card.reached` (each tested model's
 places and actions, and per action its `Proof`: record paths, firmware, rig and by hand, each kept when both
-tested it), `Card.refused` and `Card.marks` (the caveats). `show` renders the README's lines from it, folding last, so
-another render (the page's matrix) reads the same unfolded lines.
+tested it), `Card.refused`, `Card.broken` (a refused class's Not supported row), `Card.field_notes` and `Card.marks`
+(the caveats). `show` renders the README's lines from it, folding last, so another render (the page's matrix) reads
+the same unfolded lines.
 
 **The fold and the cap** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
 (🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ [class] (features);
@@ -66,13 +67,26 @@ variants parent's children never fold. `check_share` then fails when the Labs li
 counted across every card, children included, are over `LABS_SHARE_MAX` of all the lines, so the cards can't
 again read as a list of untried classes.
 
-**Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
-flagged whole has one), the first with the evidence's records; each row carries the adapter's caveat. A model tested on
-a class is listed with it, on the row of the weakest level the scope holds its class and its test's domain at, so each
-class lists only the models that reached it, with their firmware, and a group goes by its test's domain; the rest (a
-format 1 record's, which names no device's test, and items the scope doesn't hold) are on the first row. Every model a
-test-records file names must be in docs/models.yaml or its bundle's devices.yaml, whatever its test's result
-(`check_models`). The prose outside the evidence markers is kept as written.
+**The page.** The block between the evidence markers of docs/device-compatibility.md, in three parts; every device fact
+in it comes from the model above, so one change in code, devices.yaml, models.yaml or a record moves the README and the
+page together, and `--check` proves both.
+- *Tested devices*: a `###` per tested model, headed by its `section` (its `name`, by default: the heading every card
+  links, `Data.model_url`), with its type and ids, then a table of Integration (linking its matrix below), Features
+  tested (each linking its records, a split feature's parts apart), Firmware (the distinct values the records name) and
+  How (✔ rig, by hand). Then `### Native groups`, the same table per integration without the firmware.
+- *By integration*: a `###` per integration, by its title, the card's caveats under it, then a matrix: a row per
+  unfolded card line (native groups first, a variants parent's children indented under it), a column per feature in the
+  README's order (`stop` last), a cell holding the status and its proof. 🟢 links its records (the line's tested
+  models'; where none tested the action on the line, the integration's, as a scene is classed by its lights), 🟡 and ⚪
+  the class's section on its integration's page, 🔴 its row under Not supported; a split feature shows its parts
+  ("🟢 down · ⚪ up"). Under the matrix, a footnote lists each field proven less than its feature (a field whose
+  level is weaker than the strongest its action's domains and classes hold).
+- *Not supported*: every integration's `no_known_method` and harmful `not_built` entries in one table (Devices,
+  Integrations, Features, Why, Source), one row per (what, reason, source) with its integrations and actions joined; a
+  no known method row has an anchor id, the heading anchor of its `section`, which a matrix cell and a card's blocker
+  line link, numbered where two rows share one.
+Every model a test-records file names must be in docs/models.yaml or its bundle's devices.yaml, whatever its test's
+result (`check_models`). The prose outside the evidence markers is hand-written and kept as written.
 
 **The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class no
 record reaches on every run, `--check` included, and never fails here: `check_release.py --signoffs` fails on it at
@@ -96,10 +110,14 @@ what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) an
 code's home for these, and join them here; the devices.yaml and models.yaml entries move to them, class by class.
 Every integration needs a bundle.
 
-**Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
-`name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
-heading may be on any integration's page; else on docs/device-compatibility.md outside the evidence block. A heading
-none of them has is an error.
+**Links.** A card links each class or blocker to the heading its `section` names (default: the blocker's `what`): on the
+card's integration page when that has the heading, else the same anchor on docs/device-compatibility.md, where a Not
+supported row (the blocker's) or a model's heading (a class that is one model's) answers to it. A model's or native
+groups' heading is on that page alone, generated there, so a card always links it there. `check_sections` runs with
+every generation and fails on a dead link: a 🟡 or ⚪ class whose section is not a heading of its integration's page;
+any link of the generated block or the README's cards to a heading or anchor id of the block, to a heading of an
+integration's page, or to a file under docs/ (a record, an integration page) that isn't there. The page's own links
+are relative, the README's absolute (HACS renders it inside Home Assistant).
 
 Usage: scripts/gen_compat.py [--check]
 
@@ -108,7 +126,9 @@ Usage: scripts/gen_compat.py [--check]
 
 import argparse
 import copy
+import re
 import sys
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -120,7 +140,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
-from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     MANUAL,
@@ -231,8 +251,6 @@ class Data:
     # Each integration's Requirements name (devices.yaml `requirements_name`, else its title) and its `column_order`.
     names: dict[str, str] = field(default_factory=dict)
     order: dict[str, int] = field(default_factory=dict)
-    # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
-    sections: set[tuple[str | None, str]] = field(default_factory=set)
     # The heading anchors of each integration's page; a section on none of them is on PAGE.
     pages: dict[str, set[str]] = field(default_factory=dict)
     # The bundle each model id is listed in (None: docs/models.yaml), so a record names only its own bundle's.
@@ -252,18 +270,17 @@ class Data:
             )
         return self.models[model_id]
 
-    def url(self, key: str | None, section: str) -> str:
-        """The section's heading: on the integration's page when that has it, else (a model's or native groups',
-        which any card may link) on the integration page that has it, else on PAGE. Where `check_sections` looks, so
-        its pass means a live link."""
-        anchor = slug(section)
-        owners = [key] if key is not None else []
-        if (None, section) in self.sections:
-            owners += sorted(self.pages)
-        for owner in owners:
-            if anchor in self.pages.get(owner, set()):
-                return f"{DOCS_URL}{page(owner)}#{anchor}"
+    def url(self, key: str, section: str) -> str:
+        """A class's or blocker's section: its heading on the integration's page when that has it, else the same
+        anchor on PAGE, where a blocker's Not supported row and a class that is a model's heading may answer to it.
+        `check_sections` fails a link PAGE's generated block doesn't answer."""
+        if (anchor := slug(section)) in self.pages.get(key, set()):
+            return f"{DOCS_URL}{page(key)}#{anchor}"
         return f"{PAGE_URL}#{anchor}"
+
+    def model_url(self, section: str) -> str:
+        """A model's or native groups' heading, which is on PAGE alone (generated there)."""
+        return f"{PAGE_URL}#{slug(section)}"
 
 
 def fail(message: str) -> None:
@@ -354,14 +371,12 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     for key, models in raw.get("bundle_models", {}).items():
         for model in models:
             load_model(model, data, key)
-    data.sections.add((None, GROUPS_ENTRY[1]))  # every card with groups links it, as it does a model
     for key, items in data.capabilities.items():
         need(items, f"capabilities {key}")
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
             if "domains" in entry:
                 need(entry["domains"], f"capabilities {key} {item} domains", tuple(entry["domains"]))
-            data.sections.add((key, entry["section"]))
     load_sections(raw.get("sections") or {}, data)
     for entry in raw["no_known_method"]:
         load_broken(entry, set(registry.integrations), data)
@@ -400,8 +415,8 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
     """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
     its class's devices.yaml phrase (an entry on some domains alone, by its phrases for them), with the actions whose
-    adapters list it, for the evidence block, which keeps the harm's source: the card leaves the class's feature out,
-    as it does any not built yet. One per class, reason and source."""
+    adapters list it, for the Not supported table, which keeps the harm's source: the card leaves the class's feature
+    out, as it does any not built yet. One per class, reason and source."""
     found: dict[tuple, dict] = {}
     for adapter in integration_adapters:
         for name, entry in adapter.scope.not_built.items():
@@ -439,7 +454,6 @@ def load_model(model: dict, data: Data, owner: str | None) -> None:
             fail(f"model id {model_id!r} is listed twice: in {source(data.owner[model_id])} and {source(owner)}")
         data.models[model_id] = model
         data.owner[model_id] = owner
-    data.sections.add((None, model["section"]))
 
 
 def source(owner: str | None) -> str:
@@ -466,7 +480,6 @@ def load_broken(
         if not entry.get(key):
             fail(f"{kind} {entry['what']!r} needs a {key}")
     entry.setdefault("section", entry["what"])
-    data.sections.update((key, entry["section"]) for key in entry["integrations"])
     getattr(data, kind).append({**entry, "actions": actions} if actions else entry)
 
 
@@ -633,13 +646,20 @@ def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
     return [(Level.LABS if scope.all_labs else level, *rest) for level, *rest in entries]
 
 
-# The evidence block.
+# The page.
 
 
-def link(record: Path, action: str) -> str:
-    option = record.stem.removeprefix(action).lstrip("-")
-    label = option.replace("_", " ") if option else "record"
-    return f"[{label}]({record.relative_to(REPO / 'docs').as_posix()})"
+def by_integration(registry: AdapterRegistry) -> dict[str, list]:
+    """The adapters per integration, in the README feature table's column order, so the cards read across as it does."""
+    grouped: dict[str, list] = {}
+    for _, adapter in adapters(registry):
+        grouped.setdefault(adapter.integration, []).append(adapter)
+    return {key: sorted(grouped[key], key=lambda a: a.action) for key in columns(grouped)}
+
+
+def doc_link(path: str) -> str:
+    """A repo path as the page links it: relative to docs/."""
+    return path.removeprefix("docs/")
 
 
 def caveat_reason(scope, kind: CaveatKind) -> str | None:
@@ -657,126 +677,291 @@ def cell(text: str) -> str:
     return text.replace("|", "\\|")
 
 
-def named(held: list[tuple[str, str]]) -> str:
-    """Items as "light entities; RGB, CCT components", by noun in the scope's order."""
-    by_noun: dict[str, list[str]] = {}
-    for item, noun in held:
-        by_noun.setdefault(noun, []).append(item)
-    return "; ".join(f"{', '.join(names)} {noun}" for noun, names in by_noun.items())
-
-
-def level_rows(scope, served: set[str]) -> list[tuple[Level, str]]:
-    """(level, items) per row: a row per level the scope holds, strongest first. A domain is an item only where the
-    adapter serves some class (`served`, core/registry.py served_domains): one whose every class is refused isn't
-    offered."""
-    found = []
-    for level in sorted(Level, reverse=True):
-        if held := [
-            (f"{item} on {', '.join(sorted(domains))}" if domains else item, noun)
-            for item_level, item, noun, domains in items(scope)
-            if item_level is level and (noun != "entities" or item in served)
-        ]:
-            found.append((level, named(held)))
-    return found
-
-
 def table_row(cells: list[str]) -> str:
     return "|" + "|".join(f" {text} " if text else " " for text in cells) + "|"
 
 
-def described(item: Tested) -> str:
-    """A tested item as the evidence block lists it: "`S3SW-001X8EU` (`Switch`), firmware `1.0`"."""
-    if item.group:
-        return "group" if item.rig else "group, by hand"
-    name = f"`{item.model}`" + (f" (`{item.cls}`)" if item.cls else "")
-    if not item.rig:
-        return f"{name}, by hand"
-    return f"{name}, firmware `{item.firmware}`" if item.firmware else f"{name}, firmware unknown"
+def table(header: list[str], rows: list[list[str]]) -> list[str]:
+    return [table_row(header), "|" + "---|" * len(header), *(table_row(row) for row in rows)]
 
 
-def rows(adapter, info) -> list[str]:
-    """The action's rows: its records on the first; each tested model, and each group, on the row of the weakest
-    level the scope holds its class and its test's domain at, else (neither held nor named: a format 1 record's) the
-    first. A device with a null class, where the integration names classes, credits nothing (`Evidence.of`), so is on
-    no row. `info` is the adapter's integration, whose classes say which domains it serves."""
-    evidence = Evidence.of(adapter)
-    levels = level_rows(adapter.scope, served_domains(adapter, info))
-    index = {level: number for number, (level, _) in enumerate(levels)}
-    scope = adapter.scope
-    entries = {name: (level, domains) for name, level, domains in scope.class_entries()}
-    models: list[list[str]] = [[] for _ in levels]
-    for item in evidence.devices():
-        held = [scope.domains[item.domain]] if item.domain in scope.domains else []
-        if item.cls in entries:
-            # A format 2 test's domain decides a class held on some domains alone; one that names no domain, its level.
-            held.append(scope.class_level(item.cls, item.domain) if item.domain else entries[item.cls][0])
-        # A class flagged in this domain alone may have no row of its level: the scope's weakest row takes it.
-        row = models[index.get(min(held), len(levels) - 1)] if held else models[0]
-        if (text := described(item)) not in row:
-            row.append(text)
-    sources = [link(record, adapter.action) for record in evidence.records]
-    if any(where == MANUAL for where, _ in evidence.tested):
-        path = test_records_dir(adapter.integration) / MANUAL
-        sources.append(f"[by hand]({path.relative_to(REPO / 'docs').as_posix()})")
-    marks = [marked(label, reason) for kind, label in MARKS if (reason := caveat_reason(adapter.scope, kind))]
-    action = " ".join([f"`{adapter.action}`", *(cell(mark) for mark in marks)])
+def suffix(action: str) -> str:
+    """What tells an action's record apart from its feature's others: "up" (raise_brightness), "auto-off"."""
+    label = part(action)
+    if label.startswith(FEATURES[action]):
+        return label.removeprefix(FEATURES[action]).strip()
+    return label if action.endswith(("_auto_off", "_auto_on")) else ""
+
+
+def record_links(pairs: list[tuple[str, str]], *, part_named: bool = False) -> str:
+    """Links to the records (action, repo path) that prove a feature: "record" for one, else the part and option each
+    is for ("up", "down predicted state"), the action's words where those collide (`part_named`: the cell already
+    names the part, so the options alone); every manual row of one file is one "by hand" link."""
+    pairs = list(dict.fromkeys(pairs))
+    manual = [path for _, path in pairs if path.endswith(f"/{MANUAL}")]
+    rigged = [(action, path) for action, path in pairs if not path.endswith(f"/{MANUAL}")]
+
+    def option(action: str, path: str) -> str:
+        return Path(path).stem.removeprefix(action).lstrip("-").replace("_", " ")
+
+    names = [
+        " ".join(filter(None, [suffix(action) if not part_named else "", option(action, path)])) or "record"
+        for action, path in rigged
+    ]
+    if len(set(names)) != len(names):
+        names = [" ".join(filter(None, [action.replace("_", " "), option(action, path)])) for action, path in rigged]
+    links = [f"[{name}]({doc_link(path)})" for name, (_, path) in zip(names, rigged, strict=True)]
+    links += [f"[by hand]({doc_link(path)})" for path in dict.fromkeys(manual)]
+    return " ".join(links)
+
+
+def feature_actions(feature: str, label: str) -> list[str]:
+    """The actions a (feature, label) pair of `Line.features` stands for: all the feature's, or the one part's."""
     return [
-        table_row(
-            [
-                action,
-                level.name.title(),
-                held,
-                "<br>".join(models[number]) or ("none" if number == 0 else ""),
-                ", ".join(sources) if number == 0 else "",
-            ]
-        )
-        for number, (level, held) in enumerate(levels)
+        action for action in FEATURES if FEATURES[action] == feature and (label == feature or label == part(action))
     ]
 
 
-def by_integration(registry: AdapterRegistry) -> dict[str, list]:
-    """The adapters per integration, in the README feature table's column order, so the cards read across as it does."""
-    grouped: dict[str, list] = {}
-    for _, adapter in adapters(registry):
-        grouped.setdefault(adapter.integration, []).append(adapter)
-    return {key: sorted(grouped[key], key=lambda a: a.action) for key in columns(grouped)}
+def proofs(held: list[Reached], actions: list[str]) -> list[tuple[str, str]]:
+    """The (action, record path) pairs that proved these actions on the tested models `held`."""
+    return [
+        (action, path)
+        for action in actions
+        for reached in held
+        if action in reached.by_action
+        for path in reached.by_action[action].records
+    ]
 
 
-def evidence(registry: AdapterRegistry, data: Data) -> str:
+def line_proof(card: Card, line: Line) -> list[Reached]:
+    """What the evidence tested on the line: native groups, or its tested models."""
+    if line.native:
+        return [card.groups] if card.groups else []
+    return [card.reached[name] for name in line.models if name in card.reached]
+
+
+def part_text(feature: str, label: str) -> str:
+    """A split feature's part as a cell names it: "down" for "smooth dimming down"."""
+    return "" if label == feature else label.removeprefix(feature).strip()
+
+
+def status_cell(
+    card: Card, line: Line, feature: str, data: Data, ids: dict[tuple[str, str, str], str], icons: dict[str, str]
+) -> str:
+    """The line's marks for a feature, each linking its proof (docs/plans, Decision 5): 🟢 its records, 🟡 and ⚪ the
+    class's page section, 🔴 its row under Not supported."""
+    held = line_proof(card, line)
+    found = []
+    everything = [*card.reached.values(), *([card.groups] if card.groups else [])]
+    for status, label in line.features.get(feature, ()):
+        text = f"{icons[status]} {part_text(feature, label)}".strip()
+        if status == "works":
+            actions = feature_actions(feature, label)
+            # A class with no model of its own on the action (a scene is classed by its lights) takes the integration's.
+            links = record_links(proofs(held, actions) or proofs(everything, actions), part_named=label != feature)
+        elif status == "no_known_method":
+            refused = [card.broken[name] for name, _ in line.items if name in card.broken]
+            links = f"[why](#{ids[refused[0]]})" if refused and refused[0] in ids else ""
+        else:
+            sections = list(line.sections)
+            links = " ".join(
+                f"[{'why' if len(sections) == 1 else text_of(line.sections[section])}]({data.url(card.key, section)})"
+                for section in sections
+            )
+        found.append(f"{text} {links}".strip())
+    return " · ".join(found)
+
+
+def text_of(phrases: list[str]) -> str:
+    return text(phrases)
+
+
+def local(text: str) -> str:
+    """The page's own links as relative ones, which a reader of the page and GitHub's file view both resolve."""
+    return text.replace(f"({PAGE_URL}#", "(#").replace(f"({DOCS_URL}docs/", "(")
+
+
+def matrix_rows(card: Card, columns: list[str], data: Data, ids: dict, icons: dict[str, str]) -> list[list[str]]:
+    """A row per unfolded card line: its name, then a cell per feature; a variants parent's children under it."""
+    rows = []
+    rig = card.rig
+    blank = [""] * len(columns)
+    for entry in card.entries:
+        if entry.note is not None:
+            rows.append([cell(f"{entry.name(card, card.key, data, rig)}: {entry.note}"), *blank])
+        for line in entry.children or ([] if entry.note is not None else [entry]):
+            name = line.name(card, card.key, data, rig)
+            cells = [status_cell(card, line, feature, data, ids, icons) for feature in columns]
+            rows.append([cell(("&emsp;" if entry.note is not None else "") + name), *(cell(x) for x in cells)])
+    for entry in card.refused:
+        key = (entry["what"], entry["reason"], entry["source"])
+        link = f"{icons['no_known_method']} [why](#{ids[key]})" if key in ids else icons["no_known_method"]
+        name = anchor(card.short(entry["what"]), data.url(card.key, entry["section"]))
+        rows.append([cell(name), *[link] * len(columns)])
+    return rows
+
+
+def matrix(card: Card, data: Data, ids: dict) -> list[str]:
+    """The integration's class by feature matrix, with its caveats above and its fields' footnote below."""
+    icons = {key: icon for key, icon, _ in OUTCOMES}
+    columns: Features = {}
+    for entry in card.entries:
+        for line in (entry, *entry.children):
+            columns = join_features(columns, line.features)
+    names = list(columns)
+    parts = [f"### {card.title}", ""]
+    parts += [f"- {mark.render()}" for mark in card.marks]
+    parts += [""] if card.marks else []
+    parts += [local(row) for row in table(["Class", *names], matrix_rows(card, names, data, ids, icons))]
+    if card.field_notes:
+        parts += ["", "Fields proven less than their feature:"]
+        parts += [
+            f"- {feature}: {icons[status]} {', '.join(f'`{name}`' for name in fields)}"
+            for feature, status, fields in card.field_notes
+        ]
+    return [*parts, ""]
+
+
+def tested_features(held: Reached) -> str:
+    """The features a model (or native groups) was tested on, in README order, each with its records."""
+    by_feature: dict[str, list[str]] = {}
+    for action in held.by_action:
+        by_feature.setdefault(FEATURES[action], []).append(action)
+    order = {feature: number for number, feature in enumerate(dict.fromkeys(FEATURES.values()))}
+    found = []
+    for feature in sorted(by_feature, key=order.get):
+        pairs = proofs([held], by_feature[feature])
+        links = record_links(pairs)
+        found.append(
+            f"[{feature}]({links[links.index('(') + 1 : links.index(')')]})"
+            if len(set(pairs)) == 1
+            else f"{feature}: {links}"
+        )
+    return "<br>".join(found)
+
+
+def how(held: Reached) -> str:
+    return ", ".join([*([f"{VERIFIED} rig"] if held.rig else []), *(["by hand"] if held.by_hand else [])])
+
+
+def firmware(held: Reached) -> str:
+    seen = list(dict.fromkeys(value for proof in held.by_action.values() for value in proof.firmware))
+    return "<br>".join(f"`{value}`" for value in seen)
+
+
+def devices_section(built: list[Card], data: Data) -> list[str]:
+    """A `###` per tested model (by its `section`: the heading every card links), a table of the integrations
+    and features that tested it; then native groups the same way."""
+    by_model: dict[str, list[tuple[Card, Reached]]] = {}
+    for card in built:
+        for name, held in card.reached.items():
+            by_model.setdefault(name, []).append((card, held))
+    by_name = {model["name"]: model for model in data.models.values()}
+    parts = ["## Tested devices", ""]
+    for name in sorted(by_model, key=lambda name: TYPES.index(by_name[name]["type"])):
+        model = by_name[name]
+        ids = ", ".join(f"`{model_id}`" for model_id in model["ids"])
+        parts += [f"### {model['section']}", "", f"{model['type'].capitalize()}. Model IDs: {ids}.", ""]
+        rows = [
+            [
+                f"[{card.title}](#{slug(card.title)})",
+                tested_features(held),
+                firmware(held),
+                how(held),
+            ]
+            for card, held in by_model[name]
+        ]
+        parts += [*table(["Integration", "Features tested", "Firmware", "How"], rows), ""]
+    parts += [f"### {GROUPS_ENTRY[1]}", ""]
+    if grouped := [(card, card.groups) for card in built if card.groups]:
+        rows = [[f"[{card.title}](#{slug(card.title)})", tested_features(held), how(held)] for card, held in grouped]
+        parts += [*table(["Integration", "Features tested", "How"], rows), ""]
+    else:
+        parts += ["No native group has been tested yet.", ""]
+    return parts
+
+
+@dataclass
+class Refusal:
+    """A Not supported row: devices DeviceSide refuses, on the integrations and for the features that name them."""
+
+    what: str
+    reason: str
+    source: str
+    section: str
+    integrations: list[str] = field(default_factory=list)
+    actions: set[str] = field(default_factory=set)
+    refused: bool = True  # no known method (a matrix cell links it); else not built yet, harmed by today's call
+    id: str | None = None
+
+
+def refusals(registry: AdapterRegistry, data: Data, built: list[Card]) -> list[Refusal]:
+    """The no_known_method and harmful not_built entries of every integration, merged: one row per (what, reason,
+    source), its integrations and actions joined, sorted by name. A no known method row has an anchor id, the
+    heading anchor of its `section`, numbered when two rows share one."""
+    rows: dict[tuple[str, str, str], Refusal] = {}
+
+    def add(entry: dict, keys: list[str], refused: bool) -> None:
+        key = (entry["what"], entry["reason"], entry["source"])
+        row = rows.setdefault(key, Refusal(*key, entry["section"] if refused else entry["what"], refused=refused))
+        row.integrations += [found for found in keys if found not in row.integrations]
+        row.actions |= set(entry.get("actions") or ())
+
+    for entry in data.no_known_method:
+        add(entry, entry["integrations"], True)
+    for entry in data.not_built:
+        add(entry, entry["integrations"], False)
+    for key, integration_adapters in by_integration(registry).items():
+        for entry in code_unbuilt(key, integration_adapters, data):
+            add({**entry, "section": entry["what"]}, [key], False)
+    order = [card.key for card in built]
+    found = sorted(rows.values(), key=lambda row: row.what.lower())
+    taken: Counter[str] = Counter()
+    for row in found:
+        row.integrations.sort(key=lambda key: order.index(key) if key in order else len(order))
+        if row.refused:
+            base = slug(row.section)
+            row.id = f"{base}-{taken[base]}" if taken[base] else base
+            taken[base] += 1
+    return found
+
+
+def not_supported(rows: list[Refusal], registry: AdapterRegistry) -> list[str]:
+    """The merged table: devices, integrations, features, why and source."""
+    body = [
+        [
+            (f'<a id="{row.id}"></a>' if row.id else "") + cell(row.what),
+            ", ".join(registry.integrations[key].title for key in row.integrations),
+            ", ".join(features(row.actions, fold_stop=False)) if row.actions else "",
+            cell(row.reason),
+            f"[source]({row.source})",
+        ]
+        for row in rows
+    ]
+    return ["## Not supported", "", *table(["Devices", "Integrations", "Features", "Why", "Source"], body), ""]
+
+
+def evidence(registry: AdapterRegistry, data: Data, built: list[Card] | None = None) -> str:
+    """The page's generated block: tested devices, the matrix per integration, what is not supported."""
+    built = card_list(registry, data) if built is None else built
+    rows = refusals(registry, data, built)
+    ids = {(row.what, row.reason, row.source): row.id for row in rows if row.id}
     parts = [
         EVIDENCE[0],
         "<!-- Generated by scripts/gen_compat.py from the bundles' records and devices.yaml, docs/models.yaml and the"
         " adapters' scopes. Do not edit; run the script. -->",
         "",
+        *devices_section(built, data),
+        "## By integration",
+        "",
+        "Each mark links its proof: 🟢 its records, 🟡 and ⚪ the class's section on its integration's page, 🔴 its row"
+        " under [Not supported](#not-supported).",
+        "",
     ]
-    for key, integration_adapters in by_integration(registry).items():
-        parts.append(f"### {registry.integrations[key].title}\n")
-        parts.append("| Action | Level | Items | Tested models | Records |")
-        parts.append("|---|---|---|---|---|")
-        for adapter in integration_adapters:
-            parts += rows(adapter, registry.integrations[key])
-        if broken := [entry for entry in data.no_known_method if key in entry["integrations"]]:
-            parts += ["", "| No known method | Why | Source |", "|---|---|---|"]
-            parts += [
-                f"| {cell(entry['what'])}{actions(entry)} | {cell(entry['reason'])} | [source]({entry['source']}) |"
-                for entry in broken
-            ]
-        shared = [entry for entry in data.not_built if key in entry["integrations"]]
-        if unbuilt := code_unbuilt(key, integration_adapters, data) + shared:
-            parts += ["", "| Not built yet, harmed by today's call | Why | Source |", "|---|---|---|"]
-            parts += [
-                f"| {cell(entry['what'])}{actions(entry)} | {cell(entry['reason'])} | [source]({entry['source']}) |"
-                for entry in unbuilt
-            ]
-        parts.append("")
-    parts.append(EVIDENCE[1])
+    for card in built:
+        parts += matrix(card, data, ids)
+    parts += [*not_supported(rows, registry), EVIDENCE[1]]
     return "\n".join(parts)
-
-
-def actions(entry: dict) -> str:
-    """A code entry's actions, as the evidence block names them after its `what`; nothing for a devices.yaml one,
-    which names none."""
-    return f" ({', '.join(f'`{action}`' for action in sorted(entry['actions']))})" if entry.get("actions") else ""
 
 
 # The README cards.
@@ -950,6 +1135,7 @@ class Line:
     # Per-feature status (OUTCOMES keys), `stop` included, unlike `shape`: "smooth dimming": (("should", "smooth dimming
     # down"), ("labs", "smooth dimming up")); a feature whose actions agree has one pair holding its own label.
     features: Features = field(default_factory=dict)
+    native: bool = False  # the native groups' line, whose proof is the card's `groups`
 
     def plain(self) -> str:
         """The name as text, for sorting."""
@@ -1272,6 +1458,10 @@ class Card:
     key: str = ""
     entries: list[Line] = field(default_factory=list)
     refused: list[dict] = field(default_factory=list)
+    # Each class a scope refuses (no_known_method), by its (what, reason, source): the page's Not supported row.
+    broken: dict[str, tuple[str, str, str]] = field(default_factory=dict)
+    # Fields proven less than their feature: (feature, status, field names), for the page's footnote.
+    field_notes: list[tuple[str, str, tuple[str, ...]]] = field(default_factory=list)
     reached: dict[str, Reached] = field(default_factory=dict)
     groups: Reached | None = None
     # The rendered view (`show`), folded as the README shows it.
@@ -1292,7 +1482,7 @@ class Card:
 
     def model(self, name: str, key: str, data: Data, rig: set[str]) -> str:
         by_name = {model["name"]: model for model in data.models.values()}
-        return anchor(self.short(name), data.url(key, by_name[name]["section"])) + (
+        return anchor(self.short(name), data.model_url(by_name[name]["section"])) + (
             f" {VERIFIED}" if name in rig else ""
         )
 
@@ -1328,6 +1518,21 @@ def mark_entries(integration_adapters: list) -> list[Caveat]:
                 by_reason.setdefault(reason, set()).add(adapter.action)
         entries += [Caveat(label, reason, frozenset(actions)) for reason, actions in by_reason.items()]
     return entries
+
+
+def field_notes(integration_adapters: list) -> list[tuple[str, str, tuple[str, ...]]]:
+    """Each field whose level is weaker than its action's (the strongest its domains and classes hold), by feature and
+    status, for the footnote under the integration's matrix."""
+    found: dict[tuple[str, str], list[str]] = {}
+    for adapter in integration_adapters:
+        held = items(adapter.scope)
+        if not (levels := [level for level, _, noun, _ in held if noun != "fields"]):
+            continue
+        for level, item, noun, _ in held:
+            if noun == "fields" and level < max(levels):
+                names = found.setdefault((FEATURES[adapter.action], TIER[level]), [])
+                names += [item] if item not in names else []
+    return [(feature, status, tuple(names)) for (feature, status), names in found.items()]
 
 
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:
@@ -1367,14 +1572,25 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     extra = list(unplaced.values())
     result.tested = [result.model(name, key, data, rig) for name in models]
     if groups is not None:
-        label = anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1])) + (f" {VERIFIED}" if groups.rig else "")
+        label = anchor(GROUPS_ENTRY[0], data.model_url(GROUPS_ENTRY[1])) + (f" {VERIFIED}" if groups.rig else "")
         extra.append(
-            Line(shape({"works": groups.actions}), label=label, features=feature_statuses({"works": groups.actions}))
+            Line(
+                shape({"works": groups.actions}),
+                label=label,
+                features=feature_statuses({"works": groups.actions}),
+                native=True,
+            )
         )
         result.tested.append(label)
     result.key = key
     result.entries = ordered([*lines, *extra], brand, rig)
     result.reached, result.groups = models, groups
+    result.broken = {
+        name: (entry.what, entry.reason, entry.source)
+        for adapter in integration_adapters
+        for name, entry in adapter.scope.no_known_method.items()
+    }
+    result.field_notes = field_notes(integration_adapters)
     # devices.yaml's and models.yaml's no_known_method entries name no class or action: each a line of its own.
     result.refused = [
         entry for entry in data.no_known_method if key in entry["integrations"] and not entry.get("actions")
@@ -1485,20 +1701,50 @@ def splice(text: str, markers: tuple[str, str], block: str, name: str) -> str:
     return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
 
 
-def check_sections(text: str, data: Data) -> None:
-    """Every section a card links to is a heading on its integration's page or in the shared page's prose, so a
-    renamed heading fails here rather than leaving a dead link. A model's or native groups' may be on any integration's
-    page."""
-    shared = anchors(splice(text, EVIDENCE, "", "the page"))
-    anywhere = shared.union(*data.pages.values())
-    dead = sorted(
-        section
-        for key, section in data.sections
-        if slug(section) not in (anywhere if key is None else shared | data.pages.get(key, set()))
+LINK = re.compile(r"\]\(([^)\s]+)\)")
+
+
+def check_sections(block: str, shown: str, data: Data, built: list[Card]) -> None:
+    """Every link the generated block (`block`) and the README's cards (`shown`) emit resolves, so a renamed heading
+    fails here rather than leaving a dead link. A 🟡 or ⚪ class must have its section on its integration's page (a
+    class that is a model's, or a blocker, may answer to the generated page instead; they claim no level a reader
+    would check). A link to PAGE answers to a heading or an anchor id of the generated block (a model's or native
+    groups' heading, a Not supported row), one to an integration's page to a heading there, a relative one to a file
+    of docs/ and its heading."""
+    bare = sorted(
+        {
+            f"{section} ({card.key})"
+            for card in built
+            for entry in card.entries
+            for line in (entry, *entry.children)
+            if {status for pairs in line.features.values() for status, _ in pairs} & {"should", "labs"}
+            for section in line.sections
+            if slug(section) not in data.pages.get(card.key, set())
+        }
     )
+    if bare:
+        raise SystemExit(
+            f"no heading for {', '.join(bare)} on the integration's page: a Documented or Labs class links its section"
+        )
+    here = anchors(block) | set(re.findall(r'<a id="([^"]+)"', block))
+    by_page = {f"{DOCS_URL}{page(key)}": found for key, found in data.pages.items()}
+    dead = set()
+    for href in LINK.findall(block) + LINK.findall(shown):
+        target, _, fragment = href.partition("#")
+        if href.startswith("#") or target == PAGE_URL:
+            if fragment not in here:
+                dead.add(fragment)
+        elif target in by_page:
+            if fragment and fragment not in by_page[target]:
+                dead.add(href.removeprefix(DOCS_URL))
+        elif not re.match(r"[a-z][a-z0-9+.-]*:", href):  # a relative link, from docs/
+            path = REPO / "docs" / target
+            if not path.is_file() or (fragment and path.suffix == ".md" and fragment not in anchors(path.read_text())):
+                dead.add(href)
     if dead:
         raise SystemExit(
-            f"no heading for {', '.join(dead)} on docs/device-compatibility.md or the integration's page; add a section"
+            f"no heading or file for {', '.join(sorted(dead))} on docs/device-compatibility.md, the integration's page"
+            " or in docs/; add a section"
         )
 
 
@@ -1517,16 +1763,17 @@ def main(
     data = load(registry, models)
     check_models(registry, data)
     built = card_list(registry, data)
+    block, shown = evidence(registry, data, built), cards(built)
     # Both are computed before either is written, so a failure leaves neither half-updated.
     updates = {}
-    for path, markers, block in (
-        (page, EVIDENCE, evidence(registry, data)),
-        (readme, CARDS, cards(built)),
+    for path, markers, new in (
+        (page, EVIDENCE, block),
+        (readme, CARDS, shown),
         (readme, REQUIREMENTS, requirements(registry, data)),
     ):
         text = updates[path][1] if path in updates else path.read_text()
-        updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, block, path.name))
-    check_sections(updates[page][1], data)
+        updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, new, path.name))
+    check_sections(block, shown, data, built)
     check_share(built)
     # The coverage check warns here, on every PR, and fails only at cut-release (check_release.py --signoffs).
     for gap in [*coverage_gaps(registry), *default_class_credits(registry)]:
