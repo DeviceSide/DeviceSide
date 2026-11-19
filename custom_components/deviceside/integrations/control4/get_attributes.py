@@ -21,7 +21,7 @@ from .director import (
 from ...core.adapter import Adapter
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope, experimental
+from ...core.scope import AdapterScope, labs
 
 _VARIABLES = (BRIGHTNESS_PERCENT, LIGHT_LEVEL, LIGHT_STATE, CURRENT_CCT, COLOR_MODE)
 
@@ -52,7 +52,7 @@ class Control4GetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "control4"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=experimental(Platform.LIGHT), capabilities=LEVELS, confirmable=True, native_groups=True
+        domains=labs(Platform.LIGHT), capabilities=LEVELS, confirmable=True, native_groups=True
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:

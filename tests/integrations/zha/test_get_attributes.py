@@ -10,7 +10,7 @@ from homeassistant.util.color import color_hs_to_RGB, color_hs_to_xy, color_xy_t
 from custom_components.deviceside.integrations.zha import zcl
 
 from .conftest import call
-from ...conftest import allow_experimental, refusal
+from ...conftest import allow_labs, refusal
 from ...fixtures.zha import IEEE, add_zha_entity, cluster, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -146,12 +146,12 @@ async def test_timer_from_on_time_while_on(hass, bulb, on_off, expected):
         ("IKEA of Sweden", "TRADFRI control outlet"),  # another brand's plug
     ],
 )
-@pytest.mark.parametrize("experimental", [False, True])
-async def test_a_plug_or_switch_is_not_read(hass, bulb, requests, strings, experimental):
+@pytest.mark.parametrize("labs", [False, True])
+async def test_a_plug_or_switch_is_not_read(hass, bulb, requests, strings, labs):
     """No ZHA class is served on switch by turn_on_for, so get_attributes reads lights alone
     (docs/evidence.md, "A read serves only")."""
     add_zha_entity(hass, zha_entry(hass), "switch.plug", state="on", strings=strings)
-    allow_experimental(hass, experimental)
+    allow_labs(hass, labs)
 
     assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "domain_not_tested"
     assert not requests

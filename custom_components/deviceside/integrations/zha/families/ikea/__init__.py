@@ -1,10 +1,10 @@
-"""IKEA on ZHA: its TRÅDFRI lights, on trial on turn_on_for, and the two bulbs reported to stay on there.
+"""IKEA on ZHA: its TRÅDFRI lights, in Labs on turn_on_for, and the two bulbs reported to stay on there.
 
 Research names IKEA as running the Zigbee timer: about 25 of its bulbs and drivers advertise OnWithTimedOff, and three
 reports say it works, against two bulbs that turn on by a unicast and never off, and two old models that don't advertise
-it (zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md, §3). So `ikea` is on trial on turn_on_for, on lights
+it (zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md, §3). So `ikea` is in Labs on turn_on_for, on lights
 alone, and those two bulbs are a class of their own, refused there (refusals.py). On every other action both take
-`other`'s level (classes.py): on trial on the brightness fades and stop, not built elsewhere. The rules read the
+`other`'s level (classes.py): in Labs on the brightness fades and stop, not built elsewhere. The rules read the
 catalog's strings (zigbee/ikea.py), shared with Zigbee2MQTT, escaped.
 """
 
@@ -13,7 +13,7 @@ import re
 from homeassistant.const import Platform
 
 from .....core.rules import Rule
-from .....core.scope import Family, FamilyScope, experimental
+from .....core.scope import Family, FamilyScope, labs
 from .....zigbee import ikea as strings
 
 # IKEA's lights, and its outlets, which ZHA shows as a switch.
@@ -33,7 +33,7 @@ RULES = (
 )
 
 # Level Control's moves, which a Zigbee 3.0 dimmable light must take (docs/internals.md, Shared), as `other`'s are.
-_CERTIFIED = FamilyScope(capabilities=experimental(IKEA, IKEA_TIMER_HARMED))
+_CERTIFIED = FamilyScope(capabilities=labs(IKEA, IKEA_TIMER_HARMED))
 
 FAMILY = Family(
     key="ikea",
@@ -45,6 +45,6 @@ FAMILY = Family(
         "stop": _CERTIFIED,
         # On lights alone: an outlet has no pass, and the integration refuses it on switches, as it does the two
         # bulbs reported to stay on (refusals.py).
-        "turn_on_for": FamilyScope(capabilities=experimental(IKEA, domains=(Platform.LIGHT,))),
+        "turn_on_for": FamilyScope(capabilities=labs(IKEA, domains=(Platform.LIGHT,))),
     },
 )

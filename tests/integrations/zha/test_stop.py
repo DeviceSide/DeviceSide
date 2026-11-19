@@ -15,7 +15,7 @@ from custom_components.deviceside.integrations.zha import INTEGRATION as ZHA_INT
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
 from .conftest import IEEE, INNR, SENT, A, B, bulb, call, call_as, sent
-from ...conftest import advance, allow_experimental, result, wall_clock_now
+from ...conftest import advance, allow_labs, result, wall_clock_now
 
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
@@ -219,9 +219,9 @@ async def test_one_light_of_three_failing_rejects_only_it(hass, commands, clock)
 
 
 async def test_another_brand_gets_a_hue_bulbs_commands(hass, commands, clock):
-    """`other` is on trial (Zigbee 3.0 certification, docs/internals.md): with Experimental features on it gets exactly
+    """`other` is in Labs (Zigbee 3.0 certification, docs/internals.md): with Labs on it gets exactly
     the Verified Hue call."""
-    allow_experimental(hass)
+    allow_labs(hass)
     bulb(hass)
     bulb(hass, "light.innr", A, strings=INNR)
     for light in ("light.bulb", "light.innr"):

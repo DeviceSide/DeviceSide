@@ -12,7 +12,7 @@ from custom_components.deviceside.integrations.zha import turn_on_for, zcl
 from custom_components.deviceside.integrations.zha.addressing import address
 
 from .conftest import call, call_as
-from ...conftest import allow_experimental, refusal, sent
+from ...conftest import allow_labs, refusal, sent
 from ...fixtures.zha import IEEE, StandardOnOff, add_zha_entity, cluster, quirk_on_off, zha_entry, zha_group
 
 CONFIRMED = {"status": "confirmed", "integration": "zha"}
@@ -146,11 +146,11 @@ async def test_failed_read_is_sent(hass, setup_production, commands, readback, v
     assert response == {"light.bulb": {"status": "sent", "integration": "zha", "detail": "readback_failed"}}
 
 
-@pytest.mark.parametrize("experimental", [False, True])
-async def test_a_switch_is_not_built(hass, setup_production, commands, turn_ons, experimental):
-    """Most plugs ignore OnWithTimedOff, so no ZHA class is served on switch, Experimental or not."""
+@pytest.mark.parametrize("labs", [False, True])
+async def test_a_switch_is_not_built(hass, setup_production, commands, turn_ons, labs):
+    """Most plugs ignore OnWithTimedOff, so no ZHA class is served on switch, in Labs or not."""
     add_zha_entity(hass, zha_entry(hass), "switch.plug")
-    allow_experimental(hass, experimental)
+    allow_labs(hass, labs)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
     assert not commands
@@ -375,7 +375,7 @@ async def test_the_fields_and_the_timer_are_logged_in_order(hass, setup_producti
     ]
 
 
-# Device classes (families/<family>/): the entries for classes the call harms hold with Experimental features on.
+# Device classes (families/<family>/): the entries for classes the call harms hold with Labs on.
 
 TS011F = ("_TZ3000_typdpbpg", "TS011F")
 C = "00:00:00:00:00:00:00:0c"
@@ -397,11 +397,11 @@ C = "00:00:00:00:00:00:00:0c"
         (("_TZ3000_gjnozsaz", "TS011F"), StandardOnOff, "switch", "not_built"),
     ],
 )
-async def test_a_class_the_call_harms_is_refused_with_experimental_on(
+async def test_a_class_the_call_harms_is_refused_with_labs_on(
     hass, setup_production, commands, turn_ons, strings, on_off, domain, reason
 ):
     add_zha_entity(hass, zha_entry(hass), f"{domain}.device", strings=strings, on_off=on_off)
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": f"{domain}.device", "duration": 5}) == reason
     assert not commands
@@ -414,7 +414,7 @@ async def test_a_tuya_member_in_a_group_is_refused_and_the_rest_get_their_own(
     """The Tuya light is refused, and a groupcast would still reach it, so the Hue bulbs get one command each."""
     add_zha_entity(hass, two_light_group, "light.strip", ieee=C, strings=("_TZ3000_abcdefgh", "TS0001"))
     zha_groups[2] = zha_group((A, 11), (B, 11), (C, 11))
-    allow_experimental(hass)
+    allow_labs(hass)
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 
@@ -423,24 +423,24 @@ async def test_a_tuya_member_in_a_group_is_refused_and_the_rest_get_their_own(
     assert sorted(command.data["ieee"] for command in commands) == [A, B]
 
 
-async def test_a_device_whose_strings_werent_read_is_refused_with_experimental_on(hass, setup_production, commands):
+async def test_a_device_whose_strings_werent_read_is_refused_with_labs_on(hass, setup_production, commands):
     """It could be a Tuya datapoint device, so where the call harms a class it is refused as class_unknown."""
     add_zha_entity(hass, zha_entry(hass), "switch.plug", strings=(None, None))
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "class_unknown"
     assert not commands
 
 
-async def test_an_ikea_light_runs_only_with_experimental_on(hass, setup_production, commands):
-    """On trial: research names IKEA's lights as running the timer (refusals.py, families/ikea)."""
+async def test_an_ikea_light_runs_only_with_labs_on(hass, setup_production, commands):
+    """In Labs: research names IKEA's lights as running the timer (refusals.py, families/ikea)."""
     add_zha_entity(hass, zha_entry(hass), "light.ikea", strings=("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm"))
     data = {"entity_id": "light.ikea", "duration": 5}
 
-    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+    assert await refusal(hass, "turn_on_for", data) == "labs_off"
     assert not commands
 
-    allow_experimental(hass)
+    allow_labs(hass)
     assert await call(hass, "turn_on_for", data) == {"light.ikea": CONFIRMED}
     assert commands[0].data["params"] == {"on_off_control": 0, "on_time": 50, "off_wait_time": 0}
 
@@ -448,16 +448,16 @@ async def test_an_ikea_light_runs_only_with_experimental_on(hass, setup_producti
 async def test_the_ikea_bulbs_reported_to_stay_on_are_not_built(hass, setup_production, commands):
     """Reported turned on by a unicast timer and never off (Zigbee2MQTT #29158): refused with why."""
     add_zha_entity(hass, zha_entry(hass), "light.gu10", strings=("IKEA of Sweden", "TRADFRI bulb GU10 WS 345lm"))
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "light.gu10", "duration": 5}) == "not_built"
     assert not commands
 
 
-async def test_another_brand_is_not_built_even_with_experimental_on(hass, setup_production, commands):
+async def test_another_brand_is_not_built_even_with_labs_on(hass, setup_production, commands):
     """`other` has no pass, and research names only some makers' lights as running the timer (refusals.py)."""
     add_zha_entity(hass, zha_entry(hass), "light.innr", strings=("innr", "RB 285 C"))
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "light.innr", "duration": 5}) == "not_built"
     assert not commands
@@ -516,7 +516,7 @@ async def test_the_coordinator_in_the_group_keeps_the_groupcast(
 async def test_a_flagged_member_left_out_stops_the_groupcast(
     hass, setup_production, two_light_group, zha_groups, commands, group_commands
 ):
-    """With Experimental features off, another brand's bulb is skipped, and a groupcast would still reach it."""
+    """With Labs off, another brand's bulb is skipped, and a groupcast would still reach it."""
     add_zha_entity(hass, two_light_group, "light.ikea", ieee=C, strings=("IKEA of Sweden", "TRADFRI bulb"))
     zha_groups[2] = zha_group((A, 11), (B, 11), (C, 11))
 
@@ -530,11 +530,11 @@ async def test_a_flagged_member_left_out_stops_the_groupcast(
 async def test_a_group_member_that_cant_be_classed_is_skipped_and_the_rest_get_their_own(
     hass, setup_production, two_light_group, zha_groups, commands, group_commands
 ):
-    """A member whose strings weren't read could be a harmed class: skipped as class_unknown, even with Experimental
+    """A member whose strings weren't read could be a harmed class: skipped as class_unknown, even with Labs
     features on; the others get one command each, as a groupcast would reach it."""
     add_zha_entity(hass, two_light_group, "light.unread", ieee=C, strings=(None, None))
     zha_groups[2] = zha_group((A, 11), (B, 11), (C, 11))
-    allow_experimental(hass)
+    allow_labs(hass)
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 

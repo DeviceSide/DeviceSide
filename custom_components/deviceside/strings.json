@@ -68,7 +68,7 @@
     "invalid_duration": {
       "message": "Duration must be greater than zero."
     },
-    "experimental_off": {
+    "labs_off": {
       "message": "{entity_id}: this is in Labs on this device. It may not work, and a fix may need someone with the device. Turn on Labs in DeviceSide's options to try it."
     },
     "target_not_supported": {

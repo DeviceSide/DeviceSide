@@ -43,7 +43,7 @@ from .rules import ZIGBEE, definition_fields, zigbee_strings
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
-from ...core.scope import OTHER, ClassDomains, ClassLevel, Unplaced, experimental
+from ...core.scope import OTHER, ClassDomains, ClassLevel, Unplaced, labs
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,12 +52,12 @@ CLASSES: ClassDomains = {OTHER: frozenset({Platform.LIGHT, Platform.SWITCH})} | 
     name: domains for family in FAMILIES for name, domains in family.classes.items()
 }
 
-# `other`'s level in each adapter's scope (index.md, Device classes; docs/evidence.md, On trial): on trial only where
+# `other`'s level in each adapter's scope (index.md, Device classes; docs/evidence.md, In Labs): in Labs only where
 # research predicts most of it accepts the call, and not built elsewhere (an empty mapping). It spans vendors, so a
-# Hue bulb's pass makes it neither Documented nor on trial.
+# Hue bulb's pass makes it neither Documented nor in Labs.
 # Brightness fades and stop: Level Control's Move, MoveToLevel and Stop, which a Zigbee 3.0 dimmable light must take
 # (docs/internals.md, Shared); native_control.py turns Philips' own off for a brightness fade.
-_CERTIFIED = experimental(OTHER)
+_CERTIFIED = labs(OTHER)
 _NOT_BUILT: Mapping[str, ClassLevel] = {}
 OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "raise_brightness": _CERTIFIED,

@@ -130,18 +130,18 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 |---|---|---|---|---|
 | `get_attributes` | Verified | light entities; hue on light classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>`LWA012` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
-| `lower_brightness` | Experimental | other, ikea, ikea_timer_harmed classes | | |
+| `lower_brightness` | Labs | other, ikea, ikea_timer_harmed classes | | |
 | `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.json) |
 | `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.json) |
 | `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.json) |
-| `raise_brightness` | Experimental | other, ikea, ikea_timer_harmed classes | | |
+| `raise_brightness` | Labs | other, ikea, ikea_timer_harmed classes | | |
 | `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.json) |
 | `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.json) |
 | `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.json) |
 | `stop` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.json) |
-| `stop` | Experimental | other, ikea, ikea_timer_harmed classes | | |
+| `stop` | Labs | other, ikea, ikea_timer_harmed classes | | |
 | `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102`<br>`LWA012` (`hue`), firmware `1.163.1`<br>`LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | ikea on light, tuya_countdown on switch classes | | |
+| `turn_on_for` | Labs | ikea on light, tuya_countdown on switch classes | | |
 
 | No known method | Why | Source |
 |---|---|---|
@@ -164,18 +164,18 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 |---|---|---|---|---|
 | `get_attributes` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>`LWA012` (`hue`), firmware `0x01002a00` | [record](integrations/zha/test-records/get_attributes.json) |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
-| `lower_brightness` | Experimental | other, ikea, ikea_timer_harmed classes | | |
+| `lower_brightness` | Labs | other, ikea, ikea_timer_harmed classes | | |
 | `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/lower_hue.json) |
 | `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/lower_saturation.json) |
 | `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.json) |
-| `raise_brightness` | Experimental | other, ikea, ikea_timer_harmed classes | | |
+| `raise_brightness` | Labs | other, ikea, ikea_timer_harmed classes | | |
 | `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/raise_hue.json) |
 | `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/raise_saturation.json) |
 | `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>group | [record](integrations/zha/test-records/set_attributes.json) |
 | `stop` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>group | [record](integrations/zha/test-records/stop.json) |
-| `stop` | Experimental | other, ikea, ikea_timer_harmed classes | | |
+| `stop` | Labs | other, ikea, ikea_timer_harmed classes | | |
 | `turn_on_for` | Verified | light entities; hue on light classes; brightness, color_temp_kelvin fields | `LWA012` (`hue`), firmware `0x01002a00`<br>`LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | ikea on light classes | | |
+| `turn_on_for` | Labs | ikea on light classes | | |
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
@@ -201,9 +201,9 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `get_attributes` | Verified | light, switch entities; Switch, RGBCCT classes | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca` | [record](integrations/shelly/test-records/get_attributes.json) |
 | `get_attributes` | Documented | Light, CCT, RGB, RGBW classes | | |
 | `lower_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/lower_brightness.json) |
-| `lower_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
+| `lower_brightness` | Labs | Light, CCT, RGB, RGBW classes | | |
 | `raise_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/raise_brightness.json) |
-| `raise_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
+| `raise_brightness` | Labs | Light, CCT, RGB, RGBW classes | | |
 | `set_attributes` | Verified | light entities; RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.json) |
 | `set_attributes` | Documented | Light, CCT, RGB, RGBW classes | | |
 | `set_auto_off` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261113-111623/2.2.1-gffa2ea1` | [record](integrations/shelly/test-records/set_auto_off.json) |
@@ -211,7 +211,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `set_auto_on` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261113-111623/2.2.1-gffa2ea1` | [record](integrations/shelly/test-records/set_auto_on.json) |
 | `set_auto_on` | Documented | Light, CCT, RGB, RGBW classes | | |
 | `stop` | Verified | light entities; RGBCCT classes | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/stop.json) |
-| `stop` | Experimental | Light, CCT, RGB, RGBW classes | | |
+| `stop` | Labs | Light, CCT, RGB, RGBW classes | | |
 | `turn_off_for` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_off_for.json) |
 | `turn_off_for` | Documented | Light, CCT, RGB, RGBW classes | | |
 | `turn_on_for` | Verified | light, switch entities; Switch, RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, transition, xy_color fields | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S4SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3SW-001X8EU` (`Switch`), firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_on_for.json) |
@@ -242,7 +242,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `get_attributes` | Documented | light entities; other classes | | |
 | `turn_on_for` | Verified | switch entities; wiz_plug classes | `8979` (`wiz_plug`), firmware `v1.4` | [record](integrations/matter/test-records/turn_on_for.json) |
 | `turn_on_for` | Documented | light entities | | |
-| `turn_on_for` | Experimental | other classes | | |
+| `turn_on_for` | Labs | other classes | | |
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
@@ -254,11 +254,11 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Experimental | light entities; no_stop, other classes | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `lower_brightness` | Experimental | light entities; other classes; brightness fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `raise_brightness` | Experimental | light entities; other classes; brightness fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `set_attributes` | Experimental | light entities; no_stop, other classes; color_temp_kelvin fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `stop` | Experimental | light entities; other classes | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `get_attributes` | Labs | light entities; no_stop, other classes | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `lower_brightness` | Labs | light entities; other classes; brightness fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `raise_brightness` | Labs | light entities; other classes; brightness fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `set_attributes` | Labs | light entities; no_stop, other classes; color_temp_kelvin fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `stop` | Labs | light entities; other classes | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
 
 | No known method | Why | Source |
 |---|---|---|

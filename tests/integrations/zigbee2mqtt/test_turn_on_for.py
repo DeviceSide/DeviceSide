@@ -14,7 +14,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, turn_on_for
 
 from .conftest import call, group, light
-from ...conftest import advance, allow_experimental, refusal, sent, wall_clock_now
+from ...conftest import advance, allow_labs, refusal, sent, wall_clock_now
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
@@ -62,11 +62,11 @@ async def test_light_with_fields_calls_turn_on_with_them_all_then_publishes_on_t
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 10.0}
 
 
-@pytest.mark.parametrize("experimental", [False, True])
-async def test_a_hue_plug_is_not_built(hass, setup_production, publishes, turn_ons, experimental):
-    """`hue` is served on lights alone: a Hue plug, a switch, is not built, Experimental or not."""
+@pytest.mark.parametrize("labs", [False, True])
+async def test_a_hue_plug_is_not_built(hass, setup_production, publishes, turn_ons, labs):
+    """`hue` is served on lights alone: a Hue plug, a switch, is not built, in Labs or not."""
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug")
-    allow_experimental(hass, experimental)
+    allow_labs(hass, labs)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
     assert not publishes

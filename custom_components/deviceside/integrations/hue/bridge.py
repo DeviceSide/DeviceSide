@@ -50,13 +50,13 @@ def is_hue_group(hass: HomeAssistant, target: Target) -> bool:
 
 def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
     """Hue's IntegrationInfo.expand_group: the room's or zone's lights, sorted by entity_id (aiohue's order is a
-    set's). The dispatcher classes a room by them, and falls back to them when one's class is refused, or Experimental
+    set's). The dispatcher classes a room by them, and falls back to them when one's class is refused, or in Labs
     with the option off (docs/design.md, Groups).
 
     A light with no light entity in HA is still classed by its device, through a stand-in no action reaches
     (`_stand_in`): the bridge's grouped_light write reaches it, so, left out, a third-party light would get the room's
     call at the Hue lights' level. One with no device in HA either can't be classed (None): the room then counts as
-    Experimental, and with the option off falls back to its lights that have entities, as it does for another brand's.
+    a Labs item, and with the option off falls back to its lights that have entities, as it does for another brand's.
     """
     entities = er.async_get(hass)
     registry = get_runtime(hass).registry

@@ -9,7 +9,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.control4.set_attributes import Control4SetAttributes
 
 from .conftest import CONFIRMED, LAMP, SENT, dimmable_lamp
-from ...conftest import allow_experimental, call, refusal, result, sent
+from ...conftest import allow_labs, call, refusal, result, sent
 from ...fixtures.control4 import ITEM, FakeDirector, add_control4_light, control4_entry, failing
 
 CAPABILITIES = director_call(f"/api/v1/items/{ITEM}/variables?varnames=Navigator%20Dynamic%20Capabilities")
@@ -186,11 +186,11 @@ async def test_a_light_that_cant_be_addressed_is_refused(hass):
     )
 
 
-async def test_refused_while_the_experimental_option_is_off(hass):
+async def test_refused_while_the_labs_option_is_off(hass):
     director = dimmable_lamp(hass)
-    allow_experimental(hass, on=False)
+    allow_labs(hass, on=False)
 
-    assert await refusal(hass, "set_attributes", {**LAMP, "color_temp_kelvin": 2700}) == "experimental_off"
+    assert await refusal(hass, "set_attributes", {**LAMP, "color_temp_kelvin": 2700}) == "labs_off"
     assert not director.send_get_request.await_args_list
 
 
@@ -205,9 +205,9 @@ async def test_the_command_is_logged_without_the_item_id(hass, wire):
 
 def test_scope():
     scope = Control4SetAttributes.scope
-    assert scope.all_experimental
+    assert scope.all_labs
     assert scope.confirmable
-    assert scope.fields == {"color_temp_kelvin": Level.EXPERIMENTAL}
+    assert scope.fields == {"color_temp_kelvin": Level.LABS}
     assert scope.unlisted == {"color_temp_kelvin"}
 
 

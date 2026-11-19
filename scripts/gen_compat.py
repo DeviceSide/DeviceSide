@@ -24,7 +24,7 @@ its "Other brands" section the other brands. Native groups sort first, then line
 other brands, then models no class line takes; within a brand, tested lines first, "other …" lines last, the rest
 alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before its maker strings.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
-  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, ⚪ Experimental; 🔴 for a scope's
+  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, ⚪ Labs; 🔴 for a scope's
   `no_known_method` entry, which names a class devices.yaml gives no phrase by its `what`. A feature whose actions
   differ in status names its parts ("🟡 smooth dimming down · ⚪ smooth dimming up"), so none shows twice. A feature not
   built yet on a class (in no scope, or a `not_built` entry) is left out, and a class with nothing left has no line.
@@ -52,11 +52,11 @@ alphabetically, and a line's names sort the same way (`ordered`), a variant's pl
 A model or blocker drops the integration's name where it leads, as the card's name already gives it. Cards show
 features, not fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
 
-**The fold and the cap** (docs/evidence.md, The experimental flag). A card's top-level lines that show only ⚪
-(🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ on trial: [class] (features);
+**The fold and the cap** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
+(🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ in Labs: [class] (features);
 [class], [class] (features)": classes with the same features share a parenthesis, a 🔴 part stays inside it, and a
-variants parent's children never fold. `check_share` then fails when the Experimental lines (⚪ with no 🟢 or 🟡),
-counted across every card, children included, are over `EXPERIMENTAL_SHARE_MAX` of all the lines, so the cards can't
+variants parent's children never fold. `check_share` then fails when the Labs lines (⚪ with no 🟢 or 🟡),
+counted across every card, children included, are over `LABS_SHARE_MAX` of all the lines, so the cards can't
 again read as a list of untried classes.
 
 **Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
@@ -147,15 +147,15 @@ TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 OUTCOMES = (
     ("works", "🟢", "works"),
     ("should", "🟡", "should work: same call pattern as a tested device"),
-    ("experimental", "⚪", "Labs: built but not yet proven. Turn on Labs to try it"),
+    ("labs", "⚪", "Labs: built but not yet proven. Turn on Labs to try it"),
     ("no_known_method", "🔴", "no known command works on it"),
 )
-# The most card lines, as a share of all of them across the README's cards, that may be Experimental: ⚪ with no 🟢
-# or 🟡 (docs/evidence.md, The experimental flag). The number is directional: the failure it prevents is the earlier
+# The most card lines, as a share of all of them across the README's cards, that may be in Labs: ⚪ with no 🟢
+# or 🟡 (docs/evidence.md, The Labs flag). The number is directional: the failure it prevents is the earlier
 # card list of more than half untried classes, which read as a claim that DeviceSide was ready for them.
-EXPERIMENTAL_SHARE_MAX = 0.25
-TRIAL = next(icon for key, icon, _ in OUTCOMES if key == "experimental")
-TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.EXPERIMENTAL: "experimental"}
+LABS_SHARE_MAX = 0.25
+LABS = next(icon for key, icon, _ in OUTCOMES if key == "labs")
+TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.LABS: "labs"}
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
 UNTESTED_FIX = "🔧 Untested fix"
@@ -589,18 +589,16 @@ def card_evidence(adapter) -> Evidence:
     unflagged in some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a
     null-class device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
-    flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
-    if scope.all_experimental or "fields" in flagged:
+    flagged = {noun for level, _, noun, domains in items(scope) if level is Level.LABS or domains is not None}
+    if scope.all_labs or "fields" in flagged:
         return Evidence([], [])
     if not flagged:
         return Evidence.of(adapter)
-    domains = {domain for domain, level in scope.domains.items() if level is not Level.EXPERIMENTAL}
+    domains = {domain for domain, level in scope.domains.items() if level is not Level.LABS}
 
     def unflagged(cls: str | None, domain: str) -> bool:
         return (
-            cls is not None
-            and cls in (scope.capabilities or {})
-            and scope.class_level(cls, domain) is not Level.EXPERIMENTAL
+            cls is not None and cls in (scope.capabilities or {}) and scope.class_level(cls, domain) is not Level.LABS
         )
 
     def clean(domain: str | None, reached: set[str | None]) -> bool:
@@ -617,12 +615,12 @@ def card_evidence(adapter) -> Evidence:
 
 
 def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
-    """The scope's items, as (level, item, noun, domains), domains first: all Experimental in an adapter flagged whole.
+    """The scope's items, as (level, item, noun, domains), domains first: all in Labs in an adapter flagged whole.
     `domains` names those a class's level holds on alone (core/scope.py, OnDomains), else None."""
     entries = [(level, item, "entities", None) for item, level in scope.domains.items()]
     entries += [(level, item, "classes", domains) for item, level, domains in scope.class_entries()]
     entries += [(level, item, "fields", None) for item, level in scope.fields.items()]
-    return [(Level.EXPERIMENTAL if scope.all_experimental else level, *rest) for level, *rest in entries]
+    return [(Level.LABS if scope.all_labs else level, *rest) for level, *rest in entries]
 
 
 # The evidence block.
@@ -790,7 +788,7 @@ def anchor(text: str, url: str) -> str:
 # A card item: a class with one of the entity domains it can be, or, where the integration names no classes, a domain
 # with None.
 type Item = tuple[str, str | None]
-# A line's features by status, in OUTCOMES order: (("works", ("turn on with timer",)), ("experimental", (...))).
+# A line's features by status, in OUTCOMES order: (("works", ("turn on with timer",)), ("labs", (...))).
 type Shape = tuple[tuple[str, tuple[str, ...]], ...]
 # A class's brand, from its name and page section, as lines sort it: (0, family key) for a family's, (1, "") for other
 # brands' (`brands`).
@@ -833,7 +831,7 @@ def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[It
     """Each item the adapters serve, with its actions by status, in first-seen order. A class counts on each entity
     domain it can be (IntegrationInfo.classes) that the adapter serves, at the level a call there runs at
     (AdapterScope.level: the weaker of the domain and the class); a class in the scope's `no_known_method` has none
-    there; one the scope names in neither (not built yet) is left out. An adapter flagged whole is Experimental
+    there; one the scope names in neither (not built yet) is left out. An adapter flagged whole is in Labs
     throughout."""
     found: dict[Item, dict[str, set[str]]] = {}
     for adapter in integration_adapters:
@@ -931,35 +929,37 @@ class Line:
         found = " · ".join(f"{icons[status]} {', '.join(labels)}" for status, labels in self.shape)
         return f"{self.name(card, key, data, rig)}: {found}"
 
-    def on_trial(self) -> bool:
+    def in_labs(self) -> bool:
         """Shows ⚪ and no 🟢 or 🟡 (🔴 may sit beside it): a line that claims nothing yet."""
         statuses = {status for status, _ in self.shape}
-        return self.note is None and "experimental" in statuses and not statuses & {"works", "should"}
+        return self.note is None and "labs" in statuses and not statuses & {"works", "should"}
 
 
 def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> tuple[list[Line], str | None]:
-    """Two or more top-level lines that are on trial (`Line.on_trial`) leave `lines` for one folded line:
+    """Two or more top-level lines that are in Labs (`Line.in_labs`) leave `lines` for one folded line:
     "⚪ [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside it
     after " · ", and a group sits where its last line does, so one holding an "other brands" line comes last.
     A variants parent's children, and a single such line, stay where they are."""
-    trial = [line for line in lines if line.on_trial() and not line.variant]
-    if len(trial) < 2:
+    labs_lines = [line for line in lines if line.in_labs() and not line.variant]
+    if len(labs_lines) < 2:
         return lines, None
     icons = {status: icon for status, icon, _ in OUTCOMES}
     groups: dict[Shape, list[str]] = {}
-    for line in trial:
+    for line in labs_lines:
         groups.setdefault(line.shape, []).append(line.name(card, key, data, rig))
     # A group sits where its last line does, so a group with an "other brands" line comes last, as on the card.
-    last = {found: max(i for i, line in enumerate(lines) if line.shape == found and line in trial) for found in groups}
+    last = {
+        found: max(i for i, line in enumerate(lines) if line.shape == found and line in labs_lines) for found in groups
+    }
     parts = []
     for found in sorted(groups, key=last.get):
         names = groups[found]
         inside = " · ".join(
-            ", ".join(labels) if status == "experimental" else f"{icons[status]} {', '.join(labels)}"
+            ", ".join(labels) if status == "labs" else f"{icons[status]} {', '.join(labels)}"
             for status, labels in found
         )
         parts.append(f"{', '.join(names)} ({inside})")
-    return [line for line in lines if line not in trial], f"{TRIAL} {'; '.join(parts)}"
+    return [line for line in lines if line not in labs_lines], f"{LABS} {'; '.join(parts)}"
 
 
 def class_lines(
@@ -1180,7 +1180,7 @@ class Card:
     all_unmaintained: bool = False
     lines: list[str] = field(default_factory=list)
     total: int = 0  # the lines the cap counts: each line, a variants parent's children too
-    trial: list[str] = field(default_factory=list)  # those that are Experimental, as rendered
+    labs_lines: list[str] = field(default_factory=list)  # those that are in Labs, as rendered
     # What the evidence tested, as the lines name it: each model (✔ when the rig tested it), then native groups.
     tested: list[str] = field(default_factory=list)
 
@@ -1263,8 +1263,8 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     lines, folded = fold(lines, result, key, data, rig)
     result.lines = [line.render(result, key, data, rig) for line in lines]
     result.total = sum(1 + len(line.children) for line in lines)
-    result.trial = [
-        shown.render(result, key, data, rig) for line in lines for shown in (line, *line.children) if shown.on_trial()
+    result.labs_lines = [
+        shown.render(result, key, data, rig) for line in lines for shown in (line, *line.children) if shown.in_labs()
     ]
     # devices.yaml's and models.yaml's no_known_method entries name no class or action: each a line of its own.
     result.lines += [
@@ -1276,7 +1276,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     if folded:
         result.lines.append(folded)
         result.total += 1
-        result.trial.append(folded)
+        result.labs_lines.append(folded)
     return result
 
 
@@ -1299,15 +1299,15 @@ def card_list(registry: AdapterRegistry, data: Data) -> list[Card]:
 
 
 def check_share(built: list[Card]) -> None:
-    """Fails when the Experimental lines (`Line.on_trial`), after each card's fold, are over EXPERIMENTAL_SHARE_MAX of
-    all the cards' lines (docs/evidence.md, The experimental flag)."""
+    """Fails when the Labs lines (`Line.in_labs`), after each card's fold, are over LABS_SHARE_MAX of
+    all the cards' lines (docs/evidence.md, The Labs flag)."""
     total = sum(card.total for card in built)
-    trial = [line for card in built for line in card.trial]
-    if total and len(trial) / total > EXPERIMENTAL_SHARE_MAX:
-        listed = "\n".join(f"  {line}" for line in trial)
+    labs_lines = [line for card in built for line in card.labs_lines]
+    if total and len(labs_lines) / total > LABS_SHARE_MAX:
+        listed = "\n".join(f"  {line}" for line in labs_lines)
         raise SystemExit(
-            f"{len(trial)} of {total} card lines ({len(trial) / total:.0%}) are Experimental, over the"
-            f" {EXPERIMENTAL_SHARE_MAX:.0%} cap (docs/evidence.md, The experimental flag):\n{listed}"
+            f"{len(labs_lines)} of {total} card lines ({len(labs_lines) / total:.0%}) are in Labs, over the"
+            f" {LABS_SHARE_MAX:.0%} cap (docs/evidence.md, The Labs flag):\n{listed}"
         )
 
 

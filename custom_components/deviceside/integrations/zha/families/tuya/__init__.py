@@ -68,7 +68,7 @@ FAMILY = Family(
         TUYA_MCU: frozenset({Platform.LIGHT, Platform.SWITCH}),
     },
     # In no scope: not built on every action, as no pass or research predicts Tuya's firmware takes the calls
-    # (docs/evidence.md, On trial). turn_on_for's call harms every Tuya class, so the integration refuses them there
+    # (docs/evidence.md, In Labs). turn_on_for's call harms every Tuya class, so the integration refuses them there
     # with a reason (refusals.py). `tuya_mcu`'s quirk answers what DeviceSide sends itself (reads from its cache, a
     # Level move without its transition), so it needs a datapoint call nobody has built; get_attributes reads only what
     # another action serves (core/registry.py, check_queries); a countdown model's OnTime reads in whole seconds

@@ -20,7 +20,7 @@ from custom_components.deviceside.core.scope import (
     NoKnownMethod,
     NotBuilt,
     OwnCall,
-    experimental,
+    labs,
     verified,
 )
 
@@ -97,7 +97,7 @@ NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source")
 
 
 class Classed(FakeTurnOnFor):
-    scope = replace(FakeTurnOnFor.scope, capabilities=verified("hue") | experimental("other"))
+    scope = replace(FakeTurnOnFor.scope, capabilities=verified("hue") | labs("other"))
 
 
 def test_an_integration_naming_classes_needs_them_in_every_scope():
@@ -141,7 +141,7 @@ PLUG_ONLY = replace(CLASSED, classes={**CLASSED.classes, "tuya": frozenset({Plat
 @pytest.mark.parametrize(
     "entries",
     [
-        {"capabilities": verified("hue") | experimental("other", "tuya")},
+        {"capabilities": verified("hue") | labs("other", "tuya")},
         {"no_known_method": {"tuya": NO_METHOD}},
         {"not_built": {"tuya": NOT_BUILT}},
     ],
@@ -170,7 +170,7 @@ def test_a_level_held_on_some_domains_names_only_domains_the_class_can_be():
         scope = replace(
             Classed.scope,
             domains=verified("light", "switch"),
-            capabilities=verified("hue") | experimental("other") | verified("tuya", domains=("light",)),
+            capabilities=verified("hue") | labs("other") | verified("tuya", domains=("light",)),
         )
 
     with pytest.raises(ValueError, match=r"on domains they can't be \(IntegrationInfo.classes\): \['tuya'\]"):
@@ -193,9 +193,7 @@ def test_a_query_serves_only_what_another_action_serves():
     reason, they pass."""
 
     class Timer(FakeTurnOnFor):
-        scope = replace(
-            Classed.scope, capabilities=verified("hue", domains=("light",), only=True) | experimental("other")
-        )
+        scope = replace(Classed.scope, capabilities=verified("hue", domains=("light",), only=True) | labs("other"))
 
     def read(capabilities, **entries):
         class Read(FakeTurnOnFor):
@@ -204,14 +202,12 @@ def test_a_query_serves_only_what_another_action_serves():
 
         return Read
 
-    _registry([Timer, read(experimental("hue", domains=("light",), only=True) | experimental("other"))], CLASSED)
-    _registry([Timer, read(experimental("other"), no_known_method={"hue": NO_METHOD})], CLASSED)
+    _registry([Timer, read(labs("hue", domains=("light",), only=True) | labs("other"))], CLASSED)
+    _registry([Timer, read(labs("other"), no_known_method={"hue": NO_METHOD})], CLASSED)
     with pytest.raises(ValueError, match="serves what no other fake action does: hue on switch$"):
-        _registry([Timer, read(experimental("hue", "other"))], CLASSED)
+        _registry([Timer, read(labs("hue", "other"))], CLASSED)
     with pytest.raises(ValueError, match="serves what no other fake action does: tuya on light, tuya on switch$"):
-        _registry(
-            [Timer, read(experimental("hue", domains=("light",), only=True) | experimental("other", "tuya"))], CLASSED
-        )
+        _registry([Timer, read(labs("hue", domains=("light",), only=True) | labs("other", "tuya"))], CLASSED)
 
 
 def test_a_query_on_an_integration_naming_no_classes_serves_only_another_action_s_domains():
@@ -294,7 +290,7 @@ TUYA_FAMILY = Family(
     key="tuya",
     maintainers=("a-b",),
     classes=dict.fromkeys({"tuya"}, ANYWHERE),
-    scopes={"turn_on_for": FamilyScope(capabilities=experimental("tuya"))},
+    scopes={"turn_on_for": FamilyScope(capabilities=labs("tuya"))},
 )
 WITH_FAMILIES = replace(CLASSED, default_class="other", families=(HUE_FAMILY, TUYA_FAMILY))
 
@@ -367,7 +363,7 @@ def test_families_that_split_the_classes_between_them_are_accepted():
                 r"family 'hue': its scopes name classes that aren't its own: \['tuya'\]",
                 id=f"foreign_{part}",
             )
-            for part, entry in (("capabilities", Level.EXPERIMENTAL), ("own_calls", OwnCall(None)))
+            for part, entry in (("capabilities", Level.LABS), ("own_calls", OwnCall(None)))
         ),
     ],
 )

@@ -70,7 +70,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
         # record serves one; a Hue plug and an `other` one are not built (refusals.py).
         domains=verified(Platform.LIGHT, Platform.SWITCH),
         # The not_built entries (refusals.py) each harm their class (a Tuya plug left on), so the dispatcher refuses a
-        # device not yet placed, and a group of unknown membership, as class_unknown, even with Experimental features
+        # device not yet placed, and a group of unknown membership, as class_unknown, even with Labs
         # on (classes.py). The families' own calls (Tuya's countdown) run through execute_own (adapter.py).
         **class_scope("turn_on_for"),
         duration=_TIMER_LIMITS,

@@ -47,7 +47,7 @@ CLASSES = {
 }
 
 # Every adapter's levels: Verified on Hue, whose lights every record ran on. `other` is not built on every action
-# (docs/evidence.md, On trial): no pass or research predicts other brands take the calls the bridge picks, and they
+# (docs/evidence.md, In Labs): no pass or research predicts other brands take the calls the bridge picks, and they
 # are known to depart from the calls it plausibly sends (internals.md, Device classes; the step 8 PR body).
 LEVELS = verified(HUE)
 

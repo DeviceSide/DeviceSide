@@ -13,7 +13,7 @@ from custom_components.deviceside.integrations.zha import set_attributes as adap
 from custom_components.deviceside.integrations.zha import zcl
 
 from .conftest import call, call_as
-from ...conftest import advance, allow_experimental, refusal, result, wall_clock_now
+from ...conftest import advance, allow_labs, refusal, result, wall_clock_now
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -265,7 +265,7 @@ async def test_entity_without_a_light_unique_id_is_not_addressable(hass, command
 
 async def test_a_model_that_drops_writes_while_off_is_refused(hass, commands):
     add_zha_entity(hass, zha_entry(hass), "light.bulb", attributes=DIMMABLE, strings=("sengled", "E11-G13"))
-    allow_experimental(hass)
+    allow_labs(hass)
 
     data = {"entity_id": "light.bulb", "brightness": 40}
     assert await refusal(hass, "set_attributes", data) == "execute_if_off_unsupported"

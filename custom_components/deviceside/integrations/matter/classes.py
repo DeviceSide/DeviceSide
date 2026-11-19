@@ -20,7 +20,7 @@ bridge the bridge's software. The rules, first match winning:
 The rules read the node's attribute cache, as addressing.lt_feature does: sync, no I/O. A node holds every attribute
 from its interview on, so one with no VendorID isn't fully reported, and no class can be named for it, not even
 `uncertified` (that is a vendor ID with no certification): its class is None, which the dispatcher refuses as
-class_unknown where the call harms a class, as it does Unplaced, and weighs as Experimental elsewhere. A target with no
+class_unknown where the call harms a class, as it does Unplaced, and weighs as a Labs item elsewhere. A target with no
 node is None too (addressing.unsupported_reason refuses it first, as not_addressable).
 """
 
@@ -32,7 +32,7 @@ from homeassistant.core import HomeAssistant
 from .addressing import node_for
 from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import OTHER, NotBuilt, documented, experimental, verified
+from ...core.scope import OTHER, NotBuilt, documented, labs, verified
 
 UNCERTIFIED = "uncertified"
 BRIDGED = "bridged"
@@ -60,16 +60,16 @@ _PRODUCTS = {(4107, 8979): WIZ_PLUG}
 
 # The levels each adapter's scope holds (index.md, Device classes; plan Decisions 46 to 48 and 75): get_attributes's
 # reads Documented on `other` by certification (docs/evidence.md, Levels), Verified on the WiZ plug by its record; the
-# timer call Verified on the WiZ plug alone, by its 2026-11-16 record on OffWaitTime 1 (internals.md), and on trial on
+# timer call Verified on the WiZ plug alone, by its 2026-11-16 record on OffWaitTime 1 (internals.md), and in Labs on
 # `other`, as certification sends OnWithTimedOff with another OffWaitTime. `multi_endpoint`, `bridged` and
-# `uncertified` are not built on both (docs/evidence.md, On trial): no pass or research predicts they take the call,
+# `uncertified` are not built on both (docs/evidence.md, In Labs): no pass or research predicts they take the call,
 # as certification tests one endpoint, a bridge's software answers for its devices, and an uncertified one is untested.
-TURN_ON_FOR = verified(WIZ_PLUG) | experimental(OTHER)
+TURN_ON_FOR = verified(WIZ_PLUG) | labs(OTHER)
 GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER)
 
 # turn_on_for's failure harms (docs/evidence.md, When today's call harms a class), so these three, which its scope
 # doesn't serve, carry entries: they make core refuse a node that reports no VendorID yet (no class, so it could be
-# one of them) as class_unknown, even with Experimental features on.
+# one of them) as class_unknown, even with Labs on.
 _INTERNALS = DOCS_URL + "docs/integrations/matter/internals.md#what-decides-the-call"
 TURN_ON_FOR_NOT_BUILT = {
     UNCERTIFIED: NotBuilt(

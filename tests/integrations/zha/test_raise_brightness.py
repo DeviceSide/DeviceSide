@@ -8,7 +8,7 @@ from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
 from .conftest import BOTTOM, INNR, SENT, A, B, bulb, call, sent, to
-from ...conftest import allow_experimental, refusal
+from ...conftest import allow_labs, refusal
 from ...fixtures.zha import IEEE, add_cluster
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
@@ -98,14 +98,14 @@ async def test_an_off_member_is_put_at_the_bottom_on_its_own(hass, two_light_gro
     assert len(group_commands) == 1
 
 
-async def test_another_brand_runs_only_with_experimental_on(hass, commands):
+async def test_another_brand_runs_only_with_labs_on(hass, commands):
     """From off a Hue bulb is turned on by Hue's own command and another brand by MoveToLevel with ExecuteIfOff, a
     call no record has run, so `other` is untested here."""
     bulb(hass, "light.innr", state="off", strings=INNR)
 
-    assert await refusal(hass, "raise_brightness", {"entity_id": "light.innr"}) == "experimental_off"
+    assert await refusal(hass, "raise_brightness", {"entity_id": "light.innr"}) == "labs_off"
     assert not commands
 
-    allow_experimental(hass)
+    allow_labs(hass)
     await call(hass, "raise_brightness", {"entity_id": "light.innr"})
     assert sent(commands)[0] == BOTTOM

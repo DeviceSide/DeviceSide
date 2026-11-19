@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from homeassistant.const import Platform
 
-from custom_components.deviceside.core.scope import AdapterScope, NotBuilt, documented, experimental, verified
+from custom_components.deviceside.core.scope import AdapterScope, NotBuilt, documented, labs, verified
 from scripts import gen_features as gf
 
 LIGHT = '<img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/light.svg"'
@@ -70,9 +70,9 @@ def test_domains_show_at_any_level_and_group_follows_native_groups_or_expand_gro
     assert gf.keys(documented_light, registry) == {"light"}
 
 
-def test_a_domain_is_live_only_where_a_non_experimental_class_can_be_on_it(no_blockers):
+def test_a_domain_is_live_only_where_a_non_labs_class_can_be_on_it(no_blockers):
     """Matter's Turn on with timer: the switch-only WiZ plug is Verified, and every class that can be a light is
-    Experimental, so the light icon stays grey."""
+    in Labs, so the light icon stays grey."""
     registry = FakeRegistry(
         classes={
             "matter": {
@@ -83,41 +83,39 @@ def test_a_domain_is_live_only_where_a_non_experimental_class_can_be_on_it(no_bl
     )
     scope = {
         "domains": verified("switch") | documented("light"),
-        "capabilities": verified("wiz_plug") | experimental("other"),
+        "capabilities": verified("wiz_plug") | labs("other"),
     }
     assert gf.keys(adapter("matter", "turn_on_for", **scope), registry) == {"switch"}
-    assert gf.keys(adapter("matter", "turn_on_for", **scope), registry, experimental=True) == {"light", "switch"}
+    assert gf.keys(adapter("matter", "turn_on_for", **scope), registry, labs=True) == {"light", "switch"}
     on_light = {**scope, "capabilities": verified("wiz_plug") | verified("other", domains={"light"})}
     assert gf.keys(adapter("matter", "turn_on_for", **on_light), registry) == {"switch", "light"}
 
 
 def test_a_flagged_adapter_shows_no_icon_until_the_option_is_on(no_blockers):
-    """Every domain Experimental gates the whole adapter at runtime, as an Experimental item is gated."""
+    """Every domain Labs gates the whole adapter at runtime, as a Labs item is gated."""
     registry = FakeRegistry(expand={"zha"})
-    flagged = adapter("zha", "stop", domains=experimental("light"))
+    flagged = adapter("zha", "stop", domains=labs("light"))
     assert gf.keys(flagged, registry) == set()
-    assert gf.keys(flagged, registry, experimental=True) == {"light", "group"}
+    assert gf.keys(flagged, registry, labs=True) == {"light", "group"}
 
 
-def test_an_experimental_domain_shows_no_icon_and_takes_its_group_with_it(no_blockers):
-    """The table shows what works with the Experimental features option off."""
+def test_an_labs_domain_shows_no_icon_and_takes_its_group_with_it(no_blockers):
+    """The table shows what works with the Labs option off."""
     registry = FakeRegistry(expand={"zha"})
-    assert gf.keys(adapter("zha", "stop", domains=verified("light") | experimental("switch")), registry) == {
+    assert gf.keys(adapter("zha", "stop", domains=verified("light") | labs("switch")), registry) == {
         "light",
         "group",
     }
-    assert gf.keys(adapter("zha", "stop", domains=experimental("light")), registry) == set()
+    assert gf.keys(adapter("zha", "stop", domains=labs("light")), registry) == set()
 
 
 SHELLY_CLASSES = {"shelly": dict.fromkeys(("Light", "CCT", "RGBCCT"), frozenset({Platform.LIGHT}))}
 
 
-def test_capabilities_that_are_all_experimental_show_no_icon(no_blockers):
+def test_capabilities_that_are_all_labs_show_no_icon(no_blockers):
     registry = FakeRegistry(classes=SHELLY_CLASSES)
-    assert gf.keys(adapter("shelly", "stop", capabilities=experimental("Light", "CCT")), registry) == set()
-    assert gf.keys(adapter("shelly", "stop", capabilities=verified("RGBCCT") | experimental("Light")), registry) == {
-        "light"
-    }
+    assert gf.keys(adapter("shelly", "stop", capabilities=labs("Light", "CCT")), registry) == set()
+    assert gf.keys(adapter("shelly", "stop", capabilities=verified("RGBCCT") | labs("Light")), registry) == {"light"}
 
 
 def test_a_domain_whose_every_class_is_refused_shows_no_icon_even_with_the_option_on(no_blockers):
@@ -128,11 +126,11 @@ def test_a_domain_whose_every_class_is_refused_shows_no_icon_even_with_the_optio
     zha = adapter(
         "zha",
         "turn_on_for",
-        domains=verified("light") | experimental("switch"),
-        capabilities=experimental("other"),
+        domains=verified("light") | labs("switch"),
+        capabilities=labs("other"),
         not_built={"other": on_switches},
     )
-    assert gf.keys(zha, registry, experimental=True) == {"light"}
+    assert gf.keys(zha, registry, labs=True) == {"light"}
 
 
 def test_a_group_needs_the_adapter_to_take_lights(no_blockers):
@@ -178,7 +176,7 @@ def test_a_blocked_cell_with_anything_built_fails(monkeypatch):
 def test_a_blocked_cell_with_one_key_built_fails(monkeypatch):
     monkeypatch.setattr(gf, "NO_PATH", {("Get attributes", "shelly")})
     with pytest.raises(SystemExit, match="switch is built, so not impossible"):
-        gf.generate(FakeRegistry(*every_row(domains=experimental("switch"))))
+        gf.generate(FakeRegistry(*every_row(domains=labs("switch"))))
 
 
 def test_a_no_path_entry_naming_no_row_fails(monkeypatch):
@@ -249,15 +247,15 @@ def test_the_checked_in_readme_matches_the_real_adapters():
     assert gf.main(["--check"]) == 0
 
 
-def test_an_experimental_domain_shows_a_grey_icon_after_the_amber_ones(no_blockers):
-    adapters = every_row(domains=verified("light") | experimental("switch"))
+def test_an_labs_domain_shows_a_grey_icon_after_the_amber_ones(no_blockers):
+    adapters = every_row(domains=verified("light") | labs("switch"))
     cell = cells(gf.generate(FakeRegistry(*adapters)), "Get attributes")[2]
     assert cell.index(LIGHT) < cell.index("/switch-grey.svg")
     assert SWITCH not in cell and 'alt="switch: Labs"' in cell
 
 
-def test_all_experimental_capabilities_show_grey(no_blockers):
-    adapters = every_row(capabilities=experimental("Light"))
+def test_all_labs_capabilities_show_grey(no_blockers):
+    adapters = every_row(capabilities=labs("Light"))
     cell = cells(gf.generate(FakeRegistry(*adapters, classes=SHELLY_CLASSES)), "Get attributes")[2]
     assert "/light-grey.svg" in cell and LIGHT not in cell
 

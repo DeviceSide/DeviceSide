@@ -4,7 +4,7 @@ import pytest
 
 from custom_components.deviceside.integrations.control4 import director
 
-from ...conftest import allow_experimental, unload_mock_entries
+from ...conftest import allow_labs, unload_mock_entries
 from ...fixtures.control4 import ITEM, FakeDirector, add_control4_light, control4_entry
 
 # pyControl4 stays out of the test environment on purpose: the integration must load without it.
@@ -12,9 +12,9 @@ unload_mock_control4_entries = unload_mock_entries("control4")
 
 
 @pytest.fixture(autouse=True)
-async def experimental_on(hass, setup_production):
-    """Every Control4 adapter is flagged, so the tests run with the Experimental features option on."""
-    allow_experimental(hass)
+async def labs_on(hass, setup_production):
+    """Every Control4 adapter is flagged, so the tests run with the Labs option on."""
+    allow_labs(hass)
 
 
 @pytest.fixture(autouse=True)

@@ -6,8 +6,8 @@ from homeassistant.exceptions import ServiceNotSupported, ServiceValidationError
 
 from ..const import DOMAIN
 
-# The call touches an Experimental scope item and the Experimental features option is off.
-EXPERIMENTAL_OFF = "experimental_off"
+# The call touches a Labs scope item and the Labs option is off.
+LABS_OFF = "labs_off"
 # The read-back after set_attributes shows a value the device did not keep.
 NOT_STORED = "not_stored"
 
@@ -36,7 +36,7 @@ class Reason(StrEnum):
     NOT_BUILT = "not_built"
     # The target's class rests on what DeviceSide doesn't know yet (a device not yet placed, a native group's
     # membership), or can't be named at all (None), on an adapter whose call harms a class it could be: refused even
-    # with Experimental features on (docs/evidence.md, Device classes). Usually transient: a device not yet placed
+    # with Labs on (docs/evidence.md, Device classes). Usually transient: a device not yet placed
     # clears once the integration has reported it, and a group whose membership isn't listed yet once it is; a target
     # that can't be classed at all (an entity with no device, a classifier that raised) stays refused.
     CLASS_UNKNOWN = "class_unknown"
@@ -48,7 +48,7 @@ class Reason(StrEnum):
 
 class TargetNotSupported(ServiceNotSupported):
     """A target the caller named can't take the action: core's ServiceNotSupported, with our reason in it. A target
-    refused for experimental_off gets a message of its own, saying how to let it through, and one whose class has no
+    refused for labs_off gets a message of its own, saying how to let it through, and one whose class has no
     known method, or is not built yet and has an entry, a message carrying why (`why`, the entry's reason), each under
     its reason's own key (`no_known_method`, `not_built`; any other reason with a why reads as no known method). One
     refused as
@@ -57,7 +57,7 @@ class TargetNotSupported(ServiceNotSupported):
 
     def __init__(self, entity_id: str, reason: str, why: str | None = None, integration: str | None = None) -> None:
         placeholders = {"entity_id": entity_id, "reason": reason}
-        if reason in (EXPERIMENTAL_OFF, Reason.OWN_CALL):
+        if reason in (LABS_OFF, Reason.OWN_CALL):
             key = str(reason)
         elif reason == Reason.CLASS_UNKNOWN and integration is not None:
             key, placeholders["integration"] = Reason.CLASS_UNKNOWN.value, integration

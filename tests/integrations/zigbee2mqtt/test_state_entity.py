@@ -14,7 +14,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.addressing import not
 
 from .conftest import DEVICES, PLUG, commands, light
 from .families.tuya.test_countdown import LAB, listed
-from ...conftest import allow_experimental, refusal
+from ...conftest import allow_labs, refusal
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
@@ -59,7 +59,7 @@ async def test_a_plug_beside_a_child_lock_switch_is_addressed(hass, setup_produc
     """Run B (2026-11-16): the child lock made two `switch` entities, and the count refused every such plug."""
     sibling(hass, "switch.plug_child_lock", "switch_child_lock", category=category, disabled=disabled)
     plug(hass, broker)
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert verdict(hass, "switch.plug") is None
     assert verdict(hass, "switch.plug", reads_state=True) is None
@@ -74,7 +74,7 @@ async def test_the_child_lock_switch_itself_is_refused_and_nothing_is_sent(
     """Its call would turn the plug on: the misroute the guard exists to prevent."""
     plug(hass, broker)
     sibling(hass, "switch.plug_child_lock", "switch_child_lock", category=category, disabled=disabled)
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert verdict(hass, "switch.plug_child_lock") == Reason.NOT_ADDRESSABLE
     if not disabled:
@@ -88,7 +88,7 @@ async def test_a_config_switch_on_a_sensor_is_refused(hass, setup_production, br
     add_z2m_entity(
         hass, z2m_entry(hass), "switch.sensor_indicator", unique_object_id="switch_indicator", manufacturer="Tuya"
     )
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert verdict(hass, "switch.sensor_indicator") == Reason.NOT_ADDRESSABLE
     assert verdict(hass, "switch.sensor_indicator", reads_state=True) == Reason.NOT_ADDRESSABLE
@@ -97,7 +97,7 @@ async def test_a_config_switch_on_a_sensor_is_refused(hass, setup_production, br
 async def test_a_device_on_a_custom_base_topic_is_refused(hass, setup_production, broker):
     """Its unique_id ends in its base topic, and the topics here name the default: the publish would reach nothing."""
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], base_topic="z2m", name="plug")
-    allow_experimental(hass)
+    allow_labs(hass)
 
     assert verdict(hass, "switch.plug") == Reason.NOT_ADDRESSABLE
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_addressable"

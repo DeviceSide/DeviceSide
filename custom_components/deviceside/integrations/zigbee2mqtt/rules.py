@@ -10,7 +10,7 @@ A rule reads two sources, both sync and with no I/O:
 - The device's Zigbee strings, its own manufacturer and model, and its definition's model and exposes, from the
   bridge cache's bridge/devices (bridge_cache.py, the one members.py lists groups from). Only they show a Tuya device
   under another vendor's definition (`_TZ3000_…`, `_TZE…`), which the registry doesn't (plan Decision 18): one that
-  fell into `other` would take turn_on_for's call with Experimental features on, and Zigbee2MQTT would leave it on.
+  fell into `other` would take turn_on_for's call with Labs on, and Zigbee2MQTT would leave it on.
   Only the definition shows which TS011F plugs take Tuya's countdown (internals.md, `turn_on_for`).
 """
 

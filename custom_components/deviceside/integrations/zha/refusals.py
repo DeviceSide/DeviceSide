@@ -26,7 +26,7 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # A call that would work is known or plausible, but isn't built (plan Decisions 70, 74 and 41): every class the
     # call harms, so none has no known method.
     "turn_on_for": {
-        # Every other brand's lights, plugs and switches (docs/evidence.md, On trial): no pass, and research names only
+        # Every other brand's lights, plugs and switches (docs/evidence.md, In Labs): no pass, and research names only
         # some makers' lights as running the timer, some lights turning on and never off, and most plugs ignoring it
         # or reading it as a vendor countdown. The call that would serve them, a host-side off, isn't built.
         OTHER: NotBuilt(

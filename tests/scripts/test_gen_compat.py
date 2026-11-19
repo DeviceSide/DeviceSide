@@ -18,7 +18,7 @@ from custom_components.deviceside.core.scope import (
     NoKnownMethod,
     NotBuilt,
     documented,
-    experimental,
+    labs,
     verified,
 )
 from scripts import check_release as cr
@@ -271,9 +271,9 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
     record(root, "zha", "stop-predicted_state", devices=[old_group()])
     record(root, "zha", "stop-other", result="fail", devices=[old_device("P1", "1")])
     scope = AdapterScope(
-        domains=verified("light") | experimental("switch"),
-        capabilities=verified("Light") | documented("CCT") | experimental("RGB", "Switch"),
-        fields=verified("brightness") | experimental("transition"),
+        domains=verified("light") | labs("switch"),
+        capabilities=verified("Light") | documented("CCT") | labs("RGB", "Switch"),
+        fields=verified("brightness") | labs("transition"),
     )
     assert evidence_rows(adapter("zha", "stop", scope)) == [
         "| `stop` | Verified | light entities; Light classes; brightness fields"
@@ -281,7 +281,7 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
         " | [predicted state](integrations/zha/test-records/stop-predicted_state.json),"
         " [record](integrations/zha/test-records/stop.json) |",
         "| `stop` | Documented | CCT classes | | |",
-        "| `stop` | Experimental | switch entities; RGB, Switch classes; transition fields | | |",
+        "| `stop` | Labs | switch entities; RGB, Switch classes; transition fields | | |",
     ]
 
 
@@ -290,13 +290,13 @@ def test_a_domain_the_adapter_serves_no_class_on_is_no_item():
     there, so the row doesn't list switch entities (core/registry.py, served_domains)."""
     on_switches = NotBuilt("It ignores the timer", "https://example.com/source", domains=frozenset({"switch"}))
     scope = AdapterScope(
-        domains=verified("light") | experimental("switch"),
-        capabilities=verified("Light") | experimental("Switch"),
+        domains=verified("light") | labs("switch"),
+        capabilities=verified("Light") | labs("Switch"),
         not_built={"Switch": on_switches},
     )
     assert [row.split(" | ")[1:3] for row in evidence_rows(adapter("zha", "turn_on_for", scope))] == [
         ["Verified", "light entities; Light classes"],
-        ["Experimental", "Switch on light classes"],
+        ["Labs", "Switch on light classes"],
     ]
 
 
@@ -310,12 +310,12 @@ def test_each_class_lists_only_the_models_that_reached_it_on_its_levels_row(root
         ran("light", device("LTA009", "2", "Light")),
         ran("light", device("LWA012", "2", None)),  # a null class credits nothing: on no row
     )
-    scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("Light"))
+    scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | labs("Light"))
     assert evidence_rows(adapter("zha", "turn_on_for", scope)) == [
         "| `turn_on_for` | Verified | light, switch entities; Switch classes"
         " | `P1` (`Switch`), firmware `1`"
         " | [record](integrations/zha/test-records/turn_on_for.json) |",
-        "| `turn_on_for` | Experimental | Light classes | `LTA009` (`Light`), firmware `2` | |",
+        "| `turn_on_for` | Labs | Light classes | `LTA009` (`Light`), firmware `2` | |",
     ]
 
 
@@ -329,18 +329,18 @@ def test_a_tested_model_sits_on_the_row_of_the_weakest_level_its_class_and_domai
         ran("switch", device("P1", "1"), role="switch_plug"),
         ran("switch", device("P1", "1"), group=True, role="group"),
     )
-    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    scope = AdapterScope(domains=verified("light") | labs("switch"))
     assert evidence_rows(adapter("hue", "stop", scope)) == [
         "| `stop` | Verified | light entities | `LTA009`, firmware `2`"
         " | [record](integrations/hue/test-records/stop.json) |",
-        "| `stop` | Experimental | switch entities | `P1`, firmware `1`<br>group | |",
+        "| `stop` | Labs | switch entities | `P1`, firmware `1`<br>group | |",
     ]
     record2(root, "zha", "stop", ran("switch", device("P1", "1", "Switch"), role="switch_plug"))
-    classed = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=verified("Switch"))
+    classed = AdapterScope(domains=verified("light") | labs("switch"), capabilities=verified("Switch"))
     assert evidence_rows(adapter("zha", "stop", classed)) == [
         "| `stop` | Verified | light entities; Switch classes | none"
         " | [record](integrations/zha/test-records/stop.json) |",
-        "| `stop` | Experimental | switch entities | `P1` (`Switch`), firmware `1` | |",
+        "| `stop` | Labs | switch entities | `P1` (`Switch`), firmware `1` | |",
     ]
 
 
@@ -356,12 +356,12 @@ def test_records_are_the_action_and_its_options(root):
     assert names == ["turn_on_for-predicted_state.json", "turn_on_for.json"]
 
 
-def test_an_adapter_flagged_whole_has_one_experimental_row(root):
-    # Every domain Experimental flags every call, so its Verified field shows Experimental too.
-    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
-    assert {level for level, *_ in gc.items(scope)} == {Level.EXPERIMENTAL}
+def test_an_adapter_flagged_whole_has_one_labs_row(root):
+    # Every domain in Labs flags every call, so its Verified field shows Labs too.
+    scope = AdapterScope(domains=labs("light", "switch"), fields=verified("brightness"))
+    assert {level for level, *_ in gc.items(scope)} == {Level.LABS}
     assert evidence_rows(adapter("zha", "stop", scope)) == [
-        "| `stop` | Experimental | light, switch entities; brightness fields | none | |"
+        "| `stop` | Labs | light, switch entities; brightness fields | none | |"
     ]
 
 
@@ -374,9 +374,9 @@ def manual_file(root, integration="zha", rows=MANUAL):
 
 def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     manual_file(root)
-    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
+    flagged = adapter("zha", "stop", AdapterScope(domains=labs("light")))
     assert evidence_rows(flagged) == [
-        "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
+        "| `stop` | Labs | light entities | `P1`, by hand<br>`LTA009`, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
     assert cr.manual_rows("zha", "lower_hue") == []
@@ -386,20 +386,18 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
 def test_a_format_2_row_credits_the_actions_it_passed(root):
     """A row from before transcripts names its actions in `passed`: it signs off nothing, but credits as it did."""
     manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), passed=("stop",))])
-    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
+    flagged = adapter("zha", "stop", AdapterScope(domains=labs("light")))
     assert evidence_rows(flagged) == [
-        "| `stop` | Experimental | light entities | `P1`, by hand"
-        " | [by hand](integrations/zha/test-records/_manual.json) |"
+        "| `stop` | Labs | light entities | `P1`, by hand | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
 
 
 def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
     row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop"), group=True)
     manual_file(root, rows=[row])
-    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
+    flagged = adapter("zha", "stop", AdapterScope(domains=labs("light")))
     assert evidence_rows(flagged) == [
-        "| `stop` | Experimental | light entities | group, by hand"
-        " | [by hand](integrations/zha/test-records/_manual.json) |"
+        "| `stop` | Labs | light entities | group, by hand | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
     # A hand-tested group is no rig-tested one: it reaches Works without a check mark.
     assert zha_card(adapter("zha", "stop")).tested == [f"[native groups]({URL}#native-groups)"]
@@ -417,7 +415,7 @@ def test_a_manual_group_with_a_null_class_member_credits_nothing_in_a_classed_in
     scope = AdapterScope(capabilities=verified("Switch", "Light"))
     assert classed_card(adapter("zha", "stop", scope)).tested == []
     assert classed_card(adapter("zha", "turn_on_for", scope)).tested == [f"[native groups]({URL}#native-groups)"]
-    flagged = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    flagged = AdapterScope(capabilities=verified("Switch") | labs("Light"))
     assert classed_card(adapter("zha", "turn_on_for", flagged)).tested == []
 
 
@@ -471,18 +469,18 @@ def test_a_model_tested_by_hand_works_without_the_rig_mark(root):
     assert card.tested == [f"[Hue lamp]({URL}#hue-lamp) ✔", f"[Plug]({URL}#plug)"]
 
 
-def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out_failing_records(root):
+def test_a_card_puts_flagged_adapters_under_labs_and_leaves_out_failing_records(root):
     record(root, "zha", "stop")
     record(root, "zha", "turn_on_for", result="fail", devices=[old_device("P1", "1")])
-    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
+    scope = AdapterScope(domains=labs("light", "switch"), fields=verified("brightness"))
     card = zha_card(
         adapter("zha", "stop", scope),
         adapter("zha", "turn_on_for"),
-        adapter("zha", "lower_hue", AdapterScope(domains=experimental("light"))),
-        adapter("zha", "raise_hue", AdapterScope(domains=experimental("light"))),
+        adapter("zha", "lower_hue", AdapterScope(domains=labs("light"))),
+        adapter("zha", "raise_hue", AdapterScope(domains=labs("light"))),
     )
     assert card.tested == []
-    # An adapter flagged whole is Experimental on every domain, evidence or not; stop rides the smooth move.
+    # An adapter flagged whole is in Labs on every domain, evidence or not; stop rides the smooth move.
     assert card.lines[:2] == [
         f"[lights]({URL}#lights): 🟢 turn on with timer · ⚪ smooth hue",
         f"[plugs]({URL}#zigbee-plugs): ⚪ stop",
@@ -495,7 +493,7 @@ def test_an_adapter_flagged_on_a_domain_counts_only_records_whose_passing_tests_
     record(root, "zha", "turn_on_for", tests=[light, old_test(None, "skipped")])
     record(root, "zha", "turn_on_for-option", devices=[old_device("P1", "1")], tests=[light, old_test("switch")])
     record(root, "zha", "stop", tests=[old_test(None)])  # a passing test with no domain
-    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    scope = AdapterScope(domains=verified("light") | labs("switch"))
     card = zha_card(*(adapter("zha", action, scope) for action in ("turn_on_for", "stop")))
     # Not Plug, whose format 1 record also passed on a switch, nor the manual rows; Hue lamp from the light-only one.
     assert card.tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
@@ -503,7 +501,7 @@ def test_an_adapter_flagged_on_a_domain_counts_only_records_whose_passing_tests_
 
 def test_a_format_2_record_puts_under_works_only_the_models_whose_tests_reached_an_unflagged_domain(root):
     record2(root, "zha", "turn_on_for", ran("light", device("LTA009")), ran("switch", device("P1", "1")))
-    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    scope = AdapterScope(domains=verified("light") | labs("switch"))
     # The same run as format 1 would add no model, as it can't say which test reached which.
     assert zha_card(adapter("zha", "turn_on_for", scope)).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
 
@@ -512,15 +510,15 @@ def test_a_pass_on_a_flagged_capability_puts_no_model_under_works(root):
     # Shelly smooth dimming: a pass on a Gen3 Dimmer's Light component must not make it work.
     record(root, "zha", "raise_brightness", devices=[old_device("P1", "1")])
     record(root, "zha", "turn_on_for")
-    dimming = AdapterScope(capabilities=verified("RGBCCT") | experimental("Light"))
+    dimming = AdapterScope(capabilities=verified("RGBCCT") | labs("Light"))
     card = zha_card(adapter("zha", "raise_brightness", dimming), adapter("zha", "turn_on_for"))
     assert card.tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]  # from the unflagged adapter alone
-    flagged_field = AdapterScope(fields=verified("brightness") | experimental("transition"))
+    flagged_field = AdapterScope(fields=verified("brightness") | labs("transition"))
     assert zha_card(adapter("zha", "raise_brightness", flagged_field)).tested == []
 
 
 def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_their_features(root):
-    dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light", "CCT"))
+    dimming = AdapterScope(capabilities=verified("Switch") | labs("Light", "CCT"))
     timer = AdapterScope(
         domains=verified("light") | documented("switch"),
         capabilities=verified("Switch") | documented("Light"),
@@ -545,10 +543,10 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
 
 
 def test_a_class_line_runs_at_the_weaker_of_its_domain_and_class(root):
-    """A call runs at the weaker of its domain and class (AdapterScope.level): a Verified class on an Experimental
-    domain is Experimental there; a class Verified on one domain alone is Experimental on the rest (OnDomains)."""
+    """A call runs at the weaker of its domain and class (AdapterScope.level): a Verified class on a Labs
+    domain is in Labs there; a class Verified on one domain alone is in Labs on the rest (OnDomains)."""
     timer = AdapterScope(
-        domains=verified("light") | experimental("switch"),
+        domains=verified("light") | labs("switch"),
         capabilities=verified("Switch") | verified("Light", domains=("light",)),
     )
     card = classed_card(adapter("zha", "turn_on_for", timer))
@@ -854,7 +852,7 @@ def test_the_checked_in_readme_and_page_match_the_real_records():
 def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
     text = gc.cards(gc.card_list(registry, data(registry)))
-    # The fixture's Old plug has no known method; nothing is tested, Documented, Experimental or caveated.
+    # The fixture's Old plug has no known method; nothing is tested, Documented, in Labs or caveated.
     assert "🟢 works<br>\n🔴 no known command works on it\n\n**ZHA**" in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
     assert gc.legend("🟢 ✔ 🟡 ⚪ 🔴 🔧 ⚠️") == (
@@ -897,7 +895,7 @@ def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "stop", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "get_attributes", AdapterScope(caveat=unmaintained("the maintainer left"))),
-        adapter("zha", "set_scene", AdapterScope(domains=experimental("light"), caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "set_scene", AdapterScope(domains=labs("light"), caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "raise_hue"),
     )
     # A warning names every feature, stop beside the others.
@@ -914,11 +912,11 @@ def heading(card):
 def test_a_card_whose_adapters_are_all_unmaintained_says_so_in_its_heading(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
-        adapter("zha", "stop", AdapterScope(domains=experimental("light"), caveat=unmaintained("gone"))),
+        adapter("zha", "stop", AdapterScope(domains=labs("light"), caveat=unmaintained("gone"))),
     )
     assert heading(card).endswith(" · ⚠️ Unmaintained")
     # One maintained adapter, flagged or not, carries no mark.
-    for scope in (AdapterScope(), AdapterScope(domains=experimental("light"))):
+    for scope in (AdapterScope(), AdapterScope(domains=labs("light"))):
         card = zha_card(
             adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
             adapter("zha", "stop", scope),
@@ -928,10 +926,10 @@ def test_a_card_whose_adapters_are_all_unmaintained_says_so_in_its_heading(root)
 
 
 def test_every_evidence_row_of_an_adapter_with_a_caveat_is_marked(root):
-    scope = AdapterScope(domains=verified("light") | experimental("switch"), caveat=unmaintained("a | b"))
+    scope = AdapterScope(domains=verified("light") | labs("switch"), caveat=unmaintained("a | b"))
     assert [row.split(" | ")[:2] for row in evidence_rows(adapter("zha", "stop", scope))] == [
         ["| `stop` ⚠️ Unmaintained (a \\| b)", "Verified"],
-        ["| `stop` ⚠️ Unmaintained (a \\| b)", "Experimental"],
+        ["| `stop` ⚠️ Unmaintained (a \\| b)", "Labs"],
     ]
     linked = adapter("zha", "stop", AdapterScope(caveat=untested_fix(ISSUE_REASON)))
     assert evidence_rows(linked)[0].startswith(f"| `stop` [🔧 Untested fix]({ISSUE_REASON}) | Verified |")
@@ -941,7 +939,7 @@ def test_a_card_marks_unmaintained_ones_after_untested_fixes(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=untested_fix(ISSUE_REASON))),
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained("gone"))),
-        adapter("zha", "set_scene", AdapterScope(domains=experimental("light"), caveat=untested_fix(ISSUE_REASON))),
+        adapter("zha", "set_scene", AdapterScope(domains=labs("light"), caveat=untested_fix(ISSUE_REASON))),
     )
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith(("- ⚠️", "- [⚠️", "- [🔧"))]
@@ -983,7 +981,7 @@ def test_an_adapter_flagged_on_a_class_counts_only_format_1_records_whose_tests_
     record(root, "zha", "lower_brightness", tests=[old_test(classes=["Switch"])])
     record(root, "zha", "stop", tests=[old_test(classes=[])])  # a dash reached no class
     record(root, "zha", "lower_hue", devices=[old_device("P1", "1")], tests=[old_test()])  # no Capability column
-    dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    dimming = AdapterScope(capabilities=verified("Switch") | labs("Light"))
     actions = ("raise_brightness", "lower_brightness", "stop", "lower_hue")
     card = classed_card(*(adapter("zha", action, dimming) for action in actions))
     assert card.tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
@@ -999,7 +997,7 @@ def test_a_mixed_class_format_2_record_puts_under_works_only_the_models_that_rea
         ran("light", device("LTA009", "2", "Light")),
     )
     lights = verified("light", "switch")
-    flagged = AdapterScope(domains=lights, capabilities=verified("Switch") | experimental("Light"))
+    flagged = AdapterScope(domains=lights, capabilities=verified("Switch") | labs("Light"))
     assert classed_card(adapter("zha", "turn_on_for", flagged)).tested == [f"[Plug]({URL}#plug) ✔"]
     both = AdapterScope(domains=lights, capabilities=verified("Switch", "Light"))
     assert classed_card(adapter("zha", "turn_on_for", both)).tested == [
@@ -1042,9 +1040,7 @@ def test_a_null_class_device_never_reaches_works_where_the_integration_names_cla
     manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), calls=bound("turn_on_for"))])
     unflagged = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch", "Light"))
     assert classed_card(adapter("zha", "turn_on_for", unflagged)).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
-    flagged_domain = AdapterScope(
-        domains=verified("light") | experimental("switch"), capabilities=verified("Light", "Switch")
-    )
+    flagged_domain = AdapterScope(domains=verified("light") | labs("switch"), capabilities=verified("Light", "Switch"))
     assert classed_card(adapter("zha", "turn_on_for", flagged_domain)).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
     # An integration that names no classes has only null ones, and they count.
     record2(root, "hue", "turn_on_for", ran("switch", device("P1", "1"), role="switch_plug"))
@@ -1076,7 +1072,7 @@ def test_a_group_test_counts_toward_works_only_when_every_members_class_is_unfla
     members = (device("P1", "1", "Switch"), device("LTA009", "2", "Light"))
     record2(root, "zha", "turn_on_for", ran("light", *members, group=True, role="group"))
     groups = f"[native groups]({URL}#native-groups) ✔"
-    flagged = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    flagged = AdapterScope(capabilities=verified("Switch") | labs("Light"))
     assert classed_card(adapter("zha", "turn_on_for", flagged)).tested == []
     # Its members are no models of their own: the group's call isn't theirs.
     both = AdapterScope(capabilities=verified("Switch", "Light"))
@@ -1089,9 +1085,9 @@ def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagg
         signoff(tester="jasonmx", devices=(("LTA009", None),), calls=bound("stop")),  # no class: none
     ]
     manual_file(root, rows=rows)
-    scope = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    scope = AdapterScope(capabilities=verified("Switch") | labs("Light"))
     assert classed_card(adapter("zha", "stop", scope)).tested == [f"[Plug]({URL}#plug)"]
-    flagged_domain = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=verified("Switch"))
+    flagged_domain = AdapterScope(domains=verified("light") | labs("switch"), capabilities=verified("Switch"))
     assert classed_card(adapter("zha", "stop", flagged_domain)).tested == []  # a row names no domain
 
 
@@ -1210,7 +1206,7 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
         ran("light", device("LTA009", "1", "Light"), device("P1", "1", "Switch"), group=True, role="group"),
     )
     scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch", "Light"))
-    dimming = AdapterScope(capabilities=verified("Light") | experimental("Switch"))
+    dimming = AdapterScope(capabilities=verified("Light") | labs("Switch"))
     card = classed_card(adapter("zha", "turn_on_for", scope), adapter("zha", "raise_brightness", dimming))
     # Native groups first, then tested lines, then alphabetically.
     assert card.lines == [
@@ -1223,17 +1219,17 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     # A class named as its one model gives it once.
     capabilities = copy.deepcopy(DATA["capabilities"])
     capabilities["zha"]["Switch"] = {"phrase": "Plug", "section": "Plug"}
-    relays = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("Light"))
+    relays = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | labs("Light"))
     card = classed_card(adapter("zha", "turn_on_for", relays), capabilities=capabilities)
     assert card.lines[0] == f"[Plug]({URL}#plug) ✔: 🟢 turn on with timer"
 
 
 def test_a_feature_whose_actions_differ_in_status_names_its_parts():
     """Never one feature under two statuses."""
-    dimming = {"should": {"lower_brightness", "stop"}, "experimental": {"raise_brightness", "turn_on_for"}}
+    dimming = {"should": {"lower_brightness", "stop"}, "labs": {"raise_brightness", "turn_on_for"}}
     assert gc.shape(dimming) == (
         ("should", ("smooth dimming down",)),
-        ("experimental", ("turn on with timer", "smooth dimming up")),
+        ("labs", ("turn on with timer", "smooth dimming up")),
     )
     auto = {"works": {"set_auto_off", "clear_auto_off"}, "should": {"set_auto_on"}}
     assert gc.shape(auto) == (("works", ("auto-off",)), ("should", ("auto-on",)))
@@ -1247,7 +1243,7 @@ def test_no_card_line_names_a_feature_twice():
     icons = {icon for _, icon, _ in gc.OUTCOMES}
     for line in lines:
         # A line's features follow its names, each part "<icon> <features>"; the fold's sit in a parenthesis per group.
-        if line.startswith(f"- {gc.TRIAL} "):
+        if line.startswith(f"- {gc.LABS} "):
             groups = re.findall(r"\(([^()]*)\)(?=;|$)", line)
             assert groups, line
         else:
@@ -1266,7 +1262,7 @@ def test_a_line_holding_every_class_of_its_section_names_the_section(root):
     card = classed_card(adapter("zha", "turn_on_for", timer), sections=sections)
     assert card.lines[0] == f"[dimmable lights]({URL}#dimmers): 🟢 turn on with timer"
     # A class of the section on another line keeps each class named; so does a section with no phrase.
-    split = AdapterScope(capabilities=verified("Light") | experimental("CCT"))
+    split = AdapterScope(capabilities=verified("Light") | labs("CCT"))
     card = classed_card(adapter("zha", "turn_on_for", split), sections=sections)
     assert card.lines[:2] == [
         f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer",
@@ -1317,7 +1313,7 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
         domains=verified("light", "switch"),
         capabilities=verified("Switch", "Light") | documented("other", "CCT", "RGB"),
     )
-    dimming = AdapterScope(capabilities=experimental("CCT", "other", "Light"))
+    dimming = AdapterScope(capabilities=labs("CCT", "other", "Light"))
     capabilities = copy.deepcopy(DATA["capabilities"])
     capabilities["zha"]["CCT"]["phrase"] = "other Acme lights"
     capabilities["zha"]["other"] = {"phrase": "other brands", "section": "Lights"}
@@ -1342,7 +1338,7 @@ def test_a_models_variants_are_children_of_one_parent_line(root):
     section's classes."""
     record2(root, "zha", "turn_on_for", ran("switch", device("P1", "1", "Switch"), role="switch_plug"))
     timer = AdapterScope(
-        domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("CCT", "RGB", "Light")
+        domains=verified("light", "switch"), capabilities=verified("Switch") | labs("CCT", "RGB", "Light")
     )
     capabilities = copy.deepcopy(DATA["capabilities"])
     for name, phrase in (("Switch", "maker A"), ("CCT", "maker B"), ("RGB", "no setting")):
@@ -1407,7 +1403,7 @@ def test_a_lines_phrases_sort_like_lines_and_variants_join_with_or():
     assert [child.plain() for child in parent.children] == ["zeta", "other makers"]
 
 
-# The fold and the cap (docs/evidence.md, The experimental flag).
+# The fold and the cap (docs/evidence.md, The Labs flag).
 
 
 def trial_card(*adapters, broken=None, **changes):
@@ -1417,26 +1413,26 @@ def trial_card(*adapters, broken=None, **changes):
 
 
 def timer_trial(*classes, **scope):
-    return adapter("zha", "turn_on_for", AdapterScope(capabilities=experimental(*classes), **scope))
+    return adapter("zha", "turn_on_for", AdapterScope(capabilities=labs(*classes), **scope))
 
 
-def test_two_lines_that_show_only_experimental_fold_into_one_last_line(root):
-    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("Light")))
+def test_two_lines_that_show_only_labs_fold_into_one_last_line(root):
+    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
     card = trial_card(timer_trial("Light", "CCT"), dimming)
     # CCT controllers and dimmers are one section but show different features, so two lines; the fold goes after
-    # devices.yaml's entry, and the cap counts it as the one Experimental line it is.
+    # devices.yaml's entry, and the cap counts it as the one Labs line it is.
     assert card.lines == [
         f"[Old plug]({URL}#old-plug): 🔴",
         f"⚪ [CCT controllers]({URL}#dimmers) (turn on with timer);"
         f" [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming)",
     ]
-    assert (card.total, len(card.trial)) == (2, 1)
+    assert (card.total, len(card.labs_lines)) == (2, 1)
 
 
-def test_one_experimental_line_stays_as_it_is(root):
+def test_one_labs_line_stays_as_it_is(root):
     card = trial_card(timer_trial("CCT"))
     assert card.lines == [f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer", f"[Old plug]({URL}#old-plug): 🔴"]
-    assert (card.total, len(card.trial)) == (2, 1)
+    assert (card.total, len(card.labs_lines)) == (2, 1)
 
 
 def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root):
@@ -1450,8 +1446,8 @@ def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root)
 def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_last(root):
     """Lines in card order: acme's CCT (smooth dimming), Beta's Light (timer, smooth dimming), other brands (smooth
     dimming). The smooth-dimming group holds the first and last, so it follows the group of the middle line."""
-    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("CCT", "Light", "other")))
-    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=experimental("Light")))
+    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("CCT", "Light", "other")))
+    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=labs("Light")))
     registry = brand_registry(dimming, timer)
     capabilities = copy.deepcopy(DATA["capabilities"])
     capabilities["zha"]["other"] = {"phrase": "other brands", "section": "Lights"}
@@ -1464,30 +1460,30 @@ def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_l
 
 def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
     broken = {"CCT": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
-    off = adapter("zha", "turn_off_for", AdapterScope(capabilities=experimental("RGBCCT"), no_known_method=broken))
+    off = adapter("zha", "turn_off_for", AdapterScope(capabilities=labs("RGBCCT"), no_known_method=broken))
     card = trial_card(timer_trial("CCT", "RGBCCT"), off)
     assert card.lines[-1] == (
         f"⚪ [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
         f" [CCT controllers]({URL}#dimmers) (turn on with timer · 🔴 turn off with timer)"
     )
-    assert len(card.trial) == 1
+    assert len(card.labs_lines) == 1
 
 
 def test_a_mixed_line_is_no_trial_line_and_never_folds_with_one(root):
     """🟡 · ⚪ makes a real claim: it neither folds nor counts, so the one ⚪-only line beside it stays as it is."""
-    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=documented("Light") | experimental("CCT")))
-    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("Light")))
+    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=documented("Light") | labs("CCT")))
+    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
     card = trial_card(timer, dimming)
     assert card.lines[:2] == [
         f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer",
         f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
     ]
-    assert (card.total, card.trial) == (3, [card.lines[0]])
+    assert (card.total, card.labs_lines) == (3, [card.lines[0]])
 
 
 def test_a_variants_children_never_fold(root):
     timer = AdapterScope(
-        domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("CCT", "RGB", "Light")
+        domains=verified("light", "switch"), capabilities=verified("Switch") | labs("CCT", "RGB", "Light")
     )
     capabilities = copy.deepcopy(DATA["capabilities"])
     for name, phrase in (("Switch", "maker A"), ("CCT", "maker B"), ("RGB", "no setting")):
@@ -1495,7 +1491,7 @@ def test_a_variants_children_never_fold(root):
     sections = {"zha": {"Plug": {"phrase": "Plugs", "variants": "check Manufacturer on its page"}}}
     adapters = (
         adapter("zha", "turn_on_for", timer),
-        adapter("zha", "raise_brightness", AdapterScope(capabilities=experimental("Light", "RGBCCT"))),
+        adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light", "RGBCCT"))),
     )
     registry = classed_registry(*adapters)
     registry.integrations["zha"].classes.update({"RGB": LIGHT, "RGBCCT": LIGHT})
@@ -1504,34 +1500,36 @@ def test_a_variants_children_never_fold(root):
     assert "  - [maker B, or no setting]" in parent and "⚪ turn on with timer" in parent
     # The children stay under their parent and count as lines; the two top-level lines fold.
     assert sum(line.startswith("⚪ ") for line in card.lines) == 1
-    assert (card.total, len(card.trial)) == (5, 2)
+    assert (card.total, len(card.labs_lines)) == (5, 2)
 
 
-def share(total, trial):
-    return [gc.Card("c", total=total, trial=["⚪ x"] * trial)]
+def share(total, labs_lines):
+    return [gc.Card("c", total=total, labs_lines=["⚪ x"] * labs_lines)]
 
 
 def test_the_cap_fails_over_a_quarter_and_names_the_share_and_the_lines():
-    assert gc.EXPERIMENTAL_SHARE_MAX == 0.25
+    assert gc.LABS_SHARE_MAX == 0.25
     gc.check_share(share(100, 25))
     gc.check_share(share(0, 0))
-    with pytest.raises(SystemExit, match=r"26 of 100 card lines \(26%\) are Experimental, over the 25% cap[\s\S]*⚪ x"):
+    with pytest.raises(SystemExit, match=r"26 of 100 card lines \(26%\) are in Labs, over the 25% cap[\s\S]*⚪ x"):
         gc.check_share(share(100, 26))
 
 
 def test_the_cap_counts_every_card_together():
-    """A card of nothing but Experimental lines passes beside a large tried one: the share is over all the cards."""
-    tried, trial = gc.Card("a", total=96), gc.Card("b", total=4, trial=["⚪ x"] * 4)
+    """A card of nothing but Labs lines passes beside a large tried one: the share is over all the cards."""
+    tried, labs_lines = gc.Card("a", total=96), gc.Card("b", total=4, labs_lines=["⚪ x"] * 4)
     with pytest.raises(SystemExit, match=r"4 of 4 card lines"):
-        gc.check_share([trial])
-    gc.check_share([tried, trial])  # 4 of 100
+        gc.check_share([labs_lines])
+    gc.check_share([tried, labs_lines])  # 4 of 100
     with pytest.raises(SystemExit, match=r"30 of 100 card lines"):
-        gc.check_share([gc.Card("a", total=50, trial=["⚪ x"] * 15), gc.Card("b", total=50, trial=["⚪ x"] * 15)])
+        gc.check_share(
+            [gc.Card("a", total=50, labs_lines=["⚪ x"] * 15), gc.Card("b", total=50, labs_lines=["⚪ x"] * 15)]
+        )
 
 
 def test_the_cap_runs_in_a_plain_run_and_in_check(root, monkeypatch):
-    registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=experimental("Switch"))))
+    registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=labs("Switch"))))
     run = write_files(root, registry, monkeypatch)
     for argv in ([], ["--check"]):
-        with pytest.raises(SystemExit, match="of 2 card lines"):  # the Experimental line and devices.yaml's entry
+        with pytest.raises(SystemExit, match="of 2 card lines"):  # the Labs line and devices.yaml's entry
             run(argv)

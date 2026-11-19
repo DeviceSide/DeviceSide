@@ -22,6 +22,6 @@ def test_sengled_rules(manufacturer, model, expected):
 
 
 def test_sengled_is_in_no_scope():
-    """Not built on every action (docs/evidence.md, On trial): its probe found it departs, and turn_on_for's call harms
+    """Not built on every action (docs/evidence.md, In Labs): its probe found it departs, and turn_on_for's call harms
     it, which the integration refuses there with a reason (test_refusals.py)."""
     assert sengled.FAMILY.scopes == {}

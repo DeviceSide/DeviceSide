@@ -7,19 +7,19 @@ fields in scope, then the adapter's own reasons. Then the class, a call left not
 fields_dropped, never refused. Then AdapterScope.refusal, in order: where the call harms a class (AdapterScope.harms),
 an Unplaced or None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in
 not_built, or in neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the
-Experimental gate (below).
+Labs gate (below).
 
 Native groups. One an adapter addresses as one takes its members' classes, from expand_group, and its weakest member's
 level for the gate; on an integration that names no classes it runs whole. An empty one (expand_group lists no members)
 is skipped silently, named or not, as core skips an empty group; so is one an adapter finds empty (Reason.EMPTY_GROUP).
 - Fallback. When a member's class has no known method, is not built yet, or isn't placed where a call harms, or takes a
-  call of its own (own_calls: a branch in execute the group's call isn't), or, while Experimental features is off, is
-  Experimental (its domain and fields not flagged), the group falls back to its members: each available one not
+  call of its own (own_calls: a branch in execute the group's call isn't), or, while Labs is off, is
+  in Labs (its domain and fields not flagged), the group falls back to its members: each available one not
   already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and
   logged; a member also named raises, as its own target. A classifier that raised (logged) leaves the group's class
-  unknown, so where a call harms, or while Experimental features is off and its domain and fields aren't flagged, it
-  falls back too, and each member is classed again. With Experimental features on, a group whose weakest member is
-  Experimental, or whose class is unknown where no call harms, runs whole, as one command; a member named beside it
+  unknown, so where a call harms, or while Labs is off and its domain and fields aren't flagged, it
+  falls back too, and each member is classed again. With Labs on, a group whose weakest member is
+  in Labs, or whose class is unknown where no call harms, runs whole, as one command; a member named beside it
   then gets its own command as well as the group's.
 - Stand-ins and members it can't address. A member expand_group lists for its class that the integration can't address
   on its own (Target.addressable false: a Z2M device with several lights) is skipped with its class's refusal if it has
@@ -29,23 +29,23 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   gets an entry saying it didn't; unless a target on its device was planned too, which answers for it, the group
   included. Any other member known unavailable is left out quietly. Every member planned is indirect.
 - Unknowable membership (no expand_group, or it answered None or raised, logged). Where a call harms, the group is
-  refused as class_unknown, with Experimental features on or off; elsewhere it counts as Experimental, refused as
-  experimental_off while the option is off. It can't fall back, so it is refused whole. For an adapter without
+  refused as class_unknown, with Labs on or off; elsewhere it counts as a Labs item, refused as
+  labs_off while the option is off. It can't fall back, so it is refused whole. For an adapter without
   native_groups it is refused as group_not_supported, as with no expand_group.
 - For an adapter without native_groups, core plans a group whose members are listed as the fallback does (stand-ins
   skipped, the unavailable left out, each indirect, a member also named kept as the caller's target).
 - Refusal priority. A group that falls back gets no result of its own: its planned members answer for it, one already a
   target included, so naming a member beside it changes nothing. Only when none of its members is planned or left
   nothing to do (each refused, gated or unavailable) is the group itself refused, raised if named, else skipped and
-  logged: with the refusal its members' classes gave it, or experimental_off; for own_call, a skipped member's, ranked
-  experimental_off, then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none
+  logged: with the refusal its members' classes gave it, or labs_off; for own_call, a skipped member's, ranked
+  labs_off, then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none
   was skipped (each unavailable).
 
-Experimental gating, the one place the option gates anything (docs/evidence.md, The experimental flag). After supports()
+Labs gating, the one place the option gates anything (docs/evidence.md, The Labs flag). After supports()
 passes and fields are dropped, a call's level is the weakest of its domain, its class in that domain (a native group's:
-its weakest member's; one the integration can't name, or whose entry holds other domains alone, counts as Experimental)
-and the fields it still carries; an adapter flagged whole has every domain Experimental. An Experimental call is
-refused as experimental_off while the option is off, a named target raising its own message. A call left nothing to
+its weakest member's; one the integration can't name, or whose entry holds other domains alone, counts as a Labs item)
+and the fields it still carries; an adapter flagged whole has every domain in Labs. A Labs call is
+refused as labs_off while the option is off, a named target raising its own message. A call left nothing to
 send is unchanged, not refused.
 
 Running. A run's durations are clamped to AdapterScope.duration, or its class's own call's limits (own_calls), rounded
@@ -71,7 +71,7 @@ from homeassistant.helpers import target as target_helpers
 from . import duration, ha_watch
 from .action import Action
 from .adapter import Adapter
-from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported, describe, traceback_is_safe
+from .errors import LABS_OFF, Reason, TargetNotSupported, describe, traceback_is_safe
 from .fields import lacking
 from .groups import expand_ha_groups
 from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
@@ -175,9 +175,9 @@ def _targeted(member: Target, by_device: ByDevice) -> set[str]:
 
 
 def _rank(reason: str) -> int:
-    """Which member's skip a group refused for own_call takes (_unanswered): experimental_off, which says how to let
+    """Which member's skip a group refused for own_call takes (_unanswered): labs_off, which says how to let
     the call through; then a class's refusal, which says why it can't; then any other; not_addressable last."""
-    if reason == EXPERIMENTAL_OFF:
+    if reason == LABS_OFF:
         return 0
     if reason in (Reason.NO_KNOWN_METHOD, Reason.NOT_BUILT, Reason.CLASS_UNKNOWN):
         return 1
@@ -358,10 +358,10 @@ class Dispatcher:
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
         where the adapter's call harms a class, one not yet placed (Unplaced, or None) is refused as class_unknown,
-        with Experimental features on or off; one the scope lists in no_known_method, or the integration names but the
+        with Labs on or off; one the scope lists in no_known_method, or the integration names but the
         scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
         list them (the module docstring, Native groups), and an empty one is skipped silently. A flagged call, one
-        touching an Experimental scope item, is refused while the Experimental features option is off; a native group
+        touching a Labs scope item, is refused while the Labs option is off; a native group
         flagged by a member's class alone falls back to its members instead, as does one with a member whose class
         takes a call of its own (AdapterScope.own_calls), and a target of such a class runs apart, on that call and its
         duration limits. A named target that can't take the action raises then, before anything is sent. Returns a
@@ -377,11 +377,9 @@ class Dispatcher:
             buckets.setdefault(target.integration, (adapter, []))[1].append(target)
 
         runs: list[Run] = []
-        experimental_on = get_runtime(self.hass).labs
+        labs_on = get_runtime(self.hass).labs
         for adapter, bucket in buckets.values():
-            runs += self._plan(
-                adapter, request, self._expand_native_groups(adapter, bucket, results), results, experimental_on
-            )
+            runs += self._plan(adapter, request, self._expand_native_groups(adapter, bucket, results), results, labs_on)
 
         for adapter_results in await asyncio.gather(*(self._run_adapter(*run) for run in runs)):
             results.extend(adapter_results)
@@ -393,7 +391,7 @@ class Dispatcher:
         request: Request,
         targets: list[Target],
         results: list[EntityResult],
-        experimental_on: bool,
+        labs_on: bool,
     ) -> list[Run]:
         """One adapter's runs, one per set of dropped fields and own call so every target in a run gets the same
         request and call; each target skipped or left nothing to do goes in results instead.
@@ -466,14 +464,14 @@ class Dispatcher:
                     results += _skip(
                         target.reported_id, target.named, refused[0], adapter.integration, refused[1], title
                     )
-            elif not experimental_on and self._experimental(adapter, reduced, target, found):
+            elif not labs_on and self._labs(adapter, reduced, target, found):
                 # A native group flagged only by a member's class falls back the same way: the members of Verified
                 # or Documented classes run, the flagged one is skipped (raised only if named on its own).
                 if members is not None and self._flagged_by_class_alone(adapter, reduced, target):
-                    fallen.append((target, members, EXPERIMENTAL_OFF, None))
-                    pending.extend(self._fallback(adapter, target, members, seen, by_device, EXPERIMENTAL_OFF))
+                    fallen.append((target, members, LABS_OFF, None))
+                    pending.extend(self._fallback(adapter, target, members, seen, by_device, LABS_OFF))
                 else:
-                    results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
+                    results += _skip(target.reported_id, target.named, LABS_OFF, adapter.integration)
             else:
                 answered.add(target.reported_id)
                 by_run.setdefault((dropped, adapter.scope.own_call(found)), []).append(target)
@@ -483,16 +481,16 @@ class Dispatcher:
             for (dropped, own), ready in by_run.items()
         ]
 
-    def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
-        """Whether the call is flagged experimental: an Experimental item it touches, its domain (an adapter flagged
-        whole has every domain Experimental), class (a native group's: its weakest member's) or a field it carries.
+    def _labs(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
+        """Whether the call is in Labs: a Labs item it touches, its domain (an adapter flagged
+        whole has every domain in Labs), class (a native group's: its weakest member's) or a field it carries.
         The one place the option gates anything; adapters never read it (docs/evidence.md)."""
-        return adapter.scope.level(target.domain, classes, request.fields_present()) is Level.EXPERIMENTAL
+        return adapter.scope.level(target.domain, classes, request.fields_present()) is Level.LABS
 
     def _flagged_by_class_alone(self, adapter: Adapter, request: Request, target: Target) -> bool:
         """Whether a flagged call would pass but for its classes: neither its domain nor a field it carries is
-        Experimental, so a group's members can run one by one."""
-        return adapter.scope.level(target.domain, (), request.fields_present()) is not Level.EXPERIMENTAL
+        in Labs, so a group's members can run one by one."""
+        return adapter.scope.level(target.domain, (), request.fields_present()) is not Level.LABS
 
     def _listed(self, adapter: Adapter, target: Target) -> list[Target] | None:
         """A native group's members, for an integration that names classes: what its classes come from and what it
@@ -506,7 +504,7 @@ class Dispatcher:
         """The target's class, or a native group's members' classes (`members`, as _listed gives them) beside each
         member's reported_id, as IntegrationInfo.capability names them; no classes for an integration that names
         none. A group whose members can't be listed, and a classifier that raised (logged), give (None,), which the
-        gate weighs as Experimental, as an unknown device, and which, where the call harms a class, the scope refuses
+        gate weighs as a Labs item, as an unknown device, and which, where the call harms a class, the scope refuses
         (AdapterScope.refusal)."""
         if (capability := self.registry.integrations[adapter.integration].capability) is None:
             return Reached(())

@@ -19,7 +19,7 @@ from . import inventory
 from .director import item_id
 from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import OTHER, NoKnownMethod, Unplaced, experimental
+from ...core.scope import OTHER, NoKnownMethod, Unplaced, labs
 
 NO_STOP = "no_stop"
 CLASSES = {name: frozenset({Platform.LIGHT}) for name in (NO_STOP, OTHER)}
@@ -39,9 +39,9 @@ STOP_NO_KNOWN_METHOD = {
         what=_WHAT, reason="The light's driver says it can't stop a ramp, and it ignores the stop", source=_SOURCE
     )
 }
-MOVE_LEVELS = experimental(OTHER)
+MOVE_LEVELS = labs(OTHER)
 # get_attributes and set_attributes read and write every driver alike.
-LEVELS = experimental(NO_STOP, OTHER)
+LEVELS = labs(NO_STOP, OTHER)
 
 
 def capability(hass: HomeAssistant, target: Target) -> str:

@@ -19,7 +19,7 @@ from ...core.adapter import Adapter, DeadlinePassed
 from ...core.errors import describe
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope, DurationLimits, experimental, verified
+from ...core.scope import AdapterScope, DurationLimits, labs, verified
 from ...core.zcl import MAX_TENTHS_S, READBACK_SLACK_TENTHS
 
 # OnWithTimedOff.on_time (core/zcl.py).
@@ -65,7 +65,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         # Zigbee plugs and switches rarely honor OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md), so no
         # class is served on switch: each is refused there with its reason (refusals.py). The domain stays in scope,
         # flagged, so those refusals name a domain the scope serves; a class with a switch pass is served on it.
-        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
+        domains=verified(Platform.LIGHT) | labs(Platform.SWITCH),
         # Each class's level is its family's (families/<family>/), `other`'s classes.py's; the classes the call harms
         # are refused (refusals.py).
         **classes.class_scope(action),
