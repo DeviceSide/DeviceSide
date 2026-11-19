@@ -26,7 +26,8 @@ only runs the audit and writes the record.
 ## First pass (no `--fix-pass`)
 
 1. `.venv/bin/python scripts/check_audit.py --base <rc>` prints the base: the previous RC tag of this version, or for
-   rc1 the latest release under `HEAD`. Refuse if `docs/audits/<rc>.md` already exists; that's a `--fix-pass`.
+   rc1 the latest release under `HEAD`. Refuse if `docs/audits/<rc>.md` already exists; that's a `--fix-pass`. Run the
+   check and the existence test in one batch (one script in Code Mode, parallel tool calls otherwise).
 2. Run the project's `audit-code` skill on `<base>..HEAD`.
 3. Write `docs/audits/<rc>.md`: the frontmatter below, then the audit report under `## Pass 1`.
 
@@ -52,7 +53,9 @@ only runs the audit and writes the record.
 2. Run `audit-code` on that range, scoped as follows. Append `## Pass <n>` with its report and the pass to `passes`.
    - **Verify** every `open` Critical and High in the record against the range: `fixed`, `not fixed` or
      `regressed`, quoting the code. The last two stay `open` in the record.
-   - **Read beyond the hunks**, since a fix's defects often lie outside its diff:
+   - **Read beyond the hunks**, since a fix's defects often lie outside its diff. Run every `rg` below (one per changed
+     symbol and renamed term, each naming `CLAUDE.local.md`) and the **Test** run in one batch (one script in Code
+     Mode, parallel tool calls otherwise):
      - the callers, tests and docs of every symbol the range changes (`rg` each);
      - an `rg` across docs, comments and every agent-instructions file for each term the range renames or whose
        behavior it changes. Gitignored ones (`CLAUDE.local.md`) count: name them explicitly, as plain `rg` skips

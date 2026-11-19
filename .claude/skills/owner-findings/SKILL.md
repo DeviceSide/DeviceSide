@@ -13,8 +13,10 @@ else's code"). This skill reads the report and amends it; it never edits code.
    (`origin/main` or `origin/release/vX.Y.Z`). `git fetch origin <branch>` first. Say both in one line.
 2. **Look up owners:** collect every finding's files from its `file:line` references and run once
    `.venv/bin/python scripts/owners.py --rev <base> --as <login> --json <paths>` (no `--as` when the runner owns
-   nothing). Each row is an owner group the runner isn't a direct maintainer of: `owner` (the slug, `""` for shared
-   code), `package`, `integration`, `direct` and `enclosing` handles, and `paths`. Rows with the same `owner` are one
+   nothing). Run steps 1 and 2 in one batch (one script in Code Mode, which feeds the login and base into `owners.py`;
+   otherwise the step 1 lookups as parallel tool calls, then `owners.py`). Each row is an owner group the runner isn't
+   a direct maintainer of: `owner` (the slug, `""` for shared code), `package`, `integration`, `direct` and
+   `enclosing` handles, and `paths`. Rows with the same `owner` are one
    owner group (a catalog file gives one row per integration sharing it): merge their handles. A finding is in someone
    else's code when any of its files is in a group's `paths`; one in several groups is asked about and drafted once,
    under the first. A finding with no `file:line` is the runner's to place. Generated output (README, the
@@ -30,9 +32,9 @@ else's code"). This skill reads the report and amends it; it never edits code.
    Critical and High with its `file:line`,
    severity and the fix the audit proposed; the labels and assignees from
    `.venv/bin/python scripts/owners.py --rev <base> [--as <login>] --issue <that group's paths>` (`--as` left out as
-   in step 2). Show the drafts. File
-   them only when the runner says to, first creating a missing `integration:<key>` label as `route-issue.yml` does:
-   `gh label create <label> --color c5def5 --description "Routed to the integration's maintainers" --force`.
+   in step 2), run for every group in one batch (one script in Code Mode, parallel tool calls otherwise). Show the
+   drafts. File them only when the runner says to, first creating a missing `integration:<key>` label as
+   `route-issue.yml` does: `gh label create <label> --color c5def5 --description "Routed to the integration's maintainers" --force`.
 5. **In an RC** (the report is `docs/audits/<rc>.md`): for each owner group with a Critical or High whose choice no
    earlier pass's prose records, ask the runner once, naming the `package`, the handles and the finding ids. The choices, which the runner may vary for any one
    finding; never pick one yourself:
