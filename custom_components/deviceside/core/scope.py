@@ -35,8 +35,8 @@ class Level(IntEnum):
     """How well a scope item is proven, weakest first (docs/evidence.md). A call's level is the weakest among the
     in-scope items it touches."""
 
-    # The Labs flag on one item, not yet judged ready for everyone: refused unless the Labs
-    # option is on. A maintainer lifts it when they judge it ready (docs/evidence.md, The Labs flag).
+    # The Labs flag on one item, not yet judged ready for everyone: refused unless the Labs option is on. A maintainer
+    # lifts it when they judge it ready (docs/evidence.md, The Labs flag).
     LABS = 0
     # Reaches the same capability as a Verified item, differing only in addressing, or a read a certification tests on
     # every certified device, its class keyed on a marker (docs/evidence.md, Levels); unit tests pin the payload.
@@ -189,10 +189,10 @@ class OwnCall:
 class AdapterScope:
     """The entity domains, capabilities and fields an adapter is built for, each at its Level, plus its settings.
 
-    A Labs item is gated at runtime: the dispatcher refuses a call that touches one unless the Labs
-    features option is on; to flag the whole adapter, flag its domains (`all_labs`). An item that is not
-    built, or built but not unit-tested, is left out of scope and refused. `caveat` changes no call: setup warns and
-    the card says so.
+    A Labs item is gated at runtime: the dispatcher refuses a call that touches one unless the Labs option is on; to
+    flag the whole adapter, flag its domains (`all_labs`). An item that is not
+    built, or built but not unit-tested, is left out of scope and refused. `caveat` changes no call: setup warns and the
+    card says so.
     """
 
     caveat: Caveat | None = None

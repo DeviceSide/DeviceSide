@@ -48,9 +48,9 @@ SENT = {"status": "sent", "integration": "fake"}  # a result with nothing added:
 
 @pytest.fixture(params=[False, True], ids=["labs_off", "labs_on"])
 def labs_option(request, hass, setup_integration):
-    """The the Labs option off and on. The refusal and skip-log tests take it: no fake adapter they
-    reach has a Labs item, so the option must change nothing there. The tests of the gate set it
-    themselves, or take its value."""
+    """The Labs option off and on. The refusal and skip-log tests take it: no fake adapter they reach
+    has a Labs item, so the option must change nothing there. The tests of the gate set it themselves, or take its
+    value."""
     allow_labs(hass, request.param)
     return request.param
 
@@ -86,7 +86,7 @@ def _raise(hass, target):
 SWITCH_LABS = AdapterScope(domains=verified("light") | labs("switch"), duration=LIMITS)
 
 
-async def test_a_named_target_on_an_labs_domain_raises_unless_the_option_is_on(hass, fake, reset_script, labs_option):
+async def test_a_named_target_on_a_labs_domain_raises_unless_the_option_is_on(hass, fake, reset_script, labs_option):
     on = labs_option
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "switch.s")
@@ -122,7 +122,7 @@ async def test_every_level_above_labs_passes_with_the_option_off(hass, fake, res
         assert await call(hass, "turn_on_for", {"entity_id": "switch.s", "duration": 5}) == {"switch.s": SENT}
 
 
-async def test_an_indirect_target_on_an_labs_domain_is_skipped_and_logged(hass, fake, reset_script, caplog):
+async def test_an_indirect_target_on_a_labs_domain_is_skipped_and_logged(hass, fake, reset_script, caplog):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "switch.s")
     area_id = in_area(hass, "Den", "light.a", "switch.s")
@@ -135,7 +135,7 @@ async def test_an_indirect_target_on_an_labs_domain_is_skipped_and_logged(hass, 
     assert "turn_on_for skipped targets that can't take it: switch.s (labs_off)" in caplog.text
 
 
-async def test_an_labs_field_is_gated_only_when_the_call_carries_it(hass, fake, reset_script):
+async def test_a_labs_field_is_gated_only_when_the_call_carries_it(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.full", attributes=FULL)
     add_fake_entity(hass, fake, "light.no_fade", attributes=FULL | NO_FEATURES)
     scope = AdapterScope(duration=LIMITS, fields=verified("brightness") | labs("transition"))
@@ -207,7 +207,7 @@ def harmless(hass, setup_integration):
 
 
 @pytest.mark.usefixtures("classed")
-async def test_an_labs_class_is_gated_by_the_one_the_integration_names(hass, fake, reset_script):
+async def test_a_labs_class_is_gated_by_the_one_the_integration_names(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.b")
     allow_labs(hass, False)
@@ -937,7 +937,7 @@ async def test_a_group_with_refused_and_labs_members_falls_back_with_labs_on(has
     assert sorted(response) == ["switch.a", "switch.b"]
 
 
-async def test_an_labs_call_left_nothing_to_send_is_unchanged_not_refused(hass, fake, reset_script):
+async def test_a_labs_call_left_nothing_to_send_is_unchanged_not_refused(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.onoff", attributes={"supported_color_modes": [ColorMode.ONOFF]})
     allow_labs(hass, False)
 

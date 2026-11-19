@@ -92,14 +92,14 @@ def test_a_domain_is_live_only_where_a_non_labs_class_can_be_on_it(no_blockers):
 
 
 def test_a_flagged_adapter_shows_no_icon_until_the_option_is_on(no_blockers):
-    """Every domain Labs gates the whole adapter at runtime, as a Labs item is gated."""
+    """Every domain in Labs gates the whole adapter at runtime, as a Labs item is gated."""
     registry = FakeRegistry(expand={"zha"})
     flagged = adapter("zha", "stop", domains=labs("light"))
     assert gf.keys(flagged, registry) == set()
     assert gf.keys(flagged, registry, labs=True) == {"light", "group"}
 
 
-def test_an_labs_domain_shows_no_icon_and_takes_its_group_with_it(no_blockers):
+def test_a_labs_domain_shows_no_icon_and_takes_its_group_with_it(no_blockers):
     """The table shows what works with the Labs option off."""
     registry = FakeRegistry(expand={"zha"})
     assert gf.keys(adapter("zha", "stop", domains=verified("light") | labs("switch")), registry) == {
@@ -247,7 +247,7 @@ def test_the_checked_in_readme_matches_the_real_adapters():
     assert gf.main(["--check"]) == 0
 
 
-def test_an_labs_domain_shows_a_grey_icon_after_the_amber_ones(no_blockers):
+def test_a_labs_domain_shows_a_grey_icon_after_the_amber_ones(no_blockers):
     adapters = every_row(domains=verified("light") | labs("switch"))
     cell = cells(gf.generate(FakeRegistry(*adapters)), "Get attributes")[2]
     assert cell.index(LIGHT) < cell.index("/switch-grey.svg")

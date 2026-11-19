@@ -10,8 +10,8 @@ entry's to the heading that explains it.
 The columns come from each integration's bundle: `column` (the README label) and `column_order` in
 `docs/integrations/<integration>/devices.yaml`. An integration without one is an error naming the file to add.
 
-What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Labs
-option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand, one whole cell
+What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Labs option
+off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand, one whole cell
 each. A blank cell means possible on some device, or not built yet.
 
 Usage: scripts/gen_features.py [--check]
@@ -161,7 +161,7 @@ def integration_columns(registry: AdapterRegistry) -> dict[str, str]:
 
 
 def keys(adapter, registry: AdapterRegistry, labs: bool = False) -> set[str]:
-    """The icon keys an adapter covers: its domains at any Level but in Labs (Verified and Documented ship with
+    """The icon keys an adapter covers: its domains at any Level but Labs (Verified and Documented ship with
     the option off) where some class that isn't in Labs can be on it (a class entry held on the domain, which
     the class declares in `IntegrationInfo.classes`; with no classes named, any domain), plus `group` when it takes
     lights and the dispatcher passes it native groups, natively or expanded to their members
@@ -201,8 +201,8 @@ def keys(adapter, registry: AdapterRegistry, labs: bool = False) -> set[str]:
 def built(
     registry: AdapterRegistry, labs: bool = False, cols: dict[str, str] | None = None
 ) -> dict[tuple[str, str], set[str]]:
-    """(feature label, integration) -> icon keys every one of the row's actions covers, with the Labs
-    option on when `labs`. Every integration has a column."""
+    """(feature label, integration) -> icon keys every one of the row's actions covers, with the Labs option
+    on when `labs`. Every integration has a column."""
     by_pair = {(adapter.action, adapter.integration): adapter for _, adapter in adapters(registry)}
     actions = {action for action, _ in by_pair}
     if cols is None:

@@ -53,7 +53,7 @@ A model or blocker drops the integration's name where it leads, as the card's na
 features, not fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
 
 **The fold and the cap** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
-(🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ in Labs: [class] (features);
+(🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ [class] (features);
 [class], [class] (features)": classes with the same features share a parenthesis, a 🔴 part stays inside it, and a
 variants parent's children never fold. `check_share` then fails when the Labs lines (⚪ with no 🟢 or 🟡),
 counted across every card, children included, are over `LABS_SHARE_MAX` of all the lines, so the cards can't

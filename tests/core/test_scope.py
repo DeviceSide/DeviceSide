@@ -105,7 +105,7 @@ def test_level_folds_in_the_fields_the_call_carries(fields, level):
         (AdapterScope(domains=labs("light") | verified("switch")), False),  # flags only its domain's calls
         (AdapterScope(domains=verified("light")), False),
         (AdapterScope(domains={}), False),  # no domain, no call to flag
-        # A class or field at in Labs flags only the calls that touch it, never the adapter whole.
+        # A class or field in Labs flags only the calls that touch it, never the adapter whole.
         (AdapterScope(capabilities=labs("A")), False),
         (AdapterScope(fields=labs("transition")), False),
     ],

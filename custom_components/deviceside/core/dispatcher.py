@@ -13,14 +13,13 @@ Native groups. One an adapter addresses as one takes its members' classes, from 
 level for the gate; on an integration that names no classes it runs whole. An empty one (expand_group lists no members)
 is skipped silently, named or not, as core skips an empty group; so is one an adapter finds empty (Reason.EMPTY_GROUP).
 - Fallback. When a member's class has no known method, is not built yet, or isn't placed where a call harms, or takes a
-  call of its own (own_calls: a branch in execute the group's call isn't), or, while Labs is off, is
-  in Labs (its domain and fields not flagged), the group falls back to its members: each available one not
-  already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and
-  logged; a member also named raises, as its own target. A classifier that raised (logged) leaves the group's class
-  unknown, so where a call harms, or while Labs is off and its domain and fields aren't flagged, it
-  falls back too, and each member is classed again. With Labs on, a group whose weakest member is
-  in Labs, or whose class is unknown where no call harms, runs whole, as one command; a member named beside it
-  then gets its own command as well as the group's.
+  call of its own (own_calls: a branch in execute the group's call isn't), or, while Labs is off, is in Labs (its
+  domain and fields not flagged), the group falls back to its members: each available one not already a target is
+  planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged; a member also
+  named raises, as its own target. A classifier that raised (logged) leaves the group's class unknown, so where a call
+  harms, or while Labs is off and its domain and fields aren't flagged, it falls back too, and each member is classed
+  again. With Labs on, a group whose weakest member is in Labs, or whose class is unknown where no call harms, runs
+  whole, as one command; a member named beside it then gets its own command as well as the group's.
 - Stand-ins and members it can't address. A member expand_group lists for its class that the integration can't address
   on its own (Target.addressable false: a Z2M device with several lights) is skipped with its class's refusal if it has
   one, else not_addressable, named by its device, and answers for nothing. So is a stand-in (Target.stand_in: a member
@@ -29,23 +28,23 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   gets an entry saying it didn't; unless a target on its device was planned too, which answers for it, the group
   included. Any other member known unavailable is left out quietly. Every member planned is indirect.
 - Unknowable membership (no expand_group, or it answered None or raised, logged). Where a call harms, the group is
-  refused as class_unknown, with Labs on or off; elsewhere it counts as a Labs item, refused as
-  labs_off while the option is off. It can't fall back, so it is refused whole. For an adapter without
-  native_groups it is refused as group_not_supported, as with no expand_group.
+  refused as class_unknown, with Labs on or off; elsewhere it counts as a Labs item, refused as labs_off while the
+  option is off. It can't fall back, so it is refused whole. For an adapter without native_groups it is refused as
+  group_not_supported, as with no expand_group.
 - For an adapter without native_groups, core plans a group whose members are listed as the fallback does (stand-ins
   skipped, the unavailable left out, each indirect, a member also named kept as the caller's target).
 - Refusal priority. A group that falls back gets no result of its own: its planned members answer for it, one already a
   target included, so naming a member beside it changes nothing. Only when none of its members is planned or left
   nothing to do (each refused, gated or unavailable) is the group itself refused, raised if named, else skipped and
-  logged: with the refusal its members' classes gave it, or labs_off; for own_call, a skipped member's, ranked
-  labs_off, then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none
-  was skipped (each unavailable).
+  logged: with the refusal its members' classes gave it, or labs_off; for own_call, a skipped member's, ranked labs_off,
+  then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none was skipped (each
+  unavailable).
 
 Labs gating, the one place the option gates anything (docs/evidence.md, The Labs flag). After supports()
 passes and fields are dropped, a call's level is the weakest of its domain, its class in that domain (a native group's:
 its weakest member's; one the integration can't name, or whose entry holds other domains alone, counts as a Labs item)
-and the fields it still carries; an adapter flagged whole has every domain in Labs. A Labs call is
-refused as labs_off while the option is off, a named target raising its own message. A call left nothing to
+and the fields it still carries; an adapter flagged whole has every domain in Labs. A Labs call is refused as labs_off
+while the option is off, a named target raising its own message. A call left nothing to
 send is unchanged, not refused.
 
 Running. A run's durations are clamped to AdapterScope.duration, or its class's own call's limits (own_calls), rounded
