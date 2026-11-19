@@ -64,7 +64,7 @@ import os
 import re
 import subprocess
 import sys
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -226,19 +226,26 @@ def manual_rows(integration: str, action: str) -> list[tuple[bool, list[tuple[st
 # The coverage check (docs/evidence.md, The coverage check).
 
 
-def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
-    """The classes the action's evidence reached, each with the domain its test targeted: in a passing record, each
-    passing test's (format 2: its devices' classes, a native group's members' each; format 1: its `classes`), and each
-    `_manual.json` row's devices' (a group row's members', as a group test's), whose domain is None, as a row names
-    none. A null class credits none."""
-    found: set[tuple[str | None, str | None]] = set()
+def credited(integration: str, action: str) -> Iterator[tuple[str | None, str | None, str | None]]:
+    """What the action's passing records credit, as (model id, class, domain of the test) per device: each passing
+    test's devices (format 2 and 3: a native group's are its members); format 1 names no model, so it yields each of
+    the test's `classes` with a model of None. The one walk `reached` and `credited_models` share."""
     for path in passing(integration, action):
         record = load(path)
         for test in record["tests"]:
             if test["result"] != "pass":
                 continue
-            names = test.get("classes", ()) if record["format"] == 1 else (d["class"] for d in test["devices"])
-            found.update((name, test.get("domain")) for name in names)
+            if record["format"] == 1:
+                yield from ((None, name, test.get("domain")) for name in test.get("classes", ()))
+            else:
+                yield from ((d["model"], d["class"], test.get("domain")) for d in test["devices"])
+
+
+def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
+    """The classes the action's evidence reached, each with the domain its test targeted: in a passing record, each
+    passing test's (`credited`), and each `_manual.json` row's devices' (a group row's members', as a group test's),
+    whose domain is None, as a row names none. A null class credits none."""
+    found = {(cls, domain) for _, cls, domain in credited(integration, action)}
     for _, row in manual_rows(integration, action):
         found.update((cls, None) for _, cls in row)
     return {(name, domain) for name, domain in found if name is not None}
@@ -273,20 +280,13 @@ def coverage_gaps(registry) -> list[str]:
 
 
 def credited_models(integration: str, action: str) -> set[tuple[str, str]]:
-    """The (model id, class) pairs the action's evidence credits: each passing test's devices in a passing record
-    (format 2 and 3; a native group test's are its members; format 1 names no device's model, so credits none), and each
-    `_manual.json` row's devices (a group row's members). A null class credits none, as in `reached`."""
-    found: set[tuple[str, str | None]] = set()
-    for path in passing(integration, action):
-        record = load(path)
-        if record["format"] == 1:
-            continue
-        for test in record["tests"]:
-            if test["result"] == "pass":
-                found.update((d["model"], d["class"]) for d in test["devices"])
+    """The (model id, class) pairs the action's evidence credits: `credited`'s devices (format 1 names no model, so
+    credits none), and each `_manual.json` row's devices (a group row's members). A null class credits none, as in
+    `reached`."""
+    found = {(model, cls) for model, cls, _ in credited(integration, action)}
     for _, row in manual_rows(integration, action):
         found.update(row)
-    return {(model, cls) for model, cls in found if cls is not None}
+    return {(model, cls) for model, cls in found if model is not None and cls is not None}
 
 
 def default_class_credits(registry) -> list[str]:

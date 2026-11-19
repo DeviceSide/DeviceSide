@@ -979,16 +979,19 @@ def default_classed(scope: AdapterScope) -> FakeRegistry:
 
 
 def credit_other(repo) -> None:
-    """A manual row and a record test, each crediting model LCA001 in the class `other`."""
-    classes_record_v3(repo, "turn_on_for", ran("light", device("LCA001", "1", "other")))
+    """A record test crediting model LTA009 and a manual row crediting model LCA001, each in the class `other`."""
+    classes_record_v3(repo, "turn_on_for", ran("light", device("LTA009", "1", "other")))
     (repo.path / MANUAL).write_text(manual_file(signoff(devices=(("LCA001", "other"),), calls=bound("turn_on_for"))))
 
 
 def test_a_model_credited_in_an_experimental_default_class_warns(fake_repo):
     credit_other(fake_repo)
+    """Each source on its own: the record credits LTA009 and the manual row LCA001."""
     assert cr.default_class_credits(default_classed(SCOPE)) == [
         "fake turn_on_for: LCA001 passed in the default class `other`, which is never Verified, so its pass can't lift"
-        " a flag; name a class for it (docs/evidence.md, Device classes)"
+        " a flag; name a class for it (docs/evidence.md, Device classes)",
+        "fake turn_on_for: LTA009 passed in the default class `other`, which is never Verified, so its pass can't lift"
+        " a flag; name a class for it (docs/evidence.md, Device classes)",
     ]
 
 
