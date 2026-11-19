@@ -2,14 +2,12 @@
 
 ## Coordination
 
-Intent: one name for the lowest level everywhere. Users already see Labs (commits e2d0dfa, 9fb0468 on this branch);
-this plan renames the code, the stored option key and the rule text to match, so contributors stop translating.
+Intent: one name for the lowest level everywhere. The level, its option and its flag are called Labs in what users see,
+in the code, in the stored option key and in the rule text, so contributors stop translating.
 Touches: custom_components/deviceside/**, tests/**, scripts/gen_compat.py, scripts/gen_features.py,
 scripts/check_release.py, .github/ISSUE_TEMPLATE/device_report.yml, .github/pull_request_template.md, docs/evidence.md,
 docs/design.md, docs/action-behavior.md, docs/device-compatibility.md, docs/internals.md, docs/icons/README.md,
 CLAUDE.md, CONTRIBUTING.md, TODO.md, README.md (regenerated)
-
-Branch: `claude/hopeful-clarke-vmm2s9` (its PR isn't open yet; this ships in the same PR as the user-facing rename).
 
 ## Why
 

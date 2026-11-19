@@ -16,6 +16,7 @@ from custom_components.deviceside.core.scope import (
     Caveat,
     CaveatKind,
     IntegrationInfo,
+    Level,
     labs,
     verified,
 )
@@ -968,6 +969,51 @@ def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap
     flagged = AdapterScope(domains=labs("light"), capabilities=verified("hue"))
     assert cr.coverage_gaps(classed(turn_on_for=flagged)) == []
     assert cr.coverage_gaps(FakeRegistry({("turn_on_for", "fake"): AdapterScope()})) == []
+
+
+def default_classed(scope: AdapterScope) -> FakeRegistry:
+    """`classed`, with `other` its default class."""
+    found = classed(turn_on_for=scope)
+    found.integrations["fake"] = replace(found.integrations["fake"], default_class="other")
+    return found
+
+
+def credit_other(repo) -> None:
+    """A record test crediting model LTA009 and a manual row crediting model LCA001, each in the class `other`."""
+    classes_record_v3(repo, "turn_on_for", ran("light", device("LTA009", "1", "other")))
+    (repo.path / MANUAL).write_text(manual_file(signoff(devices=(("LCA001", "other"),), calls=bound("turn_on_for"))))
+
+
+def test_a_model_credited_in_a_labs_default_class_warns(fake_repo):
+    """Each source on its own: the record credits LTA009 and the manual row LCA001."""
+    credit_other(fake_repo)
+    assert cr.default_class_credits(default_classed(SCOPE)) == [
+        "fake turn_on_for: LCA001 passed in the default class `other`, which is never Verified, so its pass can't lift"
+        " a flag; name a class for it (docs/evidence.md, Device classes)",
+        "fake turn_on_for: LTA009 passed in the default class `other`, which is never Verified, so its pass can't lift"
+        " a flag; name a class for it (docs/evidence.md, Device classes)",
+    ]
+
+
+def test_a_documented_default_class_is_no_trap(fake_repo):
+    credit_other(fake_repo)
+    documented = AdapterScope(capabilities=verified("hue", "ikea") | {"other": Level.DOCUMENTED})
+    assert cr.default_class_credits(default_classed(documented)) == []
+
+
+def test_a_model_credited_in_a_named_class_does_not_warn(fake_repo):
+    classes_record_v3(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", "hue")))
+    (fake_repo.path / MANUAL).write_text(
+        manual_file(signoff(devices=(("LCA001", "ikea"),), calls=bound("turn_on_for")))
+    )
+    assert cr.default_class_credits(default_classed(SCOPE)) == []
+
+
+def test_a_model_also_credited_in_a_named_class_by_another_source_is_silent(fake_repo):
+    """LTA009 passes in `other` in a record and in `hue` in a manual row: the old pass is never edited."""
+    classes_record_v3(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", "other")))
+    (fake_repo.path / MANUAL).write_text(manual_file(signoff(devices=(("LTA009", "hue"),), calls=bound("turn_on_for"))))
+    assert cr.default_class_credits(default_classed(SCOPE)) == []
 
 
 def test_signoffs_fail_on_a_gap(released, gate):
