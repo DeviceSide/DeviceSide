@@ -16,11 +16,11 @@ from homeassistant.helpers.selector import (
 from homeassistant.loader import async_get_integration
 
 from .const import (
-    CONF_EXPERIMENTAL,
+    CONF_LABS,
     CONF_PREDICTED_STATE,
     CONF_Z2M_COLOR_MODES,
     DOMAIN,
-    EXPERIMENTAL_DEFAULT,
+    LABS_DEFAULT,
     NAME,
     PREDICTED_STATE_DEFAULT,
     REPO_URL,
@@ -39,6 +39,8 @@ class DeviceSideConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for DeviceSide."""
 
     VERSION = 1
+    # 2: the Labs option's key was renamed (async_migrate_entry).
+    MINOR_VERSION = 2
 
     @staticmethod
     @callback
@@ -71,7 +73,7 @@ class IssueForm:
     device_only: bool = False  # Its picker offers only entities on a device, not helpers, automations or scenes.
 
 
-_VERSION_FIELDS = ("deviceside_version", "ha_version", "experimental_features")
+_VERSION_FIELDS = ("deviceside_version", "ha_version", "labs")
 # In the order of GitHub's template chooser, which sorts the forms by file name.
 ISSUE_FORMS = (
     IssueForm(
@@ -244,9 +246,8 @@ def _title(prefix: str, subjects: list[str]) -> str:
 
 
 async def issue_url(hass: HomeAssistant, form: IssueForm, entity_ids: list[str]) -> str:
-    """A prefilled issue for the entities' devices (one entry per device), the two versions and whether Experimental
-    features was on, as far as the form asks for them, and nothing that identifies the household (no entity ID, name,
-    area or MAC)."""
+    """A prefilled issue for the entities' devices (one entry per device), the two versions and whether Labs was on,
+    as far as the form asks for them, and nothing that identifies the household (no entity ID, name, area or MAC)."""
     # One entry per distinct device facts, so several devices of one model give one line.
     devices = list(dict.fromkeys(dict(_device_facts(hass, entity_id) for entity_id in entity_ids).values()))
     values = {
@@ -254,9 +255,7 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_ids: list[str])
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
         # A text field, as GitHub prefills only those. Left out, not "off", when DeviceSide isn't loaded.
-        "experimental_features": ""
-        if (runtime := hass.data.get(DATA)) is None
-        else ("on" if runtime.experimental_features else "off"),
+        "labs": "" if (runtime := hass.data.get(DATA)) is None else ("on" if runtime.labs else "off"),
     }
     query = {"template": form.template}
     subjects = list(dict.fromkeys(filter(None, (device.subject for device in devices))))
@@ -321,7 +320,7 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
                     vol.Required(
                         CONF_Z2M_COLOR_MODES, default=options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
                     ): bool,
-                    vol.Required(CONF_EXPERIMENTAL, default=options.get(CONF_EXPERIMENTAL, EXPERIMENTAL_DEFAULT)): bool,
+                    vol.Required(CONF_LABS, default=options.get(CONF_LABS, LABS_DEFAULT)): bool,
                 }
             ),
         )

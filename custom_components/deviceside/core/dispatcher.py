@@ -377,7 +377,7 @@ class Dispatcher:
             buckets.setdefault(target.integration, (adapter, []))[1].append(target)
 
         runs: list[Run] = []
-        experimental_on = get_runtime(self.hass).experimental_features
+        experimental_on = get_runtime(self.hass).labs
         for adapter, bucket in buckets.values():
             runs += self._plan(
                 adapter, request, self._expand_native_groups(adapter, bucket, results), results, experimental_on

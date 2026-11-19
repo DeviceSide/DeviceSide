@@ -128,7 +128,7 @@ async def refusal(hass: HomeAssistant, service: str, data: dict) -> str:
 
 def allow_experimental(hass: HomeAssistant, on: bool = True) -> None:
     """Turn the Experimental features option on (or off) for a loaded entry, as saving it in the options would."""
-    get_runtime(hass).experimental_features = on
+    get_runtime(hass).labs = on
 
 
 def wall_clock_now() -> datetime:

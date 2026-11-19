@@ -74,7 +74,7 @@ body:
         1. Steps to reproduce:
         1. YAML and/or logs (if relevant):
   - type: input
-    id: experimental_features
+    id: labs
     attributes:
       label: Was Labs on?
       description: >-

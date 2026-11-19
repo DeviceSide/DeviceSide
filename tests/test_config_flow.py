@@ -18,7 +18,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry, MockMo
 
 from custom_components.deviceside.config_flow import _FORMS_BY_STEP, _title, issue_url
 from custom_components.deviceside.const import (
-    CONF_EXPERIMENTAL,
+    CONF_LABS,
     CONF_PREDICTED_STATE,
     CONF_Z2M_COLOR_MODES,
     DOMAIN,
@@ -142,25 +142,25 @@ async def test_saving_the_option_reloads_the_entry_with_it(hass: HomeAssistant):
     assert result["data_schema"]({}) == {
         CONF_PREDICTED_STATE: True,
         CONF_Z2M_COLOR_MODES: True,
-        CONF_EXPERIMENTAL: False,
+        CONF_LABS: False,
     }
-    assert get_runtime(hass).experimental_features is False
+    assert get_runtime(hass).labs is False
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_PREDICTED_STATE: False, CONF_EXPERIMENTAL: True}
+        result["flow_id"], {CONF_PREDICTED_STATE: False, CONF_LABS: True}
     )
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True, CONF_EXPERIMENTAL: True}
+    assert entry.options == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True, CONF_LABS: True}
     assert entry.state is ConfigEntryState.LOADED
     assert get_runtime(hass).predicted_state is False
-    assert get_runtime(hass).experimental_features is True
+    assert get_runtime(hass).labs is True
 
     result = await open_settings(hass, entry)
     assert result["data_schema"]({}) == {
         CONF_PREDICTED_STATE: False,
         CONF_Z2M_COLOR_MODES: True,
-        CONF_EXPERIMENTAL: True,
+        CONF_LABS: True,
     }
 
 
@@ -194,7 +194,7 @@ async def test_a_report_for_a_supported_light_lists_its_integration_product_mode
         "devices": "zha \u00b7 Signify Netherlands B.V. Hue ambiance lamp \u00b7 LTA009 \u00b7 0x01002a00",
         "deviceside_version": (await async_get_integration(hass, DOMAIN)).version,
         "ha_version": HA_VERSION,
-        "experimental_features": "off",
+        "labs": "off",
     }
     for private in ("light.kitchen_lamp", "kitchen", "Kitchen", IEEE, "00%3A17"):
         assert private not in url
@@ -395,23 +395,23 @@ def test_a_long_title_keeps_the_first_subject_and_counts_the_rest():
     assert _title("Device report", []) == "Device report"
 
 
-async def test_a_report_says_whether_experimental_features_was_on(hass: HomeAssistant):
-    """A report on an Experimental item means something else with the option off: it was refused, not tried."""
+async def test_a_report_says_whether_labs_was_on(hass: HomeAssistant):
+    """A report on an item in Labs means something else with the option off: it was refused, not tried."""
     entry = await load_entry(hass)
-    get_runtime(hass).experimental_features = True
+    get_runtime(hass).labs = True
 
     add_mqtt_light(hass, "tasmota_ABC123")
 
     fields, _ = await report_for(hass, entry, ["light.desk"])
 
-    assert fields["experimental_features"] == "on"
+    assert fields["labs"] == "on"
 
 
-async def test_a_report_leaves_experimental_features_out_when_deviceside_is_not_loaded(hass: HomeAssistant):
+async def test_a_report_leaves_labs_out_when_deviceside_is_not_loaded(hass: HomeAssistant):
     """Unknown is not "off": a blank field asks the reporter rather than claiming the option was off."""
     url = await issue_url(hass, _FORMS_BY_STEP["report_device"], [])
 
-    assert "experimental_features" not in parse_qs(urlparse(url).query)
+    assert "labs" not in parse_qs(urlparse(url).query)
 
 
 async def test_a_proposal_carries_the_devices_line_but_not_the_versions(hass: HomeAssistant):

@@ -37,8 +37,10 @@ ANYWHERE = frozenset(
 )  # a test class's domains: every one a test scope serves
 
 PACKAGE = Path(__file__).resolve().parents[2] / "custom_components" / "deviceside"
-# What reads the Experimental features option: only the option's definition, the entry setup and the dispatcher may.
-OPTION_NAMES = {"CONF_EXPERIMENTAL", "EXPERIMENTAL_DEFAULT", "experimental_features"}
+# What reads the Labs option: only the option's definition, the entry setup and the dispatcher may. Its constants by
+# name; its key and Runtime field, "labs", only as an attribute or a string, as the scope marker labs(...) is a name.
+OPTION_NAMES = {"CONF_LABS", "LABS_DEFAULT"}
+OPTION_FIELD = "labs"
 OPTION_READERS = {"const.py", "__init__.py", "config_flow.py", "core/runtime.py", "core/dispatcher.py"}
 
 
@@ -538,9 +540,9 @@ def test_only_the_dispatcher_and_entry_setup_read_the_experimental_option():
         if path.relative_to(PACKAGE).as_posix() not in OPTION_READERS
         for node in ast.walk(ast.parse(path.read_text()))
         if (isinstance(node, ast.Name) and node.id in OPTION_NAMES)
-        or (isinstance(node, ast.Attribute) and node.attr in OPTION_NAMES)
+        or (isinstance(node, ast.Attribute) and node.attr in {*OPTION_NAMES, OPTION_FIELD})
         or (isinstance(node, ast.alias) and node.name in OPTION_NAMES)
-        or (isinstance(node, ast.Constant) and node.value == "experimental_features")
+        or (isinstance(node, ast.Constant) and node.value == OPTION_FIELD)
     ]
     assert found == []
 

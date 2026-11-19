@@ -14,9 +14,9 @@ ADAPTER_BACKSTOP_S = 5
 CONF_PREDICTED_STATE = "predicted_state"
 PREDICTED_STATE_DEFAULT = True
 
-# Lets a call touching an Experimental scope item through, instead of refusing it. Read by the dispatcher only.
-CONF_EXPERIMENTAL = "experimental_features"
-EXPERIMENTAL_DEFAULT = False
+# Lets a call touching a scope item in Labs through, instead of refusing it. Read by the dispatcher only.
+CONF_LABS = "labs"
+LABS_DEFAULT = False
 
 # Zigbee2MQTT: announce full-color lights to HA with both color modes, so HA takes the bulb's state in either.
 CONF_Z2M_COLOR_MODES = "z2m_color_modes"
