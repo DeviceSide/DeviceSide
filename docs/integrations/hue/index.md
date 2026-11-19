@@ -41,7 +41,7 @@ answer the same Zigbee commands differently: some fade only one of brightness an
 written while off, and some don't report color temperature as Hue lights do
 ([internals](internals.md#device-classes)). Nothing predicts which of the bridge's commands they take, so no feature
 is in Labs on them. A contributor's passing run on one adds a class for its brand
-([evidence](../../evidence.md#no-known-method-not-built-yet-on-trial)).
+([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)).
 
 ## Smooth dimming
 

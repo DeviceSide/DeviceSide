@@ -16,12 +16,12 @@ same command differently. Each claim is at one of two levels of proof:
   addressing, or certification tests the same read on every device of the class. A class holding many makers' devices
   is never Documented by another maker's test.
 
-**Labs** is a trial, not a promise. A trial may be withdrawn: a class that fails and isn't fixed is taken
+**Labs** is not a promise. What's in Labs may be withdrawn: a class that fails and isn't fixed is taken
 off until someone builds it better. Labs features stay off until you turn on **Labs** in
-**Configure > Settings**. A trial covers only what its evidence names, so a device DeviceSide can't place in a known
+**Configure > Settings**. Labs admits only what its evidence names, so a device DeviceSide can't place in a known
 class gets a feature only where its integration's page says so. Whether they work or not, please tell us
 with **Report a device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
-[evidence rules](evidence.md#no-known-method-not-built-yet-on-trial).
+[evidence rules](evidence.md#no-known-method-not-built-yet-in-labs).
 
 ## Maintainers
 
@@ -88,7 +88,7 @@ Documented ([levels of proof](#levels-of-proof)).
 These classes are in Labs ([levels of proof](#levels-of-proof)): built and unit-tested, and some may have passed a maintainer's first tests. Turn on
 Labs to try them, then report the result, whether they work or not: a working report helps ship them
 to everyone, and a "doesn't work" one goes to the integration's maintainers, who decide whether to fix it, find it a maintainer, or
-turn it off ([in Labs](evidence.md#no-known-method-not-built-yet-on-trial)).
+turn it off ([in Labs](evidence.md#no-known-method-not-built-yet-in-labs)).
 
 ## Not built yet
 

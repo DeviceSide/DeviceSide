@@ -54,7 +54,7 @@ setting for the plug). Turn on with timer uses that countdown:
   Labs to try one, and report whether it works. About 200 maker strings share the plugs'
   Zigbee2MQTT definitions, each a different maker's build, and some are reported to ignore the countdown
   ([research](research/2026-11-15-converter-seed-list.md)); a string moves to Verified with its own passing run
-  ([evidence](../../evidence.md#no-known-method-not-built-yet-on-trial)).
+  ([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)).
 - **Untested** on a Verified string Zigbee2MQTT shows as a light (still a plug to DeviceSide, with no record as a
   light): it runs only with Labs on.
 - **Not built yet on `_TZ3000_gjnozsaz`,** even with Labs on: its countdown is reported to restart
