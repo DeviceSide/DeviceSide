@@ -36,7 +36,7 @@ jobs:
           output: lychee/out.md
           # Dated plans and audit reports are historical records, as in the pre-commit hook.
           args: >-
-            --cache --max-cache-age 1d --max-retries 3 --accept 200,206,429
+            --cache --max-cache-age 1d --max-concurrency 4 --max-retries 3 --accept 200,206,429
             --exclude-path 'docs/(plans|audits)/' --format markdown
             './**/*.md' './**/*.html'
         env:
