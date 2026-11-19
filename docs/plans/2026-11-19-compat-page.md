@@ -163,11 +163,12 @@ heading-check exemption. The PR body opens with this, filling in the main PR's n
 
 Intent: Replace docs/device-compatibility.md with a generated, device-first page whose every mark links its proof;
 strip levels from the integration pages; let a sign-off carry user reports.
-Touches: scripts/gen_compat.py, scripts/gen_features.py, scripts/signoff.py, scripts/check_release.py,
-tests/scripts/test_gen_compat.py, tests/scripts/test_gen_features.py, docs/device-compatibility.md, README.md,
-docs/integrations.md, docs/defects.md, docs/design.md, docs/evidence.md, docs/test-records.schema.json,
-docs/integrations/{hue,zha,zigbee2mqtt,shelly,matter}/index.md, docs/integrations/*/devices.yaml,
-docs/integrations/*/test-records/_manual.json (not control4), .github/ISSUE_TEMPLATE/device_report.yml, CLAUDE.md
+Touches: scripts/gen_compat.py, scripts/signoff.py, scripts/check_release.py, tests/scripts/test_gen_compat.py,
+tests/scripts/test_check_release.py, tests/scripts/test_records_schema.py, tests/scripts/test_signoff.py,
+tests/scripts/record_files.py, docs/device-compatibility.md, README.md, TODO.md, docs/integrations.md, docs/defects.md,
+docs/design.md, docs/evidence.md, docs/test-records.schema.json, docs/integrations/{hue,zha,zigbee2mqtt,shelly,matter}/index.md,
+docs/integrations/zigbee2mqtt/internals.md, docs/integrations/*/devices.yaml,
+custom_components/deviceside/integrations/{zha,zigbee2mqtt}/refusals.py, .github/ISSUE_TEMPLATE/device_report.yml, CLAUDE.md
 
 ## Handoff
 
