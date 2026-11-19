@@ -253,7 +253,7 @@ def test_an_experimental_domain_shows_a_grey_icon_after_the_amber_ones(no_blocke
     adapters = every_row(domains=verified("light") | experimental("switch"))
     cell = cells(gf.generate(FakeRegistry(*adapters)), "Get attributes")[2]
     assert cell.index(LIGHT) < cell.index("/switch-grey.svg")
-    assert SWITCH not in cell and 'alt="switch: Experimental"' in cell
+    assert SWITCH not in cell and 'alt="switch: Labs"' in cell
 
 
 def test_all_experimental_capabilities_show_grey(no_blockers):

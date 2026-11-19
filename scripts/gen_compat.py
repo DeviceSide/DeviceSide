@@ -147,18 +147,14 @@ TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 OUTCOMES = (
     ("works", "🟢", "works"),
     ("should", "🟡", "should work: same call pattern as a tested device"),
-    (
-        "experimental",
-        "⚪",
-        "Experimental: untested device models on trial.",
-    ),
+    ("experimental", "⚪", "Labs: built but not yet proven. Turn on Labs to try it"),
     ("no_known_method", "🔴", "no known command works on it"),
 )
 # The most card lines, as a share of all of them across the README's cards, that may be Experimental: ⚪ with no 🟢
 # or 🟡 (docs/evidence.md, The experimental flag). The number is directional: the failure it prevents is the earlier
 # card list of more than half untried classes, which read as a claim that DeviceSide was ready for them.
 EXPERIMENTAL_SHARE_MAX = 0.25
-TRIAL = f"{next(icon for key, icon, _ in OUTCOMES if key == 'experimental')} on trial"
+TRIAL = next(icon for key, icon, _ in OUTCOMES if key == "experimental")
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.EXPERIMENTAL: "experimental"}
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
@@ -943,7 +939,7 @@ class Line:
 
 def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> tuple[list[Line], str | None]:
     """Two or more top-level lines that are on trial (`Line.on_trial`) leave `lines` for one folded line:
-    "⚪ on trial: [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside it
+    "⚪ [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside it
     after " · ", and a group sits where its last line does, so one holding an "other brands" line comes last.
     A variants parent's children, and a single such line, stay where they are."""
     trial = [line for line in lines if line.on_trial() and not line.variant]
@@ -963,7 +959,7 @@ def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> 
             for status, labels in found
         )
         parts.append(f"{', '.join(names)} ({inside})")
-    return [line for line in lines if line not in trial], f"{TRIAL}: {'; '.join(parts)}"
+    return [line for line in lines if line not in trial], f"{TRIAL} {'; '.join(parts)}"
 
 
 def class_lines(

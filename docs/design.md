@@ -43,6 +43,8 @@ Code and docs use these terms. Each one's rules live where its link points.
   everyone. Rules: [evidence.md](evidence.md#the-experimental-flag).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
   item through. Only the dispatcher reads it.
+- **Labs**: the name users see for the Experimental level and the Experimental features option: the option's label,
+  the cards' ⚪ legend and user docs. Code, contributor docs and the evidence rules say Experimental.
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
   `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
   [device-compatibility.md](device-compatibility.md#maintainers).

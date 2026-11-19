@@ -76,10 +76,10 @@ body:
   - type: input
     id: experimental_features
     attributes:
-      label: Was Experimental features on?
+      label: Was Labs on?
       description: >-
         on or off: DeviceSide's options, Configure > Settings. Filled in when you start from there.
-        Experimental features are best effort: a "doesn't work" report goes to the integration's maintainers,
+        Labs features are best effort: a "doesn't work" report goes to the integration's maintainers,
         who decide whether to fix it, find it a maintainer, or turn it off. A fix may need someone with the device;
         see CONTRIBUTING's
         [Fast track](https://github.com/DeviceSide/DeviceSide/blob/main/CONTRIBUTING.md#fast-track-build-it-yourself).

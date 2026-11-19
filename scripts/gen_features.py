@@ -103,8 +103,8 @@ LEGEND = (
     (("scene",), "native scene", "scenes", "README.md", "set-scene-without-turning-on"),
     (
         ("light-grey", "switch-grey"),
-        "Experimental",
-        "on trial",
+        "Labs",
+        "Labs",
         "docs/device-compatibility.md",
         "levels-of-proof",
     ),
@@ -242,7 +242,7 @@ def cell(have: set[str], blocked: bool = False, trial: set[str] = frozenset(), l
         if key in have:
             icons.append(img(key, ICONS[key], link))
         elif key in trial:
-            icons.append(img(f"{key}-grey", f"{ICONS[key]}: Experimental", link))
+            icons.append(img(f"{key}-grey", f"{ICONS[key]}: Labs", link))
     return " ".join(icons)
 
 

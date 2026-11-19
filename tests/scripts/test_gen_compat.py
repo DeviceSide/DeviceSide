@@ -2,6 +2,7 @@
 evidence block, and the stale check."""
 
 import copy
+import re
 from types import SimpleNamespace
 
 import pytest
@@ -859,7 +860,7 @@ def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     assert gc.legend("🟢 ✔ 🟡 ⚪ 🔴 🔧 ⚠️") == (
         "🟢 works · ✔ verified on automated rig<br>\n"
         "🟡 should work: same call pattern as a tested device<br>\n"
-        "⚪ Experimental: untested device models on trial.<br>\n"
+        "⚪ Labs: built but not yet proven. Turn on Labs to try it<br>\n"
         "🔴 no known command works on it<br>\n"
         f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL})<br>\n"
         "⚠️ unmaintained: use at your own risk"
@@ -1243,10 +1244,19 @@ def test_no_card_line_names_a_feature_twice():
     block = gc.README.read_text().split(gc.CARDS[0])[1].split(gc.CARDS[1])[0]
     lines = [line for line in block.splitlines() if line.startswith("- ")]
     assert lines
+    icons = {icon for _, icon, _ in gc.OUTCOMES}
     for line in lines:
-        statuses = line.rsplit(": ", 1)[1].split(" · ")  # after the names, each "<icon> <features>"
-        labels = [label for status in statuses for label in status.split(" ", 1)[-1].split(", ")]
-        assert len(labels) == len(set(labels)), line
+        # A line's features follow its names, each part "<icon> <features>"; the fold's sit in a parenthesis per group.
+        if line.startswith(f"- {gc.TRIAL} "):
+            groups = re.findall(r"\(([^()]*)\)(?=;|$)", line)
+            assert groups, line
+        else:
+            groups = [line.rsplit(": ", 1)[1]]
+        for group in groups:
+            # The fold's Labs part carries no icon of its own.
+            parts = [part.split(" ", 1)[1] if part.split(" ", 1)[0] in icons else part for part in group.split(" · ")]
+            labels = [label for part in parts for label in part.split(", ")]
+            assert len(labels) == len(set(labels)), line
 
 
 def test_a_line_holding_every_class_of_its_section_names_the_section(root):
@@ -1417,7 +1427,7 @@ def test_two_lines_that_show_only_experimental_fold_into_one_last_line(root):
     # devices.yaml's entry, and the cap counts it as the one Experimental line it is.
     assert card.lines == [
         f"[Old plug]({URL}#old-plug): 🔴",
-        f"⚪ on trial: [CCT controllers]({URL}#dimmers) (turn on with timer);"
+        f"⚪ [CCT controllers]({URL}#dimmers) (turn on with timer);"
         f" [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming)",
     ]
     assert (card.total, len(card.trial)) == (2, 1)
@@ -1434,9 +1444,7 @@ def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root)
     adapters = (timer_trial("Light", "CCT"),)
     registry = brand_registry(*adapters)
     card = gc.card("zha", registry, list(adapters), data(registry))
-    assert card.lines[-1] == (
-        f"⚪ on trial: [CCT controllers]({URL}#dimmers), [dimmers]({URL}#dimmers) (turn on with timer)"
-    )
+    assert card.lines[-1] == (f"⚪ [CCT controllers]({URL}#dimmers), [dimmers]({URL}#dimmers) (turn on with timer)")
 
 
 def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_last(root):
@@ -1449,7 +1457,7 @@ def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_l
     capabilities["zha"]["other"] = {"phrase": "other brands", "section": "Lights"}
     card = gc.card("zha", registry, [dimming, timer], data(registry, capabilities=capabilities))
     assert card.lines[-1] == (
-        f"⚪ on trial: [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming);"
+        f"⚪ [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming);"
         f" [CCT controllers]({URL}#dimmers), [other brands]({URL}#lights) (smooth dimming)"
     )
 
@@ -1459,7 +1467,7 @@ def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
     off = adapter("zha", "turn_off_for", AdapterScope(capabilities=experimental("RGBCCT"), no_known_method=broken))
     card = trial_card(timer_trial("CCT", "RGBCCT"), off)
     assert card.lines[-1] == (
-        f"⚪ on trial: [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
+        f"⚪ [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
         f" [CCT controllers]({URL}#dimmers) (turn on with timer · 🔴 turn off with timer)"
     )
     assert len(card.trial) == 1
@@ -1495,7 +1503,7 @@ def test_a_variants_children_never_fold(root):
     parent = next(line for line in card.lines if line.startswith(f"[Plugs]({URL}#plug)"))
     assert "  - [maker B, or no setting]" in parent and "⚪ turn on with timer" in parent
     # The children stay under their parent and count as lines; the two top-level lines fold.
-    assert sum(line.startswith("⚪ on trial") for line in card.lines) == 1
+    assert sum(line.startswith("⚪ ") for line in card.lines) == 1
     assert (card.total, len(card.trial)) == (5, 2)
 
 
