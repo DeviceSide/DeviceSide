@@ -70,9 +70,9 @@ body:
       description: "For a bug, attach a debug log: on DeviceSide's integration page, select Enable debug logging, reproduce the problem, then disable it and attach the log it downloads. Entity names appear in the log: rename any you'd rather not share before attaching it."
       placeholder: |
         1. What I expected to happen:
-        1. What actually happened:
-        1. Steps to reproduce:
-        1. YAML and/or logs (if relevant):
+        2. What actually happened:
+        3. Steps to reproduce:
+        4. YAML and/or logs (if relevant):
   - type: input
     id: labs
     attributes:
