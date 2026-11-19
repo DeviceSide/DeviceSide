@@ -1,8 +1,8 @@
 name: Route issue
 
 # Labels an issue integration:<key> for each integration its form names, and assigns their maintainers
-# (IntegrationInfo.maintainers, read by scripts/route_issue.py). Only an issue form with an Integration dropdown names
-# any. A maintainer GitHub can't assign (no access to the repo) is skipped by GitHub, not an error.
+# (IntegrationInfo.maintainers, read by scripts/route_issue.py). Only an issue form with an Integration dropdown or a
+# Devices field names any. A maintainer GitHub can't assign (no access to the repo) is skipped by GitHub, not an error.
 
 on:
   issues:

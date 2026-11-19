@@ -77,12 +77,7 @@ body:
     id: labs
     attributes:
       label: Was Labs on?
-      description: >-
-        on or off: DeviceSide's options, Configure > Settings. Filled in when you start from there.
-        Labs features are best effort: a "doesn't work" report goes to the integration's maintainers,
-        who decide whether to fix it, find it a maintainer, or turn it off. A fix may need someone with the device;
-        see CONTRIBUTING's
-        [Fast track](https://github.com/DeviceSide/DeviceSide/blob/main/CONTRIBUTING.md#fast-track-build-it-yourself).
+      description: Integrations > DeviceSide > Configure > Settings > Labs
     validations:
       required: true
   - type: input
@@ -95,6 +90,5 @@ body:
     id: deviceside_version
     attributes:
       label: DeviceSide version
-      description: "The release you tested, such as 0.2.0, or 0.2.0rc1 for a release candidate: your report counts as a test of that release's code. Filled in when you start from DeviceSide's options, which show a release candidate as its release, so add the rcN (HACS shows which you installed)."
     validations:
       required: true
