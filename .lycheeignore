@@ -1,7 +1,3 @@
 # Patterns lychee skips (regexes, one per line). Every entry needs a # reason above it.
-# Careful with broad patterns: a `file://` pattern silently
+# Nothing is ignored yet. Careful with broad patterns: a `file://` pattern silently
 # disables every relative-link check.
-
-# github.com blob pages answer 503 to the runner's request burst (throttling, not dead links), and
-# the monthly issue was mostly noise from them. Cost: a dead blob link goes unnoticed.
-^https://github\.com/[^/]+/[^/]+/blob/
