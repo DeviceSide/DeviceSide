@@ -5,9 +5,9 @@
 Intent: one name for the lowest level everywhere. Users already see Labs (commits e2d0dfa, 9fb0468 on this branch);
 this plan renames the code, the stored option key and the rule text to match, so contributors stop translating.
 Touches: custom_components/deviceside/**, tests/**, scripts/gen_compat.py, scripts/gen_features.py,
-scripts/check_release.py, .github/ISSUE_TEMPLATE/device_report.yml, docs/evidence.md, docs/design.md,
-docs/action-behavior.md, docs/device-compatibility.md, docs/internals.md, docs/icons/README.md, CLAUDE.md,
-CONTRIBUTING.md, TODO.md, README.md (regenerated)
+scripts/check_release.py, .github/ISSUE_TEMPLATE/device_report.yml, .github/pull_request_template.md, docs/evidence.md,
+docs/design.md, docs/action-behavior.md, docs/device-compatibility.md, docs/internals.md, docs/icons/README.md,
+CLAUDE.md, CONTRIBUTING.md, TODO.md, README.md (regenerated)
 
 Branch: `claude/hopeful-clarke-vmm2s9` (its PR isn't open yet; this ships in the same PR as the user-facing rename).
 
@@ -73,9 +73,10 @@ rules. Two names for one thing leak back into user docs with every contributor P
 | test names containing `experimental` / `on_trial` | the same with `labs` / `in_labs` |
 | comments and docstrings: "Experimental", "the experimental flag", "on trial", "Experimental features (option)" | per Decisions 1 to 4 |
 
-Find what's left with `rg -n -i 'experimental|on.trial|\btrials?\b' --glob '!docs/plans/**' --glob '!**/research/**'
---glob '!docs/audits/**' --glob '!**/test-records/**'`; after step 3 the only hits are this plan, `CONF_`-era names
-in the migration (step 1) and its tests.
+Find what's left with `rg -n -i --hidden 'experimental|on.trial|\btrials?\b' --glob '!.git/**' --glob '!docs/plans/**'
+--glob '!**/research/**' --glob '!docs/audits/**' --glob '!**/test-records/**'`; after step 3 the only hits are this
+plan, `CONF_`-era names in the migration (step 1) and its tests, `TODO.md`'s ticked items, and `TODO.md`'s link to
+`docs/plans/2026-11-18-experimental-listing.md` (a filename, Decision 6).
 
 ## Steps
 
