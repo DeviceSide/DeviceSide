@@ -5,7 +5,7 @@
     {
       "date": "2026-11-16",
       "commit": "f68bb8f120e72bc2c55a8228024e7f2cb986fdc1",
-      "tester": "skialpine",
+      "signed_by": "skialpine",
       "group": true,
       "devices": [
         {"model": "LTD010", "manufacturer": "Finite Labs", "class": "other"}
@@ -21,7 +21,7 @@
     {
       "date": "2026-11-16",
       "commit": "f68bb8f120e72bc2c55a8228024e7f2cb986fdc1",
-      "tester": "skialpine",
+      "signed_by": "skialpine",
       "devices": [
         {"model": "LTD010", "manufacturer": "Finite Labs", "class": "other"}
       ],

@@ -9,17 +9,20 @@ Lights on the core `control4` integration: dimmers and light groups alike. A gro
 [Light Group driver](https://github.com/skialpine/control4-group-lighting) is a native group: it gets one command for
 all its lights. A change to its lights in Composer shows once the Control4 integration reloads. DeviceSide uses that
 integration's own connection to the controller, so it needs no sign-in of its own. A light it can't tie to a Control4
-item is refused (`not_addressable`). Every action here is in Labs ([try it](#try-it-labs)).
-
+item is refused (`not_addressable`).
 ## Device classes
 
 DeviceSide sends every Control4 light the same commands, and the light's driver decides what they do, so it tells
-lights apart by their driver. Every feature says how well it is proven for each
-([levels of proof](../../device-compatibility.md#levels-of-proof)).
+lights apart by their driver. A light group takes the class of its lights.
 
-- **[Control4 lights](#control4-lights):** every driver but those below, the tested "Zigbee 3 Light" bulb and Light
-  Group driver among them.
-- A **light group** is proven as far as its lights.
+### Control4 lights
+
+Every driver but those below, the "Zigbee 3 Light" bulb and Light Group driver among them. On a Control4 dimmer or
+light group, a raise or lower ramps smoothly from where the light is, and `stop` halts it where it is, whichever way it
+runs. It was tried on a light group of three Hue White Ambiance 5/6" Retrofit Downlights
+([`LTD010`](../../device-compatibility.md#hue-white-ambiance-56-retrofit-downlight), Philips 5996411U5), joined to
+Control4 over Zigbee on its "Zigbee 3 Light" driver, on Control4 OS 4.3 by one contributor
+([measurements](internals.md#tested-behavior)). Control4 documents none of it, and no other driver has been tried.
 
 ### Lights whose driver can't stop a ramp
 
@@ -62,18 +65,3 @@ temperature for these lights.
 - Brightness is up to a second old mid-ramp. Home Assistant's own state can be several seconds old.
 - Control4 keeps color temperature in tens of kelvin, so a light set to 2203 reads 2200.
 - A light that is off reports no brightness.
-
-## Try it: Labs
-
-### Control4 lights
-
-On a Control4 dimmer or light group, a test shows that a raise or lower ramps smoothly from where the light is, and
-that `stop` halts it where it is, whichever way it runs. One contributor saw this on a light group of [Hue
-downlights](#hue-white-ambiance-56-retrofit-downlight) on Control4 OS 4.3
-([measurements](internals.md#tested-behavior)). Control4 documents none of it, and no other driver has been tried. One
-report per driver.
-
-### Hue White Ambiance 5/6" Retrofit Downlight
-
-`LTD010` (Philips 5996411U5), joined to Control4 over Zigbee on its "Zigbee 3 Light" driver, three of them in a
-Control4 light group. In Labs like every Control4 light, so the card doesn't list it as tested.

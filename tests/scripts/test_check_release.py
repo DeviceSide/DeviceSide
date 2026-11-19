@@ -926,17 +926,6 @@ def test_a_row_resting_on_reports_credits_its_class_and_signs_off(fake_repo):
     assert cr.manual_signoffs("fake", ("a",), names_classes=True) == ([found], [])
 
 
-def test_a_row_naming_its_signer_by_the_old_name_is_read_the_same(fake_repo):
-    old = signoff()
-    old["tester"] = old.pop("signed_by")
-    (fake_repo.path / MANUAL).parent.mkdir(parents=True, exist_ok=True)
-    (fake_repo.path / MANUAL).write_text(manual_file(old, signoff(signed_by="b")))
-    assert cr.manual_signoffs("fake", ("a",)) == (
-        [cr.Row(f"{MANUAL} row 1", "1a2b3c4", "a", ("turn_on_for",), bound("turn_on_for"))],
-        [f"{MANUAL} row 2: signer @b is neither a maintainer of fake nor a repo one"],
-    )
-
-
 def test_a_manual_group_row_credits_its_members_classes(fake_repo):
     (fake_repo.path / MANUAL).parent.mkdir(parents=True, exist_ok=True)
     members = (("LCA001", "hue"), ("LWA012", None), ("LTA009", "ikea"))

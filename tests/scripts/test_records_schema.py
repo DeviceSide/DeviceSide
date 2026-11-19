@@ -199,17 +199,12 @@ def test_the_schema_rejects_a_file_out_of_format(data, error):
     assert any(error in message for message in errors(data)), errors(data)
 
 
-def test_a_manual_row_names_its_signer_once_by_either_name():
-    """`tester` is `signed_by`'s old name, accepted until Control4's row is renamed; a row names exactly one."""
+def test_a_manual_row_must_name_its_signer_as_signed_by():
+    """`tester`, the field's old name, is no longer accepted: a row without `signed_by` fails, with or without it."""
     old = changed(MANUAL, lambda d: d["signoffs"][0].update(tester=d["signoffs"][0].pop("signed_by")))
-    assert errors(old) == []
-    both = changed(MANUAL, lambda d: d["signoffs"][0].update(tester="a"))
     neither = changed(MANUAL, lambda d: d["signoffs"][0].pop("signed_by"))
-    for data in (both, neither):
-        assert any(
-            "is not valid under any of the given schemas" in message or "is valid under each of" in message
-            for message in errors(data)
-        ), errors(data)
+    for data in (old, neither):
+        assert any("'signed_by' is a required property" in message for message in errors(data)), errors(data)
 
 
 def test_a_manual_row_may_rest_on_reports_and_give_firmware():

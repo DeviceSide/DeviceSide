@@ -313,15 +313,10 @@ def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
 LEVEL_HEADING = re.compile(
     r"^#+ .*\b(Tested devices|Should work|Try it|Labs|Verified|Documented)\b.*$", re.MULTILINE | re.IGNORECASE
 )
-# Control4's page keeps its level headings until its own PR tidies it (plan 2026-11-19-compat-page, step 6): remove
-# this exemption in that PR.
-LEVEL_HEADING_EXEMPT = frozenset({"control4"})
 
 
 def check_headings(key: str, text: str) -> None:
     """Fail an integration page heading that states a level (`LEVEL_HEADING`), naming the file."""
-    if key in LEVEL_HEADING_EXEMPT:
-        return
     if found := [match.group(0) for match in LEVEL_HEADING.finditer(text)]:
         raise SystemExit(
             f"{page(key)}: {', '.join(repr(heading) for heading in found)} states a level; levels are"
