@@ -860,7 +860,7 @@ def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     assert gc.legend("🟢 ✔ 🟡 ⚪ 🔴 🔧 ⚠️") == (
         "🟢 works · ✔ verified on automated rig<br>\n"
         "🟡 should work: same call pattern as a tested device<br>\n"
-        "⚪ Labs: built but not yet proven. Turn on Labs to try it<br>\n"
+        "⚪ Labs: built but not yet proven. Enable Labs in Configure > Settings<br>\n"
         "🔴 no known command works on it<br>\n"
         f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL})<br>\n"
         "⚠️ unmaintained: use at your own risk"
