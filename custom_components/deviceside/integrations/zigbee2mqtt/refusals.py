@@ -65,7 +65,8 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         TUYA_MCU: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
         # Reported failing the countdown with harm (plan Decisions 35 and 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(
-            reason="its maker string is reported to restart its timer at random, so it could stay on",
+            reason="Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when "
+            "asked, and the timer that would serve it isn't built",
             source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         ),
     },

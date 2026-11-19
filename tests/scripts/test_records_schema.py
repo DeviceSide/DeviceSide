@@ -189,7 +189,7 @@ def test_a_manufacturer_is_a_string_or_null():
         (changed(MANUAL, lambda d: d["signoffs"][0].pop("devices")), "'devices' is a required property"),
         (changed(MANUAL_V2, lambda d: d["signoffs"][0].pop("passed")), "'passed' is a required property"),
         (changed(MANUAL_V2, lambda d: d["signoffs"][0].update(calls=bound("stop"))), "should not be valid"),
-        (changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].update(firmware="1")), "'firmware' was unexpected"),
+        (changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].update(firmware=None)), "is not of type 'string'"),
         (changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].pop("manufacturer")), "'manufacturer' is a required"),
         (changed(FACTS, lambda d: d["facts"][0].update(kind="watched")), "is not one of"),
         (changed(FACTS, lambda d: d["facts"][0].update(devices=[])), "should be non-empty"),
@@ -197,6 +197,34 @@ def test_a_manufacturer_is_a_string_or_null():
 )
 def test_the_schema_rejects_a_file_out_of_format(data, error):
     assert any(error in message for message in errors(data)), errors(data)
+
+
+def test_a_manual_row_names_its_signer_once_by_either_name():
+    """`tester` is `signed_by`'s old name, accepted until Control4's row is renamed; a row names exactly one."""
+    old = changed(MANUAL, lambda d: d["signoffs"][0].update(tester=d["signoffs"][0].pop("signed_by")))
+    assert errors(old) == []
+    both = changed(MANUAL, lambda d: d["signoffs"][0].update(tester="a"))
+    neither = changed(MANUAL, lambda d: d["signoffs"][0].pop("signed_by"))
+    for data in (both, neither):
+        assert any(
+            "is not valid under any of the given schemas" in message or "is valid under each of" in message
+            for message in errors(data)
+        ), errors(data)
+
+
+def test_a_manual_row_may_rest_on_reports_and_give_firmware():
+    issue = "https://github.com/DeviceSide/DeviceSide/issues/12"
+    row = changed(MANUAL, lambda d: d["signoffs"][0].update(reports=[issue]))
+    assert errors(changed(row, lambda d: d["signoffs"][0]["devices"][0].update(firmware="1.2"))) == []
+    for reports, error in [
+        ([], "should be non-empty"),
+        ([issue, issue], "has non-unique elements"),
+        (["https://github.com/someone/else/issues/12"], "does not match"),
+        ([issue + "#issuecomment-1"], "does not match"),
+        (["https://github.com/DeviceSide/DeviceSide/pull/12"], "does not match"),
+    ]:
+        found = errors(changed(row, lambda d, reports=reports: d["signoffs"][0].update(reports=reports)))
+        assert any(error in message for message in found), (reports, found)
 
 
 def test_manual_and_facts_files_parse_by_their_names(tmp_path, monkeypatch):

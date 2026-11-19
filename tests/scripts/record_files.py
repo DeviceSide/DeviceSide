@@ -104,15 +104,18 @@ def record_v1(
 
 def signoff(
     commit: str = "1a2b3c4",
-    tester: str = "a",
+    signed_by: str = "a",
     devices=(("LCA001", None),),
     calls=None,
     group: bool = False,
     passed=None,
+    reports=(),
 ) -> dict:
     """A `_manual.json` row: format 3, `calls` each action's transcript blob (default: turn_on_for's, `BLOB`); or, with
-    `passed`, format 2's, naming the actions alone. `group` for a native group's members."""
-    row = {"date": "2026-11-12", "commit": commit[:7], "tester": tester} | ({"group": True} if group else {})
+    `passed`, format 2's, naming the actions alone. `group` for a native group's members; `reports`, the issues of
+    the users' reports it rests on."""
+    row = {"date": "2026-11-12", "commit": commit[:7], "signed_by": signed_by} | ({"group": True} if group else {})
+    row |= {"reports": list(reports)} if reports else {}
     row["devices"] = [{"model": m, "manufacturer": None, "class": c} for m, c in devices]
     if passed is not None:
         return row | {"passed": list(passed)}

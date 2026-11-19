@@ -20,6 +20,7 @@
     "model": {"description": "The model ID: a Zigbee device's Basic-cluster model (e.g. LWA012) on every integration, else the integration's model ID; docs/models.yaml or its bundle's devices.yaml must list it.", "type": "string", "minLength": 1},
     "firmware": {"description": "As the integration reports it; null when it reports none.", "type": ["string", "null"], "minLength": 1},
     "manufacturer": {"description": "The Zigbee manufacturer string as the integration reports it (Z2M bridge/devices `manufacturer`, ZHA's device manufacturer, the Hue bridge's `product_data.manufacturer_name`), else HA's registry manufacturer; null where none was reported or recorded. Never a device name.", "type": ["string", "null"], "minLength": 1},
+    "handle": {"description": "A GitHub handle, without the @.", "type": "string", "pattern": "^[A-Za-z0-9-]+$"},
     "class": {"description": "The class the call reached (IntegrationInfo.capability, as the action's result reports it); null where the integration named none, or names no classes, or, for a device not yet placed, the response leaves it out.", "type": ["string", "null"], "minLength": 1},
 
     "record": {
@@ -175,14 +176,17 @@
     },
 
     "manual_row": {
-      "description": "The devices tested, each with the class it reached, and the actions that passed on all of them (a row credits each class to each action, so split a row whose actions reached different classes): format 3 names each action with the blob of its call transcript as tested (`calls`, which scripts/signoff.py fills from HEAD), format 2 the actions alone (`passed`).",
+      "description": "The devices tested, each with the class it reached, and the actions that passed on all of them (a row credits each class to each action, so split a row whose actions reached different classes): format 3 names each action with the blob of its call transcript as tested (`calls`, which scripts/signoff.py fills from HEAD, or from the tag given with --at), format 2 the actions alone (`passed`). It names `signed_by` or, until Control4's row is renamed, `tester`: exactly one.",
       "type": "object",
-      "required": ["date", "commit", "tester", "devices"],
+      "required": ["date", "commit", "devices"],
+      "oneOf": [{"required": ["signed_by"]}, {"required": ["tester"]}],
       "additionalProperties": false,
       "properties": {
         "date": {"$ref": "#/$defs/date"},
-        "commit": {"description": "The commit tested: provenance, which nothing checks.", "$ref": "#/$defs/commit"},
-        "tester": {"description": "A GitHub handle, without the @: one of the integration's maintainers or a repo maintainer.", "type": "string", "pattern": "^[A-Za-z0-9-]+$"},
+        "commit": {"description": "The commit tested (with `reports`, the release the reporters ran): provenance, which nothing checks.", "$ref": "#/$defs/commit"},
+        "signed_by": {"description": "The maintainer who vouches for the row: one of the integration's maintainers or a repo maintainer. With `reports`, they signed off on the reporters' runs.", "$ref": "#/$defs/handle"},
+        "tester": {"description": "`signed_by`'s old name, kept until Control4's row is renamed.", "$ref": "#/$defs/handle"},
+        "reports": {"description": "The users' working reports the row rests on, instead of the signer's own run: issues in this repo.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^https://github\\.com/DeviceSide/DeviceSide/issues/[1-9][0-9]*$"}},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/manual_device"}},
         "group": {"description": "The actions targeted a native group, or a scene: devices are its members, each with its manufacturer and class.", "const": true},
         "calls": {"description": "Format 3: each action that passed, with its transcript's blob.", "type": "object", "minProperties": 1, "propertyNames": {"$ref": "#/$defs/action"}, "additionalProperties": {"$ref": "#/$defs/calls"}},
@@ -198,7 +202,8 @@
       "properties": {
         "model": {"$ref": "#/$defs/model"},
         "manufacturer": {"$ref": "#/$defs/manufacturer"},
-        "class": {"$ref": "#/$defs/class"}
+        "class": {"$ref": "#/$defs/class"},
+        "firmware": {"description": "Optional: as the integration reported it.", "$ref": "#/$defs/firmware", "type": "string"}
       }
     },
 

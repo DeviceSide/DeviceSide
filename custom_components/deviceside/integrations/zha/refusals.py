@@ -56,8 +56,8 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         # The countdown misbehaves on this string (Z2M #30493: the time left jumps back at random), and Tuya's inching
         # (cluster 0xE000, command 0xFB), which would plausibly serve it, isn't built (plan Decision 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(
-            reason="Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and "
-            "the timer that would serve it isn't built",
+            reason="Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when "
+            "asked, and the timer that would serve it isn't built",
             source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         ),
         # Tuya's recipe would serve it, parked (internals.md, "Tuya's recipe, parked"); today's tenths harm it (Tested

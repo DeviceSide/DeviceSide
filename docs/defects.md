@@ -27,4 +27,4 @@ Search each tracker for duplicates before filing: only the issues our code alrea
 ## Not worth filing
 
 - **Firmware:** the Tuya TS011F countdown, on ZHA and Zigbee2MQTT alike
-  ([device compatibility](device-compatibility.md#tuya-ts011f)). A vendor problem.
+  ([Zigbee2MQTT](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs), [ZHA](integrations/zha/index.md#tuya-plugs-and-switches)). A vendor problem.

@@ -281,7 +281,8 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
   log. With Hue native control on, HA's `hs_color`, `xy_color`, `rgb_color` and `color_temp_kelvin` each land on
   the A60 on cue with no flicker (watched by eye); HA sends `color: {h, s}` for hs and RGB, `{x, y}` for xy and
   `color_temp` for a temperature. Its rig case, `keeps_and_reads_hs_while_off`, rides in
-  [`get_attributes.json`](test-records/get_attributes.json).
+  [`get_attributes.json`](test-records/get_attributes.json). Turning the option off is unit-tested only: the rig can't
+  cleanly remove the override the option writes.
 - **Stops, by eye** (a 10 s fade halted 3 s in). Brightness and hue stops freeze cleanly. Every color temperature
   stop jumps, whichever command halts it, the Hue bridge's own included. With brightness and color temperature in
   one fade, a brightness stop leaves the color temperature fading on to its end. `saturation_move: stop` lets an xy

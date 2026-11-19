@@ -12,6 +12,45 @@ is left out of the call, which reports `fields_dropped`. Gen1 isn't built: it ha
 [HTTP API](https://shelly-api-docs.shelly.cloud/gen1/), not the [Gen2+ RPC calls](https://shelly-api-docs.shelly.cloud/gen2/)
 the adapters send, so it is refused (`gen1_unsupported`).
 
+## Device classes
+
+DeviceSide tells Shelly devices apart by the component behind each output (`Switch`, `Light`, `CCT`, `RGB`, `RGBW`
+or `RGBCCT`), which Home Assistant's unique ID for it names ([internals](internals.md#addressing)). Each component is a
+class of its own, as a run on one proves nothing about another.
+
+### Relays and plugs
+
+The `Switch` component, whether Home Assistant shows the relay as a switch or as a light: both take the same calls.
+Gen4 relays, such as the Shelly 1 Mini Gen4, have the same `Switch` component as Gen3
+([Shelly Switch API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch)), so a run on either
+counts for both.
+
+### Multicolor bulbs
+
+The `RGBCCT` component, as in the Shelly Multicolor Bulb Gen3: brightness, color temperature and color in one light.
+Smooth dimming and stop rely on how it halts a fade: `DimStop` stops it where it is, without a jump, and dimming to
+0 % is the bulb's soft off ([internals](internals.md#stop)).
+
+### Dimmers
+
+Gen2+ dimmers (the `Light` component). Shelly documents the `Light` component's timer, auto-off/on and status calls
+as it does the relay's and the bulb's ([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)),
+so a dimmer takes the same calls: get attributes reports its timer, auto-off, auto-on and brightness.
+
+Smooth dimming and stop rely on `DimStop` halting a fade without a jump, which only the multicolor bulb has shown.
+Shelly doesn't document it for any component, and one user reports a Gen3 Dimmer jumping to the end on `DimStop`
+([Shelly forum](https://community.shelly.cloud/topic/2959-rd-please-fix-the-internal-dimming-speeds/)). If you try
+it, please report whether stop halts the fade where it is: Integrations >
+[DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
+result or bug. One report per component settles it.
+
+### LED controllers
+
+CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components). Shelly documents their calls as the
+dimmer's, field for field ([research](research/2026-11-17-set-on-sibling-components.md)), so they take the dimmer's
+calls, with brightness but not color or color temperature yet ([above](#shelly)). Smooth dimming and stop are as on
+[dimmers](#dimmers).
+
 ## Turn on with timer
 
 The device runs the timer and confirms it. A transition is at least 0.5 s. A color temperature outside the bulb's
@@ -65,44 +104,3 @@ On every Shelly light, `get_attributes` reports the timer, auto-off/on, brightne
 keeps: color temperature on a CCT light, color on an RGB or RGBW light (with its white mixed in, as Home Assistant
 shows it). While the device's clock hasn't synced (after a reboot, or with no time server), its row has no timer, even
 while one runs ([internals](internals.md#get_attributes)).
-
-## Tested devices
-
-### Shelly 1 Mini Gen3
-
-A relay (the `Switch` component), rig-tested with turn on and turn off with timer, auto-off and auto-on, and get
-attributes. Home Assistant may show a relay as a switch or as a light; both take the same calls.
-
-### Shelly 1 Mini Gen4
-
-A relay, rig-tested with turn on with timer. It has the same `Switch` component as the
-[Gen3](#shelly-1-mini-gen3), which carries the other relay tests.
-
-### Shelly Multicolor Bulb Gen3
-
-A color bulb (the `RGBCCT` component), rig-tested with turn on and turn off with timer, auto-off and auto-on, smooth
-dimming, set without turning on, and get attributes.
-
-## Should work
-
-### Shelly dimmers
-
-Gen2+ dimmers (the `Light` component) take the relay's and bulb's timer, auto-off and auto-on calls
-([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)). On them, get
-attributes reports the timer, auto-off, auto-on and brightness. Smooth dimming is in Labs: see
-[Try it: Labs](#try-it-labs).
-
-### Shelly LED controllers
-
-CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components) take the same calls as the dimmers, brightness
-but not color or color temperature yet ([above](#shelly)). A record proves one component, so each needs its own.
-
-## Try it: Labs
-
-### Shelly dimmers and LED controllers: smooth dimming
-
-On a Gen2+ dimmer, CCT, RGB or RGBW device, a test shows that `DimStop` halts a fade where it is, without a jump, and
-that dimming to 0% is a soft off. The rig proved this on the multicolor bulb only, Shelly doesn't document it for any
-component, and one user reports a Gen3 Dimmer jumping to the end on `DimStop`
-([Shelly forum](https://community.shelly.cloud/topic/2959-rd-please-fix-the-internal-dimming-speeds/)). One report
-per component.

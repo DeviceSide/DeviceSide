@@ -29,6 +29,12 @@ body:
       placeholder: integration · product name · model · manufacturer · firmware
     validations:
       required: true
+  - type: textarea
+    id: capability
+    attributes:
+      label: Class
+      description: For each device, the `capability` a feature's response gave, if it gave one (a native group's gives `capabilities`). Run the feature in Developer tools > Actions to see its response.
+      placeholder: model · capability
   - type: checkboxes
     id: worked
     attributes:

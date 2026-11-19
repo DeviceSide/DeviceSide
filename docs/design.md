@@ -44,7 +44,7 @@ Code and docs use these terms. Each one's rules live where its link points.
   option. Rules: [evidence.md](evidence.md#the-labs-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
   `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
-  [device-compatibility.md](device-compatibility.md#maintainers).
+  [device-compatibility.md](device-compatibility.md#levels-of-proof).
 - **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo; distinct
   from an integration's Maintainer. Rules: [CLAUDE.md](../CLAUDE.md#maintainers).
 - **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`), set by a repo maintainer; it ships live. Rules:

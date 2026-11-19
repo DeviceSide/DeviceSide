@@ -9,7 +9,7 @@ capabilities:
   # named by its own `what`.
   hue:
     phrase: Hue lights
-    section: Device classes
+    section: Hue lights
   other:
     phrase: other brands' lights
     section: Other brands
