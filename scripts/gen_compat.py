@@ -69,7 +69,9 @@ test-records file names must be in docs/models.yaml or its bundle's devices.yaml
 
 **The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class no
 record reaches on every run, `--check` included, and never fails here: `check_release.py --signoffs` fails on it at
-the cut.
+the cut. It also warns (`check_release.default_class_credits`) of each model a passing record or manual row credits in
+its integration's default class where that is Experimental: the pass can never lift a flag, so the model needs a class
+of its own; this warning never fails anywhere.
 
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
 integrations, `type`, optional `section`; a model only one integration names is in its bundle's devices.yaml), and
@@ -118,6 +120,7 @@ from scripts.check_release import (  # noqa: E402
     adapters,
     classed,
     coverage_gaps,
+    default_class_credits,
     listed,
     manual_rows,
     names_classes,
@@ -1409,7 +1412,7 @@ def main(
     check_sections(updates[page][1], data)
     check_share(built)
     # The coverage check warns here, on every PR, and fails only at cut-release (check_release.py --signoffs).
-    for gap in coverage_gaps(registry):
+    for gap in [*coverage_gaps(registry), *default_class_credits(registry)]:
         print(f"warning: {gap}", file=sys.stderr)
     stale = [path for path, (text, new) in updates.items() if new != text]
     if not args.check:

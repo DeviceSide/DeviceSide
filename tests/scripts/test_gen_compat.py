@@ -115,8 +115,10 @@ def record2(root, integration, name, *tests, result="pass"):
 
 class FakeRegistry:
     integrations = {
-        "zha": SimpleNamespace(title="ZHA", maintainers=("jasonmx",), capability=None, classes={}),
-        "hue": SimpleNamespace(title="Hue", maintainers=("jasonmx", "other"), capability=None, classes={}),
+        "zha": SimpleNamespace(title="ZHA", maintainers=("jasonmx",), capability=None, classes={}, default_class=None),
+        "hue": SimpleNamespace(
+            title="Hue", maintainers=("jasonmx", "other"), capability=None, classes={}, default_class=None
+        ),
     }
 
     def __init__(self, *adapters):
@@ -965,6 +967,7 @@ def classed_registry(*adapters) -> FakeRegistry:
             title="ZHA",
             maintainers=("jasonmx",),
             capability=len,
+            default_class=None,
             classes={name: CLASSES[name] for name in ("Switch", "Light", "CCT")},
         ),
     }

@@ -33,7 +33,8 @@ when it has none. It also runs the coverage check, failing on each gap: for an i
 reached it in a passing record of the action (format 2 and 3: a device of the test with that class, a native group's
 test crediting each member's; format 1: the test's `classes`), or a `_manual.json` row naming the action (format 3: in
 `calls`; format 2: in `passed`) one of whose devices has the class. `scripts/gen_compat.py` prints the same gaps as
-warnings on every run (`coverage_gaps`).
+warnings on every run (`coverage_gaps`), with a warning (`default_class_credits`) for each model a passing record or
+manual row credits in the integration's default class where that is Experimental, as its pass can never lift a flag.
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the
 integrations with a changed action that has no sign-off, and every adapter with an Untested fix caveat. Empty when
@@ -63,7 +64,7 @@ import os
 import re
 import subprocess
 import sys
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -225,19 +226,26 @@ def manual_rows(integration: str, action: str) -> list[tuple[bool, list[tuple[st
 # The coverage check (docs/evidence.md, The coverage check).
 
 
-def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
-    """The classes the action's evidence reached, each with the domain its test targeted: in a passing record, each
-    passing test's (format 2: its devices' classes, a native group's members' each; format 1: its `classes`), and each
-    `_manual.json` row's devices' (a group row's members', as a group test's), whose domain is None, as a row names
-    none. A null class credits none."""
-    found: set[tuple[str | None, str | None]] = set()
+def credited(integration: str, action: str) -> Iterator[tuple[str | None, str | None, str | None]]:
+    """What the action's passing records credit, as (model id, class, domain of the test) per device: each passing
+    test's devices (format 2 and 3: a native group's are its members); format 1 names no model, so it yields each of
+    the test's `classes` with a model of None. The one walk `reached` and `credited_models` share."""
     for path in passing(integration, action):
         record = load(path)
         for test in record["tests"]:
             if test["result"] != "pass":
                 continue
-            names = test.get("classes", ()) if record["format"] == 1 else (d["class"] for d in test["devices"])
-            found.update((name, test.get("domain")) for name in names)
+            if record["format"] == 1:
+                yield from ((None, name, test.get("domain")) for name in test.get("classes", ()))
+            else:
+                yield from ((d["model"], d["class"], test.get("domain")) for d in test["devices"])
+
+
+def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
+    """The classes the action's evidence reached, each with the domain its test targeted: in a passing record, each
+    passing test's (`credited`), and each `_manual.json` row's devices' (a group row's members', as a group test's),
+    whose domain is None, as a row names none. A null class credits none."""
+    found = {(cls, domain) for _, cls, domain in credited(integration, action)}
     for _, row in manual_rows(integration, action):
         found.update((cls, None) for _, cls in row)
     return {(name, domain) for name, domain in found if name is not None}
@@ -269,6 +277,40 @@ def coverage_gaps(registry) -> list[str]:
                 if (item, domain) not in found and (item, None) not in found
             ]
     return gaps
+
+
+def credited_models(integration: str, action: str) -> set[tuple[str, str]]:
+    """The (model id, class) pairs the action's evidence credits: `credited`'s devices (format 1 names no model, so
+    credits none), and each `_manual.json` row's devices (a group row's members). A null class credits none, as in
+    `reached`."""
+    found = {(model, cls) for model, cls, _ in credited(integration, action)}
+    for _, row in manual_rows(integration, action):
+        found.update(row)
+    return {(model, cls) for model, cls in found if model is not None and cls is not None}
+
+
+def default_class_credits(registry) -> list[str]:
+    """Each model the evidence of an action credits in its integration's default class (`IntegrationInfo.default_class`)
+    where the adapter's scope holds that class Experimental in some domain: the default class is never Verified, so the
+    pass can never lift a flag, and the model needs a class of its own. A default class held Documented (Matter's
+    certified read) in every domain is no such trap, and an integration with no default class, or an adapter that
+    doesn't serve it, has none. Advice to a contributor, as the coverage gaps are: a model credited in a named class
+    as well as the default class warns all the same, as the pass on the default class lifts nothing."""
+    found = []
+    for _, adapter in adapters(registry):
+        default = registry.integrations[adapter.integration].default_class
+        scope = adapter.scope
+        if not names_classes(adapter) or default not in (scope.capabilities or {}):
+            continue
+        if all(scope.class_level(default, domain) is not Level.EXPERIMENTAL for domain in scope.domains):
+            continue
+        models = sorted(model for model, cls in credited_models(adapter.integration, adapter.action) if cls == default)
+        found += [
+            f"{adapter.integration} {adapter.action}: {model} passed in the default class `{default}`, which is never"
+            " Verified, so its pass can't lift a flag; name a class for it (docs/evidence.md, Device classes)"
+            for model in models
+        ]
+    return found
 
 
 # Coverage.
