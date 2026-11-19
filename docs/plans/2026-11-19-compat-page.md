@@ -183,4 +183,5 @@ custom_components/deviceside/integrations/{zha,zigbee2mqtt}/refusals.py, .github
   - Earlier ones (Tested devices lists every model with a record row; Not supported anchors keyed by (class, action);
     aligned TS011F reasons; CLAUDE.md's shared home for limits is `docs/integrations.md`; `--reports` needs `--at`)
     are in the step review commits.
-- **Next:** merging #564, then #565, is Jason's call. After #564 merges, check that #565 retargeted to `main`.
+- **Next:** #564 merged (d4925e3f); #565 is retargeted to `main`, with `main` merged in. @skialpine reviews or merges
+  #565 (Jason's call, 2026-11-19).
