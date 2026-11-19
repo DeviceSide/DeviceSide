@@ -10,9 +10,10 @@ its firmware and the class it reached (and its manufacturer, which the cards don
 scene's test (`group`, its devices the members) shows as "group", never as its members' models. Where the integration
 names classes, a device with a null class credits nothing, flagged or not, and a group with one none either: it is on no
 card and no row. A format 1 record (converted from markdown) gives the run's devices, not which test reached which, and
-its tests the classes they reached, if it recorded them. A manual row's devices are model ids, each with its class; with
-`group`, a native group's members, which show as "group, by hand". A level comes from the scope alone (verify, then
-trust): a record never ages.
+its tests the classes they reached, if it recorded them. A manual row's devices are model ids, each with its class
+(and its firmware, where given); with `group`, a native group's members, which show as "group, by hand". A row with
+`reports` shows as "by report", linking the issues, in place of "by hand". A level comes from the scope alone (verify,
+then trust): a record never ages.
 
 **Cards.** One collapsed section between the README's devices markers: the legend, of the marks the cards use, then a
 card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's
@@ -74,8 +75,8 @@ page together, and `--check` proves both.
   class is listed; the matrix's levels are the code's alone), headed by its `section` (its `name` by default: the
   heading every card links, `Data.model_url`), with its type and ids, then a table of Integration (linking its matrix
   below), Features tested (each linking its records, a split feature's parts apart, in README order), Firmware (the
-  distinct values the records name) and How (✔ rig, by hand). Then `### Native groups`, the same table per integration
-  without the firmware.
+  distinct values the records name) and How (✔ rig, by hand, by report). Then `### Native groups`, the same table per
+  integration without the firmware.
 - *By integration*: a `###` per integration, by its title, the card's caveats under it, then a matrix: a row per
   unfolded card line (native groups first, a variants parent's children indented under it), a column per feature in the
   README's order (`stop` last), a cell holding the status and its proof. 🟢 links its records (the line's tested
@@ -153,13 +154,14 @@ from scripts.check_release import (  # noqa: E402
     coverage_gaps,
     default_class_credits,
     listed,
-    manual_rows,
     names_classes,
     passing,
     record_class_errors,
+    row_actions,
     test_records_dir,
 )
 from scripts.check_release import load as read_record  # noqa: E402
+from scripts.check_release import manual as read_manual  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 from scripts.gen_features import anchors, bundle, columns, page, slug  # noqa: E402
 
@@ -514,14 +516,16 @@ def load_broken(
 @dataclass(frozen=True)
 class Tested:
     """A device the evidence tested: its model with its firmware and the class it reached (None: none named), or a
-    native group (no model). `rig` for a record's; a manual row's names no firmware. `domain` is the domain a format 2
-    test targeted; a format 1 record and a manual row name none per device."""
+    native group (no model). `rig` for a record's; a manual row's has firmware only where the row gives it, and
+    `reports`, the issues it rests on, where it has them. `domain` is the domain a format 2 test targeted; a format 1
+    record and a manual row name none per device."""
 
     model: str | None
     firmware: str | None = None
     cls: str | None = None
     rig: bool = True
     domain: str | None = None
+    reports: tuple[str, ...] = ()
 
     @property
     def group(self) -> bool:
@@ -590,18 +594,20 @@ class Evidence:
             for path in records
             for item in tested(read_record(path), clean, names)
         ]
-        for group, row in manual_rows(adapter.integration, adapter.action):
-            if group:
+        for row in read_manual(adapter.integration):
+            if adapter.action not in row_actions(row):
+                continue
+            reports = tuple(row.get("reports", ()))
+            classes = [device["class"] for device in row["devices"]]
+            if row.get("group"):
                 # Judged as a rig group test is: a member the integration can't credit, or `by_hand` refuses, drops it.
-                if not (names and any(cls is None for _, cls in row)) and (
-                    by_hand is None or all(by_hand(cls) for _, cls in row)
-                ):
-                    found.append((MANUAL, Tested(None, rig=False)))
+                if not (names and None in classes) and (by_hand is None or all(map(by_hand, classes))):
+                    found.append((MANUAL, Tested(None, rig=False, reports=reports)))
                 continue
             found += [
-                (MANUAL, Tested(model, None, cls, rig=False))
-                for model, cls in row
-                if not (names and cls is None) and (by_hand is None or by_hand(cls))
+                (MANUAL, Tested(device["model"], device.get("firmware"), device["class"], rig=False, reports=reports))
+                for device in row["devices"]
+                if not (names and device["class"] is None) and (by_hand is None or by_hand(device["class"]))
             ]
         return cls(records, found)
 
@@ -697,6 +703,18 @@ def doc_link(path: str) -> str:
     return path.removeprefix("docs/")
 
 
+def is_report(path: str) -> bool:
+    """A proof that is a user's report (its issue URL, from a manual row's `reports`), not a records file."""
+    return path.startswith("https://")
+
+
+def report_links(urls: list[str]) -> str:
+    """The words "by report" linking the one issue, or followed by each issue's number linking it."""
+    if len(urls) == 1:
+        return f"[by report]({urls[0]})"
+    return "by report " + " ".join(f"[#{url.rsplit('/', 1)[1]}]({url})" for url in urls)
+
+
 def caveat_reason(scope, kind: CaveatKind) -> str | None:
     """The reason of the scope's caveat when it is of that kind, else None."""
     return scope.caveat.reason if scope.caveat is not None and scope.caveat.kind is kind else None
@@ -731,10 +749,12 @@ def suffix(action: str) -> str:
 def record_links(pairs: list[tuple[str, str]], *, part_named: bool = False) -> str:
     """Links to the records (action, repo path) that prove a feature: "record" for one, else the part and option each
     is for ("up", "down predicted state"), the action's words where those collide (`part_named`: the cell already
-    names the part, so the options alone); every manual row of one file is one "by hand" link."""
+    names the part, so the options alone); every manual row of one file is one "by hand" link, and the reports rows rest
+    on are "by report"."""
     pairs = list(dict.fromkeys(pairs))
     manual = [path for _, path in pairs if path.endswith(f"/{MANUAL}")]
-    rigged = [(action, path) for action, path in pairs if not path.endswith(f"/{MANUAL}")]
+    reports = list(dict.fromkeys(path for _, path in pairs if is_report(path)))
+    rigged = [(action, path) for action, path in pairs if not path.endswith(f"/{MANUAL}") and not is_report(path)]
 
     def option(action: str, path: str) -> str:
         return Path(path).stem.removeprefix(action).lstrip("-").replace("_", " ")
@@ -747,6 +767,7 @@ def record_links(pairs: list[tuple[str, str]], *, part_named: bool = False) -> s
         names = [" ".join(filter(None, [action.replace("_", " "), option(action, path)])) for action, path in rigged]
     links = [f"[{name}]({doc_link(path)})" for name, (_, path) in zip(names, rigged, strict=True)]
     links += [f"[by hand]({doc_link(path)})" for path in dict.fromkeys(manual)]
+    links += [report_links(reports)] if reports else []
     return " ".join(links)
 
 
@@ -874,7 +895,8 @@ def tested_features(held: Reached) -> str:
 
 
 def how(held: Reached) -> str:
-    return ", ".join([*([f"{VERIFIED} rig"] if held.rig else []), *(["by hand"] if held.by_hand else [])])
+    reports = [report_links(held.reports)] if held.reports else []
+    return ", ".join([*([f"{VERIFIED} rig"] if held.rig else []), *(["by hand"] if held.by_hand else []), *reports])
 
 
 def firmware(held: Reached) -> str:
@@ -1360,14 +1382,22 @@ class Reached:
 
     @property
     def by_hand(self) -> bool:
-        """A `_manual.json` row tested it on some action; the rig may have too (`rig`)."""
+        """A maintainer's `_manual.json` row tested it on some action; the rig may have too (`rig`)."""
         return any(proof.by_hand for proof in self.by_action.values())
+
+    @property
+    def reports(self) -> list[str]:
+        """The users' reports a manual row rests on, on any action: their issues."""
+        return list(
+            dict.fromkeys(path for proof in self.by_action.values() for path in proof.records if is_report(path))
+        )
 
 
 @dataclass
 class Proof:
     """What proves one model on one action: the passing records and manual rows that tested it (repo paths, in
-    evidence order), the firmware they name (a manual row names none), and whether the rig, a person, or both did."""
+    evidence order; a row's `reports` stand in for its file, as their issue URLs), the firmware they name (a manual row,
+    only where it gives it), and whether the rig, a maintainer by hand, or both did (reports are neither)."""
 
     records: list[str] = field(default_factory=list)
     firmware: list[str] = field(default_factory=list)
@@ -1398,12 +1428,13 @@ def works(
         for path, item in evidence.tested:
             held = groups if item.group else models[data.models[item.model]["name"]]
             proof = held.by_action.setdefault(adapter.action, Proof())
-            if (path if path != MANUAL else manual) not in proof.records:
-                proof.records.append(path if path != MANUAL else manual)
+            for found in item.reports or [path if path != MANUAL else manual]:
+                if found not in proof.records:
+                    proof.records.append(found)
             if item.firmware and item.firmware not in proof.firmware:
                 proof.firmware.append(item.firmware)
             proof.rig = proof.rig or item.rig
-            proof.by_hand = proof.by_hand or not item.rig
+            proof.by_hand = proof.by_hand or not (item.rig or item.reports)
     by_name = {model["name"]: model for model in data.models.values()}
     ordered = sorted(models, key=lambda name: TYPES.index(by_name[name]["type"]))
     return {name: models[name] for name in ordered}, groups

@@ -262,7 +262,7 @@ def test_an_adapter_flagged_whole_holds_every_item_in_labs(root):
     assert {level for level, *_ in gc.items(scope)} == {Level.LABS}
 
 
-MANUAL = (signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop", "turn_on_for")),)
+MANUAL = (signoff(signed_by="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop", "turn_on_for")),)
 
 
 def manual_file(root, integration="zha", rows=MANUAL):
@@ -282,13 +282,13 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
 
 def test_a_format_2_row_credits_the_actions_it_passed(root):
     """A row from before transcripts names its actions in `passed`: it signs off nothing, but credits as it did."""
-    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), passed=("stop",))])
+    manual_file(root, rows=[signoff(signed_by="jasonmx", devices=(("P1", None),), passed=("stop",))])
     flagged = adapter("zha", "stop", AdapterScope(domains=labs("light")))
     assert gc.Evidence.of(flagged).tested == [(gc.MANUAL, gc.Tested("P1", rig=False))]
 
 
 def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
-    row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop"), group=True)
+    row = signoff(signed_by="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop"), group=True)
     manual_file(root, rows=[row])
     flagged = adapter("zha", "stop", AdapterScope(domains=labs("light")))
     assert gc.Evidence.of(flagged).tested == [(gc.MANUAL, gc.Tested(None, rig=False))]
@@ -899,7 +899,7 @@ def test_a_class_held_on_some_domains_alone_credits_works_only_from_a_test_in_on
     assert classed_card(tested).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
     # A manual row names no domain, so it counts where its class is unflagged in some domain, as the coverage check
     # lets it cover any (#440's review, L1).
-    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", "Light"),), calls=bound("turn_on_for"))])
+    manual_file(root, rows=[signoff(signed_by="jasonmx", devices=(("P1", "Light"),), calls=bound("turn_on_for"))])
     assert classed_card(tested).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔", f"[Plug]({URL}#plug)"]
 
 
@@ -913,7 +913,7 @@ def test_a_null_class_device_never_reaches_works_where_the_integration_names_cla
         ran("light", device("LTA009", "1", "Light"), device("P1", "1", None), group=True, role="group"),
         ran("light", device("LTA009", "2", "Light")),
     )
-    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), calls=bound("turn_on_for"))])
+    manual_file(root, rows=[signoff(signed_by="jasonmx", devices=(("P1", None),), calls=bound("turn_on_for"))])
     unflagged = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch", "Light"))
     assert classed_card(adapter("zha", "turn_on_for", unflagged)).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
     flagged_domain = AdapterScope(domains=verified("light") | labs("switch"), capabilities=verified("Light", "Switch"))
@@ -955,8 +955,8 @@ def test_a_group_test_counts_toward_works_only_when_every_members_class_is_unfla
 
 def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagged_class(root):
     rows = [
-        signoff(tester="jasonmx", devices=(("P1", "Switch"), ("LTA009", "Light")), calls=bound("stop")),
-        signoff(tester="jasonmx", devices=(("LTA009", None),), calls=bound("stop")),  # no class: none
+        signoff(signed_by="jasonmx", devices=(("P1", "Switch"), ("LTA009", "Light")), calls=bound("stop")),
+        signoff(signed_by="jasonmx", devices=(("LTA009", None),), calls=bound("stop")),  # no class: none
     ]
     manual_file(root, rows=rows)
     scope = AdapterScope(capabilities=verified("Switch") | labs("Light"))
@@ -1554,6 +1554,26 @@ def test_a_tested_model_has_a_heading_with_a_table_of_its_integrations_features_
     assert table_after(block, "### Plug")[2] == (
         "| [ZHA](#zha) | [stop](integrations/zha/test-records/_manual.json) | | by hand |"
     )
+
+
+def test_a_row_resting_on_reports_shows_by_report_linking_them_and_its_firmware(root):
+    """A sign-off of users' reports credits its class as a hand test does, and links the issues, not the file."""
+    issues = [f"https://github.com/DeviceSide/DeviceSide/issues/{number}" for number in (7, 9)]
+    row = signoff(devices=(("P1", "Switch"),), calls=bound("stop"), reports=issues[:1])
+    row["devices"][0]["firmware"] = "2.0"
+    manual_file(root, rows=[row])
+    stop = adapter("zha", "stop", AdapterScope(capabilities=verified("Switch")))
+    block, registry, found = page_of(stop)
+    assert (
+        table_after(block, "### Plug")[2] == f"| [ZHA](#zha) | [stop]({issues[0]}) | `2.0` | [by report]({issues[0]}) |"
+    )
+    assert f"[by report]({issues[0]})" in "\n".join(table_after(block, "### ZHA"))
+    (card,) = gc.card_list(registry, found)
+    assert list(card.reached) == ["Plug"]
+    manual_file(root, rows=[row | {"reports": issues}])
+    block, *_ = page_of(stop)
+    both = f"by report [#7]({issues[0]}) [#9]({issues[1]})"
+    assert table_after(block, "### Plug")[2] == f"| [ZHA](#zha) | stop: {both} | `2.0` | {both} |"
 
 
 def test_native_groups_have_a_heading_with_their_tested_features_per_integration(root):

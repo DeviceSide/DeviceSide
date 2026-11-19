@@ -305,8 +305,8 @@ a flag is a change to the integration's package, so one of its maintainers appro
 same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
 For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
-sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
-maintainer judges how many are enough (tenet 7); nothing counts them in code.
+sign-off carrying them (`reports`, [Sign-off format](#sign-off-format)), which the compatibility page shows "by report".
+The maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
 The cards never credit a tested model from a pass on a flagged item while its flag stands, and keep Labs lines
 (⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) to at most a quarter of all card lines, counted across every card,
@@ -409,12 +409,14 @@ and which gives each field. A file there that isn't JSON is an error. The rules 
   converted once (device-classes plan, step 5b): the run's devices sit on the record, not on each test, and it credits
   the cards as the markdown did.
 - **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's
-  device name) with the class it reached, and the actions that passed on all of them, each with its transcript's blob
-  (`calls`). `scripts/signoff.py` prints the row from HEAD's transcripts, so run it at the commit you tested; the row's
-  `commit` is a record of that, which nothing checks. A format 2 row (`passed`) credits classes and the cards, and signs
-  nothing off. A row whose actions targeted a native group or a scene carries `group`, its devices the members. The
-  model is the device's own (its label, the vendor's app or HA's device page), never a driver's or bridge's name, as
-  on Control4's Director; the manufacturer is as the schema's `manufacturer` gives it.
+  device name) with the class it reached, and its firmware where known, and the actions that passed on all of them,
+  each with its transcript's blob (`calls`). `signed_by` is the maintainer who vouches for the row. `scripts/signoff.py`
+  prints the row from HEAD's transcripts, so run it at the commit you tested; the row's `commit` is a record of that,
+  which nothing checks. A row may rest on users' working reports instead (`reports`, their issues in this repo): its
+  `commit` and `calls` are then the release they ran (`signoff.py --at <tag>`). A format 2 row (`passed`) credits
+  classes and the cards, and signs nothing off. A row whose actions targeted a native group or a scene carries `group`,
+  its devices the members. The model is the device's own (its label, the vendor's app or HA's device page), never a
+  driver's or bridge's name, as on Control4's Director; the manufacturer is as the schema's `manufacturer` gives it.
 - **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
   has no class.
 

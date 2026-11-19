@@ -24,7 +24,7 @@ change is the latest commit touching its transcript. Each changed action needs a
 markdown) or format 2 (bound to the package, not the calls) record, and a format 2 row (`passed`), sign off nothing.
 Without a sign-off, a 🔧 Untested fix caveat on the action's adapter stands in. A suite that is no action's
 (`config_entry.json`) is outside the gate. Prints a line per changed action naming its sign-off (kind, source, commit,
-tester) or the caveat standing in, and fails on each with neither, saying why its records and each manual row naming it
+signer) or the caveat standing in, and fails on each with neither, saying why its records and each manual row naming it
 were rejected. With --json, prints instead the integrations with a changed action that has no sign-off (caveat or not),
 as a JSON list: the rig's run selection. With --reruns, prints instead a JSON object of those integrations, each with
 the suites to run: for each such action, its records that are not format 3, failing or reopened, and its plain suite
@@ -45,11 +45,12 @@ Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked 
 another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
 read as the action's evidence; another suite's, as `config_entry.json`, is none's), `_manual.json`, whose rows are
 manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads; a dotfile is ignored. A manual
-row whose tester is neither a maintainer of the integration nor a repo maintainer is an error. A manual row's devices,
-and a record's tests, may name a class only on an integration that names classes (`names_classes`, which gen_compat
-shares). A record names no tester: review of the PR that lands it checks who ran it. A `.json` named with a leading `_`
-other than those two, or a record whose `action` or `options` its name contradicts, is an error naming the file, as is,
-under --signoffs, a file in the folder that isn't JSON (a markdown record).
+row whose signer (`signed_by`, or its old name `tester`) is neither a maintainer of the integration nor a repo
+maintainer is an error. A manual row's devices, and a record's tests, may name a class only on an integration that names
+classes (`names_classes`, which gen_compat shares). A record names no signer: review of the PR that lands it checks who
+ran it. A `.json` named with a leading `_` other than those two, or a record whose `action` or `options` its name
+contradicts, is an error naming the file, as is, under --signoffs, a file in the folder that isn't JSON (a markdown
+record).
 
 Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for. A
 git error fails the run rather than pass a gate unseen.
@@ -213,6 +214,12 @@ def row_actions(row: Mapping) -> list[str]:
     return list(row["calls"]) if "calls" in row else list(row["passed"])
 
 
+def signed_by(row: Mapping) -> str:
+    """The maintainer who vouches for a `_manual.json` row: `signed_by`, or `tester`, its old name, which the schema
+    accepts until Control4's row is renamed (exactly one)."""
+    return row["signed_by"] if "signed_by" in row else row["tester"]
+
+
 def manual_rows(integration: str, action: str) -> list[tuple[bool, list[tuple[str, str | None]]]]:
     """Each `_manual.json` row naming the action (`row_actions`), as (whether it targeted a native group, its devices
     as (model id, class); a group's are its members)."""
@@ -347,17 +354,17 @@ class SignOff:
     kind: str  # "record" or "manual"
     source: str  # the record, or the manual row as `<file> row <n>`
     commit: str  # the commit its run or row cites: provenance, which nothing checks
-    tester: str | None = None  # a manual row's handle; a record names none
+    signed_by: str | None = None  # a manual row's handle; a record names none
 
 
 @dataclass(frozen=True)
 class Row:
-    """A `_manual.json` row by a tester who may sign off: where it is, its commit and tester, the actions it tested,
+    """A `_manual.json` row by a signer who may sign off: where it is, its commit and signer, the actions it tested,
     and the transcript blob of each (format 3), or None (format 2, which signs off nothing)."""
 
     at: str
     commit: str
-    tester: str
+    signed_by: str
     actions: tuple[str, ...]
     calls: Mapping[str, str] | None
 
@@ -522,27 +529,28 @@ def manual_signoff(rows: Sequence[Row], action: str, calls: Calls) -> tuple[Sign
         elif why := reopened(row.calls[action], calls):
             rejected.append(f"{row.at}: {why}")
         else:
-            return SignOff("manual", row.at, row.commit, row.tester), rejected
+            return SignOff("manual", row.at, row.commit, row.signed_by), rejected
     return None, rejected
 
 
 def manual_signoffs(
-    integration: str, testers: tuple[str, ...], names_classes: bool = False
+    integration: str, signers: tuple[str, ...], names_classes: bool = False
 ) -> tuple[list[Row], list[str]]:
     """The integration's `_manual.json` rows, and the errors in them: a class on an integration that names none, or a
-    tester who may not sign off. A row in error is no sign-off; a file the schema rejects stops the run."""
+    signer who may not sign off (`signed_by`, or its old name `tester`). A row in error is no sign-off; a file the
+    schema rejects stops the run."""
     path = test_records_dir(integration) / MANUAL
-    allowed = {tester.casefold() for tester in testers}
+    allowed = {signer.casefold() for signer in signers}
     found, errors = [], []
     for number, row in enumerate(manual(integration), 1):
         at = f"{where(path)} row {number}"
         if not names_classes and any(device["class"] is not None for device in row["devices"]):
             errors.append(f"{at}: a class, but {integration} names no classes")
-        elif row["tester"].casefold() not in allowed:
-            errors.append(f"{at}: tester @{row['tester']} is neither a maintainer of {integration} nor a repo one")
+        elif (signer := signed_by(row)).casefold() not in allowed:
+            errors.append(f"{at}: signer @{signer} is neither a maintainer of {integration} nor a repo one")
         else:
             calls = dict(row["calls"]) if "calls" in row else None
-            found.append(Row(at, row["commit"], row["tester"], tuple(row_actions(row)), calls))
+            found.append(Row(at, row["commit"], signer, tuple(row_actions(row)), calls))
     return found, errors
 
 
@@ -605,8 +613,8 @@ def describe(gate: Gate) -> str:
     """The gate's line: its sign-off, else the caveat standing in, else why it fails."""
     head = f"{gate.name}: calls changed" + (f" at {gate.last_change[:7]}" if gate.last_change else "")
     if signoff := gate.signoff:
-        tester = f", @{signoff.tester}" if signoff.tester else ""
-        return f"{head}; signed off by {signoff.kind} {signoff.source} at {signoff.commit[:7]}{tester}"
+        signer = f", @{signoff.signed_by}" if signoff.signed_by else ""
+        return f"{head}; signed off by {signoff.kind} {signoff.source} at {signoff.commit[:7]}{signer}"
     if gate.passes:
         return f"{head}; no sign-off, Untested fix stands in"
     rejected = "".join(f" ({why})" for why in gate.rejected)

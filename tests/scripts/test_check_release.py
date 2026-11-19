@@ -320,7 +320,7 @@ def test_a_dotfile_in_the_records_folder_is_ignored(fake_repo):
 
 def test_a_manual_row_by_a_maintainer_or_repo_maintainer_is_a_row(fake_repo):
     sha = fake_repo.commit()
-    fake_repo.commit(MANUAL, manual_file(signoff(sha, calls=bound("stop", blob="1" * 40)), signoff(sha, tester="r")))
+    fake_repo.commit(MANUAL, manual_file(signoff(sha, calls=bound("stop", blob="1" * 40)), signoff(sha, signed_by="r")))
     found, errors = cr.manual_signoffs("fake", ("a", "r"))
     assert errors == []
     assert found == [
@@ -343,7 +343,7 @@ def test_a_format_2_row_names_its_actions_and_binds_no_calls(fake_repo):
         ({"calls": {}}, "should be non-empty"),
         ({"no_call_changed": True}, "was unexpected"),
         ({"passed": ["stop"]}, "should not be valid"),  # format 2's, in a format 3 file
-        ({"tester": "@a"}, "does not match"),
+        ({"signed_by": "@a"}, "does not match"),
     ],
 )
 def test_a_manual_row_out_of_format_stops_the_check_naming_the_file(fake_repo, change, error):
@@ -355,10 +355,10 @@ def test_a_manual_row_out_of_format_stops_the_check_naming_the_file(fake_repo, c
 
 def test_a_manual_row_by_anyone_else_is_an_error_and_no_signoff(fake_repo):
     sha = fake_repo.commit()
-    fake_repo.commit(MANUAL, manual_file(signoff(sha, tester="b")))
+    fake_repo.commit(MANUAL, manual_file(signoff(sha, signed_by="b")))
     assert cr.manual_signoffs("fake", ("a",)) == (
         [],
-        [f"{MANUAL} row 1: tester @b is neither a maintainer of fake nor a repo one"],
+        [f"{MANUAL} row 1: signer @b is neither a maintainer of fake nor a repo one"],
     )
 
 
@@ -689,18 +689,18 @@ def test_a_rows_commit_is_provenance_and_unchecked(released, gate):
     assert gate()[0] == 0
 
 
-@pytest.mark.parametrize("tester", [cr.REPO_MAINTAINERS[0], cr.REPO_MAINTAINERS[0].upper(), "A"])
-def test_a_repo_maintainer_may_sign_off_and_handles_ignore_case(released, gate, tester):
+@pytest.mark.parametrize("signer", [cr.REPO_MAINTAINERS[0], cr.REPO_MAINTAINERS[0].upper(), "A"])
+def test_a_repo_maintainer_may_sign_off_and_handles_ignore_case(released, gate, signer):
     pin(released, "stop", "b")
-    released.commit(MANUAL, manual_file(signoff(tester=tester, calls=bound("stop", blob=blob(released, "stop")))))
+    released.commit(MANUAL, manual_file(signoff(signed_by=signer, calls=bound("stop", blob=blob(released, "stop")))))
     assert gate()[0] == 0
 
 
 def test_a_manual_row_error_fails_the_gate(released, gate):
-    released.commit(MANUAL, manual_file(signoff(tester="b")))
+    released.commit(MANUAL, manual_file(signoff(signed_by="b")))
     code, _, err = gate()
     assert code == 1
-    assert any("tester @b is neither" in line for line in err)
+    assert any("signer @b is neither" in line for line in err)
 
 
 def test_a_file_that_is_no_json_record_fails_by_name(released, gate):
@@ -912,6 +912,29 @@ def test_a_class_verified_on_some_domains_alone_needs_a_record_in_each(fake_repo
     # A manual row names no domain, so it covers each.
     (fake_repo.path / MANUAL).write_text(manual_file(signoff(devices=(("LCA001", "hue"),), calls=bound("turn_on_for"))))
     assert cr.coverage_gaps(found) == []
+
+
+def test_a_row_resting_on_reports_credits_its_class_and_signs_off(fake_repo):
+    """Users' reports a maintainer signs off on cover a class as the maintainer's own hand test does."""
+    scope = AdapterScope(capabilities=verified("hue"))
+    issue = "https://github.com/DeviceSide/DeviceSide/issues/12"
+    (fake_repo.path / MANUAL).parent.mkdir(parents=True, exist_ok=True)
+    row = signoff(devices=(("LCA001", "hue"),), calls=bound("turn_on_for"), reports=[issue])
+    (fake_repo.path / MANUAL).write_text(manual_file(row))
+    assert cr.coverage_gaps(classed(turn_on_for=scope)) == []
+    found = cr.Row(f"{MANUAL} row 1", "1a2b3c4", "a", ("turn_on_for",), bound("turn_on_for"))
+    assert cr.manual_signoffs("fake", ("a",), names_classes=True) == ([found], [])
+
+
+def test_a_row_naming_its_signer_by_the_old_name_is_read_the_same(fake_repo):
+    old = signoff()
+    old["tester"] = old.pop("signed_by")
+    (fake_repo.path / MANUAL).parent.mkdir(parents=True, exist_ok=True)
+    (fake_repo.path / MANUAL).write_text(manual_file(old, signoff(signed_by="b")))
+    assert cr.manual_signoffs("fake", ("a",)) == (
+        [cr.Row(f"{MANUAL} row 1", "1a2b3c4", "a", ("turn_on_for",), bound("turn_on_for"))],
+        [f"{MANUAL} row 2: signer @b is neither a maintainer of fake nor a repo one"],
+    )
 
 
 def test_a_manual_group_row_credits_its_members_classes(fake_repo):
