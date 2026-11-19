@@ -76,6 +76,22 @@ repos:
       - id: shellcheck
 
   # -------------------------
+  # Relative links and anchors (offline; external URLs: links.yml, monthly)
+  # -------------------------
+  # Manual stage: contributors' commits never need lychee installed. lint.yml runs it on the binary it installs
+  # (pinned to this rev); run it locally with `pre-commit run --all-files --hook-stage manual lychee-system`.
+  - repo: https://github.com/lycheeverse/lychee
+    rev: lychee-v0.24.2
+    hooks:
+      - id: lychee-system
+        args: [--offline, --include-fragments, --no-progress]
+        stages: [manual]
+        types: [file]
+        types_or: [markdown, html]
+        # Dated plans and audit reports are historical records; their dead links aren't worth fixing.
+        exclude: ^docs/(plans|audits)/
+
+  # -------------------------
   # Household details (terms from gitignored files; a no-op without them)
   # -------------------------
   - repo: https://github.com/jasonmx/pre-commit-hooks
