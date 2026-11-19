@@ -76,7 +76,7 @@ repos:
       - id: shellcheck
 
   # -------------------------
-  # Relative links and anchors (offline; external URLs: links.yml, monthly)
+  # Relative links and anchors (offline; external URLs are not checked)
   # -------------------------
   # Manual stage: contributors' commits never need lychee installed. lint.yml runs it on the binary it installs
   # (pinned to this rev); run it locally with `pre-commit run --all-files --hook-stage manual lychee-system`.
