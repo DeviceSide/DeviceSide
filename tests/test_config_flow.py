@@ -16,14 +16,8 @@ from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_set_domains_to_be_loaded, async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockModule, mock_integration
 
-from custom_components.deviceside.config_flow import _FORMS_BY_STEP, _title, issue_url
-from custom_components.deviceside.const import (
-    CONF_LABS,
-    CONF_PREDICTED_STATE,
-    CONF_Z2M_COLOR_MODES,
-    DOMAIN,
-    NAME,
-)
+from custom_components.deviceside.config_flow import _FORMS_BY_STEP, _picker, _title, issue_url
+from custom_components.deviceside.const import DOMAIN, NAME
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.zha import zcl
@@ -139,29 +133,21 @@ async def test_saving_the_option_reloads_the_entry_with_it(hass: HomeAssistant):
     assert get_runtime(hass).predicted_state is True  # on for an entry without options
 
     result = await open_settings(hass, entry)
-    assert result["data_schema"]({}) == {
-        CONF_PREDICTED_STATE: True,
-        CONF_Z2M_COLOR_MODES: True,
-        CONF_LABS: False,
-    }
+    assert result["data_schema"]({}) == {"predicted_state": True, "z2m_color_modes": True, "labs": False}
     assert get_runtime(hass).labs is False
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_PREDICTED_STATE: False, CONF_LABS: True}
+        result["flow_id"], {"predicted_state": False, "labs": True}
     )
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True, CONF_LABS: True}
+    assert entry.options == {"predicted_state": False, "z2m_color_modes": True, "labs": True}
     assert entry.state is ConfigEntryState.LOADED
     assert get_runtime(hass).predicted_state is False
     assert get_runtime(hass).labs is True
 
     result = await open_settings(hass, entry)
-    assert result["data_schema"]({}) == {
-        CONF_PREDICTED_STATE: False,
-        CONF_Z2M_COLOR_MODES: True,
-        CONF_LABS: True,
-    }
+    assert result["data_schema"]({}) == {"predicted_state": False, "z2m_color_modes": True, "labs": True}
 
 
 async def test_the_options_menu_offers_settings_and_the_issue_forms(hass: HomeAssistant):
@@ -262,6 +248,25 @@ async def test_a_hook_that_raises_is_logged_and_the_string_left_out(hass: HomeAs
     assert "zha: no Zigbee manufacturer string for the report form: RuntimeError('gateway gone')" in caplog.text
 
 
+async def test_a_device_less_light_reports_its_integration_alone(hass: HomeAssistant):
+    """A Hue light outside any device (the picker offers it) has no model or firmware, only its integration."""
+    entry = await load_entry(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create("light", "hue", "u-ungrouped", suggested_object_id="ungrouped")
+    assert registry.async_get("light.ungrouped").device_id is None
+
+    fields, _ = await report_for(hass, entry, "light.ungrouped")
+
+    assert fields["devices"] == "hue"
+    assert fields["title"] == "Device report: hue"
+
+
+async def test_an_entity_missing_from_the_registry_adds_no_device_line(hass: HomeAssistant):
+    url = await issue_url(hass, _FORMS_BY_STEP["report_device"], ["light.gone"])
+
+    assert "devices" not in parse_qs(urlparse(url).query)
+
+
 async def test_a_proposal_for_an_unsupported_platform_uses_the_raw_platform(hass: HomeAssistant):
     """Tuya isn't served, and those proposals are the demand signal for new adapters."""
     entry = await load_entry(hass)
@@ -286,6 +291,10 @@ _PICKER_CASES = (
     ("light.lamp", "hue", True, {}, {"report_device", "propose_device"}),
     ("switch.relay", "shelly", True, {}, {"report_device", "propose_device"}),
     ("light.wrapped", "switch_as_x", True, {}, {"report_device", "propose_device"}),
+    ("light.zigbee", "zha", True, {}, {"report_device", "propose_device"}),
+    ("light.thread", "matter", True, {}, {"report_device", "propose_device"}),
+    ("light.broker", "mqtt", True, {}, {"report_device", "propose_device"}),
+    ("light.panel", "control4", True, {}, {"report_device", "propose_device"}),
     # Another integration's switches are mostly its settings, with no category to filter by; proposed instead.
     ("switch.sleep_mode", "adaptive_lighting", True, {}, {"propose_device"}),
     ("light.den", "tuya", True, {}, {"propose_device"}),
@@ -302,9 +311,30 @@ _PICKER_CASES = (
 )
 
 
-@pytest.mark.parametrize("step", ["report_device", "propose_device"])
-async def test_each_picker_offers_only_its_entities(hass: HomeAssistant, step):
-    entry = await load_entry(hass)
+_PICKER_DOMAINS = {
+    "report_device": ["light", "switch"],
+    "propose_device": [
+        "light",
+        "switch",
+        "fan",
+        "cover",
+        "climate",
+        "lock",
+        "valve",
+        "media_player",
+        "siren",
+        "humidifier",
+        "water_heater",
+        "vacuum",
+        "lawn_mower",
+        "remote",
+        "alarm_control_panel",
+        "camera",
+    ],
+}
+
+
+def _add_picker_entities(hass: HomeAssistant) -> None:
     source = MockConfigEntry(domain="test")
     source.add_to_hass(hass)
     for entity_id, platform, on_device, extra, _ in _PICKER_CASES:
@@ -317,15 +347,36 @@ async def test_each_picker_offers_only_its_entities(hass: HomeAssistant, step):
         er.async_get(hass).async_get_or_create(
             domain, platform, object_id, suggested_object_id=object_id, device_id=device and device.id, **extra
         )
+
+
+@pytest.mark.parametrize("step", ["report_device", "propose_device"])
+async def test_each_picker_offers_only_its_entities(hass: HomeAssistant, step):
+    entry = await load_entry(hass)
+    _add_picker_entities(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
-    assert result["data_schema"].schema["entity_id"].config["multiple"] is True
+    config = result["data_schema"].schema["entity_id"].config
+    assert config["multiple"] is True
+    assert config["domain"] == _PICKER_DOMAINS[step]
     for entity_id, *_, forms in _PICKER_CASES:
         if step in forms:
             result["data_schema"]({"entity_id": [entity_id]})
         else:
             with pytest.raises(vol.Invalid):
                 result["data_schema"]({"entity_id": [entity_id]})
+
+
+async def test_without_deviceside_s_runtime_the_device_report_picker_offers_every_integration(hass: HomeAssistant):
+    """Known integrations are DeviceSide's own, so with no runtime to say which, a report picker offers all."""
+    assert "deviceside" not in hass.data
+    _add_picker_entities(hass)
+
+    config = _picker(hass, _FORMS_BY_STEP["report_device"])
+
+    offered = set(config["include_entities"])
+    assert {"light.den", "switch.sleep_mode", "light.lamp", "light.ungrouped"} <= offered
+    assert not offered & {"button.identify", "switch.speaker_loudness", "switch.hidden_relay"}
+    assert config["domain"] == ["light", "switch"]
 
 
 async def test_a_z2m_device_deviceside_cannot_serve_still_reports_as_zigbee2mqtt(hass: HomeAssistant):
