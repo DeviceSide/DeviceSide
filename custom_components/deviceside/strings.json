@@ -34,7 +34,7 @@
         "data_description": {
           "predicted_state": "When dimming starts, Hue Bridges report 0% or 100% brightness and only snap back to a light's actual brightness after ~10 s. This setting shows the starting brightness in Home Assistant when dimming starts, and the light's actual brightness when it stops. Disable the setting to get the raw bridge reports.",
           "z2m_color_modes": "Full color lights use both XY and HS modes, but Zigbee2MQTT announces them as XY mode only which breaks attribute reporting in Home Assistant when lights are in HS mode. This setting overrides Z2M and announces both modes to HA. Turn it off to revert to Z2M's native behavior.",
-          "labs": "Try what's built but not yet proven: new integrations, actions and action options, and support for more devices. Labs features may misbehave, change or be withdrawn without notice. Please report how they go with the \"Report a device test result or bug\" form."
+          "labs": "Try out new integrations, actions, action options, and devices. Labs features may misbehave, change or be withdrawn without notice. Please report how they go with the \"Report a device test result or bug\" form."
         }
       },
       "report_device": {
