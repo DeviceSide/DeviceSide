@@ -52,6 +52,12 @@ alphabetically, and a line's names sort the same way (`ordered`), a variant's pl
 A model or blocker drops the integration's name where it leads, as the card's name already gives it. Cards show
 features, not fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
 
+**The model.** `card` builds each card's model before anything is folded or rendered: `Card.entries`, the ordered,
+unfolded `Line`s (class phrases and page sections, items with their domains, a variant's `parent`, `by_feature()` for
+per-feature status, `models` the tested models), `Card.reached` (each tested model's places, actions and rig or by
+hand), `Card.refused` and `Card.marks` (the caveats). `show` renders the README's lines from it, folding last, so
+another render (the page's matrix) reads the same unfolded lines.
+
 **The fold and the cap** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
 (🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ [class] (features);
 [class], [class] (features)": classes with the same features share a parenthesis, a 🔴 part stays inside it, and a
@@ -809,6 +815,10 @@ def part(action: str) -> str:
     return action.replace("_", " ")
 
 
+# The feature each part label (`part`) belongs to; a label that isn't one is its own feature.
+PART_FEATURE = {part(action): FEATURES[action] for action in FEATURES}
+
+
 def shape(by_status: dict[str, set[str]]) -> Shape:
     """The actions by status as a line names them, each feature under one status: one whose actions differ names its
     parts instead ("🟡 smooth dimming down · ⚪ smooth dimming up"). `stop` rides the smooth moves, so it is named
@@ -903,6 +913,18 @@ class Line:
     children: list[Line] = field(default_factory=list)
     variant: bool = False
     at: dict[Item, str] = field(default_factory=dict)  # each item's page section
+    parent: Line | None = field(default=None, repr=False, compare=False)  # a variant's parent line
+
+    def by_feature(self) -> dict[str, tuple[tuple[str, str], ...]]:
+        """The line's features, each with its statuses (OUTCOMES keys), in `shape` order: a feature whose actions differ
+        has one (status, part) pair per part ("smooth dimming": (("should", "smooth dimming down"), ("labs", "smooth
+        dimming up"))), else one pair holding the feature's own label. A view of `shape`, so a reader of the unfolded
+        lines needs nothing recomputed."""
+        found: dict[str, list[tuple[str, str]]] = {}
+        for status, labels in self.shape:
+            for label in labels:
+                found.setdefault(PART_FEATURE.get(label, label), []).append((status, label))
+        return {feature: tuple(pairs) for feature, pairs in found.items()}
 
     def plain(self) -> str:
         """The name as text, for sorting."""
@@ -996,9 +1018,11 @@ def class_lines(
         for phrase, found_shape, homes in naming(key, item, entry, by_domain, can_be):
             domains = [domain for home in homes for domain in members[item][home]]
             if "variants" in (parent_entry := found_phrases.get(entry["section"], {})):
-                parent = Line((), {entry["section"]: [parent_entry["phrase"]]}, note=parent_entry["variants"])
-                children = parents.setdefault(entry["section"], (parent, {}))[1]
-                line = children.setdefault(found_shape, Line(found_shape, variant=True))
+                parent, children = parents.setdefault(
+                    entry["section"],
+                    (Line((), {entry["section"]: [parent_entry["phrase"]]}, note=parent_entry["variants"]), {}),
+                )
+                line = children.setdefault(found_shape, Line(found_shape, variant=True, parent=parent))
             else:
                 line = lines.setdefault((brand(item, entry["section"]), found_shape), Line(found_shape))
             phrases = line.sections.setdefault(entry["section"], [])
@@ -1177,15 +1201,29 @@ class Card:
     requires: str | None = None
     url: str | None = None  # the integration's page
     maintainers: tuple[str, ...] = ()
-    # 🔧 Untested fix, then ⚠️ Unmaintained entries: the features of the adapters so marked, by reason.
-    marks: list[str] = field(default_factory=list)
+    # 🔧 Untested fix, then ⚠️ Unmaintained: the adapters so marked, by reason.
+    marks: list[Caveat] = field(default_factory=list)
     # Every adapter is unmaintained, so the heading says so.
     all_unmaintained: bool = False
+    # The model, built before the fold (`card`): the unfolded lines, ordered (native groups first; a variants parent's
+    # children under it, each with its `parent`), then the no_known_method entries that name no action, each a 🔴
+    # line; and what the evidence tested of each model, by name (`Reached`: its places, actions, rig or by hand).
+    key: str = ""
+    entries: list[Line] = field(default_factory=list)
+    refused: list[dict] = field(default_factory=list)
+    reached: dict[str, Reached] = field(default_factory=dict)
+    groups: Reached | None = None
+    # The rendered view (`show`), folded as the README shows it.
     lines: list[str] = field(default_factory=list)
     total: int = 0  # the lines the cap counts: each line, a variants parent's children too
     labs_lines: list[str] = field(default_factory=list)  # those that are in Labs, as rendered
     # What the evidence tested, as the lines name it: each model (✔ when the rig tested it), then native groups.
     tested: list[str] = field(default_factory=list)
+
+    @property
+    def rig(self) -> set[str]:
+        """The tested models the rig reached."""
+        return {name for name, tested in self.reached.items() if tested.rig}
 
     def short(self, name: str) -> str:
         """The name without the integration's, which the card's title already gives: "Hue Bridge v1" -> "Bridge v1"."""
@@ -1202,24 +1240,32 @@ class Card:
         title = f"[{self.title}]({self.url})" if self.url else self.title
         status = " · ⚠️ Unmaintained" if self.all_unmaintained else ""
         lines = [f"**{title}**{requires}{status}", ""]
-        lines += [f"- {entry}" for entry in self.marks]
+        lines += [f"- {entry.render()}" for entry in self.marks]
         lines += [f"- {line}" for line in self.lines]
         return "\n".join(lines)
 
 
-def mark_entries(integration_adapters: list) -> list[str]:
-    """The adapters shipping a fix no one could test, then those no one is fixing, as their features, one entry per
-    caveat and reason."""
+@dataclass(frozen=True)
+class Caveat:
+    """A caveat mark on a card: the adapters it covers, by their actions, and its reason."""
+
+    label: str
+    reason: str
+    actions: frozenset[str]
+
+    def render(self) -> str:
+        return f"{marked(self.label, self.reason)}: {', '.join(features(set(self.actions), fold_stop=False))}"
+
+
+def mark_entries(integration_adapters: list) -> list[Caveat]:
+    """The adapters shipping a fix no one could test, then those no one is fixing, one entry per caveat and reason."""
     entries = []
     for kind, label in MARKS:
         by_reason: dict[str, set[str]] = {}
         for adapter in integration_adapters:
             if reason := caveat_reason(adapter.scope, kind):
                 by_reason.setdefault(reason, set()).add(adapter.action)
-        entries += [
-            f"{marked(label, reason)}: {', '.join(features(actions, fold_stop=False))}"
-            for reason, actions in by_reason.items()
-        ]
+        entries += [Caveat(label, reason, frozenset(actions)) for reason, actions in by_reason.items()]
     return entries
 
 
@@ -1262,25 +1308,36 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         label = anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1])) + (f" {VERIFIED}" if groups.rig else "")
         extra.append(Line(shape({"works": groups.actions}), label=label))
         result.tested.append(label)
-    lines = ordered([*lines, *extra], brand, rig)
-    lines, folded = fold(lines, result, key, data, rig)
+    result.key = key
+    result.entries = ordered([*lines, *extra], brand, rig)
+    result.reached, result.groups = models, groups
+    # devices.yaml's and models.yaml's no_known_method entries name no class or action: each a line of its own.
+    result.refused = [
+        entry for entry in data.no_known_method if key in entry["integrations"] and not entry.get("actions")
+    ]
+    show(result, data)
+    return result
+
+
+def show(result: Card, data: Data) -> None:
+    """Render the card's model as the README shows it: the fold (the unfolded lines stay in `entries`), the lines, and
+    the counts the Labs cap reads."""
+    key, rig = result.key, result.rig
+    lines, folded = fold(result.entries, result, key, data, rig)
     result.lines = [line.render(result, key, data, rig) for line in lines]
     result.total = sum(1 + len(line.children) for line in lines)
     result.labs_lines = [
         shown.render(result, key, data, rig) for line in lines for shown in (line, *line.children) if shown.in_labs()
     ]
-    # devices.yaml's and models.yaml's no_known_method entries name no class or action: each a line of its own.
     result.lines += [
         f"{anchor(result.short(entry['what']), data.url(key, entry['section']))}: {OUTCOMES[-1][1]}"
-        for entry in data.no_known_method
-        if key in entry["integrations"] and not entry.get("actions")
+        for entry in result.refused
     ]
-    result.total += len(result.lines) - len(lines)
+    result.total += len(result.refused)
     if folded:
         result.lines.append(folded)
         result.total += 1
         result.labs_lines.append(folded)
-    return result
 
 
 def legend(text: str) -> str:

@@ -1506,6 +1506,38 @@ def test_a_variants_children_never_fold(root):
     assert (card.total, len(card.labs_lines)) == (5, 2)
 
 
+def test_the_model_keeps_the_unfolded_lines_with_parents_and_per_feature_status(root):
+    timer = AdapterScope(
+        domains=verified("light", "switch"), capabilities=verified("Switch") | labs("CCT", "RGB", "Light")
+    )
+    capabilities = copy.deepcopy(DATA["capabilities"])
+    for name, phrase in (("Switch", "maker A"), ("CCT", "maker B"), ("RGB", "no setting")):
+        capabilities["zha"][name] = {"phrase": phrase, "section": "Plug"}
+    sections = {"zha": {"Plug": {"phrase": "Plugs", "variants": "check Manufacturer on its page"}}}
+    adapters = (
+        adapter("zha", "turn_on_for", timer),
+        adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light", "RGBCCT"))),
+    )
+    registry = classed_registry(*adapters)
+    registry.integrations["zha"].classes.update({"RGB": LIGHT, "RGBCCT": LIGHT})
+    card = gc.card("zha", registry, list(adapters), data(registry, capabilities=capabilities, sections=sections))
+    # The fold touches the rendered lines only: the model still holds every top-level line, children under their parent.
+    assert len(card.entries) > len(card.lines) - 1
+    (parent,) = (line for line in card.entries if line.children)
+    assert all(child.parent is parent and child.variant for child in parent.children)
+    assert [line.by_feature() for line in parent.children][0] == {
+        "turn on with timer": (("works", "turn on with timer"),)
+    }
+
+
+def test_a_feature_whose_actions_differ_has_a_status_per_part():
+    line = gc.Line((("should", ("smooth dimming down",)), ("labs", ("smooth dimming up", "stop"))))
+    assert line.by_feature() == {
+        "smooth dimming": (("should", "smooth dimming down"), ("labs", "smooth dimming up")),
+        "stop": (("labs", "stop"),),
+    }
+
+
 def share(total, labs_lines):
     return [gc.Card("c", total=total, labs_lines=["⚪ x"] * labs_lines)]
 
