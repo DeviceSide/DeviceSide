@@ -22,13 +22,12 @@ from .core.errors import describe, traceback_is_safe
 from .core.registry import AdapterRegistry
 from .core.runtime import DATA, DeviceSideData, get_runtime
 from .core.scope import CaveatKind, IntegrationInfo
-from .migrations import async_check_migrations, async_watch_legacy_calls
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
 
 # The Labs option's key in v0.1.0's release candidates, which minor version 2 renamed to CONF_LABS. Delete it, with
-# async_migrate_entry's minor 1 branch, in v0.2.0, once no rc install is left (as migrations.py's checks go then).
+# async_migrate_entry's minor 1 branch, in v0.2.0, once no rc install is left.
 _RC_LABS_KEY = "experimental_features"
 
 
@@ -84,8 +83,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stopping)
     # Services are registered once per HA run, not per entry; handlers refuse calls until the entry loads.
     async_setup_services(hass)
-    await async_check_migrations(hass)
-    async_watch_legacy_calls(hass)
     return True
 
 

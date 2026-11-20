@@ -28,7 +28,7 @@ def _steps(flow: ast.ClassDef) -> set[str]:
 
 def _collect() -> None:
     trees = {path: ast.parse(path.read_text()) for path in PACKAGE.rglob("*.py")}
-    # Module string constants (LEGACY_ISSUE = "legacy_device_side"), which a translation_key may name.
+    # Module string constants (FOO_ISSUE = "foo"), which a translation_key may name.
     constants = {
         node.targets[0].id: node.value.value
         for tree in trees.values()
@@ -77,7 +77,7 @@ def test_the_collection_finds_what_the_code_raises():
         "targets_failed",
         "no_entities_matched",
     } <= _USED["exceptions"]
-    assert _USED["issues"] == {"legacy_device_side", "legacy_device_side_calls", "migrate_hue_dimmer"}
+    assert _USED["issues"] == set()
     assert _USED["options.step"] == {
         "init",
         "settings",
@@ -101,7 +101,7 @@ def test_the_collection_finds_what_the_code_raises():
 def test_every_key_the_code_uses_is_in_en_json(section):
     held = STRINGS
     for part in section.split("."):
-        held = held[part]
+        held = held.get(part, {})  # en.json drops a section nothing uses
     used = _USED[section] | (_target_not_supported_keys() if section == "exceptions" else set())
 
     assert used - held.keys() == set()
