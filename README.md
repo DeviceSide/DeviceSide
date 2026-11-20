@@ -8,7 +8,7 @@ It's the successor to [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth
 
 ## Key Features
 
-* **Auto-off/on:** Turn devices off/on automatically, even if HA goes offline or restarts.
+* **Auto-off/on:** Turn devices off/on safely and automatically, even if HA crashes or restarts.
 
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
