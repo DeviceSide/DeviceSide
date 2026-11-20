@@ -16,7 +16,7 @@ from ...core.scope import IntegrationInfo
 
 INTEGRATION = IntegrationInfo(
     key="hue",
-    title="Hue Bridge",
+    title="Hue",
     ha_domain="hue",
     maintainers=("jasonmx",),
     is_group=is_hue_group,

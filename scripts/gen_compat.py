@@ -103,9 +103,8 @@ only one integration names is in its bundle's devices.yaml), and `no_known_metho
 their `integrations` (`what`, `reason`, `source`, optional `section`: the anchor id of its Not supported row, its
 `what` by default), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as
 an unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
-`column_order` (the README feature table's, read by gen_features, and the Requirements line's), `requirements_name`
-(optional: the Requirements line's name for the integration, its title by default), `requires` (shown after the card's
-name), `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
+`column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
+`capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `section` is a heading of the integration's page, which a
 Documented or Labs class must have; `domains`, a phrase per entity domain, for a class the card splits), `sections`
 (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes, or with `variants`, what
@@ -172,7 +171,6 @@ MODELS = REPO / "docs" / "models.yaml"
 PAGE_URL = f"{DOCS_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
-REQUIREMENTS = ("<!-- requirements:start -->", "<!-- requirements:end -->")
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
@@ -210,7 +208,6 @@ INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/inte
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
 BUNDLE_KEYS = {
-    "requirements_name",
     "column",
     "column_order",
     "requires",
@@ -254,9 +251,6 @@ class Data:
     section_phrases: dict[str, dict[str, dict]] = field(default_factory=dict)
     # models.yaml's devices not built yet that today's call harms, on integrations whose code doesn't class them yet.
     not_built: list[dict] = field(default_factory=list)
-    # Each integration's Requirements name (devices.yaml `requirements_name`, else its title) and its `column_order`.
-    names: dict[str, str] = field(default_factory=dict)
-    order: dict[str, int] = field(default_factory=dict)
     # The heading anchors of each integration's page; a section on none of them is on PAGE.
     pages: dict[str, set[str]] = field(default_factory=dict)
     # The bundle each model id is listed in (None: docs/models.yaml), so a record names only its own bundle's.
@@ -324,23 +318,12 @@ def check_headings(key: str, text: str) -> None:
         )
 
 
-def read_names(raw: dict, key: str, data: dict, where: str) -> None:
-    """A bundle's `requirements_name` (the Requirements line's) and `column_order`."""
-    if "requirements_name" in data:
-        need(data, where, ("requirements_name",))
-        raw["names"][key] = data["requirements_name"]
-    if isinstance(data.get("column_order"), int):
-        raw["order"][key] = data["column_order"]
-
-
 def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
     `no_known_method` entries are its own, so they take no `integrations` key."""
     need(shared, "docs/models.yaml", lists=tuple(sorted(SHARED_KEYS & set(shared))), keys=SHARED_KEYS)
     raw: dict = {
         "requires": {},
-        "names": {},
-        "order": {},
         "capabilities": {},
         "models": list(shared.get("models") or []),
         "bundle_models": {},
@@ -354,7 +337,6 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
         if "requires" in data:
             need(data, where, ("requires",))
             raw["requires"][key] = data["requires"]
-        read_names(raw, key, data, where)
         if data.get("capabilities"):
             raw["capabilities"][key] = data["capabilities"]
         if data.get("sections"):
@@ -390,7 +372,7 @@ def need(
 def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     """The merged mapping (`merge`), its entries validated and their defaults filled in."""
     raw = copy.deepcopy(raw)  # defaults are filled in place
-    data = Data(raw["requires"], {}, raw["capabilities"], [], names=raw.get("names", {}), order=raw.get("order", {}))
+    data = Data(raw["requires"], {}, raw["capabilities"], [])
     for model in raw["models"]:
         load_model(model, data, None)
     for key, models in raw.get("bundle_models", {}).items():
@@ -1742,23 +1724,6 @@ def cards(built: list[Card]) -> str:
     return "\n".join(parts)
 
 
-def requirements(registry: AdapterRegistry, data: Data) -> str:
-    """The README's Requirements line: each integration's `requirements_name` or title, in `column_order`, no "or"."""
-    names = [
-        data.names.get(key, info.title)
-        for key, info in sorted(registry.integrations.items(), key=lambda item: data.order.get(item[0], 0))
-        if key in data.order
-    ]
-    return "\n".join(
-        [
-            REQUIREMENTS[0],
-            "<!-- Generated by scripts/gen_compat.py. Do not edit; run the script. -->",
-            f"* One of these integrations installed: {', '.join(names)}.",
-            REQUIREMENTS[1],
-        ]
-    )
-
-
 # Writing.
 
 
@@ -1836,7 +1801,6 @@ def main(
     for path, markers, new in (
         (page, EVIDENCE, block),
         (readme, CARDS, shown),
-        (readme, REQUIREMENTS, requirements(registry, data)),
     ):
         text = updates[path][1] if path in updates else path.read_text()
         updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, new, path.name))

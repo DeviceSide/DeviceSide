@@ -13,7 +13,7 @@ body:
       multiple: true
       options:
         - Control4
-        - Hue Bridge
+        - Hue
         - Matter
         - Shelly
         - ZHA
