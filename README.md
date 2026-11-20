@@ -108,7 +108,7 @@ DeviceSide's features were developed on real devices using an automated test rig
 [![Open DeviceSide in Marketplace in your Home Assistant instance.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=DeviceSide&repository=DeviceSide&category=integration)
 <!-- ha-marketplace:exclude-end -->
 
-After downloading, restart Home Assistant, then [add DeviceSide](https://my.home-assistant.io/redirect/config_flow_start/?domain=deviceside). Please also [star the repo](https://github.com/DeviceSide/DeviceSide).
+After downloading, restart Home Assistant, then [add DeviceSide](https://my.home-assistant.io/redirect/config_flow_start/?domain=deviceside). Please also star the repo.
 
 ## Usage
 
