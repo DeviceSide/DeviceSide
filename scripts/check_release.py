@@ -45,7 +45,7 @@ Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked 
 another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
 read as the action's evidence; another suite's, as `config_entry.json`, is none's), `_manual.json`, whose rows are
 manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads; a dotfile is ignored. A manual
-row whose signer (`signed_by`, or its old name `tester`) is neither a maintainer of the integration nor a repo
+row whose signer (`signed_by`) is neither a maintainer of the integration nor a repo
 maintainer is an error. A manual row's devices, and a record's tests, may name a class only on an integration that names
 classes (`names_classes`, which gen_compat shares). A record names no signer: review of the PR that lands it checks who
 ran it. A `.json` named with a leading `_` other than those two, or a record whose `action` or `options` its name
@@ -212,12 +212,6 @@ def row_actions(row: Mapping) -> list[str]:
     """The actions a `_manual.json` row tested: its `calls`' keys (format 3), or its `passed` (format 2, which credits
     classes and cards but signs off nothing)."""
     return list(row["calls"]) if "calls" in row else list(row["passed"])
-
-
-def signed_by(row: Mapping) -> str:
-    """The maintainer who vouches for a `_manual.json` row: `signed_by`, or `tester`, its old name, which the schema
-    accepts until Control4's row is renamed (exactly one)."""
-    return row["signed_by"] if "signed_by" in row else row["tester"]
 
 
 def manual_rows(integration: str, action: str) -> list[tuple[bool, list[tuple[str, str | None]]]]:
@@ -537,7 +531,7 @@ def manual_signoffs(
     integration: str, signers: tuple[str, ...], names_classes: bool = False
 ) -> tuple[list[Row], list[str]]:
     """The integration's `_manual.json` rows, and the errors in them: a class on an integration that names none, or a
-    signer who may not sign off (`signed_by`, or its old name `tester`). A row in error is no sign-off; a file the
+    signer who may not sign off. A row in error is no sign-off; a file the
     schema rejects stops the run."""
     path = test_records_dir(integration) / MANUAL
     allowed = {signer.casefold() for signer in signers}
@@ -546,7 +540,7 @@ def manual_signoffs(
         at = f"{where(path)} row {number}"
         if not names_classes and any(device["class"] is not None for device in row["devices"]):
             errors.append(f"{at}: a class, but {integration} names no classes")
-        elif (signer := signed_by(row)).casefold() not in allowed:
+        elif (signer := row["signed_by"]).casefold() not in allowed:
             errors.append(f"{at}: signer @{signer} is neither a maintainer of {integration} nor a repo one")
         else:
             calls = dict(row["calls"]) if "calls" in row else None

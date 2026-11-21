@@ -716,8 +716,7 @@ def test_an_integration_page_heading_that_states_a_level_fails_naming_the_file(r
         gc.load(FakeRegistry(), models)
 
 
-def test_control4s_page_is_exempt_from_the_level_heading_check_until_its_own_pr():
-    gc.check_headings("control4", "# Control4\n\n## Try it: Labs\n")  # passes
+def test_level_words_in_prose_pass_the_heading_check_but_a_heading_fails():
     gc.check_headings("hue", "# Hue\n\nLabs and Verified in prose pass; a heading doesn't.\n")
     with pytest.raises(SystemExit, match="docs/integrations/hue/index.md: '## Try it: Labs' states a level"):
         gc.check_headings("hue", "# Hue\n\n## Try it: Labs\n")
