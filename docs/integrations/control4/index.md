@@ -18,13 +18,15 @@ lights apart by their driver. A light group takes the class of its lights.
 
 ### Control4 lights
 
-Every driver but those below, the "Zigbee 3 Light" bulb and Light Group driver among them. On a Control4 dimmer or
-light group, a raise or lower ramps smoothly from where the light is, and `stop` halts it where it is, whichever way it
-runs. It was tried on a light group of three Hue White Ambiance 5/6" Retrofit Downlights
+Every driver but those below, the "Zigbee 3 Light" bulb and Light Group driver among them. On a light of this class,
+a raise or lower ramps smoothly from where the light is, and `stop` halts it where it is, whichever way it runs. It
+was tried on a light group of three Hue White Ambiance 5/6" Retrofit Downlights
 ([`LTD010`](../../device-compatibility.md#hue-white-ambiance-56-retrofit-downlight), Philips 5996411U5), and on one of
 them alone, joined to Control4 over Zigbee on its "Zigbee 3 Light" driver, on Control4 OS 4.3 by one contributor
 ([measurements](internals.md#tested-behavior)). Control4 documents none of it, and no other driver has been seen to
-ramp and stop.
+ramp and stop. If you try another driver, please report whether `stop` halts the ramp where it is: Integrations >
+[DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
+result or bug. One report per driver.
 
 ### Lights whose driver can't stop a ramp
 
