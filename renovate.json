@@ -1,25 +1,144 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>DeviceSide/.github//renovate/default"],
+  "extends": [
+    "github>DeviceSide/.github//renovate/default"
+  ],
   "homeassistant-manifest": {
     "enabled": true,
-    "managerFilePatterns": ["/^custom_components/deviceside/manifest\\.json$/"]
+    "managerFilePatterns": [
+      "/^custom_components/deviceside/manifest\\.json$/"
+    ]
   },
   "packageRules": [
     {
+      "description": "Wait 3 days before any automerged update, so a broken or yanked release is usually fixed or pulled before it lands. Overrides the shared preset's digest/patch groups, which automerge at once.",
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor",
+        "pin",
+        "pinDigest"
+      ],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "github-actions: minor bumps in their own PR, merged once CI is green after the 3-day wait. Majors stay in the preset's group, for review. Split so a major never holds a minor back, or rides along with it.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "groupName": "github-actions (minor)",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "github-actions: majors, for review.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "github-actions (major)",
+      "automerge": false
+    },
+    {
+      "description": "pre-commit: minor bumps in their own PR, merged once CI is green after the 3-day wait. Majors are for review.",
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "groupName": "pre-commit (minor)",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "pre-commit: majors, for review.",
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "pre-commit (major)",
+      "automerge": false
+    },
+    {
+      "description": "Non-major Python and npm updates merge once CI is green after the 3-day wait. Nothing here is uptime-critical, and CI runs the whole suite.",
+      "matchCategories": [
+        "python",
+        "js"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Tool versions pinned in workflow inputs (zizmor and the like): non-major bumps merge once CI is green after the 3-day wait.",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "pytest-homeassistant-custom-component pins the HA build the tests run against, which also decides aiohue's version (below). Its own PR, labelled, for review.",
+      "matchDepNames": [
+        "pytest-homeassistant-custom-component"
+      ],
+      "groupName": "home-assistant test version",
+      "labels": [
+        "ha-test-version"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Anything that changes the integration's manifest.json is for review: it is what HACS and HA read.",
+      "matchFileNames": [
+        "custom_components/**/manifest.json"
+      ],
+      "automerge": false
+    },
+    {
       "description": "Python follows Home Assistant's minimum: hold below 3.15 until HA moves, then raise this with requires-python, ruff's target-version and pyupgrade's --pyXY-plus in one PR.",
-      "matchDepNames": ["python"],
+      "matchDepNames": [
+        "python"
+      ],
       "allowedVersions": "<3.15"
     },
     {
       "description": "ruff and its pre-commit hook move together in one PR, for review, so the linter CI runs never disagrees with the one in .venv.",
-      "matchDepNames": ["ruff", "astral-sh/ruff-pre-commit"],
+      "matchDepNames": [
+        "ruff",
+        "astral-sh/ruff-pre-commit"
+      ],
       "groupName": "ruff",
       "automerge": false
     },
     {
       "description": "aiohue must equal what HA's hue manifest requires in the HA build pytest-homeassistant-custom-component pins, which Renovate can't see: bump it by hand with that package.",
-      "matchDepNames": ["aiohue"],
+      "matchDepNames": [
+        "aiohue"
+      ],
       "enabled": false
     }
   ]
