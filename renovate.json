@@ -126,13 +126,27 @@
       "allowedVersions": "<3.15"
     },
     {
-      "description": "ruff and its pre-commit hook move together in one PR, for review, so the linter CI runs never disagrees with the one in .venv.",
+      "description": "ruff and its pre-commit hook move together in one PR, so the linter CI runs never disagrees with the one in .venv. Minor bumps (ruff's breaking releases: new stable rules, formatter style) are for review, since they usually need a code change.",
       "matchDepNames": [
         "ruff",
         "astral-sh/ruff-pre-commit"
       ],
       "groupName": "ruff",
       "automerge": false
+    },
+    {
+      "description": "ruff patch bumps are bug fixes: merge once CI is green after the 3-day wait. If one flags new code, lint goes red and it waits for review anyway.",
+      "matchDepNames": [
+        "ruff",
+        "astral-sh/ruff-pre-commit"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "aiohue must equal what HA's hue manifest requires in the HA build pytest-homeassistant-custom-component pins, which Renovate can't see: bump it by hand with that package.",
