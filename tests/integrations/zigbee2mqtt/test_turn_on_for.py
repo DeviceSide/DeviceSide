@@ -11,7 +11,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge, turn_on_for
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, light_turn_on
 
 from .conftest import call, group, light
 from ...conftest import advance, allow_labs, refusal, sent, wall_clock_now
@@ -143,7 +143,8 @@ async def test_turn_on_error_rejects_that_target(hass, setup_production, publish
 async def test_group_with_fields_calls_turn_on_then_publishes(
     hass, setup_production, broker, publishes, turn_ons, monkeypatch
 ):
-    monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.05)  # turn_ons publishes no state: the timer goes out anyway
+    # turn_ons publishes no state: the timer goes out anyway
+    monkeypatch.setattr(light_turn_on, "_STATE_TIMEOUT_S", 0.05)
     group(hass, broker, one={}, two={})
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.room", "duration": 5, "brightness": 50})
@@ -212,7 +213,7 @@ class StateTopic:
 def z2m(hass, monkeypatch):
     fake = StateTopic(hass)
     monkeypatch.setattr(bridge.mqtt, "async_subscribe", fake.subscribe)
-    monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(light_turn_on, "_STATE_TIMEOUT_S", 0.05)
     monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.05)  # this broker holds no retained bridge/info
     hass.services.async_register("light", "turn_on", fake.turn_on)
     hass.services.async_register("mqtt", "publish", fake.publish)

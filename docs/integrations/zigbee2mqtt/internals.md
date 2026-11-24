@@ -192,6 +192,54 @@ fallback skips it (`not_addressable`).
   `ZOT60` ([research](research/2026-11-14-tuya-countdown.md), §1). Before `bridge/devices` lists the plug, the registry
   places it in `tuya_ts011f`, Unplaced, refused as `class_unknown`.
 
+**Tuya's datapoint countdown** (converter B): a device in a `tuya_datapoint` class gets one publish,
+`{"state": "ON", "countdown": N}`, after any light fields: [`turn_off_for`](#turn_off_for) gives the call and its
+evidence. A Z2M group can't carry it, so a group with one falls back to its members.
+
+### `turn_off_for`
+
+Serves only its classes' own calls (`AdapterScope.own_calls_only`, [design](../../design.md)): Tuya's datapoint
+countdown, below. Every other class is refused as `not_built` with no entry, and a target not yet placed (no class, or
+the registry fallback's) as `class_unknown`. `native_groups=False`: a Z2M group's set never reaches a datapoint
+(`tz.datapoints` throws "Not supported for groups"), so a group falls back to its members. `confirmable=False`.
+
+**Tuya's datapoint countdown** (`families/tuya/datapoint.py`, converter B; turn_on_for's call on the same classes):
+one publish to the set topic, `{"state": "OFF", "countdown": N}` (turn_on_for: `"ON"`), N whole seconds from 1 to
+the class's limit, the definition's `countdown` expose `value_max` (`DATAPOINT_DEFINITIONS`, a class per limit as
+core clamps by class: 43,200, 86,400 or 7,210 s; core rounds and clamps, and reports either in `clamped_to`). On
+turn_on_for, light fields go first by `light.turn_on`, waiting for Z2M's state (`light_turn_on.py`), then the
+countdown publish, which carries `state` again and no light fields. No reads: the time left isn't served, so the
+result is `sent`, or `rejected` by `set_check`. Evidence: Z2M 2.14.3 and the ZHC it ships, v26.125.0, read
+2026-11-24 ([research](research/2026-11-24-tuya-datapoint-call.md)); no datapoint device probed.
+
+- **What Z2M sends.** `tz.datapoints` ([ZHC `src/lib/tuya.ts#L3237-L3278`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/lib/tuya.ts#L3237-L3278)) takes
+  the whole payload in one call, loops its keys in order and awaits each `sendDataPoints`, whose `entity.command`
+  rethrows a failed send; so a lost `state` throws before `countdown` goes out, and Z2M logs
+  `Publish 'set' 'state' … failed`, which `set_check` makes `rejected` (research §1).
+- **Why one publish, not state then a wait for its report.** `tz.datapoints` returns every key it sent as the state,
+  and Z2M publishes that optimistically, so the state publish after a set is Z2M's own echo, not the device's report: a
+  wait would have no signal. The order and the `await` give the guarantee the wait was for, as converter A's do (The
+  harm the order prevents, above). Plan 2026-11-14-device-classes Decision 67's two-phase pattern, a design call with no
+  device evidence, is superseded (plan 2026-11-24-tuya-datapoint-single-endpoint, Decision 4).
+- **What stays.** A `state` that reached the device but whose delivery herdsman reports failed, or a `countdown` that
+  fails after the `state` went out, leaves the device switched with no timer, answered `rejected`; a local toggle in
+  the milliseconds between the two frames would put the timer on the other state.
+- **GL-SPI-206P sends the on/off datapoint twice.** Its own `glspi206p_light` converter takes `state` and sends DP 1;
+  `tz.datapoints` takes `countdown` and sends DP 1 again before it. A lost first DP 1 throws and Z2M logs the set
+  failed; if the second then succeeds, the countdown is armed while `set_check` answers `rejected` (research §1).
+- **Dimmers** skip the state datapoint when a payload holds `brightness` (`skip.stateOnAndBrightnessPresent`): the
+  countdown publish holds none. **D5Z** publishes `countdown: 0` on every state change, so its readback shows 0 while
+  the timer runs; nothing reads it.
+- **The toggle.** Tuya's General Countdown page ([Tuya](https://developer.tuya.com/en/miniapp/solution-ai/ability/lamp-solution/lamp/module-set/common-countdown.md), fetched 2026-11-24): toggles at zero; cleared by
+  a countdown of 0, any on/off change (local button, app, schedule) and a power cycle or restart. It is the Wi-Fi+BLE
+  lamp panel guide, its range "0 - 1440" with no unit, not a Zigbee spec: applied by inference, with ZHC's expose text,
+  "Toggle the device after a set duration (one time action)" (research §2).
+- **The class rule** reads `bridge/devices`' definition: its `model` in the allowlist (`DATAPOINT_DEFINITIONS`,
+  each checked at ZHC v26.125.0 and v26.136.0, research §3) and a top-level expose `countdown` with no endpoint, the
+  single-endpoint guard. The rules run before `tuya_ts011f` (the ZOT60 is a TS011F) and `tuya_mcu`. The registry
+  can't see exposes, so until `bridge/devices` lists the device it is Unplaced, refused as `class_unknown`. D1Z
+  (ZHC v26.126.0) and SFD02-Z_2 (v26.127.0) are newer than the ZHC Z2M 2.14.3 ships, so match nothing on it.
+
 ### `set_attributes`
 
 Z2M's generic `command` payload, one per field. A color goes as xy, or hue and saturation on a light without xy.
@@ -267,7 +315,7 @@ flicker seen by eye.
 Z2M reports a set it couldn't send only on `bridge/logging`, at error level:
 `Publish 'set' '<key>' to '<friendly name>' failed: '<error>'`, then goes on to the message's next key and publishes
 the message's state after the last (`lib/extension/publish.ts`). So a key's failure line comes before its message's
-state. raise, lower, stop and turn_on_for settle after their publishes until each entity published to has a state
+state. raise, lower, stop, turn_on_for and turn_off_for settle after their publishes until each entity published to has a state
 publish or a failure line, else 2 s past its last publish; a failure line makes the target `rejected`, with the status
 it names (`busy`) or `send_failed`. set_attributes checks without the settle. The settle never delays a publish.
 `hue_move`, a raw `command` and `on_time` draw no state, so a publish of one waits only 0.25 s, a groupcast's BUSY:

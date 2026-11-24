@@ -78,8 +78,8 @@ def placed_class(hass, entity_id: str) -> str | None:
             "tuya_ts011f",
             id="gangs",
         ),
-        # The datapoint countdown, converter B.
-        pytest.param("_TZ3218_pfnjjx6a", {"definition": "ZOT60"}, "tuya_ts011f", id="zot60"),
+        # The datapoint countdown, converter B (datapoint.py).
+        pytest.param("_TZ3218_pfnjjx6a", {"definition": "ZOT60"}, "tuya_datapoint", id="zot60"),
         pytest.param(UNLISTED, {"model_id": "TS0001"}, "tuya_zcl", id="not_a_ts011f"),
         pytest.param(UNLISTED, {"definition": None, "exposes": ()}, "tuya_ts011f", id="no_definition"),
     ],
@@ -118,9 +118,10 @@ def test_each_verified_string_has_a_class_of_its_own_verified_and_the_rest_are_i
     # The rest of converter A's strings are in Labs, on the same call's pass on their kin (docs/evidence.md, In
     # Labs), on switches alone.
     assert scope.class_level("tuya_countdown", "switch") is Level.LABS
-    assert set(scope.own_calls) == {"tuya_countdown", *tuya.VERIFIED_COUNTDOWNS}
-    # One call object, so the countdown plugs of every string share a run.
-    assert set(scope.own_calls.values()) == {countdown.COUNTDOWN}
+    assert {name for name, call in scope.own_calls.items() if call is countdown.COUNTDOWN} == {
+        "tuya_countdown",
+        *tuya.VERIFIED_COUNTDOWNS,
+    }
     assert countdown.COUNTDOWN.limits is countdown.COUNTDOWN_LIMITS
     # The string reported harmed is left out: the integration refuses it (test_refusals.py).
     assert "tuya_countdown_harmed" not in scope.capabilities

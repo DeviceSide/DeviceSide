@@ -36,10 +36,12 @@ some devices can't do is not marked there.
 
 - **Turn off with timer on Matter, and on Zigbee groups and Zigbee devices other than Tuya's.** The Zigbee and
   Matter timer command (`OnWithTimedOff`) turns a device on, then off. There is no command for off, then on, so
-  Matter, Zigbee groups and non-Tuya Zigbee lights and switches have no call for it. Tuya's Zigbee devices may have
-  one: Tuya's own countdown toggles the device when it ends, and some Tuya firmware toggles on `OnWithTimedOff` from
-  off too, though not all (one TS011F ignores it when off). DeviceSide plans to probe and build turn off with timer
-  for them after v0.1.0.
+  Matter, Zigbee groups and non-Tuya Zigbee lights and switches have no call for it. Tuya's Zigbee devices have
+  one: Tuya's own countdown toggles the device when it ends. DeviceSide sends it to the Tuya datapoint devices with one
+  countdown on Zigbee2MQTT
+  ([Zigbee2MQTT](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown)), and a group with
+  one falls back to its devices. On Tuya's other devices it isn't built yet; some Tuya firmware also toggles on
+  `OnWithTimedOff` from off, though not all (one TS011F ignores it when off).
 - **Turn on or off with timer on Hue.** The bridge's own timers keep running through a plain on or off, from Home
   Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with
   ZHA, Zigbee2MQTT or Matter.
@@ -48,8 +50,10 @@ some devices can't do is not marked there.
 
 ## Zigbee plugs and switches
 
-`turn_on_for` on Zigbee2MQTT and ZHA plugs and switches isn't built, but for the Zigbee2MQTT Tuya countdown plugs,
-which DeviceSide drives by Tuya's own countdown ([Zigbee2MQTT](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs));
+`turn_on_for` on Zigbee2MQTT and ZHA plugs and switches isn't built, but for the Zigbee2MQTT Tuya countdown plugs
+and Tuya datapoint devices with one countdown, which DeviceSide drives by Tuya's own countdown
+([Zigbee2MQTT](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs),
+[datapoint](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown));
 the [compatibility page](device-compatibility.md#zigbee2mqtt) gives each maker's level. Few honor the Zigbee timer
 command:
 IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F's runs only Tuya's way:

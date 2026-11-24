@@ -10,9 +10,12 @@ import pytest
 from homeassistant.const import Platform
 
 from custom_components.deviceside import actions
+from custom_components.deviceside.core.adapter import Adapter, OwnCallsOnly
 from custom_components.deviceside.core.errors import Reason
+from custom_components.deviceside.core.models import TimedRequest
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
+    AdapterScope,
     Family,
     FamilyScope,
     IntegrationInfo,
@@ -546,3 +549,44 @@ def test_a_not_built_entry_only_on_an_action_whose_failure_harms():
     with pytest.raises(ValueError, match=r"not_built entries \['tuya'\], but set_attributes's failure doesn't harm"):
         _registry([Unharmed, Classed], CLASSED)
     _registry([Harmed], CLASSED)
+
+
+async def _own(adapter, hass, request, target):
+    raise AssertionError("no registry test sends")
+
+
+ONLY_OWN = AdapterScope(
+    domains=verified("switch"), capabilities=labs("E"), own_calls={"E": OwnCall(_own)}, own_calls_only=True
+)
+CLASSED_INFO = replace(INTEGRATION, capability=lambda hass, target: "E", classes={"E": ANYWHERE})
+
+
+class OnlyOwnTurnOffFor(OwnCallsOnly, Adapter[TimedRequest]):
+    action = "turn_off_for"
+    integration = "fake"
+    scope = ONLY_OWN
+
+
+async def test_an_adapter_that_serves_only_own_calls_takes_the_base_whose_execute_nothing_reaches():
+    adapter = _registry([OnlyOwnTurnOffFor], CLASSED_INFO).adapter("turn_off_for", "fake")
+
+    with pytest.raises(AssertionError, match="serves only its own calls"):
+        await adapter.execute(None, TimedRequest(duration_s=5), [])
+
+
+def test_a_scope_that_serves_only_own_calls_and_the_base_come_together():
+    class Flagless(OwnCallsOnly, Adapter[TimedRequest]):
+        action = "turn_off_for"
+        integration = "fake"
+        scope = replace(ONLY_OWN, own_calls_only=False)
+
+    class Baseless(FakeTurnOffFor):
+        scope = ONLY_OWN
+
+    # The mixin after a base with an execute of its own: that one runs, so it counts as no mixin.
+    class Shadowed(FakeTurnOffFor, OwnCallsOnly):
+        scope = ONLY_OWN
+
+    for cls in (Flagless, Baseless, Shadowed):
+        with pytest.raises(ValueError, match="own_calls_only\\) and the OwnCallsOnly base come together"):
+            _registry([cls], CLASSED_INFO)

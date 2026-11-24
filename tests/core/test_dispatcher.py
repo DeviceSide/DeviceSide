@@ -1693,6 +1693,69 @@ async def test_a_group_with_a_member_that_takes_a_call_of_its_own_falls_back(has
     assert "switch.fake_group falls back to its members (own_call)" in caplog.text
 
 
+# An adapter that serves only its classes' own calls (AdapterScope.own_calls_only): E takes its own, nothing else is
+# served, and execute is never run (the fake's records each run of it as "fake").
+ONLY_OWN = AdapterScope(
+    domains=verified("light", "switch"),
+    capabilities=labs("E"),
+    own_calls={"E": TAKES_OWN},
+    own_calls_only=True,
+    native_groups=True,
+)
+
+
+@pytest.mark.usefixtures("classed", "harmless")
+@pytest.mark.parametrize(
+    ("entity_id", "reason"),
+    [
+        pytest.param("switch.unknown", "class_unknown", id="none"),
+        pytest.param("switch.pending_e", "class_unknown", id="unplaced"),
+        pytest.param("switch.a", "not_built", id="unserved"),
+    ],
+)
+@pytest.mark.parametrize("on", [False, True])
+async def test_an_adapter_that_serves_only_own_calls_refuses_every_class_without_one(
+    hass, fake, reset_script, entity_id, reason, on
+):
+    """With Labs on or off, and though the action's failure doesn't harm here (`harmless`): only an own call runs."""
+    add_fake_entity(hass, fake, entity_id)
+    allow_labs(hass, on)
+
+    with patch.object(FakeTurnOffFor, "scope", ONLY_OWN):
+        assert await refusal(hass, "turn_off_for", {"entity_id": entity_id, "duration": 5}) == reason
+
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed", "harmless")
+async def test_an_adapter_that_serves_only_own_calls_sends_an_own_call_class_its_call(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.e")
+    allow_labs(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", ONLY_OWN):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.e", "duration": 5})
+
+    assert response == {"switch.e": SENT | {"capability": "E"}}
+    assert [(sender, ids) for sender, _, _, ids in reset_script.calls] == [("own", ["switch.e"])]
+
+
+@pytest.mark.usefixtures("classed", "harmless")
+async def test_a_group_on_an_adapter_that_serves_only_own_calls_falls_back_to_its_members(
+    hass, fake, reset_script, caplog
+):
+    """The group's own call would be execute's: it falls back, the own-call member gets its call, the other is
+    skipped as not built."""
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.e"])
+    allow_labs(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", ONLY_OWN):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.e": SENT | {"capability": "E"}}
+    assert [(sender, ids) for sender, _, _, ids in reset_script.calls] == [("own", ["switch.e"])]
+    assert "switch.a (not_built)" in caplog.text
+
+
 @pytest.mark.usefixtures("classed")
 async def test_a_named_group_none_of_whose_members_runs_raises_own_call(hass, fake, reset_script):
     add_fake_entity(hass, fake, "switch.e", state="unavailable")

@@ -27,10 +27,20 @@ capabilities:
   tuya_countdown_tz3000_gznh2xla: {phrase: _TZ3000_gznh2xla, section: Tuya TS011F plugs}
   tuya_countdown_tz3000_okaz9tjs: {phrase: _TZ3000_okaz9tjs, section: Tuya TS011F plugs}
   tuya_countdown_harmed: {phrase: _TZ3000_gjnozsaz, section: Tuya TS011F plugs}
+  # Tuya's datapoint countdown, a class per limit (families/tuya/datapoint.py): one page section, which the card names
+  # by its phrase (`sections` below) where a line holds all three; each phrase names its limit, as the Not supported
+  # table shows each class on its own.
+  tuya_datapoint:
+    phrase: Tuya datapoint devices with one 12-hour countdown
+    section: Tuya datapoint devices with one countdown
+  tuya_datapoint_24h:
+    phrase: Tuya datapoint devices with one 24-hour countdown
+    section: Tuya datapoint devices with one countdown
+  tuya_datapoint_2h: {phrase: AVATTO ZBS16 (a Tuya datapoint relay), section: Tuya datapoint devices with one countdown}
   tuya_mcu:
-    phrase: Tuya datapoint devices
+    phrase: other Tuya datapoint devices
     section: Tuya
-    domains: {light: Tuya datapoint lights, switch: Tuya datapoint switches}
+    domains: {light: other Tuya datapoint lights, switch: other Tuya datapoint switches}
   sengled: {phrase: Sengled bulbs, section: Sengled}
   gledopto: {phrase: Gledopto lights, section: Gledopto}
   other:
@@ -39,6 +49,8 @@ capabilities:
     domains: {light: other brands' lights, switch: other brands' plugs and switches}
 # A phrase for a page section; with `variants`, the card gives its classes a parent bullet, saying what to check.
 sections:
+  Tuya datapoint devices with one countdown:
+    phrase: Tuya datapoint devices with one countdown
   Tuya TS011F plugs:
     phrase: Tuya TS011F plugs
     variants: check Manufacturer and the countdown setting on the plug's Zigbee2MQTT page

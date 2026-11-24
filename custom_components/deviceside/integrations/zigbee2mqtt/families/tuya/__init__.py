@@ -2,8 +2,9 @@
 
 On Zigbee the call and the firmware family decide the result together (research/2026-11-14-timed-on-call-patterns.md),
 and Tuya's departs most: Z2M has no `on_time` converter for it, so turn_on_for's call would leave a Tuya device on.
-The classes split it by the call that would serve each: the countdown plugs get Tuya's countdown (countdown.py), and
-the other classes are refused there until theirs is built (the integration's refusals.py holds those entries, and
+The classes split it by the call that would serve each: the countdown plugs get Tuya's countdown (countdown.py), the
+single-endpoint datapoint devices research names Tuya's datapoint countdown (datapoint.py), and the other classes are
+refused there until theirs is built (the integration's refusals.py holds those entries, and
 why).
 
 Two rule groups, as the integration places them apart (families/__init__.py): ZIGBEE_RULES, on the device's own
@@ -18,6 +19,7 @@ import re
 from homeassistant.const import Platform
 
 from .countdown import COUNTDOWN
+from .datapoint import DATAPOINT_CALLS, DATAPOINT_CLASSES, DATAPOINT_RULES
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, labs, verified
 from .....zigbee.tuya import (
@@ -36,7 +38,8 @@ TUYA_ZCL = "tuya_zcl"
 # model so every firmware inherits the refusal: a TS011F that isn't on Tuya's countdown below.
 TUYA_TS011F = "tuya_ts011f"
 # A TS011F plug Zigbee2MQTT drives by Tuya's countdown (research/2026-11-14-tuya-countdown.md, §1, converter A): its
-# definition exposes `countdown`, and isn't the datapoint ZOT60. turn_on_for sends it that call (countdown.py).
+# definition exposes `countdown`, and isn't the datapoint ZOT60 (datapoint.py). turn_on_for sends it that call
+# (countdown.py).
 TUYA_COUNTDOWN = "tuya_countdown"
 # The maker strings on Tuya's countdown with a record of their own (plan Decision 35: a string is Verified only by its
 # own evidence), each a class of its own, so the coverage check asks each for its record (string_class).
@@ -45,6 +48,8 @@ VERIFIED_STRINGS = ("_TZ3000_0zfrhq4i", "_TZ3000_typdpbpg", "_TZ3000_gznh2xla", 
 # built yet, as Tuya's inching would plausibly serve it (plan Decision 41).
 TUYA_COUNTDOWN_HARMED = "tuya_countdown_harmed"
 # A Tuya datapoint device (TS0601): no Zigbee On/Off cluster, so no raw ZCL read or write reaches it (Decision 12).
+# The single-endpoint definitions on Tuya's datapoint countdown that research names have classes of their own
+# (datapoint.py); this is the rest.
 TUYA_MCU = "tuya_mcu"
 
 
@@ -60,10 +65,10 @@ COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
 # Tuya's TS011F plugs, on its countdown or not.
 _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
 # Every Tuya class, in the order the cards list them (scripts/gen_compat.py reads a scope's classes in its order).
-_ALL = (TUYA_ZCL, *_TS011F, TUYA_MCU)
+_ALL = (TUYA_ZCL, *_TS011F, *DATAPOINT_CLASSES, TUYA_MCU)
 # The classes that can be lights: Tuya's ZCL and datapoint devices include bulbs, dimmers and LED controllers
 # (TS0501B, TS110E, TS0601 dimmers), as well as plugs and switches.
-_LIGHTS = (TUYA_ZCL, TUYA_MCU)
+_LIGHTS = (TUYA_ZCL, *DATAPOINT_CLASSES, TUYA_MCU)
 # Each class's domains (IntegrationInfo.classes): a TS011F is a plug, so a switch, which no action for lights alone
 # reaches. Zigbee2MQTT can be set to show one as a light, on/off alone; it stays a switch here (docs/evidence.md, "A
 # class names its domains"), as none of those actions has anything to do on it but stop.
@@ -76,16 +81,19 @@ CLASSES = {
 _TS011F_MODEL = re.escape(TS011F_MODEL)
 _DATAPOINT_MODEL = re.escape(DATAPOINT_MODEL)
 # Tuya's countdown, converter A, on a TS011F: the definition exposes `countdown` for the whole device (Z2M's own
-# statement that it takes the key; a multi-gang one exposes one per endpoint, `countdown_l1`, so isn't matched) and
-# isn't the ZOT60, whose `countdown` is a datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The
-# expose doesn't tell A from B).
-_COUNTDOWN = {"zigbee_model": _TS011F_MODEL, "exposes": "countdown", "definition_model": "(?!ZOT60$).*"}
+# statement that it takes the key; a multi-gang one exposes one per endpoint, `countdown_l1`, so isn't matched). The
+# ZOT60, a TS011F whose `countdown` is a datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The
+# expose doesn't tell A from B), is the datapoint rules', which run first.
+_COUNTDOWN = {"zigbee_model": _TS011F_MODEL, "exposes": "countdown"}
 
-# The Zigbee strings, from bridge/devices. The models go first: a TS011F's manufacturer (`_TZ3000_…`) matches
-# `tuya_zcl`'s, and a TS0601's model matches `tuya_zcl`'s `TS` and four digits. The TS011F's go in this order: the
-# string reported harmed, then each Verified string's and `tuya_countdown` (both on converter A's definition, read
-# from bridge/devices), then `tuya_ts011f`, which every TS011F matches.
+# The Zigbee strings and the definition, from bridge/devices. The datapoint countdown's definitions go first
+# (datapoint.py): the ZOT60 is a TS011F with converter A's expose, and the rest TS0601s or `_TZE…` strings, which the
+# `tuya_mcu` rules match. Then the models: a TS011F's manufacturer (`_TZ3000_…`) matches `tuya_zcl`'s, and a TS0601's
+# model matches `tuya_zcl`'s `TS` and four digits. The TS011F's go in this order: the string reported harmed, then
+# each Verified string's and `tuya_countdown` (both on converter A's definition, read from bridge/devices), then
+# `tuya_ts011f`, which every TS011F matches.
 ZIGBEE_RULES = (
+    *DATAPOINT_RULES,
     Rule(
         TUYA_COUNTDOWN_HARMED,
         {
@@ -114,17 +122,29 @@ REGISTRY_RULES = (
     Rule(TUYA_ZCL, {"model_id": "TS.*"}),
 )
 
-# turn_on_for, the one action that serves a Tuya class (index.md, Device classes): each countdown maker string with a
-# record of its own, Verified, and the rest of the countdown plugs (`tuya_countdown`), in Labs on their
-# kin's pass of the same call (docs/evidence.md, In Labs). Switches alone, as Z2M shows a plug, sent Tuya's countdown,
-# which a Z2M group's call isn't, so a group with one falls back to its members. The classes off the countdown are
-# left out, and the integration refuses them there, as today's call would harm them (refusals.py). Every other action
-# leaves every Tuya class out: no pass or research admits Tuya's firmware there, and get_attributes reads only what
-# another action serves (core/registry.py, check_queries; a countdown plug's read is refused, refusals.py).
+# turn_on_for, which serves every Tuya class an action serves (index.md, Device classes): each countdown maker string
+# with a record of its own, Verified, and the rest of the countdown plugs (`tuya_countdown`), in Labs on their kin's
+# pass of the same call (docs/evidence.md, In Labs). Switches alone, as Z2M shows a plug, sent Tuya's countdown, which a
+# Z2M group's call isn't, so a group with one falls back to its members. The datapoint countdown's classes, on lights
+# and switches, in Labs on research (plan 2026-11-24-tuya-datapoint-single-endpoint.md, Decision 1), each sent its own
+# call (datapoint.py), so a group with one falls back too. The classes off the countdown are left out, and the
+# integration refuses them there, as today's call would harm them (refusals.py). Every other action but turn_off_for
+# (below) leaves every Tuya class out: no pass or research admits Tuya's firmware there, and get_attributes reads only
+# what another action serves (core/registry.py, check_queries; a countdown plug's read is refused, refusals.py).
 _TURN_ON_FOR = FamilyScope(
     capabilities=verified(*VERIFIED_COUNTDOWNS, domains=(Platform.SWITCH,))
-    | labs(TUYA_COUNTDOWN, domains=(Platform.SWITCH,)),
-    own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
+    | labs(TUYA_COUNTDOWN, domains=(Platform.SWITCH,))
+    | labs(*DATAPOINT_CLASSES),
+    own_calls={**dict.fromkeys(COUNTDOWNS, COUNTDOWN), **DATAPOINT_CALLS},
 )
 
-FAMILY = Family(key="tuya", maintainers=(), classes=CLASSES, scopes={"turn_on_for": _TURN_ON_FOR})
+# turn_off_for: the datapoint countdown's classes alone, on lights and switches, in Labs on research (as turn_on_for),
+# each sent its own call (datapoint.py), the one call any Zigbee device has for it.
+_TURN_OFF_FOR = FamilyScope(capabilities=labs(*DATAPOINT_CLASSES), own_calls=DATAPOINT_CALLS)
+
+FAMILY = Family(
+    key="tuya",
+    maintainers=(),
+    classes=CLASSES,
+    scopes={"turn_on_for": _TURN_ON_FOR, "turn_off_for": _TURN_OFF_FOR},
+)

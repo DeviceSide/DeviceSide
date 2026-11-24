@@ -74,6 +74,8 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "set_attributes": _NOT_BUILT,
     # turn_on_for: its call harms some lights and most plugs, so the integration refuses `other` there (refusals.py).
     "turn_on_for": _NOT_BUILT,
+    # turn_off_for: no call for any brand's device but Tuya's datapoint countdown, which its own classes take.
+    "turn_off_for": _NOT_BUILT,
 }
 
 

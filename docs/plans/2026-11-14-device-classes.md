@@ -1133,6 +1133,8 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
       come, don't arm it, and report that rather than sending. This replaces Z2M's single combined payload.
     - Step 5 part 3 builds it (its steps 3 to 5). *Deferred by Decision 73* to v0.1.x:
       [plan](2026-11-15-tuya-datapoint-countdown.md).
+    - *Superseded* by [2026-11-24-tuya-datapoint-single-endpoint.md](2026-11-24-tuya-datapoint-single-endpoint.md)
+      (Jason, 2026-11-24), its Decision 6.
 68. **A report of a harmful failure moves the identity it names** ([evidence.md](../evidence.md#levels), Contrary
     evidence): a credible report of a harmful failure, upstream or a DeviceSide issue, on the call DeviceSide sends,
     lets an integration maintainer land a doesn't-work or not-yet-supported entry with `harms`, by Decision 70's

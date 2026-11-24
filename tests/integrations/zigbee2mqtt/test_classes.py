@@ -123,6 +123,7 @@ ALL = {
     "get_attributes",
     "set_attributes",
     "turn_on_for",
+    "turn_off_for",
 }
 CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
 
@@ -135,14 +136,19 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         # Another brand's lights and plugs: no pass, and a plug that never turns off would take on_time.
         ("other", {"turn_on_for"}, ALL - CERTIFIED, set()),
         # Hue's plug, on the switch domain alone; its bulbs keep their own level.
-        ("hue", {"turn_on_for"}, set(), set()),
+        ("hue", {"turn_on_for"}, {"turn_off_for"}, set()),
         ("tuya_zcl", {"turn_on_for"}, ALL, set()),
         # Nor a TS011F off the countdown, so get_attributes doesn't read it.
-        ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
+        ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"}, set()),
         # Reported failing Tuya's countdown with harm (Decision 41).
-        ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
+        ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"}, set()),
         # The time left can't be read (probe P6); turn_on_for serves it in Labs, on its kin's pass.
-        ("tuya_countdown", set(), {"get_attributes"}, {"get_attributes"}),
+        ("tuya_countdown", set(), {"turn_off_for", "get_attributes"}, {"get_attributes"}),
+        # Tuya's datapoint countdown: turn_on_for and turn_off_for serve them in Labs, on research, and no action holds
+        # an entry for them.
+        ("tuya_datapoint", set(), ALL - {"turn_on_for", "turn_off_for"}, set()),
+        ("tuya_datapoint_24h", set(), ALL - {"turn_on_for", "turn_off_for"}, set()),
+        ("tuya_datapoint_2h", set(), ALL - {"turn_on_for", "turn_off_for"}, set()),
         ("tuya_mcu", {"turn_on_for"}, ALL, set()),
         ("sengled", set(), ALL, set()),
         ("gledopto", set(), ALL, set()),

@@ -3,6 +3,9 @@
 **Target: v0.1.x, after v0.1.0.** Deferred from the device-classes plan's step 5 part 3 by its Decision 73
 ([plan](2026-11-14-device-classes.md)). Nothing here is built for v0.1.0.
 
+**Narrowed** by [2026-11-24-tuya-datapoint-single-endpoint.md](2026-11-24-tuya-datapoint-single-endpoint.md): it builds
+the single-endpoint devices only, and amends Design 2 (one publish, not the safe call pattern).
+
 ## Coordination
 
 Intent: serve `turn_on_for`, and for the first time `turn_off_for`, on the Tuya datapoint devices Zigbee2MQTT gives a

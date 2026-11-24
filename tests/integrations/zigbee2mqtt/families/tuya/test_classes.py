@@ -1,7 +1,7 @@
-"""Zigbee2MQTT's Tuya family: its two rule groups, each alone, the catalog they read, and the raw ZCL calls it
-leaves a datapoint device out of. The countdown plugs' classes and call are test_countdown.py's; the order between
-its groups and the other families' is the integration's (test_classification.py), as are turn_on_for's refusals
-(test_refusals.py)."""
+"""Zigbee2MQTT's Tuya family: its two rule groups, each alone, the catalog they read, the datapoint countdown's
+definitions, and the raw ZCL calls it leaves a datapoint device out of. The countdown plugs' classes and call are
+test_countdown.py's; the order between its groups and the other families' is the integration's
+(test_classification.py), as are turn_on_for's refusals (test_refusals.py)."""
 
 import re
 
@@ -10,11 +10,13 @@ import pytest
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.rules import match
 from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.core.scope import Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION
 from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
+from custom_components.deviceside.integrations.zigbee2mqtt.families.tuya import datapoint
 from custom_components.deviceside.zigbee import tuya as catalog
 
-from ...conftest import TUYA, TUYA_MCU, commands, light
+from ...conftest import DEVICES, TUYA, TUYA_MCU, commands, light
 from .....conftest import allow_labs, refusal
 
 
@@ -48,6 +50,117 @@ def test_the_zigbee_string_rules_read_the_catalog_s_strings():
 )
 def test_the_zigbee_string_rules(manufacturer, model, expected):
     assert match(tuya.ZIGBEE_RULES, {"zigbee_manufacturer": manufacturer, "zigbee_model": model}) == expected
+
+
+# Every definition on Tuya's datapoint countdown, and its class, by its expose's value_max
+# (research/2026-11-24-tuya-datapoint-call.md, §3).
+DATAPOINT_DEFINITIONS = {
+    "ZDMS16-1": "tuya_datapoint",
+    "ZOT60": "tuya_datapoint",
+    "FK_V02": "tuya_datapoint",
+    "GL-SPI-206P": "tuya_datapoint",
+    "SFD02-Z": "tuya_datapoint",
+    "SFD02-Z_2": "tuya_datapoint",
+    "QADZ1LR": "tuya_datapoint",
+    "TS0601_dimmer_1_gang_1": "tuya_datapoint",
+    "TS0601_dimmer_1_gang_2": "tuya_datapoint",
+    "TS0601_dimmer_5": "tuya_datapoint",
+    "MG-ZG01W": "tuya_datapoint",
+    "_TZE28C1000000_jlbsptkl": "tuya_datapoint",
+    "ZMS-206US-1": "tuya_datapoint",
+    "TO-DM-W/B": "tuya_datapoint_24h",
+    "TS0601_multifunction_switch": "tuya_datapoint_24h",
+    "D1Z": "tuya_datapoint_24h",
+    "D5Z": "tuya_datapoint_24h",
+    "ZBS16": "tuya_datapoint_2h",
+}
+COUNTDOWN = frozenset({"state", "countdown"})
+
+
+def datapoint_fields(definition: str, exposes=COUNTDOWN) -> dict:
+    return {
+        "zigbee_manufacturer": TUYA_MCU,
+        "zigbee_model": "TS0601",
+        "definition_model": definition,
+        "exposes": exposes,
+    }
+
+
+def test_each_datapoint_class_s_limit_is_its_definitions_value_max():
+    assert datapoint.CLASS_MAX_S == {"tuya_datapoint": 43200, "tuya_datapoint_24h": 86400, "tuya_datapoint_2h": 7210}
+    assert {model: datapoint.CLASS_MAX_S[name] for model, name in DATAPOINT_DEFINITIONS.items()} == dict(
+        datapoint.DATAPOINT_DEFINITIONS
+    )
+
+
+@pytest.mark.parametrize(("definition", "expected"), DATAPOINT_DEFINITIONS.items())
+def test_each_datapoint_definition_with_the_device_s_countdown_takes_its_limit_s_class(definition, expected):
+    assert match(tuya.ZIGBEE_RULES, datapoint_fields(definition)) == expected
+
+
+@pytest.mark.parametrize(
+    ("definition", "exposes"),
+    [
+        # An admitted definition whose countdown isn't the device's: per endpoint, or none.
+        pytest.param("TS0601_dimmer_1_gang_1", frozenset({"state"}), id="no_device_countdown"),
+        # Definitions research leaves out, or doesn't name.
+        pytest.param("ZBN-DJ-63", COUNTDOWN, id="left_out"),
+        pytest.param("TS0601_dimmer_2", COUNTDOWN, id="multi_gang"),
+        pytest.param("TS0601_dimmer_9", COUNTDOWN, id="not_named"),
+        # Each model matches whole: escaped, and no prefix or longer name of one.
+        pytest.param("ZDMS16-1x", COUNTDOWN, id="longer"),
+        pytest.param("ZDMS16", COUNTDOWN, id="prefix"),
+        pytest.param("TO-DM-WxB", COUNTDOWN, id="escaped"),
+    ],
+)
+def test_any_other_datapoint_device_stays_tuya_mcu(definition, exposes):
+    assert match(tuya.ZIGBEE_RULES, datapoint_fields(definition, exposes)) == "tuya_mcu"
+
+
+def datapoint_light(hass, broker, definition: str, exposes: list) -> str:
+    """A Tuya datapoint dimmer Z2M registers under its definition, and lists in bridge/devices with it."""
+    entity_id = light(hass, broker, manufacturer="Tuya", model_id=definition, zigbee=(TUYA_MCU, "TS0601"))
+    broker.retained[DEVICES][-1]["definition"] = {"model": definition, "exposes": exposes}
+    return entity_id
+
+
+STATE = {"type": "light", "features": [{"name": "state", "property": "state"}]}
+
+
+def countdown(endpoint: str | None = None) -> dict:
+    """ZHC's countdown expose; withEndpoint keeps the name and suffixes the property."""
+    if endpoint is None:
+        return {"type": "numeric", "name": "countdown", "property": "countdown", "unit": "s"}
+    return {"type": "numeric", "name": "countdown", "property": f"countdown_{endpoint}", "endpoint": endpoint}
+
+
+async def test_bridge_devices_places_a_datapoint_device_by_its_definition(hass, setup_production, broker):
+    entity_id = datapoint_light(hass, broker, "TS0601_dimmer_1_gang_1", [STATE, countdown()])
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_datapoint"
+
+
+async def test_a_multi_gang_datapoint_device_stays_tuya_mcu(hass, setup_production, broker):
+    """Its countdowns are per endpoint, so the definition exposes none for the device."""
+    entity_id = datapoint_light(hass, broker, "ZMS-206EU-2", [STATE, countdown("l1"), countdown("l2")])
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_mcu"
+
+
+async def test_an_admitted_definition_whose_countdown_is_per_endpoint_stays_tuya_mcu(hass, setup_production, broker):
+    """The expose guard on the real path: rules.definition_fields drops a per-endpoint copy, so an allowlisted
+    definition exposing only `countdown_l1` has no countdown for the device."""
+    entity_id = datapoint_light(hass, broker, "TS0601_dimmer_1_gang_1", [STATE, countdown("l1")])
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_mcu"
+
+
+async def test_until_bridge_devices_lists_it_a_datapoint_device_waits(hass, setup_production, broker):
+    """The registry can't show its exposes, so it stays an Unplaced tuya_mcu until bridge/devices lists it."""
+    entity_id = datapoint_light(hass, broker, "TS0601_dimmer_1_gang_1", [STATE, countdown()])
+    del broker.retained[DEVICES]
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == Unplaced("tuya_mcu")
 
 
 @pytest.mark.parametrize(

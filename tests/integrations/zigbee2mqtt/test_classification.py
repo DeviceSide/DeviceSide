@@ -25,6 +25,8 @@ NO_COUNTDOWN = frozenset({"state"})
 FULL = frozenset({"state", "brightness", "countdown"})
 LIDL = ("Lidl", "HG06337")  # a rebadged TS011F: neither registry field shows Tuya
 GLEDOPTO_TUYA = ("Gledopto", "GL-SPI-206P")  # Gledopto's definition, Tuya datapoint firmware
+# The exposes of a single-endpoint Tuya datapoint dimmer on Tuya's datapoint countdown.
+DATAPOINT = frozenset({"state", "brightness", "countdown"})
 PLUG = ("Tuya", "TS011F_plug_1")
 MOES = ("Moes", "ZM-105")  # a vendor and definition no registry rule reads
 
@@ -77,6 +79,11 @@ DEVICES = {
     # its Tuya class.
     "gledopto_badged_tuya_before": (device(GLEDOPTO_TUYA), "gledopto"),
     "gledopto_badged_tuya_after": (device(GLEDOPTO_TUYA, (TUYA_MCU, "TS0601")), "tuya_mcu"),
+    # And with its definition's countdown, Tuya's datapoint one, not Gledopto's class.
+    "gledopto_badged_tuya_datapoint": (
+        device(GLEDOPTO_TUYA, (TUYA_MCU, "TS0601"), GLEDOPTO_TUYA[1], DATAPOINT),
+        "tuya_datapoint",
+    ),
     "sengled_badged_tuya_after": (device(("Sengled", "E11-G13"), (TUYA, "TS0001")), "tuya_zcl"),
     "lidl_before": (device(LIDL), "other"),
     "lidl_after": (device(LIDL, (TUYA, "TS011F")), "tuya_ts011f"),
@@ -104,6 +111,40 @@ DEVICES = {
     "countdown_gznh2xla": (countdown_plug("_TZ3000_gznh2xla"), "tuya_countdown_tz3000_gznh2xla"),
     "countdown_okaz9tjs": (countdown_plug("_TZ3000_okaz9tjs"), "tuya_countdown_tz3000_okaz9tjs"),
     "countdown_unrecorded": (countdown_plug(TUYA), "tuya_countdown"),
+    # Tuya's datapoint countdown, a class per limit, on the definitions research names (families/tuya/datapoint.py).
+    "datapoint": (
+        device(("Tuya", "TS0601_dimmer_1_gang_1"), (TUYA_MCU, "TS0601"), "TS0601_dimmer_1_gang_1", DATAPOINT),
+        "tuya_datapoint",
+    ),
+    "datapoint_24h": (
+        device(("Tuya", "TS0601_multifunction_switch"), (TUYA_MCU, "TS0601"), "TS0601_multifunction_switch", COUNTDOWN),
+        "tuya_datapoint_24h",
+    ),
+    "datapoint_2h": (device(("AVATTO", "ZBS16"), (TUYA_MCU, "TS0601"), "ZBS16", COUNTDOWN), "tuya_datapoint_2h"),
+    # A TS011F with converter A's expose, yet a datapoint countdown: before the TS011F rules.
+    "datapoint_zot60": (
+        device(("AVATTO", "ZOT60"), ("_TZ3218_pfnjjx6a", "TS011F"), "ZOT60", COUNTDOWN),
+        "tuya_datapoint",
+    ),
+    # Left out of the datapoint countdown, with a device-wide one: they keep their class. LYAI-14 reports a ZCL
+    # manufacturer string, and switches by ZCL.
+    "datapoint_left_out_lyai_14": (
+        device(("Tuya", "LYAI-14"), ("_TZ3290_ixd9mvv4", "TS0049"), "LYAI-14", COUNTDOWN),
+        "tuya_zcl",
+    ),
+    "datapoint_left_out_zbn_dj_63": (
+        device(("Tuya", "ZBN-DJ-63"), ("_TZE204_lb0fsvba", "TS0601"), "ZBN-DJ-63", COUNTDOWN),
+        "tuya_mcu",
+    ),
+    "datapoint_left_out_fk_bv05": (
+        device(("FrankEver", "FK-BV05"), ("_TZE200_nbqnmkee", "TS0601"), "FK-BV05", COUNTDOWN),
+        "tuya_mcu",
+    ),
+    # Multi-gang: its countdowns are per endpoint, so none is the device's.
+    "datapoint_multi_gang": (
+        device(("Zemismart", "ZMS-206EU-2"), ("_TZE204_3ctwoaip", "TS0601"), "ZMS-206EU-2", NO_COUNTDOWN),
+        "tuya_mcu",
+    ),
     # The registry fallbacks, for a Tuya device bridge/devices doesn't show yet: the models before the vendor and the
     # catch-all.
     "registry_ts011f": (device(PLUG), "tuya_ts011f"),
