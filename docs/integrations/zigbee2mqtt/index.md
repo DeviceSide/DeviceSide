@@ -197,7 +197,11 @@ time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 ## Sharp edges
 
 - **Custom base topic.** Groups and devices on a base topic other than `zigbee2mqtt` are refused
-  (`not_addressable`).
+  (`not_addressable`). The debug log quotes a device's base topic, so stray spaces show: one user's add-on options
+  held `'    zigbee2mqtt'`, which HA's UI hides ([#575](https://github.com/DeviceSide/DeviceSide/issues/575)).
+  Changing the base topic changes every Zigbee2MQTT entity's unique_id, which ends in it, so HA makes new entities
+  (`_2`) and leaves the old ones unavailable. To keep the old ones, take a backup, stop HA, replace the base topic at
+  the end of each Zigbee2MQTT unique_id in `.storage/core.entity_registry`, change it in Zigbee2MQTT, then start HA.
 - **A device named with a bare number** that matches a group's ID gets that group's commands.
 - **Devices with several lights or switches** (a two-gang switch, a dual-channel Gledopto, a two-gang relay) are
   refused (`not_addressable`) by every action, each of their lights or switches, the first too (a plug's own child

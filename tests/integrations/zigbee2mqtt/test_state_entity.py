@@ -94,14 +94,45 @@ async def test_a_config_switch_on_a_sensor_is_refused(hass, setup_production, br
     assert verdict(hass, "switch.sensor_indicator", reads_state=True) == Reason.NOT_ADDRESSABLE
 
 
-async def test_a_device_on_a_custom_base_topic_is_refused(hass, setup_production, broker):
-    """Its unique_id ends in its base topic, and the topics here name the default: the publish would reach nothing."""
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], base_topic="z2m", name="plug")
+async def test_a_device_on_a_custom_base_topic_is_refused(hass, setup_production, broker, caplog):
+    """Its unique_id ends in its base topic, and the topics here name the default: the publish would reach nothing.
+    The log line quotes the base topic: #575's held four leading spaces, which HA's UI hides."""
+    add_z2m_entity(
+        hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], base_topic="    zigbee2mqtt", name="plug"
+    )
     allow_labs(hass)
+    caplog.set_level("DEBUG")
 
     assert verdict(hass, "switch.plug") == Reason.NOT_ADDRESSABLE
+    assert (
+        "switch.plug: its Zigbee2MQTT base topic is '    zigbee2mqtt', not 'zigbee2mqtt', the only one DeviceSide"
+        " sends on, so a call wouldn't reach it"
+    ) in caplog.text
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_addressable"
     assert commands(broker) == []
+
+
+async def test_the_base_topic_is_the_tail_every_entity_on_the_device_shares(hass, setup_production, caplog):
+    """A base topic with an underscore, beside a sibling whose object_id has one too: the shared tail is the topic."""
+    for entity_id, object_id in (("switch.plug", None), ("switch.plug_child_lock", "switch_child_lock")):
+        add_z2m_entity(
+            hass, entry(hass), entity_id, unique_object_id=object_id, base_topic="my_z2m", manufacturer=PLUG[0]
+        )
+    caplog.set_level("DEBUG")
+
+    assert verdict(hass, "switch.plug_child_lock") == Reason.NOT_ADDRESSABLE
+    assert "switch.plug_child_lock: its Zigbee2MQTT base topic is 'my_z2m', not 'zigbee2mqtt'" in caplog.text
+
+
+async def test_a_sibling_on_the_default_base_topic_is_named_as_a_sibling(hass, setup_production, broker, caplog):
+    """The default base topic leaves the other reason: it isn't the unsuffixed entity."""
+    plug(hass, broker)
+    sibling(hass, "switch.plug_child_lock", "switch_child_lock")
+    caplog.set_level("DEBUG")
+
+    assert verdict(hass, "switch.plug_child_lock") == Reason.NOT_ADDRESSABLE
+    assert "switch.plug_child_lock: it isn't its device's unsuffixed switch entity, so a call" in caplog.text
+    assert "base topic is" not in caplog.text
 
 
 async def test_a_switch_group_falls_back_to_a_plug_beside_its_child_lock(hass, setup_production, broker):

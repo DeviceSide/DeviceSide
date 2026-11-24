@@ -102,6 +102,27 @@ def state_unique_id(address: str, domain: str) -> str:
     return f"{address}_{domain}_{_Z2M_BASE_TOPIC}"
 
 
+def base_topic(hass: HomeAssistant, device: dr.DeviceEntry, address: str) -> str | None:
+    """The base topic a Z2M device's entities were discovered under, for a log line: the `_`-separated tail their
+    unique_ids (`<ieee>_<object_id>_<base topic>`, state_unique_id) share, each keeping its object_id's first word;
+    None when the device has none. Two object_ids ending in the same word would add it, which no Z2M device shows."""
+    prefix = f"{address}_"
+    tails = [
+        e.unique_id[len(prefix) :].split("_")
+        for e in er.async_entries_for_device(er.async_get(hass), device.id, include_disabled_entities=True)
+        if e.platform == "mqtt" and e.unique_id.startswith(prefix)
+    ]
+    if not tails:
+        return None
+    shared = tails[0][1:]
+    for tail in tails[1:]:
+        n = 0
+        while n < min(len(shared), len(tail) - 1) and shared[-1 - n] == tail[-1 - n]:
+            n += 1
+        shared = shared[len(shared) - n :]
+    return "_".join(shared) or None
+
+
 def not_addressable(hass: HomeAssistant, target: Target, *, reads_state: bool = False) -> str | None:
     """The unsupported reason when no set topic reaches the target, or when a device target isn't its device's
     unsuffixed state entity (`state_unique_id`), else None; every Z2M adapter's supports() checks it. With
@@ -111,19 +132,37 @@ def not_addressable(hass: HomeAssistant, target: Target, *, reads_state: bool = 
     Addressing), so a call reaches exactly the entity Z2M defines by that key. Any other entity in the domain is
     refused: a gang (`light_l2`: the call would switch the default endpoint), and a config switch beside a plug (a
     child lock or a presence sensor's indicator: the call would switch the device itself). A device on a custom base
-    topic is refused too, its unique_id ending in that topic."""
+    topic is refused too, its unique_id ending in that topic; the log line quotes that topic, so stray spaces show
+    (a user's add-on options held four before `zigbee2mqtt`, which HA's UI hides: #575)."""
     if topic(target, "set") is None or (reads_state and not target.is_group and state_topic(target) is None):
+        if target.device is not None and (addr := z2m_address(target.device)) is not None:
+            if (group := _GROUP_ADDRESS.match(addr)) is not None and group.group(1) != _ENCODED_BASE_TOPIC:
+                _LOGGER.debug(  # log-ok: the fixed default base topic, no household address
+                    "%s: its Zigbee2MQTT group is on a base topic other than %r, the only one DeviceSide sends on,"
+                    " so a call wouldn't reach it",
+                    target.entity_id,
+                    _Z2M_BASE_TOPIC,
+                )
         return Reason.NOT_ADDRESSABLE
     if not target.is_group and target.device is not None:
         address = z2m_address(target.device)
         if address is None or target.entry.unique_id != state_unique_id(address, target.domain):
             # The first report of "my plug (or two-gang's light) was refused" holds why.
-            _LOGGER.debug(
-                "%s: it isn't its device's unsuffixed %s entity on the default base topic, so a call on its device"
-                " topic wouldn't reach it",
-                target.entity_id,
-                target.domain,
-            )
+            base = None if address is None else base_topic(hass, target.device, address)
+            if base is not None and base != _Z2M_BASE_TOPIC:
+                _LOGGER.debug(  # log-ok: a base topic is a Z2M setting, not a device address
+                    "%s: its Zigbee2MQTT base topic is %r, not %r, the only one DeviceSide sends on, so a call"
+                    " wouldn't reach it",
+                    target.entity_id,
+                    base,
+                    _Z2M_BASE_TOPIC,
+                )
+            else:
+                _LOGGER.debug(
+                    "%s: it isn't its device's unsuffixed %s entity, so a call on its device topic wouldn't reach it",
+                    target.entity_id,
+                    target.domain,
+                )
             return Reason.NOT_ADDRESSABLE
     return None
 
