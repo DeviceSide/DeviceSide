@@ -49,10 +49,11 @@ firmware, integration, call, both measurements; no household identifiers). A mai
 the evidence; a probe never changes a level locally. Its first step is to check whether Zigbee2MQTT can send a raw
 ZCL command without a converter (ZHA can, through `zha.issue_zigbee_cluster_command`).
 
-**Why not now:** on the datapoint path it depends on the Tuya datapoint countdown (#437) and its cancel path.
+**Why not now:** on the datapoint path it depends on the Tuya datapoint countdown (#582 for single-endpoint devices)
+and its cancel path.
 
 **Revisit when:**
-- #437 has landed and a device report leaves it unclear whether a timed device reads its timer in tenths or seconds.
+- a device report leaves it unclear whether a timed device reads its timer in tenths or seconds.
 
 **Plan:** [`docs/plans/2026-11-14-units-probe.md`](plans/2026-11-14-units-probe.md)
 
@@ -119,12 +120,21 @@ Address each endpoint of a multi-light device by its topic, with the endpoint na
 read its suffixed state keys back. Today every light or switch of a device with several in its domain is refused as
 `not_addressable` ([internals](integrations/zigbee2mqtt/internals.md#addressing)).
 
-**Why not now:** the refusal is safe and predictable, and no user has reported such a device.
+The same addressing would serve the multi-gang Tuya datapoint devices (TS0601 and kin), and every definition whose
+countdown is named per endpoint (`countdown_l1`), with the datapoint countdown: `turn_on_for` and `turn_off_for` by
+suffixed `state` and `countdown` keys. #582 serves the single-endpoint ones; the rest stay `tuya_mcu`, refused as
+not built (`integrations/zigbee2mqtt/refusals.py`; the multi-gang payload rules are in
+[the research](integrations/zigbee2mqtt/research/2026-11-14-tuya-datapoint-countdown.md)).
+
+**Why not now:** the refusal is safe and predictable, and no user has reported such a device or asked for timed
+actions on a multi-gang Tuya one.
 
 **Revisit when:**
-- a device report or request names a multi-light Zigbee2MQTT device refused as `not_addressable`.
+- a device report or request names a multi-light Zigbee2MQTT device refused as `not_addressable`;
+- a device report or request asks for `turn_on_for` or `turn_off_for` on a multi-gang Tuya datapoint device.
 
-**Plan:** none.
+**Plan:** the multi-gang payloads: [`docs/plans/2026-11-15-tuya-datapoint-countdown.md`](plans/2026-11-15-tuya-datapoint-countdown.md),
+Design 3.
 
 ## Split this register into a file per entry
 
