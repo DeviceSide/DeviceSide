@@ -240,9 +240,11 @@ def chip_command(cluster: str, name: str, *fields: str) -> type:
 # Objects.py.
 _OPTIONS = ("transitionTime", "optionsMask", "optionsOverride")
 _MOVE = ("moveMode", "rate", "optionsMask", "optionsOverride")
+_STOP = ("optionsMask", "optionsOverride")
 LEVEL_COMMANDS = {
     "MoveToLevel": ("level", *_OPTIONS),
     "MoveToLevelWithOnOff": ("level", *_OPTIONS),
+    "Stop": _STOP,
 }
 COLOR_COMMANDS = {
     "MoveToHueAndSaturation": ("hue", "saturation", *_OPTIONS),
@@ -251,6 +253,7 @@ COLOR_COMMANDS = {
     "MoveToSaturation": ("saturation", *_OPTIONS),
     "MoveHue": _MOVE,
     "EnhancedMoveHue": _MOVE,
+    "StopMoveStep": _STOP,
 }
 
 

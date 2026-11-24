@@ -677,11 +677,6 @@ def _covers(stop: AdapterScope | None, items: str, item: str, level: Level) -> b
     return mapping.get(item, -1) >= level
 
 
-# Integrations whose stop is the next step of an open plan, so its moves land a commit ahead of it. Matter: plan
-# docs/plans/2026-11-24-matter-light-actions.md, step 6, which removes this entry.
-_STOP_PENDING = frozenset({"matter"})
-
-
 def test_every_move_has_a_stop_at_least_as_strong():
     """A raise or lower that starts where stop is refused, or gated behind the option, can't be halted. Item levels
     alone (an adapter flagged whole has every domain in Labs): group reach (native_groups against expand_group)
@@ -690,7 +685,7 @@ def test_every_move_has_a_stop_at_least_as_strong():
     stops = {adapter.integration: adapter.scope for adapter in adapters if adapter.action == "stop"}
     gaps = []
     for adapter in adapters:
-        if not adapter.action.startswith(("raise_", "lower_")) or adapter.integration in _STOP_PENDING:
+        if not adapter.action.startswith(("raise_", "lower_")):
             continue
         stop = stops.get(adapter.integration)
         name = f"{adapter.integration} / {adapter.action}"

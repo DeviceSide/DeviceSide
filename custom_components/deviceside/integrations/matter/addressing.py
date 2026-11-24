@@ -122,6 +122,12 @@ def color_features(node, endpoint_id: int) -> int:
     return feature_map if isinstance(feature_map, int) else 0
 
 
+def has_color(node, endpoint_id: int) -> bool:
+    """True if the endpoint has a Color Control server: its FeatureMap is in the node's attribute cache (global to
+    every cluster, so present exactly when the server is). Sync, no I/O, like has_level."""
+    return color_feature_map_path(endpoint_id) in node.node_data.attributes
+
+
 def node_for(hass: HomeAssistant, target: Target):
     """The target's MatterNode from the client's cache, sync and with no I/O, or None: an unparsable unique ID, no
     loaded Matter entry, or a node the server doesn't hold."""

@@ -10,6 +10,7 @@ from .raise_brightness import MatterRaiseBrightness
 from .raise_hue import MatterRaiseHue
 from .raise_saturation import MatterRaiseSaturation
 from .set_attributes import MatterSetAttributes
+from .stop import MatterStop
 from .turn_on_for import MatterTurnOnFor
 from ...core.scope import IntegrationInfo
 
@@ -34,5 +35,6 @@ ADAPTERS = [
     MatterRaiseHue,
     MatterRaiseSaturation,
     MatterSetAttributes,
+    MatterStop,
     MatterTurnOnFor,
 ]
