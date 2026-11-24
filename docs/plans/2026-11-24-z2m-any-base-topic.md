@@ -106,3 +106,36 @@ ID are paid separately.
 `cd /Users/jason/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11-24-z2m-any-base-topic.md, starting at step 0.'`
 Opus: the orchestrator rules on the bridge-cache concurrency and the stored-data migration, where a wrong call gets
 past unit tests.
+
+## Handoff
+
+2026-11-24, from the session that ran steps 0–2.
+
+**Done**
+- Step 0: #580 closed; worktree `.claude/worktrees/z2m-any-base-topic`, branch `wt/z2m-any-base-topic`, draft PR #581.
+- Step 1: `docs/integrations/zigbee2mqtt/research/2026-11-24-base-topics.md` (47b04d33, review fixes 57ac6736).
+  Decision 2 holds upstream (2.14.3) and live (one instance, default base). The probe ran from Jason's shell: the
+  sandboxed Python can't reach the LAN HA, and the auto-mode classifier refuses using the rig token from this side.
+- Step 2: f2093149, review fixes 17d4a3a3 (its `Plan review:` note). `addressing.py` reads the base from the via
+  bridge's entities (a base every bridge entity admits, single survivor, else refused). `Address(base, kind, z2m_id)`.
+  Interim guard: `bridge_cache.get(hass, base=None)` returns the one cache only for its own base.
+  Suite 3062 passed, `--transcripts=check`, no transcript changed.
+
+**Next: step 3** (opus implementer, its own `/audit-code` of the range), then steps 4 and 5, then the PR audit.
+
+**Carried into step 3**
+- No cache when no bridge is registered at setup (`bridge_cache.async_setup` returns early): the registry-update
+  handling fixes it.
+- `set_check.checked` still calls `bridge_cache.get(hass)` with no base: it listens to one log across several
+  targets; move it per base.
+- The `base=None` path of `bridge_cache.get` is interim: remove it once every caller passes a base.
+
+**Carried into step 4**
+- `restore_journal.request_replay` sets `replays.base` on every call and replays every owed key on that base:
+  harmless with one cache, wrong with several ("last online wins"). Keys carrying the base fix it.
+- The journal's type alias was renamed `Key` (the new `Address` is addressing's).
+
+**Peers**: #582 (Tuya datapoint countdown, branch `wt/tuya-datapoint-single`) overlaps `integrations/zigbee2mqtt/**`.
+Its session was told: `publish_set` keeps its signature; addressing helpers and `bridge_cache.get` gain the base.
+
+**Open decisions**: none.
