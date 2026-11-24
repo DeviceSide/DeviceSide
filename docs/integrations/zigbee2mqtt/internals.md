@@ -70,8 +70,7 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
     others, and refuses a group with no other available light. A groupcast-only action (`turn_on_for`) reaches the
     endpoint the group holds, so it is unaffected.
 
-  The fix that addresses each endpoint, its topic named by the Z2M 2.6.0+ endpoint names, is future work
-  ([TODO](../../../TODO.md)).
+  The fix that addresses each endpoint, its topic named by the Z2M 2.6.0+ endpoint names, is not built (#429).
 
 ## Modules
 
