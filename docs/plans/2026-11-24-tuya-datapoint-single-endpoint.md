@@ -157,3 +157,27 @@ One implementer (opus: it admits devices whose failure harms, and may hit a core
 - No rig run gates the merge (Labs on research). **The Labs-lift decision** (tenet 8): one bought single-endpoint
   device (`TS0601_dimmer_1_gang_1` or ZMS-206US-1) on the rig, probing turn_on_for, turn_off_for, the cancel on a
   local toggle, and an unreachable device's set (the Decision 4 claim), recorded as a research file and test record.
+
+## Handoff
+
+2026-11-24, from the orchestrating session.
+
+- **Done:** steps 1–4, each with its implementer and a `plan-reviewer`, findings fixed or answered in each step's `Plan review:` commit
+  note. Decision 7 (own-calls-only scope in core) came from Jason mid-step 3; its core range `be230c8d..8c64fb74` had
+  its own `/audit-code` (clean, 3 Lows; two fixed in `0937f1ea`, the `Request` vs `RequestT` signature Low left).
+  Branch tip `422413c9`; full suite, `gen_compat --check`, `gen_features --check`, `check_ha_literals` pass there.
+- **Next:**
+  1. Merge `origin/main` into the branch (merge, never rebase): #581 (Z2M any base topic) landed as `46e8e5c6`.
+     publish_set keeps its signature; addressing helpers take the base topic, `Address` is `(base, kind, z2m_id)`,
+     `bridge_cache.get(hass, base)` needs the base, `restore_journal` keys are `Address`, and Z2M test devices need a
+     bridge `via_device` (fixture helpers set it). Expect fixes in `families/tuya/datapoint.py`,
+     `turn_off_for.py`, `light_turn_on.py`, `tests/integrations/zigbee2mqtt/families/tuya/test_datapoint.py` and
+     the classification tests. Run the four checks; transcripts should not change from the merge.
+  2. The PR audit (none recorded yet; one was briefed at the pre-merge diff and stopped): `audit-gate brief pr`,
+     Opus auditor (binding-rule surface: AdapterScope). The gate guesses the plan as the 2026-11-14 one: correct the
+     brief to this plan and add Decisions 7, D1Z/SFD02-Z_2 kept, LYAI-14 `tuya_zcl`, one `####` for the three classes.
+     Then `audit-gate record`, `owner-findings`, `audit-gate status`.
+  3. On CLEAN: write the PR summary, `gh pr ready 582`, then `merge-green 582 --squash --delete-branch` backgrounded.
+- **Open decisions:** none. Owners: every changed path is @jasonmx's (`scripts/owners.py`); no owner-notice names
+  another maintainer. PR has no comments or reviews as of 10:00.
+- **Branch:** `wt/tuya-datapoint-single`. **Worktree:** `.claude/worktrees/tuya-datapoint-single`. **PR:** #582 (draft).
