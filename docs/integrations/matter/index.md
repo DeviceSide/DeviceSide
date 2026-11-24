@@ -6,9 +6,8 @@ on the [device compatibility page](../../device-compatibility.md); how the calls
 in [internals.md](internals.md).
 
 Plugs and lights on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which
-Matter's timer needs; one without it is refused (`no_lt_feature`). A light can also be set without turning on, with
-Labs on ([below](#flash-free-turn-on)); one with no brightness control on that endpoint is refused it
-(`not_dimmable`).
+Matter's timer needs; one without it is refused (`no_lt_feature`). A light can also be set without turning on
+([below](#flash-free-turn-on)); one with no brightness control on that endpoint is refused it (`not_dimmable`).
 
 ## Turn on with timer
 
@@ -23,12 +22,12 @@ back on with no timer ([internals](internals.md#what-decides-the-call)).
 
 `set_attributes` sets brightness, color temperature and color without turning the light on: each command tells the
 light to apply it even while off (the spec's ExecuteIfOff), so a light that is off stores the values and stays off, and
-the next plain on comes up with them. It is in Labs on [certified lights](#certified-devices) and
-[multi-endpoint ones](#multi-endpoint-devices); the others aren't built yet
+the next plain on comes up with them. Research admitted it on [certified lights](#certified-devices) and
+[multi-endpoint ones](#multi-endpoint-devices), not a run; bridged and uncertified lights aren't built yet
 ([research](research/2026-11-24-level-color.md)).
 
 - **Read back.** The result is `confirmed` only when the light reads back what was sent; otherwise it is `sent`
-  (`attributes_not_reported`). A light that ignores the command while off still answers that it took it, so `sent`
+  (`attributes_not_reported`, or `readback_failed` when the read fails). A light that ignores the command while off still answers that it took it, so `sent`
   is the result to check ([internals](internals.md#set_attributes)).
 - **On Level.** A light whose On Level setting holds a value comes on at that level, not at the brightness set while
   off: that is the spec. DeviceSide never changes On Level, as it is your device's setting, so a brightness set on such
@@ -70,8 +69,9 @@ command on a light that is off for brightness and xy color since Matter 1.0, and
 
 A certified device with more than one on/off part, such as a power strip, a two-gang switch or a light with several
 lit parts. Certification tests the timer on one of its parts, and DeviceSide can't tell which, so turn on with timer
-and get attributes aren't built for them yet, even with Labs on. Set without turning on is in Labs: each part has its
-own brightness and color server, so the number of parts doesn't change how one part takes the call.
+and get attributes aren't built for them yet, even with Labs on. Set without turning on is admitted, as on a
+single-part device: writes earn no certification credit anyway, and each part has its own brightness and color
+server, so the number of parts doesn't change how one part takes the call.
 
 ### Matter bridges
 

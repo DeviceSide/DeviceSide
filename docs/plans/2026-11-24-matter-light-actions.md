@@ -87,7 +87,7 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
    `tests/integrations/matter/test_set_attributes.py`, plus a new call transcript. Mirror
    `tests/integrations/matter/wire.py`.
 3. Docs: in index.md, replace "On/off only: brightness and color fields are refused" with the real state and add a
-   `## Set attributes` section (ExecuteIfOff, OnLevel). Add a `### set_attributes` module section to internals.md
+   `## Flash-free turn-on` section (ExecuteIfOff, OnLevel; the heading every integration uses, which the README links). Add a `### set_attributes` module section to internals.md
    with the quirks. Run `scripts/gen_compat.py` and the README regeneration. Add the read-back entry to deferred.md.
    Then the audit and ready, per the global rules.
 

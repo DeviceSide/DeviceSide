@@ -7,9 +7,9 @@ capabilities:
   # The classes integrations/matter/classes.py names.
   wiz_plug: {phrase: WiZ Smart Plug, section: WiZ Smart Plug}
   multi_endpoint:
-    phrase: multi-outlet Matter devices
+    phrase: multi-endpoint Matter devices
     section: Multi-endpoint devices
-    domains: {light: multi-endpoint Matter lights, switch: multi-outlet Matter devices}
+    domains: {light: multi-endpoint Matter lights, switch: multi-endpoint Matter devices}
   other:
     phrase: certified Matter devices
     section: Certified devices
