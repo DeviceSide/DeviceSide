@@ -242,19 +242,21 @@ def build_families(repo):
     repo.commit(PKG + "bridge.py", "x = 1\n")
     repo.commit("tests/integrations/acme/test_classification.py", "DEVICES = ()\n")
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
+    repo.commit(REASONS, 'OTHER_TIMER_REASON = "why"\n')
     repo.git("checkout", "-q", "-b", "pr")
 
 
 @pytest.fixture
 def families(repo, monkeypatch, tmp_path_factory):
     """`main` with `acme` (alice) and `zeta` (zoe), each with a `tuya` family (tina; on zeta, zed) beside a `hue` one
-    with no maintainers of its own, and the catalog file the `tuya` families share; then a `pr` branch."""
+    with no maintainers of its own, the catalog file the `tuya` families share and a shared one; then a `pr` branch."""
     monkeypatch.chdir(repo.path)
     from_template(repo, build_families, tmp_path_factory)
     return repo
 
 
 CATALOG = "custom_components/deviceside/zigbee/tuya.py"
+REASONS = "custom_components/deviceside/zigbee/reasons.py"
 
 
 @pytest.mark.parametrize(
@@ -388,6 +390,31 @@ def test_a_catalog_file_no_family_shares_is_nobodys(families):
     path = CATALOG.replace("tuya", "sengled")
     families.commit(path, "x = 1\n")
     assert refused("alice") == f"it changes files outside an integration's package: {path}"
+
+
+@pytest.mark.parametrize("path", [REASONS, "tests/zigbee/test_reasons.py"])
+def test_a_shared_catalog_file_merges_for_a_reading_integrations_maintainer_never_a_family_maintainer_alone(
+    families, path
+):
+    """It words what every family's devices are told, so the families' maintainers don't change it alone."""
+    families.commit(path, 'OTHER_TIMER_REASON = "another"\n')
+    for owner in ("alice", "zoe"):
+        assert check(owner) == [owners.SHARED_CATALOG]
+    for commenter in ("tina", "zed", "mallory"):
+        assert refused(commenter) == f"@{commenter} isn't a maintainer of an integration that reads it"
+
+
+def test_a_family_named_for_a_shared_catalog_file_doesnt_hold_it(repo, monkeypatch):
+    monkeypatch.chdir(repo.path)
+    repo.commit(INIT, init())
+    repo.commit(family_init(), family())
+    repo.commit(family_init(name="reasons"), family("reasons", ("rita",)))
+    repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
+    repo.commit(REASONS, 'OTHER_TIMER_REASON = "why"\n')
+    repo.git("checkout", "-q", "-b", "pr")
+    repo.commit(REASONS, 'OTHER_TIMER_REASON = "another"\n')
+    assert refused("rita") == "@rita isn't a maintainer of an integration that reads it"
+    assert check("alice") == [owners.SHARED_CATALOG]
 
 
 def test_the_shared_zigbee_package_is_nobodys(families):

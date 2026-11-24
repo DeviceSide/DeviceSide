@@ -4,17 +4,20 @@
 What holds a path, read at a rev (CLAUDE.md, Maintainers; the templates are `gen_codeowners.py`'s):
 
 - in a family (`FAMILY_PATHS`), on the rev: that family;
+- in the catalog's shared files (`SHARED_CATALOG_PATHS`), read by a family on the rev: every integration that reads it;
 - in the catalog (`CATALOG_PATHS`), shared by a family of its key on the rev: that key's catalog;
 - elsewhere in an integration's package (`PATHS`): the integration (a family not on the rev is its integration's);
 - generated output (`GENERATED`): nothing, as it follows its inputs;
 - anything else: shared code, the repo maintainers'.
 
-Each holder has one *owner group*, or for the catalog one per family of its key: `direct`, the most specific
-maintainers (the family's, or the integration's when the family names none), and `enclosing`, the family's
-integration's maintainers when the family names its own. The gate's owner set is every group's handles; the notice
-and the skills call a group someone else's when its `direct` handles don't include them (`foreign`), so an
-integration maintainer changing their own family is warned too. An integration not on the rev yet has no owners of
-its own: its paths are shared code.
+Each holder has one *owner group*, or for the catalog one per family of its key, and for its shared files one per
+catalog-reading integration: `direct`, the most specific maintainers (the family's, or the integration's when the
+family names none), and `enclosing`, the family's integration's maintainers when the family names its own. An
+integration reads the catalog when one of its families has a key with a catalog file on the rev; the shared files word
+what every such family's devices are told, so they are its integrations' alone, never a family's. The gate's owner
+set is every group's handles; the notice and the skills call a group someone else's when its `direct` handles don't
+include them (`foreign`), so an integration maintainer changing their own family is warned too. An integration not on
+the rev yet has no owners of its own: its paths are shared code.
 
 It runs on the standard library alone and reads every file at the rev with `git show`, never importing an
 integration, so the workflows can run it from the base branch on a PR's files. The repo maintainers and the path
@@ -157,38 +160,45 @@ def repo_maintainers(script: Path = CODEOWNERS_SCRIPT) -> frozenset[str]:
 
 
 class Templates(NamedTuple):
-    """The path templates of `gen_codeowners.py`: `PATHS`, `FAMILY_PATHS` and `CATALOG_PATHS`."""
+    """The path templates of `gen_codeowners.py`: `PATHS`, `FAMILY_PATHS`, `CATALOG_PATHS` and
+    `SHARED_CATALOG_PATHS`."""
 
     integration: tuple[str, ...]
     family: tuple[str, ...]
     catalog: tuple[str, ...]
+    shared: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class Package:
-    """What holds a path: an integration's package (`key`), a family of it (`key` and `family`), or the catalog file
-    of a family key (`family` alone)."""
+    """What holds a path: an integration's package (`key`), a family of it (`key` and `family`), the catalog file
+    of a family key (`family` alone), or, with neither, the catalog's shared files (`SHARED_CATALOG`)."""
 
     key: str | None
     family: str | None = None
 
     def __str__(self) -> str:
         if self.key is None:
-            return f"the `{self.family}` catalog"
+            return f"the `{self.family}` catalog" if self.family else "the `zigbee/` catalog's shared files"
         return f"`{self.key}`" + (f"'s `{self.family}` family" if self.family else "")
 
     @property
     def slug(self) -> str:
-        """`control4`, `zigbee2mqtt/tuya`, or `zigbee/tuya` for the catalog: what an audit record's `owner` holds."""
+        """`control4`, `zigbee2mqtt/tuya`, or `zigbee/tuya` for the catalog (`zigbee` for its shared files): what an
+        audit record's `owner` holds."""
         if self.key is None:
-            return f"zigbee/{self.family}"
+            return f"zigbee/{self.family}" if self.family else "zigbee"
         return self.key + (f"/{self.family}" if self.family else "")
 
     def owned_by(self) -> str:
         """Whose maintainers own it, for a refusal."""
         if self.key is None:
-            return f"a `{self.family}` family or its integration"
+            return f"a `{self.family}` family or its integration" if self.family else "an integration that reads it"
         return f"`{self.key}`" + (f" or of {self}" if self.family else "")
+
+
+# The catalog's shared files (`SHARED_CATALOG_PATHS`), owned by every catalog-reading integration.
+SHARED_CATALOG = Package(None)
 
 
 def package_paths(script: Path = CODEOWNERS_SCRIPT) -> Templates:
@@ -198,7 +208,12 @@ def package_paths(script: Path = CODEOWNERS_SCRIPT) -> Templates:
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             found[getattr(node.targets[0], "id", None)] = node.value
     try:
-        return Templates(*(tuple(ast.literal_eval(found[name])) for name in ("PATHS", "FAMILY_PATHS", "CATALOG_PATHS")))
+        return Templates(
+            *(
+                tuple(ast.literal_eval(found[name]))
+                for name in ("PATHS", "FAMILY_PATHS", "CATALOG_PATHS", "SHARED_CATALOG_PATHS")
+            )
+        )
     except KeyError as err:
         raise SystemExit(f"no {err.args[0]} in {script}") from None
 
@@ -249,13 +264,31 @@ def integrations_with(rev: str, family: str) -> tuple[str, ...]:
     return tuple(key for key in keys if family_maintainers(rev, key, family) is not None)
 
 
+@functools.cache
+def catalog_readers(rev: str) -> tuple[str, ...]:
+    """The integrations that read the catalog at `rev`: those with a family of a key whose catalog file is there.
+    The templates are read from the working tree, as `repo_maintainers()` is, and a shared file is no family's key."""
+    templates = package_paths()
+    folder = str(Path(templates.catalog[0]).parent) + "/"
+    listing = git("ls-tree", "-z", "--name-only", rev, folder)
+    keys = [
+        found["family"]
+        for path in listing.split("\0")
+        if path and path not in templates.shared and (found := match(path, templates.catalog[:1]))
+    ]
+    return tuple(sorted({key for family in keys for key in integrations_with(rev, family)}))
+
+
 def package_of(path: str, rev: str, templates: Templates) -> Package | None:
     """What holds `path` at `rev`, or None for shared code. A family that isn't on the rev has no owners of its own
-    yet, so its paths are its integration's; a catalog file no family there shares is shared code."""
+    yet, so its paths are its integration's; a catalog file no family there shares, or a shared one no family there
+    reads, is shared code. A shared file is matched before the catalog's, so a family of its name never holds it."""
     if (found := match(path, templates.family)) and family_maintainers(rev, **found) is not None:
         return Package(**found)
     if found := match(path, templates.integration):
         return Package(found["key"])
+    if match(path, templates.shared) is not None:
+        return SHARED_CATALOG if catalog_readers(rev) else None
     if (found := match(path, templates.catalog)) and integrations_with(rev, found["family"]):
         return Package(None, found["family"])
     return None
@@ -289,6 +322,8 @@ class Group:
     def __str__(self) -> str:
         if self.package is None:
             return "shared code"
+        if self.package.key is None and self.package.family is None:
+            return f"{self.package} (`{self.key}`)"
         if self.package.key is None:
             return f"{self.package} (`{self.key}`'s `{self.package.family}` family)"
         return str(self.package)
@@ -299,7 +334,11 @@ def groups(package: Package | None, rev: str) -> tuple[Group, ...]:
     if package is None:
         return (Group(None, None, tuple(sorted(repo_maintainers()))),)
     found = []
-    for key in (package.key,) if package.key else integrations_with(rev, package.family):
+    if package.key:
+        keys: tuple[str, ...] = (package.key,)
+    else:
+        keys = integrations_with(rev, package.family) if package.family else catalog_readers(rev)
+    for key in keys:
         if (theirs := maintainers(rev, key)) is None:
             raise NotOnRev(key)
         own = family_maintainers(rev, key, package.family) if package.family else None

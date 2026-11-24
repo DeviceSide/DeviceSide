@@ -6,6 +6,8 @@ read on the base branch by `scripts/owners.py`, the one owner lookup, so a PR ca
 
 - in a family (`FAMILY_PATHS` in `scripts/gen_codeowners.py`): that family's maintainers and its integration's;
 - in the catalog (`CATALOG_PATHS`): the maintainers of every family of that key, and of those families' integrations;
+- in the catalog's shared files (`SHARED_CATALOG_PATHS`): the maintainers of every integration with a family of a key
+  that has a catalog file, never a family's, so a family maintainer can't reword every family's refusals;
 - elsewhere in an integration's package (`PATHS`), its `refusals.py` included: the integration's maintainers;
 - generated output that CI's `--check` proves (`.github/CODEOWNERS`, and `README.md` and
   `docs/device-compatibility.md` inside their generated blocks): anyone who owns the rest;

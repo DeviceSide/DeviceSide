@@ -25,6 +25,7 @@ shared home named in parentheses.
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
 | A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
 | Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |
+| A refusal reason two Zigbee integrations share | `zigbee/<family>.py` for a family's, `zigbee/reasons.py` otherwise; each integration's `refusals.py` builds its own entry from it |
 | A name HA defines (entity domain, service, state, attribute, `ColorMode`) | HA's constant (`homeassistant.const`, `homeassistant.components.light`); not where DeviceSide's meaning differs (its `brightness` is a percent), nor from an integration's `const.py` that imports a vendor library |
 | A wire fact two integrations share (ZCL or Matter encodings) | `core/`, named for the encoding (`core/zcl.py`); never another integration's package |
 | A constant two modules of one package share | the package module that owns the call, imported by the other |
@@ -75,7 +76,8 @@ An integration's package (`integrations/<x>/`, `tests/integrations/<x>/`, its fi
 in it (`integrations/<x>/families/<family>/`, `tests/integrations/<x>/families/<family>/`,
 `docs/integrations/<x>/research/<family>/`) belongs to the handles in its `Family.maintainers` as well, which may be
 none; a catalog file (`custom_components/deviceside/zigbee/<family>.py` and its test) to the maintainers of every
-family of that key and of those families' integrations.
+family of that key and of those families' integrations. `zigbee/reasons.py` and its test belong to the maintainers of
+every integration with a family whose key has a catalog file, never to a family's.
 
 A PR merges on one maintainer's approval or `/merge`, and green CI, when that maintainer owns every file it changes;
 a file none of them owns (`core/`, shared docs, `docs/models.yaml`) needs a repo maintainer. Regenerated output follows

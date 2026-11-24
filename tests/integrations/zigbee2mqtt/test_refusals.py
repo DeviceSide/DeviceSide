@@ -3,12 +3,15 @@ failure harms, and what a refused light and plug say. The integration's, as the 
 cover its levels and calls."""
 
 import pytest
+from homeassistant.const import Platform
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS
 from custom_components.deviceside.integrations.zigbee2mqtt.refusals import REFUSALS
+from custom_components.deviceside.zigbee.ikea import TIMER_HARMED_REASON
+from custom_components.deviceside.zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
 
 from .conftest import DEVICES, PLUG, TUYA, commands, interviewed, light
 from ...conftest import allow_labs
@@ -25,6 +28,16 @@ def test_turn_on_for_alone_harms():
     ]
 
 
+def test_the_shared_reasons_are_the_catalog_s_and_the_switch_entries_are_switch_alone():
+    entries = REFUSALS["turn_on_for"]
+
+    assert entries["other"].reason == OTHER_TIMER_REASON
+    assert entries["ikea_timer_harmed"].reason == TIMER_HARMED_REASON
+    for name in ("hue", "ikea"):
+        assert entries[name].reason == SWITCH_TIMER_REASON
+        assert entries[name].domains == {Platform.SWITCH}
+
+
 async def test_turn_on_for_refuses_another_brand_s_light_as_not_built_with_labs_on(hass, setup_production, broker):
     """No pass, and research names only some makers' lights as running the timer (docs/evidence.md, In Labs)."""
     allow_labs(hass)
@@ -34,7 +47,7 @@ async def test_turn_on_for_refuses_another_brand_s_light_as_not_built_with_labs_
         await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
     assert raised.value.reason == "not_built"
-    assert raised.value.translation_placeholders["why"] == REFUSALS["turn_on_for"]["other"].reason
+    assert raised.value.translation_placeholders["why"] == OTHER_TIMER_REASON
     assert commands(broker) == []
 
 

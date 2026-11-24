@@ -21,3 +21,10 @@ TIMER_HARMED_MODELS = (
     "TRADFRIbulbGU10WS380lm",
     "TRADFRI bulb GU10 WS 380lm",
 )
+
+# Why `turn_on_for` refuses them: reported turned on by a unicast timer and never off, while the same call by group
+# did turn them off; the cause is unknown. A host-side off would serve them.
+TIMER_HARMED_REASON = (
+    "It is reported to turn on with the timer and never turn off, and DeviceSide's own off, which would "
+    "serve it, isn't built"
+)

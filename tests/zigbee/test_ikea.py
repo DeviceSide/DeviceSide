@@ -14,6 +14,13 @@ def test_the_reported_bulbs_models_are_five_distinct_strings():
     assert all(isinstance(model, str) and model for model in ikea.TIMER_HARMED_MODELS)
 
 
+def test_the_timer_harmed_reason_reads_as_it_does_to_the_user():
+    assert ikea.TIMER_HARMED_REASON == (
+        "It is reported to turn on with the timer and never turn off, and DeviceSide's own off, which would "
+        "serve it, isn't built"
+    )
+
+
 def test_the_catalog_imports_nothing():
     """Patterns and facts only: a Home Assistant or DeviceSide import would tie both stacks to it."""
     tree = ast.parse(Path(ikea.__file__).read_text())

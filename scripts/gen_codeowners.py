@@ -9,8 +9,11 @@ line, so the per-integration lines must follow `*`.
 
 A family (`IntegrationInfo.families`) with maintainers of its own gets its paths after its integration's: its package,
 its tests and its research folder, to its maintainers, then the integration's, then the repo's. A catalog file, which
-the stacks' families of one key share, goes to those families' maintainers and their integrations'. Either line is
-written only when it names an owner the line enclosing it doesn't, so a family with `maintainers=()` adds none.
+the stacks' families of one key share, goes to those families' maintainers and their integrations'. The catalog's
+shared files go to the maintainers of every integration that reads the catalog (has a family of a key with a catalog
+file), never a family's: they word what every such family's devices are told. Their lines
+follow the catalog's, so they win over a family keyed for one. Each of these lines is written only when it names an
+owner the line enclosing it doesn't, so a family with `maintainers=()` adds none.
 
 `REPO_MAINTAINERS` also has to match `manifest.json`'s `codeowners`, which HA shows as the integration's owners; the
 script checks that, in both modes, and leaves the manifest for a hand edit.
@@ -53,6 +56,11 @@ CATALOG_PATHS = (
     "custom_components/deviceside/zigbee/{family}.py",
     "tests/zigbee/test_{family}.py",
 )
+# The catalog's files that no family key holds: the reasons the catalog-reading integrations' `refusals.py` share.
+SHARED_CATALOG_PATHS = (
+    "custom_components/deviceside/zigbee/reasons.py",
+    "tests/zigbee/test_reasons.py",
+)
 
 
 def owners(*maintainers: str) -> str:
@@ -79,6 +87,8 @@ def generate(registry: AdapterRegistry, repo: Path = REPO) -> str:
     ]
     # Each family key's owners across the integrations: the families' maintainers, then their integrations'.
     catalog: dict[str, tuple[list[str], list[str]]] = {}
+    # The maintainers of each integration that reads the catalog: the shared files' owners.
+    readers: list[str] = []
     for key in sorted(registry.integrations):
         info = registry.integrations[key]
         if not info.available:
@@ -91,6 +101,8 @@ def generate(registry: AdapterRegistry, repo: Path = REPO) -> str:
         for family in sorted(info.families, key=lambda family: family.key):
             if not (repo / (package := FAMILY_PATHS[0].format(key=key, family=family.key))).is_dir():
                 raise SystemExit(f"{key}: no package for family {family.key} at {package}")
+            if (repo / CATALOG_PATHS[0].format(family=family.key)).exists():
+                readers.extend(info.maintainers)
             handles = [*family.maintainers, *info.maintainers]
             lines += lines_for(FAMILY_PATHS, handles, info.maintainers, repo, key=key, family=family.key)
             shared = catalog.setdefault(family.key, ([], []))
@@ -100,7 +112,7 @@ def generate(registry: AdapterRegistry, repo: Path = REPO) -> str:
         line
         for family, (theirs, integrations) in sorted(catalog.items())
         for line in lines_for(CATALOG_PATHS, [*theirs, *integrations], (), repo, family=family)
-    ]:
+    ] + lines_for(SHARED_CATALOG_PATHS, readers, (), repo):
         lines += ["", *shared_lines]
     return "\n".join(lines) + "\n"
 
