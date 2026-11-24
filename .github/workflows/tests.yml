@@ -96,14 +96,17 @@ jobs:
       - name: Check coverage
         run: .venv/bin/python scripts/check_release.py --coverage coverage.json
 
-      - name: Check the device cards and compatibility page are current
+      - name: Check the device cards, compatibility page and integration links are current
         run: .venv/bin/python scripts/gen_compat.py --check
 
       - name: Check the README feature table is current
         run: .venv/bin/python scripts/gen_features.py --check
 
-      - name: Check CODEOWNERS is current
+      - name: Check CODEOWNERS and the device report dropdown are current
         run: .venv/bin/python scripts/gen_codeowners.py --check
+
+      - name: Check services.yaml targets are current
+        run: .venv/bin/python scripts/gen_services.py --check
 
   # The tests an integration's maintainers and the repo's own, apart from any a family maintainer may merge alone
   # (CLAUDE.md, Maintainers): each family's folder, and the catalog's tests in tests/zigbee/. Test code shares one

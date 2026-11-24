@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generate the README's device table and the generated block of docs/device-compatibility.md, from the test records,
+"""Generate the README's device table, the generated block of docs/device-compatibility.md and the integration links in
+docs/integrations.md's intro, from the test records,
 the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integrations/<integration>/. The rules
 the cards show (levels, caveats) are in docs/evidence.md.
 
@@ -163,17 +164,20 @@ from scripts.check_release import (  # noqa: E402
 )
 from scripts.check_release import load as read_record  # noqa: E402
 from scripts.check_release import manual as read_manual  # noqa: E402
+from scripts.gen_codeowners import plain_title  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
-from scripts.gen_features import anchors, bundle, columns, page, slug  # noqa: E402
+from scripts.gen_features import anchors, bundle, columns, integration_columns, page, slug  # noqa: E402
 
 PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
 MODELS = REPO / "docs" / "models.yaml"
+INTEGRATIONS_PAGE = REPO / "docs" / "integrations.md"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
 PAGE_URL = f"{DOCS_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
+INTEGRATIONS = ("<!-- integrations:start -->", "<!-- integrations:end -->")
 
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
 
@@ -1756,6 +1760,18 @@ def cards(built: list[Card]) -> str:
     return "\n".join(parts)
 
 
+# The integrations page's intro links.
+
+
+def integration_links(registry: AdapterRegistry) -> str:
+    """One bullet per integration, in card order, linking its page relative to `docs/integrations.md`."""
+    items = [
+        f"- [{plain_title(registry.integrations[key])}](integrations/{key}/index.md)"
+        for key in integration_columns(registry)
+    ]
+    return "\n".join([INTEGRATIONS[0], *items, INTEGRATIONS[1]])
+
+
 # Writing.
 
 
@@ -1818,9 +1834,10 @@ def main(
     page: Path = PAGE,
     readme: Path = README,
     models: Path = MODELS,
+    integrations: Path = INTEGRATIONS_PAGE,
 ) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="fail when the README or the page is out of date")
+    parser.add_argument("--check", action="store_true", help="fail when the README or a page is out of date")
     args = parser.parse_args(argv)
 
     registry = registry or AdapterRegistry.discover()
@@ -1833,6 +1850,7 @@ def main(
     for path, markers, new in (
         (page, EVIDENCE, block),
         (readme, CARDS, shown),
+        (integrations, INTEGRATIONS, integration_links(registry)),
     ):
         text = updates[path][1] if path in updates else path.read_text()
         updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, new, path.name))

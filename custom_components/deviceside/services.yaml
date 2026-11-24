@@ -2,11 +2,11 @@ turn_on_for:
   target:
     entity:
       - domain: [light, switch]
-        integration: shelly
+        integration: matter
       - domain: [light, switch]
         integration: mqtt
       - domain: [light, switch]
-        integration: matter
+        integration: shelly
       - domain: light
         integration: zha
   fields:
@@ -99,9 +99,9 @@ turn_off_for:
   target:
     entity:
       - domain: [light, switch]
-        integration: shelly
-      - domain: [light, switch]
         integration: mqtt
+      - domain: [light, switch]
+        integration: shelly
   fields:
     duration: *duration
 
@@ -141,11 +141,11 @@ set_attributes:
       - domain: light
         integration: hue
       - domain: light
-        integration: zha
-      - domain: light
         integration: mqtt
       - domain: light
         integration: shelly
+      - domain: light
+        integration: zha
   fields:
     brightness:
       example: 50
@@ -173,7 +173,7 @@ set_attributes:
     xy_color: *xy_color
 
 raise_brightness:
-  target: &hue_mqtt_shelly_zha
+  target:
     entity:
       - domain: light
         integration: control4
@@ -206,7 +206,18 @@ raise_brightness:
           unit_of_measurement: "%"
 
 lower_brightness:
-  target: *hue_mqtt_shelly_zha
+  target:
+    entity:
+      - domain: light
+        integration: control4
+      - domain: light
+        integration: hue
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: shelly
+      - domain: light
+        integration: zha
   fields:
     sweep_time: *sweep_time
     limit:
@@ -220,7 +231,7 @@ lower_brightness:
           unit_of_measurement: "%"
 
 raise_saturation:
-  target: &hue_mqtt_zha
+  target:
     entity:
       - domain: light
         integration: hue
@@ -240,7 +251,14 @@ raise_saturation:
           unit_of_measurement: "%"
 
 lower_saturation:
-  target: *hue_mqtt_zha
+  target:
+    entity:
+      - domain: light
+        integration: hue
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: zha
   fields:
     sweep_time: *sweep_time
     limit:
@@ -249,7 +267,7 @@ lower_saturation:
       selector: *saturation
 
 raise_hue:
-  target: &mqtt_zha
+  target:
     entity:
       - domain: light
         integration: mqtt
@@ -259,12 +277,28 @@ raise_hue:
     sweep_time: *sweep_time
 
 lower_hue:
-  target: *mqtt_zha
+  target:
+    entity:
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: zha
   fields:
     sweep_time: *sweep_time
 
 stop:
-  target: *hue_mqtt_shelly_zha
+  target:
+    entity:
+      - domain: light
+        integration: control4
+      - domain: light
+        integration: hue
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: shelly
+      - domain: light
+        integration: zha
 
 get_attributes:
   target:
@@ -274,11 +308,11 @@ get_attributes:
       - domain: light
         integration: hue
       - domain: [light, switch]
-        integration: shelly
+        integration: matter
       - domain: light
         integration: mqtt
       - domain: [light, switch]
-        integration: matter
+        integration: shelly
       - domain: light
         integration: zha
 

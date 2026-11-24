@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generate .github/CODEOWNERS from each integration's `IntegrationInfo.maintainers`.
+"""Generate .github/CODEOWNERS from each integration's `IntegrationInfo.maintainers`, and the device report's
+Integration dropdown from their titles.
 
 The repo maintainers own everything (`*`, first), so shared code, shared docs and the generated pages' shared inputs
 (`docs/models.yaml`) need their review. Each integration's package then goes to its maintainers, with the repo
@@ -18,13 +19,18 @@ owner the line enclosing it doesn't, so a family with `maintainers=()` adds none
 `REPO_MAINTAINERS` also has to match `manifest.json`'s `codeowners`, which HA shows as the integration's owners; the
 script checks that, in both modes, and leaves the manifest for a hand edit.
 
+The dropdown in `.github/ISSUE_TEMPLATE/device_report.yml` is the sorted titles of the available integrations,
+written between its `# integrations:start` / `# integrations:end` comment lines; the catch-all after them stays
+hand-written. `scripts/route_issue.py` routes a report on those titles.
+
 Usage: scripts/gen_codeowners.py [--check]
 
---check exits 1 when the committed file differs from what this generates.
+--check exits 1 when a committed file differs from what this generates.
 """
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -35,6 +41,11 @@ from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: 
 
 CODEOWNERS = REPO / ".github" / "CODEOWNERS"
 MANIFEST = REPO / "custom_components" / "deviceside" / "manifest.json"
+DEVICE_REPORT = REPO / ".github" / "ISSUE_TEMPLATE" / "device_report.yml"
+DROPDOWN = ("# integrations:start", "# integrations:end")
+# What a title may hold, written as-is into a YAML option and a Markdown link: one line of letters, digits and plain
+# punctuation, so no title adds a form field or markup to a generated part.
+TITLE = re.compile(r"[^\W_][\w .+()/-]*(?<! )")
 # The repo maintainers: admin on the repo, owners of shared code, merging any PR. The one source of their handles;
 # manifest.json's codeowners must match it.
 REPO_MAINTAINERS: tuple[str, ...] = ("jasonmx",)
@@ -117,24 +128,50 @@ def generate(registry: AdapterRegistry, repo: Path = REPO) -> str:
     return "\n".join(lines) + "\n"
 
 
+def plain_title(info) -> str:
+    """The integration's title, after checking it is plain text; raises SystemExit otherwise."""
+    if not TITLE.fullmatch(info.title):
+        raise SystemExit(f"IntegrationInfo title {info.title!r} isn't one line of letters, digits and ` .+()/-`")
+    return info.title
+
+
+def generate_device_report(text: str, registry: AdapterRegistry) -> str:
+    """The form with its Integration options replaced by the registry's titles, one per line, sorted."""
+    start, end = DROPDOWN
+    lines = text.splitlines(keepends=True)
+    marks = {mark: [i for i, line in enumerate(lines) if line.strip() == mark] for mark in DROPDOWN}
+    if any(len(found) != 1 for found in marks.values()) or marks[start][0] > marks[end][0]:
+        raise SystemExit(f"device_report.yml: expected one '{start}' line, then one '{end}' line")
+    first, last = marks[start][0], marks[end][0]
+    indent = lines[first][: len(lines[first]) - len(lines[first].lstrip())]
+    titles = sorted(plain_title(info) for info in registry.available_integrations())
+    options = [f"{indent}- {title}\n" for title in titles]
+    return "".join([*lines[: first + 1], *options, *lines[last:]])
+
+
 def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None, repo: Path = REPO) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="fail when CODEOWNERS is out of date")
+    parser.add_argument("--check", action="store_true", help="fail when CODEOWNERS or the device report is out of date")
     args = parser.parse_args(argv)
 
-    text = generate(registry or AdapterRegistry.discover(), repo)
+    registry = registry or AdapterRegistry.discover()
+    text = generate(registry, repo)
     manifest = json.loads((repo / MANIFEST.relative_to(REPO)).read_text()).get("codeowners")
     if manifest != [f"@{handle}" for handle in REPO_MAINTAINERS]:
         print(f"error: manifest.json codeowners {manifest} don't match REPO_MAINTAINERS; edit one", file=sys.stderr)
         return 1
-    path = repo / CODEOWNERS.relative_to(REPO)
-    current = path.read_text() if path.exists() else None
-    if current == text:
-        return 0
-    if args.check:
-        print("error: .github/CODEOWNERS out of date; run scripts/gen_codeowners.py", file=sys.stderr)
+    form = repo / DEVICE_REPORT.relative_to(REPO)
+    outputs = {
+        repo / CODEOWNERS.relative_to(REPO): text,
+        form: generate_device_report(form.read_text(), registry),
+    }
+    stale = [path for path, new in outputs.items() if not path.exists() or path.read_text() != new]
+    if args.check and stale:
+        for path in stale:
+            print(f"error: {path.relative_to(repo)} out of date; run scripts/gen_codeowners.py", file=sys.stderr)
         return 1
-    path.write_text(text)
+    for path in stale:
+        path.write_text(outputs[path])
     return 0
 
 

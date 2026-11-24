@@ -8,9 +8,13 @@ import pytest
 from scripts import gen_codeowners as gco
 
 
-def info(*maintainers, available=True, families=()):
+def info(*maintainers, available=True, families=(), title="Title"):
     return SimpleNamespace(
-        maintainers=maintainers, available=available, unavailable_reason="No module named x", families=families
+        maintainers=maintainers,
+        available=available,
+        unavailable_reason="No module named x",
+        families=families,
+        title=title,
     )
 
 
@@ -19,7 +23,22 @@ def family(key, *maintainers):
 
 
 def registry(**integrations):
-    return SimpleNamespace(integrations=integrations)
+    return SimpleNamespace(
+        integrations=integrations,
+        available_integrations=lambda: [i for i in integrations.values() if i.available],
+    )
+
+
+FORM = """\
+body:
+  - type: dropdown
+    attributes:
+      options:
+        # integrations:start
+        - Stale
+        # integrations:end
+        - Other or not sure
+"""
 
 
 @pytest.fixture
@@ -29,9 +48,10 @@ def repo(tmp_path):
         "custom_components/deviceside/integrations/control4",
         "tests/integrations/control4",
         "docs/integrations/control4",
-        ".github",
+        ".github/ISSUE_TEMPLATE",
     ):
         (tmp_path / path).mkdir(parents=True)
+    (tmp_path / ".github" / "ISSUE_TEMPLATE" / "device_report.yml").write_text(FORM)
     (tmp_path / "tests" / "fixtures").mkdir()
     (tmp_path / "tests" / "fixtures" / "control4.py").write_text("")
     (tmp_path / "custom_components" / "deviceside" / "manifest.json").write_text('{"codeowners": ["@jasonmx"]}')
@@ -184,5 +204,60 @@ def test_a_family_without_a_package_is_an_error(stacks):
         gco.generate(registry(hue=info("jasonmx", families=(family("sengled"),))), stacks)
 
 
-def test_the_committed_file_is_current():
+def test_the_dropdown_options_are_the_sorted_titles_between_the_markers(repo):
+    fake = registry(hue=info(title="Hue"), control4=info(title="Control4"))
+    assert gco.main([], fake, repo) == 0
+    assert (repo / ".github" / "ISSUE_TEMPLATE" / "device_report.yml").read_text() == FORM.replace(
+        "        - Stale\n", "        - Control4\n        - Hue\n"
+    )
+
+
+def test_check_fails_on_a_hand_edited_dropdown_until_it_is_regenerated(repo, capsys):
+    fake = registry(control4=info("alice", title="Control4"))
+    assert gco.main([], fake, repo) == 0
+    assert gco.main(["--check"], fake, repo) == 0
+    path = repo / ".github" / "ISSUE_TEMPLATE" / "device_report.yml"
+    path.write_text(path.read_text().replace("- Control4", "- Control5"))
+    assert gco.main(["--check"], fake, repo) == 1
+    assert "device_report.yml out of date" in capsys.readouterr().err
+    assert gco.main([], fake, repo) == 0
+    assert "- Control4" in path.read_text()
+
+
+def test_a_form_without_both_markers_is_an_error(repo):
+    path = repo / ".github" / "ISSUE_TEMPLATE" / "device_report.yml"
+    path.write_text(path.read_text().replace("# integrations:end", "# nothing"))
+    with pytest.raises(SystemExit, match="integrations:start"):
+        gco.main([], registry(control4=info()), repo)
+
+
+@pytest.mark.parametrize("title", ["Zigbee2MQTT", "ZHA", "Control4", "Hue", "Matter", "Shelly", "Acme Hub (v2)"])
+def test_a_plain_title_passes(title):
+    assert gco.plain_title(info(title=title)) == title
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Evil\n  - type: input",
+        "Evil\r",
+        "Tab\there",
+        "A: b",
+        "# x",
+        "[x](y)",
+        "a]b",
+        "*x",
+        "a`b",
+        " Lead",
+        "Trail ",
+        "",
+    ],
+)
+def test_a_title_that_would_inject_into_the_dropdown_fails_loudly(repo, title):
+    with pytest.raises(SystemExit, match="isn't one line"):
+        gco.main([], registry(control4=info(title=title)), repo)
+    assert (repo / ".github" / "ISSUE_TEMPLATE" / "device_report.yml").read_text() == FORM
+
+
+def test_the_committed_files_are_current():
     assert gco.main(["--check"]) == 0

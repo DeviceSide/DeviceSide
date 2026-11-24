@@ -7,7 +7,9 @@ What holds a path, read at a rev (CLAUDE.md, Maintainers; the templates are `gen
 - in the catalog's shared files (`SHARED_CATALOG_PATHS`), read by a family on the rev: every integration that reads it;
 - in the catalog (`CATALOG_PATHS`), shared by a family of its key on the rev: that key's catalog;
 - elsewhere in an integration's package (`PATHS`): the integration (a family not on the rev is its integration's);
-- generated output (`GENERATED`): nothing, as it follows its inputs;
+- generated output (`GENERATED`): nothing, as it follows its inputs; the files generated only in part (`README.md`, the
+  compatibility page, `docs/integrations.md`, `services.yaml`, the device report form) report none either, though a
+  hand edit outside their generated parts is the repo maintainers' (`check_maintainer_merge.py` refuses it);
 - anything else: shared code, the repo maintainers'.
 
 Each holder has one *owner group*, or for the catalog one per family of its key, and for its shared files one per
@@ -49,8 +51,11 @@ INIT = INTEGRATIONS + "{key}/__init__.py"
 FAMILY_INIT = INTEGRATIONS + "{key}/families/{family}/__init__.py"
 README = "README.md"
 COMPAT = "docs/device-compatibility.md"
-# Generated output: CODEOWNERS wholly, the other two inside their marked blocks (check_maintainer_merge.py, BLOCKS).
-GENERATED = frozenset({README, COMPAT, ".github/CODEOWNERS"})
+INTEGRATIONS_PAGE = "docs/integrations.md"
+SERVICES = "custom_components/deviceside/services.yaml"
+DEVICE_REPORT = ".github/ISSUE_TEMPLATE/device_report.yml"
+# Generated output: CODEOWNERS wholly, the others in their generated parts (check_maintainer_merge.py, BLOCKS).
+GENERATED = frozenset({README, COMPAT, INTEGRATIONS_PAGE, SERVICES, DEVICE_REPORT, ".github/CODEOWNERS"})
 # What a path template's `{key}` and `{family}` match: an integration's package name, and a family's as the registry
 # shapes it (core/registry.py, FAMILY_KEY; tests/scripts/test_owners.py pins them equal), which no `__init__.py` or
 # `__pycache__` beside the families is.

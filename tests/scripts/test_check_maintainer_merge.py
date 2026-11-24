@@ -1,5 +1,8 @@
 """scripts/check_maintainer_merge.py: a maintainer's `/merge` merges a PR whose every file they own."""
 
+import subprocess
+import sys
+
 import pytest
 
 from scripts import check_maintainer_merge as cmm
@@ -13,6 +16,50 @@ INIT = owners.INIT.format(key="acme")
 SCOPE = PKG + "raise_brightness.py"
 README = "# DeviceSide\n\nIntro.\n\n<!-- devices:start -->\nold cards\n<!-- devices:end -->\n"
 COMPAT = "# Device compatibility\n\nProse.\n\n<!-- evidence:start -->\nold rows\n<!-- evidence:end -->\n"
+INTEGRATIONS_PAGE = (
+    "# Integrations\n\nEach has a page:\n\n"
+    "<!-- integrations:start -->\n- [Acme](integrations/acme/index.md)\n<!-- integrations:end -->\n\nBody.\n"
+)
+SERVICES = """\
+turn_on:
+  target:
+    entity:
+      - domain: light
+        integration: acme
+  fields:
+    duration: &duration
+      required: true
+
+turn_off:
+  target:
+    entity:
+      - domain: light
+        integration: acme
+  fields:
+    duration: *duration
+"""
+DEVICE_REPORT = """\
+body:
+  - type: dropdown
+    id: integration
+    attributes:
+      options:
+        # integrations:start
+        - Acme
+        # integrations:end
+        - Other or not sure
+  - type: textarea
+    id: devices
+    attributes:
+      label: Devices
+"""
+# A regenerated part: another integration's target entry, page link and dropdown option.
+NEW_TARGET = "        integration: acme\n      - domain: switch\n        integration: newco\n"
+REGENERATED = {
+    owners.SERVICES: (SERVICES, "        integration: acme\n", NEW_TARGET),
+    owners.INTEGRATIONS_PAGE: (INTEGRATIONS_PAGE, "index.md)\n", "index.md)\n- [Newco](integrations/newco/index.md)\n"),
+    owners.DEVICE_REPORT: (DEVICE_REPORT, "        - Acme\n", "        - Acme\n        - Newco\n"),
+}
 ACME = owners.Package("acme")
 TUYA = owners.Package("acme", "tuya")
 FAMILY = PKG + "families/tuya/"
@@ -36,6 +83,9 @@ def build_pr(repo):
     repo.commit(SCOPE, "scope = AdapterScope(domains=labs('light'))\n")
     repo.commit(owners.README, README)
     repo.commit(owners.COMPAT, COMPAT)
+    repo.commit(owners.INTEGRATIONS_PAGE, INTEGRATIONS_PAGE)
+    repo.commit(owners.SERVICES, SERVICES)
+    repo.commit(owners.DEVICE_REPORT, DEVICE_REPORT)
     repo.git("branch", "pr")
     repo.git("checkout", "-q", "pr")
 
@@ -124,6 +174,87 @@ def test_compatibility_page_text_outside_its_block_is_refused(pr):
     pr.commit(SCOPE, "x = 1\n")
     pr.commit(owners.COMPAT, COMPAT.replace("Prose.", "My prose."))
     assert refused() == "it changes docs/device-compatibility.md outside its generated blocks"
+
+
+@pytest.mark.parametrize("path", REGENERATED)
+def test_a_regenerated_target_list_page_link_or_dropdown_option_rides_along(pr, path):
+    text, old, new = REGENERATED[path]
+    pr.commit(SCOPE, "x = 1\n")
+    pr.commit(path, text.replace(old, new, 1))
+    assert check() == [ACME]
+
+
+@pytest.mark.parametrize(
+    "path, old, new",
+    [
+        # services.yaml: its field selectors, its comments and its actions are hand-written.
+        (owners.SERVICES, "      required: true", "      required: false"),
+        (owners.SERVICES, "    duration: *duration\n", "    duration: *duration\n    brightness: {}\n"),
+        (owners.SERVICES, "turn_off:\n  target:", "turn_off:\n  # a note\n  target:"),
+        (owners.SERVICES, "", "stop:\n  fields: {}\n\n"),
+        # A field indented into the target block above it, so the strip would take it for generated.
+        (owners.SERVICES, "        integration: acme\n  fields:", "        integration: acme\n   fields:"),
+        # An edit inside the target block and one outside it.
+        (owners.SERVICES, "        integration: acme\n  fields:\n    duration: &duration", NEW_TARGET + "  fields: {}"),
+        # docs/integrations.md: the intro and the body are hand-written.
+        (owners.INTEGRATIONS_PAGE, "Body.", "My body."),
+        (owners.INTEGRATIONS_PAGE, "Each has a page:", "Each has its page:"),
+        (owners.INTEGRATIONS_PAGE, "Body.", "<!-- links:start -->\nMy body.\n<!-- links:end -->"),
+        # The end marker moved below the body, spanning it.
+        (owners.INTEGRATIONS_PAGE, "<!-- integrations:end -->\n\nBody.\n", "\nMy body.\n<!-- integrations:end -->\n"),
+        (owners.INTEGRATIONS_PAGE, "<!-- integrations:start -->\n", ""),
+        # The device report: every other form field, and the options outside the markers, are hand-written.
+        (owners.DEVICE_REPORT, "      label: Devices", "      label: Device"),
+        (owners.DEVICE_REPORT, "", "  - type: input\n    id: extra\n"),
+        (owners.DEVICE_REPORT, "        - Other or not sure", "        - Other"),
+        (
+            owners.DEVICE_REPORT,
+            "        # integrations:end\n        - Other",
+            "        - Other\n        # integrations:end",
+        ),
+        (
+            owners.DEVICE_REPORT,
+            "  - type: textarea",
+            "  # extra:start\n  - type: input\n  # extra:end\n  - type: textarea",
+        ),
+        (owners.DEVICE_REPORT, "        # integrations:start\n", "        # integrations:begin\n"),
+        (
+            owners.DEVICE_REPORT,
+            "        - Acme\n        # integrations:end",
+            "        - Acme\n        # integrations:end\n    x: 1",
+        ),
+    ],
+)
+def test_a_change_outside_a_generated_part_is_refused(pr, path, old, new):
+    text = {owners.SERVICES: SERVICES, owners.INTEGRATIONS_PAGE: INTEGRATIONS_PAGE, owners.DEVICE_REPORT: DEVICE_REPORT}
+    changed = text[path].replace(old, new, 1) if old else text[path] + new
+    assert changed != text[path]
+    pr.commit(SCOPE, "x = 1\n")
+    pr.commit(path, changed)
+    assert refused() == f"it changes {path} outside its generated blocks"
+
+
+@pytest.mark.parametrize(
+    "path, old, new",
+    [
+        (owners.SERVICES, "        integration: acme\n", "        integration: acme\n        hand: written\n"),
+        (owners.INTEGRATIONS_PAGE, "index.md)\n", "index.md)\n\nMore.\n"),
+        (owners.DEVICE_REPORT, "        - Acme\n", "        - Acme\n        - Unregistered\n"),
+    ],
+)
+def test_a_hand_edit_inside_a_generated_part_is_left_to_its_generators_check(pr, path, old, new):
+    """Inside the markers is the generator's, so its `--check` in tests.yml fails such an edit, not this."""
+    text, _, _ = REGENERATED[path]
+    pr.commit(SCOPE, "x = 1\n")
+    pr.commit(path, text.replace(old, new, 1))
+    assert check() == [ACME]
+
+
+def test_the_check_runs_on_the_standard_library_alone():
+    """The workflow runs it with no dependencies installed; `-S` leaves out site-packages, as that does."""
+    run = [sys.executable, "-S"]
+    assert subprocess.run([*run, "-c", "import yaml"], capture_output=True).returncode == 1
+    assert subprocess.run([*run, "scripts/check_maintainer_merge.py", "--help"], cwd=cmm.REPO).returncode == 0
 
 
 @pytest.mark.parametrize(

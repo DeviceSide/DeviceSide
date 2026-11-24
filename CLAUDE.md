@@ -82,7 +82,8 @@ every integration with a family whose key has a catalog file, never to a family'
 A PR merges on one maintainer's approval or `/merge`, and green CI, when that maintainer owns every file it changes;
 a file none of them owns (`core/`, shared docs, `docs/models.yaml`) needs a repo maintainer. Regenerated output follows
 its inputs: such a PR that also regenerates shared generated files (README, `docs/device-compatibility.md`,
-CODEOWNERS) still needs only its maintainer, as CI's `--check` proves them. It merges when the maintainer comments
+CODEOWNERS, and the generated parts of `services.yaml`, `docs/integrations.md` and the device report form) still needs
+only its maintainer, as CI's `--check` proves them. It merges when the maintainer comments
 `/merge <sha>`, even on their own PR (`scripts/check_maintainer_merge.py` says what it refuses), or when a repo
 maintainer merges it; repo maintainers merge every other PR.
 
