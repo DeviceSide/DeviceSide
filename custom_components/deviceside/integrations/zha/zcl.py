@@ -16,6 +16,8 @@ from ...core.zcl import CURRENT_LEVEL as CURRENT_LEVEL
 from ...core.zcl import CURRENT_SATURATION as CURRENT_SATURATION
 from ...core.zcl import CURRENT_X as CURRENT_X
 from ...core.zcl import CURRENT_Y as CURRENT_Y
+from ...core.zcl import ENHANCED_HUE as ENHANCED_HUE
+from ...core.zcl import HUE_SATURATION as HUE_SATURATION
 from ...core.zcl import LEVEL_CLUSTER as LEVEL_CLUSTER
 from ...core.zcl import ON_OFF as ON_OFF
 from ...core.zcl import ON_OFF_CLUSTER as ON_OFF_CLUSTER
@@ -32,8 +34,6 @@ COLOR_MODE = 0x0008
 ENHANCED_CURRENT_HUE = 0x4000
 ENHANCED_COLOR_MODE = 0x4001
 COLOR_CAPABILITIES = 0x400A
-HUE_SATURATION = 0x01  # ColorCapabilities bit 0
-ENHANCED_HUE = 0x02  # ColorCapabilities bit 1
 MOVE_TO_SATURATION = 0x03
 MOVE_TO_HUE_AND_SATURATION = 0x06
 MOVE_TO_COLOR = 0x07

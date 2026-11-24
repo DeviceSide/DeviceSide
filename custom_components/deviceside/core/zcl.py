@@ -19,6 +19,12 @@ CURRENT_X = 0x0003
 CURRENT_Y = 0x0004
 COLOR_TEMPERATURE = 0x0007  # ColorTemperatureMireds
 
+# Color capability bits, one layout in ZCL's ColorCapabilities (0x400A) and Matter's Color Control FeatureMap (0xFFFC).
+HUE_SATURATION = 0x01
+ENHANCED_HUE = 0x02
+XY_COLOR = 0x08
+TEMPERATURE_COLOR = 0x10
+
 # OnTime counts down live, so a read-back lands a little under the request: the slack the rig's ZHA timing allows, 3 s.
 READBACK_SLACK_TENTHS = 30
 

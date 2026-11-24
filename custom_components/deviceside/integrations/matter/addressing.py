@@ -28,12 +28,6 @@ _MATTER_DOMAIN = "matter"
 _FEATUREMAP_ATTR_ID = 65532  # 0xFFFC
 _LT_FEATURE_BIT = 0x0001  # Lighting (LT) is bit 0; bit 1 (0x2) is DeadFrontBehavior
 
-# Color Control FeatureMap bits (Matter spec, cluster 0x0300).
-COLOR_FEATURE_HS = 0x01  # HueAndSaturation
-COLOR_FEATURE_EHUE = 0x02  # EnhancedHue
-COLOR_FEATURE_XY = 0x08  # XY
-COLOR_FEATURE_CT = 0x10  # ColorTemperature
-
 
 def node_id_from_unique_id(unique_id: str) -> int | None:
     """Parse the Matter node_id (int) from an entity unique_id.
