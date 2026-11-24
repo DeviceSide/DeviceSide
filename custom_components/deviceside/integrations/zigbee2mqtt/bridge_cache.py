@@ -1,4 +1,7 @@
-"""Zigbee2MQTT's bridge topics, subscribed for the entry's life rather than per call.
+"""Zigbee2MQTT's bridge topics, subscribed for the entry's life rather than per call: one cache per instance (base
+topic), as each has its own bridge topics, and its group IDs and friendly names mean nothing on another's.
+The caches follow HA's registry (addressing.follow_bases), so an instance added or removed while HA runs gets or loses
+its own (docs/integrations/zigbee2mqtt/internals.md#addressing).
 
 Each fresh subscription costs a call HA's subscribe cooldown (0.1 s) plus a broker round trip, and a group action
 read bridge/groups two or three times in series. Held here instead:
@@ -30,19 +33,20 @@ import json
 import logging
 import re
 from collections.abc import Callable
+from functools import partial
 from typing import Any
 
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
-from .addressing import bridge_topic
+from .addressing import bridge_topic, follow_bases
 from ...core.errors import describe
 from ...core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
 
-_KEY = "zigbee2mqtt_bridge_cache"
+_KEY = "zigbee2mqtt_bridge_caches"  # {base topic: BridgeCache}, the running ones
 HELD = ("devices", "groups", "info")
 KINDS = ("device", "group")
 # Retained by Z2M ("online"), and after the response topics in both subscribe orders.
@@ -53,7 +57,8 @@ LOG = "logging"
 class BridgeCache:
     """The held bridge topics, and the options replies awaited by transaction."""
 
-    def __init__(self, on_online: Callable[[], None] = lambda: None) -> None:
+    def __init__(self, base: str, on_online: Callable[[str], None] = lambda _base: None) -> None:
+        self.base = base  # of the Zigbee2MQTT instance whose bridge topics this holds
         self._on_online = on_online
         self._payloads: dict[str, str] = {}
         self._parsed: dict[str, tuple[str, Any]] = {}
@@ -134,7 +139,7 @@ class BridgeCache:
     def _on_barrier(self, msg: mqtt.ReceiveMessage) -> None:
         self.replies_live = True
         if _says_online(msg.payload):
-            self._on_online()
+            self._on_online(self.base)
 
     @callback
     def _on_connection(self, connected: bool) -> None:
@@ -158,12 +163,16 @@ class BridgeCache:
         # In this order, so the barrier follows the response topics and the log in HA's batch.
         for kind in KINDS:
             self._unsubscribes.append(
-                await mqtt.async_subscribe(hass, bridge_topic(f"response/{kind}/options"), reply_router(self.pending))
+                await mqtt.async_subscribe(
+                    hass, bridge_topic(self.base, f"response/{kind}/options"), reply_router(self.pending)
+                )
             )
-        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(LOG), self._on_log))
+        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(self.base, LOG), self._on_log))
         for suffix in HELD:
-            self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(suffix), self._keeper(suffix)))
-        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(_BARRIER), self._on_barrier))
+            self._unsubscribes.append(
+                await mqtt.async_subscribe(hass, bridge_topic(self.base, suffix), self._keeper(suffix))
+            )
+        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(self.base, _BARRIER), self._on_barrier))
         self._unsubscribes.append(mqtt.async_subscribe_connection_status(hass, self._on_connection))
 
 
@@ -249,32 +258,32 @@ def reply_router(pending: dict[str, asyncio.Future[dict]]) -> Callable[[mqtt.Rec
     return received
 
 
-def get(hass: HomeAssistant) -> BridgeCache | None:
-    """The running cache, or None before MQTT is up, after unload, or outside an entry (a test, a removal)."""
+def get(hass: HomeAssistant, base: str) -> BridgeCache | None:
+    """The running cache of the instance on this base topic, or None: before MQTT is up or its subscribe is done, when
+    HA knows no bridge of it, after unload, or outside an entry (a test, a removal)."""
     if (runtime := hass.data.get(DATA)) is None:
         return None
-    return runtime.integration_state.get(_KEY)
+    return runtime.integration_state.get(_KEY, {}).get(base)
 
 
-async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callable[[], None] = lambda: None) -> None:
-    """Hold the bridge topics once MQTT is set up, until the entry unloads. Runs as the entry's background task.
+async def async_setup(
+    hass: HomeAssistant, entry: ConfigEntry, on_online: Callable[[str], None] = lambda _base: None
+) -> None:
+    """Hold each instance's bridge topics once MQTT is set up, until the entry unloads: one cache per base topic in
+    addressing.bridge_bases, started and stopped as HA's registry gains and loses bridge entities (follow_bases).
+    Runs as the entry's background task.
 
-    Calls on_online each time bridge/state says online, its retained message included, so at startup and whenever
-    Z2M comes back.
+    Calls on_online, with the base topic, each time an instance's bridge/state says online, its retained message
+    included, so at startup and whenever Z2M comes back.
     """
     if not await mqtt.async_wait_for_mqtt_client(hass):
         return
-    cache = BridgeCache(on_online)
-    state = hass.data[DATA].integration_state
+    entry.async_on_unload(follow_bases(hass, entry, partial(_start, hass, on_online), "bridge cache"))
 
-    @callback
-    def unload() -> None:
-        cache.stop()
-        if state.get(_KEY) is cache:
-            del state[_KEY]
 
-    # Before subscribing, so an unload mid-way still drops what was subscribed.
-    entry.async_on_unload(unload)
+async def _start(hass: HomeAssistant, on_online: Callable[[str], None], base: str) -> Callable[[], None]:
+    """Subscribe a cache for the instance on this base topic and list it for get(); returns its stop."""
+    cache = BridgeCache(base, on_online)
     try:
         await cache.subscribe(hass)
     except Exception as err:  # noqa: BLE001 - each caller reads fresh, as without the cache
@@ -286,5 +295,18 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callab
             describe(err),
         )
         cache.stop()
-        return
-    state[_KEY] = cache
+        return lambda: None
+    except BaseException:
+        # Cancelled: its bridge went, or the entry unloads, mid-subscribe.
+        cache.stop()
+        raise
+    caches: dict[str, BridgeCache] = hass.data[DATA].integration_state.setdefault(_KEY, {})
+    caches[base] = cache
+
+    @callback
+    def stop() -> None:
+        cache.stop()
+        if caches.get(base) is cache:
+            del caches[base]
+
+    return stop

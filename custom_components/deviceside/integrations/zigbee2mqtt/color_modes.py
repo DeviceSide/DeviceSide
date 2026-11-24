@@ -15,13 +15,14 @@ own; any other value is the user's and is left alone.
 
 import logging
 from collections.abc import Callable
+from functools import partial
 
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.debounce import Debouncer
 
-from .addressing import bridge_topic, entity_name
+from .addressing import Address, bridge_bases, bridge_topic, entity_name, follow_bases
 from .bridge import ensure_options, retained
 from ...core.errors import describe
 
@@ -105,17 +106,24 @@ def _same(modes: object, ours: list[str]) -> bool:
 
 
 async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
-    """Announce each qualifying light and group with both modes when enabled, or put back Z2M's own when not.
+    """Announce each qualifying light and group of every Zigbee2MQTT instance HA knows with both modes when enabled, or
+    put back Z2M's own when not.
 
     A group qualifies when every member does. Never raises: with no Z2M it does nothing, and a light it can't change
     is logged and left as it was.
     """
+    for base in sorted(set(bridge_bases(hass).values())):
+        await _ensure_base(hass, base, enabled)
+
+
+async def _ensure_base(hass: HomeAssistant, base: str, enabled: bool) -> None:
+    """ensure_color_modes for the instance on this base topic."""
     try:
-        devices = await retained(hass, "devices")
-        groups = await retained(hass, "groups")
+        devices = await retained(hass, base, "devices")
+        groups = await retained(hass, base, "groups")
         # The held bridge/info, without options confirmed since Z2M last published it: this only picks the entities to
         # check, and ensure_options checks each again with them.
-        settings = (await retained(hass, "info")).get("config", {})
+        settings = (await retained(hass, base, "info")).get("config", {})
         entities = _entities(devices, groups)
     except TimeoutError as err:
         _LOGGER.debug("Not checking Zigbee2MQTT's color modes: %s", describe(err))
@@ -131,7 +139,7 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
         return
 
     for kind, z2m_id, exposes in entities:
-        name = entity_name(hass, kind, z2m_id)  # never the friendly name, which a user's log would carry
+        name = entity_name(hass, Address(base, kind, z2m_id))  # never the friendly name, which a user's log would carry
         if not wanted(settings.get(f"{kind}s", {}).get(z2m_id, {}), exposes, enabled):
             continue
         modes = both_modes(exposes) if enabled else default_modes(exposes)
@@ -145,7 +153,9 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
             )
 
         try:
-            await ensure_options(hass, kind, [z2m_id], lambda current, e=exposes: wanted(current, e, enabled), changed)
+            await ensure_options(
+                hass, base, kind, [z2m_id], lambda current, e=exposes: wanted(current, e, enabled), changed
+            )
         except Exception as err:  # noqa: BLE001 - one light that can't be changed mustn't stop the others
             _LOGGER.warning(
                 "Couldn't set Zigbee2MQTT's Home Assistant color modes for %s: %s, %s",
@@ -174,7 +184,12 @@ def _entities(devices: list[dict], groups: list[dict]) -> list[tuple[str, str, l
 
 
 async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], None]:
-    """Run the enabled pass now and whenever Z2M announces a device or group change; returns the unsubscribe.
+    """Watch each instance HA knows a bridge of, as bridges come and go (follow_bases); returns the stop."""
+    return follow_bases(hass, entry, partial(_watch, hass, entry), "color modes")
+
+
+async def _watch(hass: HomeAssistant, entry: ConfigEntry, base: str) -> Callable[[], None]:
+    """Run the instance's enabled pass now and whenever it announces a device or group change; returns the stop.
 
     The retained messages each subscription gets at once start the first pass. Each pass is the entry's background
     task, so unloading cancels one in flight: turning the option off reloads the entry, and a pass finishing after
@@ -182,7 +197,7 @@ async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], N
     """
 
     async def run_pass() -> None:
-        await entry.async_create_background_task(hass, ensure_color_modes(hass, True), "z2m color modes pass")
+        await entry.async_create_background_task(hass, _ensure_base(hass, base, True), "z2m color modes pass")
 
     debouncer = Debouncer(
         hass,
@@ -197,7 +212,7 @@ async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], N
     def announced(_msg: mqtt.ReceiveMessage) -> None:
         debouncer.async_schedule_call()
 
-    unsubscribes = [await mqtt.async_subscribe(hass, bridge_topic(suffix), announced) for suffix in _WATCHED]
+    unsubscribes: list[Callable[[], None]] = []
 
     @callback
     def stop() -> None:
@@ -205,6 +220,12 @@ async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], N
             unsubscribe()
         debouncer.async_shutdown()
 
+    try:
+        for suffix in _WATCHED:
+            unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(base, suffix), announced))
+    except BaseException:
+        stop()
+        raise
     return stop
 
 

@@ -30,8 +30,8 @@ async def test_setup_starts_the_bridge_cache_with_the_replay_and_the_color_modes
 
     bridge.assert_awaited_once()
     assert bridge.await_args.args[:2] == (hass, entry)
-    bridge.await_args.args[2]()  # on_online is the journal's replay request
-    request_replay.assert_called_once_with(hass)
+    bridge.await_args.args[2]("zigbee2mqtt")  # on_online is the journal's replay request
+    request_replay.assert_called_once_with(hass, "zigbee2mqtt")
     colors.assert_awaited_once_with(hass, entry, enabled)
 
 

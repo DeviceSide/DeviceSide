@@ -94,7 +94,7 @@ async def test_a_config_switch_on_a_sensor_is_refused(hass, setup_production, br
     assert verdict(hass, "switch.sensor_indicator", reads_state=True) == Reason.NOT_ADDRESSABLE
 
 
-async def test_a_device_on_a_custom_base_topic_is_refused(hass, setup_production, broker):
+async def test_a_device_whose_unique_id_ends_in_another_base_topic_is_refused(hass, setup_production, broker):
     """Its unique_id ends in its base topic, and the topics here name the default: the publish would reach nothing."""
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], base_topic="z2m", name="plug")
     allow_labs(hass)

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import zlib
 from types import SimpleNamespace
 
 from homeassistant.config_entries import ConfigEntryState
@@ -15,12 +16,46 @@ INFO = "zigbee2mqtt/bridge/info"
 GROUPS = "zigbee2mqtt/bridge/groups"
 
 
+DEFAULT_BASE = "zigbee2mqtt"  # the base topic Zigbee2MQTT defaults to, and the fixtures'
+
+
+def bridge_ieee(base_topic: str) -> str:
+    """A coordinator IEEE for the instance on this base topic: two instances have two coordinators."""
+    return f"0x{zlib.crc32(base_topic.encode()):016x}"
+
+
+def add_z2m_bridge(hass: HomeAssistant, entry: MockConfigEntry, base_topic: str = DEFAULT_BASE) -> dr.DeviceEntry:
+    """The bridge device Z2M registers for the instance on this base topic, with its bridge entity (idempotent).
+
+    Z2M's identifier is `zigbee2mqtt_bridge_<coordinator ieee>` and its bridge entities' unique_id
+    `bridge_<coordinator ieee>_<object_id>_<base topic>` (lib/extension/homeassistant.ts); every device and group
+    links to it with via_device.
+    """
+    ieee = bridge_ieee(base_topic)
+    bridge = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={("mqtt", f"zigbee2mqtt_bridge_{ieee}")},
+        manufacturer="Zigbee2MQTT",
+        name="Zigbee2MQTT Bridge",
+    )
+    er.async_get(hass).async_get_or_create(
+        "sensor",
+        "mqtt",
+        f"bridge_{ieee}_version_{base_topic}",
+        suggested_object_id=f"bridge_{ieee[-8:]}_version",
+        config_entry=entry,
+        device_id=bridge.id,
+    )
+    return bridge
+
+
 def z2m_entry(hass: HomeAssistant) -> MockConfigEntry:
-    """One loaded MQTT config entry for Z2M (all Z2M devices share a single entry)."""
+    """One loaded MQTT config entry for Z2M (all Z2M devices share a single entry), with the default bridge."""
     # Untitled, as HA names a device without one after its entry; Z2M names every device after its friendly name.
     entry = MockConfigEntry(domain="mqtt", title="")
     entry.add_to_hass(hass)
     entry.mock_state(hass, ConfigEntryState.LOADED)
+    add_z2m_bridge(hass, entry)
     return entry
 
 
@@ -35,20 +70,26 @@ def add_z2m_entity(
     name: str | None = None,
     model_id: str | None = None,
     unique_object_id: str | None = None,
-    base_topic: str = "zigbee2mqtt",
+    base_topic: str = DEFAULT_BASE,
+    bridge_base: str | None = DEFAULT_BASE,
 ) -> str:
     """Register one Z2M device entity with the identifier Z2M writes via MQTT discovery.
 
     Its unique_id is Z2M's, `<ieee>_<object_id>_<base topic>`: by default the unsuffixed state entity, whose object_id
     is the domain; `unique_object_id` makes a sibling (`switch_child_lock`, `switch_l1`).
 
+    Its device links to the bridge of the instance on `bridge_base` (registered here), as Z2M's via_device does; None
+    leaves it with no bridge. `base_topic` only ends the unique_id, so the two differ to model a mismatch.
+
     Each device has its own device-registry entry (keyed by ieee); all share one config entry. It is a Hue device
     unless the manufacturer says otherwise, as every record's is, so its class is Verified (integrations/zigbee2mqtt/
     families/hue).
     """
     domain, object_id = entity_id.split(".")
+    bridge = None if bridge_base is None else add_z2m_bridge(hass, entry, bridge_base)
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id,
+        via_device_id=None if bridge is None else bridge.id,
         identifiers={("mqtt", f"zigbee2mqtt_{ieee}")},
         manufacturer=manufacturer,
         model_id=model_id,
@@ -71,18 +112,28 @@ def add_z2m_group(
     entry: MockConfigEntry,
     entity_id: str,
     group_id: int,
-    base_topic: str = "zigbee2mqtt",
+    base_topic: str = DEFAULT_BASE,
     state: str = "off",
     name: str | None = None,
+    bridge_base: str | None = DEFAULT_BASE,
 ) -> str:
     """Register one Z2M group entity with the identifier Z2M writes via MQTT discovery.
 
     Z2M encodes the base topic as character codes joined with no separator, then appends the
-    group ID (getDevicePayload and getEncodedBaseTopic in lib/extension/homeassistant.ts).
+    group ID (getDevicePayload and getEncodedBaseTopic in lib/extension/homeassistant.ts). `bridge_base` is as in
+    add_z2m_entity: a group of the other instance has a base_topic that isn't its bridge's.
     """
     encoded = "".join(str(ord(c)) for c in base_topic)
     return add_z2m_entity(
-        hass, entry, entity_id, ieee=f"{encoded}_{group_id}", state=state, manufacturer="Zigbee2MQTT", name=name
+        hass,
+        entry,
+        entity_id,
+        ieee=f"{encoded}_{group_id}",
+        state=state,
+        manufacturer="Zigbee2MQTT",
+        name=name,
+        base_topic=base_topic,
+        bridge_base=bridge_base,
     )
 
 
@@ -165,7 +216,7 @@ class Broker:
                 self.on_set(topic, payload)
         elif self.on_set is not None and topic.endswith("/set"):
             self.on_set(topic, payload)
-        elif topic.startswith("zigbee2mqtt/bridge/request/") and self.reply is not None:
+        elif "/bridge/request/" in topic and self.reply is not None:
             response = topic.replace("/request/", "/response/")
             self.deliver(response, json.dumps({"transaction": "someone else's", "status": "error"}))
             if isinstance(self.reply, str):

@@ -9,25 +9,39 @@ What a user sees is in [index.md](index.md) and isn't repeated here; what every 
 Only devices Z2M registered through MQTT discovery are found: the device carries the identifier
 `("mqtt", "zigbee2mqtt_<address>")`.
 
-- **Devices** use the IEEE address: topic `zigbee2mqtt/<ieee>/set`. Z2M's `resolveEntity` matches the IEEE-keyed
+- **Devices** use the IEEE address: topic `<base topic>/<ieee>/set`. Z2M's `resolveEntity` matches the IEEE-keyed
   `devices` map before `friendly_name`, so a rename doesn't break it.
 - **Groups** have address `<encoded base topic>_<group ID>`, the base topic as character codes with no separator
   (`1221051039810110150109113116116` for `zigbee2mqtt`; `getEncodedBaseTopic` in Z2M's
-  `lib/extension/homeassistant.ts`), and topic `zigbee2mqtt/<group ID>/set`. `resolveEntity` falls back to the
+  `lib/extension/homeassistant.ts`), and topic `<base topic>/<group ID>/set`. `resolveEntity` falls back to the
   ID-keyed `groups` map, so a rename doesn't break it either, but a device whose friendly name is that number wins.
-  Members come from `zigbee2mqtt/bridge/groups`, features from `zigbee2mqtt/bridge/devices`, and each entity's
+  Members come from `<base topic>/bridge/groups`, features from `<base topic>/bridge/devices`, and each entity's
   options from Z2M's settings (`bridge/info`). All three are held for the entry's life (`bridge_cache.py`):
   subscribed once MQTT is up, kept as Z2M republishes them (devices and groups on a device or group change, settings
   on every settings change and on start; Tested behavior), and read fresh only while nothing has arrived since the
   last connect. Options DeviceSide sets are written through to the held settings once Z2M confirms them, until its
   next `bridge/info`.
-- **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
-  doesn't, but its entities' unique_ids end in it (`<ieee>_<domain>_<base topic>`), so a device target on another is
-  refused by the state-entity rule below.
+- **The base topic is per bridge, read from HA's registries, so any base topic and several instances on one broker
+  work** ([research](research/2026-11-24-base-topics.md)). Z2M links each device and group to its bridge (`via_device`)
+  and gives every bridge entity the unique_id `bridge_<coordinator ieee>_<object_id>_<base topic>`, the base topic
+  verbatim (spaces and `/` included; #575's was `'    zigbee2mqtt'`). A target's base is that suffix on its device's
+  `via_device_id` bridge, disabled bridge entities included (three of the eight object_ids are disabled by default).
+  Its topics, bridge cache, restore journal and `Address` all carry it, as two instances can both have group 7. A
+  group's encoded base must match its bridge's, else it is refused. A target with no bridge or no bridge entity is
+  `not_addressable` (a DEBUG line says so); no default base topic is guessed, as a wrong one reaches nothing silently.
+  Verified live on one instance with the default base; a custom base and several instances rest on upstream source
+  (2.14.3) and unit tests, unprobed live.
+- **A renamed base topic.** Z2M puts the base in every unique_id, so a rename leaves HA with the old entities
+  (unavailable) beside new `_2` ones, as #575's reporter saw. The old bridge entities then keep the old base, so the
+  bridge names two bases. DeviceSide can't tell which is live, so that instance is `not_addressable` until the old
+  entities are removed; a DEBUG line says so. Unprobed: DeviceSide's refusal in that state (from the code and
+  #575's report, not run on a rename).
+- **Restore journal on a rename.** An owed restore on a base that is then renamed stays owed and unpaid; rare, so
+  nothing prunes it.
 - **Multi-endpoint devices.** DeviceSide's set and get topics name the device alone, with unsuffixed keys
   (`state`), so Z2M sends the call to the device's default endpoint: the definition's `default`, else its first
   (`endpoint()` in Z2M's [`lib/model/device.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/model/device.ts),
-  called from `lib/extension/publish.ts`). Another endpoint needs `zigbee2mqtt/<device>/<endpoint>/set` or a
+  called from `lib/extension/publish.ts`). Another endpoint needs `<base topic>/<device>/<endpoint>/set` or a
   suffixed key (`state_l2`), which DeviceSide doesn't send. `bridge/groups` lists each member as `{ieee_address,
   endpoint}`, the endpoint by number, so a group can hold gang 2 of a two-gang alone. The endpoint can be matched to
   its entity: since Z2M 2.6.0 `bridge/devices` names each endpoint (`endpoints.<number>.name`, the definition's
@@ -36,7 +50,7 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   `light_l1`, `lib/extension/homeassistant.ts`). Matching it is no use until the call can reach that endpoint, which
   also needs the endpoint's suffixed state keys read back. So a device target is addressed only when it is its
   device's unsuffixed state entity: Z2M names a `switch`/`light` expose with no endpoint's entity `<domain>` (unique_id
-  `<ieee>_<domain>_zigbee2mqtt`, `${ID}_${object_id}_${base_topic}` in `lib/extension/homeassistant.ts`), the entity
+  `<ieee>_<domain>_<base topic>`, `${ID}_${object_id}_${base_topic}` in `lib/extension/homeassistant.ts`), the entity
   defined by the unsuffixed `state` key DeviceSide sends and reads, so call and entity agree whichever endpoint is the
   default. Every other entity in the domain is suffixed: a gang is `<domain>_<endpoint>` (`switch_l1`), and every
   writable `binary` expose is a `switch_<name>` (a plug's child lock, `config` category; a presence sensor's
@@ -139,7 +153,7 @@ raises.
 ### `turn_on_for`
 
 Publishes `{"state": "ON", "on_time": <s>}`; Z2M sends `OnWithTimedOff` (`on_time` to 0.1 s; max 6553.4 s). With
-fields, `light.turn_on` goes first, and the timer waits for Z2M's state publish on `zigbee2mqtt/<friendly name>`
+fields, `light.turn_on` goes first, and the timer waits for Z2M's state publish on `<base topic>/<friendly name>`
 (up to 5 s). Sent straight after, Z2M would publish the light's state from before the fields landed, which Home
 Assistant keeps, and the two would contend on the mesh, delaying the timer by seconds.
 
@@ -248,7 +262,7 @@ time, answered on the state topic:
 - `lightingColorCtrl`: `colorMode`, then only the attributes of the light's own modes, since one missing attribute
   fails the whole read.
 
-A failed read raises at once when Z2M logs it on `zigbee2mqtt/bridge/logging`, else after 5 s. A group reads its
+A failed read raises at once when Z2M logs it on `<base topic>/bridge/logging`, else after 5 s. A group reads its
 members in turn: averages over the lit ones (all, when all are off), and a `timer` only when every lit member has
 one, the longest.
 

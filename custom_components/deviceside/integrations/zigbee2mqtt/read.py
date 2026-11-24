@@ -19,7 +19,7 @@ from homeassistant.components import mqtt
 from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, ColorMode, brightness_supported
 from homeassistant.core import HomeAssistant, callback
 
-from .addressing import bridge_topic, state_topic, topic, z2m_address
+from .addressing import bridge_topic, known_base, state_topic, topic, z2m_address
 from .bridge import ensure_options, first_retained, publish, wait
 from .bridge_cache import cause, log_error
 from ...core.models import Target
@@ -136,7 +136,7 @@ class Reader:
     @asynccontextmanager
     async def _subscribed(self, target: Target) -> AsyncIterator[None]:
         # HA's light entity already subscribes to the state topic, so this subscription is live at once.
-        unsubscribe = await mqtt.async_subscribe(self.hass, state_topic(target), self._on_state)
+        unsubscribe = await mqtt.async_subscribe(self.hass, state_topic(self.hass, target), self._on_state)
         try:
             yield
         finally:
@@ -159,7 +159,7 @@ class Reader:
         self._failure = (f"{z2m_address(target.device)}/", f"{cluster}.read(")
         payload = {"read": {"cluster": cluster, "attributes": names, "state_property": READ_KEY}}
         try:
-            await publish(self.hass, topic(target, "set"), payload)
+            await publish(self.hass, topic(self.hass, target, "set"), payload)
             return await wait(self._reply, _REPLY_TIMEOUT_S, f"no {cluster} reply from Zigbee2MQTT")
         finally:
             self._reply = None
@@ -169,16 +169,18 @@ class Reader:
 async def reader(hass: HomeAssistant, devices: list[Target]) -> AsyncIterator[Reader]:
     """A Reader for these devices, once each has the read key filtered from Z2M's cache; raises if one can't.
 
-    The key goes into each device's filtered_cache, after the user's own entries.
+    The key goes into each device's filtered_cache, after the user's own entries. The devices are one instance's: its
+    base topic is the first's.
     """
     reading = Reader(hass)
+    base = known_base(hass, devices[0])
     # HA debounces subscribes, so the log's subscription isn't live when async_subscribe returns. The retained
     # bridge/state, subscribed next, reaches the broker in the same batch or a later one: its arrival shows the log is
     # subscribed, before the first read. ensure_options may subscribe to nothing (the bridge cache), so it can't be the
     # barrier. A read pays this one subscribe; reads aren't hold-to-dim.
-    unsubscribe = await mqtt.async_subscribe(hass, bridge_topic("logging"), reading._on_log)
+    unsubscribe = await mqtt.async_subscribe(hass, bridge_topic(base, "logging"), reading._on_log)
     try:
-        await first_retained(hass, "state")
+        await first_retained(hass, base, "state")
         by_address = {z2m_address(device.device): device for device in devices}
 
         def added(address: str) -> None:
@@ -189,7 +191,7 @@ async def reader(hass: HomeAssistant, devices: list[Target]) -> AsyncIterator[Re
                 by_address[address].entity_id,
             )
 
-        await ensure_options(hass, "device", list(by_address), _with_read_key, added)
+        await ensure_options(hass, base, "device", list(by_address), _with_read_key, added)
         yield reading
     finally:
         unsubscribe()

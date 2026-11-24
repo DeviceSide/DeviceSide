@@ -154,7 +154,7 @@ async def test_group_with_fields_calls_turn_on_then_publishes(
     assert publishes[0].data["topic"] == "zigbee2mqtt/7/set"
 
 
-async def test_group_on_custom_base_topic_is_not_addressable(hass, setup_production, publishes, turn_ons):
+async def test_a_group_of_another_instance_is_not_addressable(hass, setup_production, publishes, turn_ons):
     add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7, base_topic="z2m")
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5}) == "not_addressable"

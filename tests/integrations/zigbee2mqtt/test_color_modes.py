@@ -8,6 +8,7 @@ from datetime import timedelta
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
@@ -22,7 +23,16 @@ from custom_components.deviceside.integrations.zigbee2mqtt.color_modes import (
 )
 
 from ...conftest import wall_clock_now
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import (
+    GROUPS,
+    IEEE,
+    INFO,
+    add_z2m_bridge,
+    add_z2m_entity,
+    add_z2m_group,
+    bridge_ieee,
+    z2m_entry,
+)
 
 DEVICES = "zigbee2mqtt/bridge/devices"
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"
@@ -228,6 +238,35 @@ async def test_watch_runs_at_once_and_again_when_z2m_announces_a_device(hass, z2
     assert not z2m.subscribers.get(DEVICES) and not z2m.subscribers.get(GROUPS)
 
 
+async def test_watch_runs_each_instances_pass_alone_and_follows_its_bridge(hass, z2m, monkeypatch):
+    passes: list[str] = []
+
+    async def recorded(hass, base, enabled):
+        passes.append(base)
+
+    monkeypatch.setattr(color_modes, "_ensure_base", recorded)
+    entry = MockConfigEntry(domain=DOMAIN)
+    entry.add_to_hass(hass)
+    start = wall_clock_now()
+    stop = await color_modes.async_watch(hass, entry)
+    await settle(hass)
+    await advance(hass, start, 3)
+    assert passes == ["zigbee2mqtt"]  # the second instance isn't known yet
+
+    add_z2m_bridge(hass, hass.config_entries.async_entries("mqtt")[0], "z2m_up")
+    await settle(hass)
+    z2m.deliver("z2m_up/bridge/groups", "[]")
+    await advance(hass, start, 6)
+    assert passes == ["zigbee2mqtt", "z2m_up"]  # its own pass, not the first instance's again
+
+    er.async_get(hass).async_remove(
+        er.async_get(hass).async_get_entity_id("sensor", "mqtt", f"bridge_{bridge_ieee('z2m_up')}_version_z2m_up")
+    )
+    assert not z2m.listening("z2m_up/bridge/groups") and not z2m.listening("z2m_up/bridge/devices")
+    stop()
+    assert not z2m.listening(DEVICES)
+
+
 @pytest.fixture
 def mqtt_ready(monkeypatch):
     ready = asyncio.Event()
@@ -275,7 +314,7 @@ async def test_unloading_cancels_a_pass_in_flight(hass, z2m, mqtt_ready, monkeyp
     # Turning the option off reloads the entry: a pass finishing after that would undo the reload's own.
     started, cancelled = asyncio.Event(), asyncio.Event()
 
-    async def slow_pass(hass, enabled):
+    async def slow_pass(hass, base, enabled):
         started.set()
         try:
             await asyncio.Event().wait()
@@ -283,7 +322,7 @@ async def test_unloading_cancels_a_pass_in_flight(hass, z2m, mqtt_ready, monkeyp
             cancelled.set()
             raise
 
-    monkeypatch.setattr(color_modes, "ensure_color_modes", slow_pass)
+    monkeypatch.setattr(color_modes, "_ensure_base", slow_pass)
     start = wall_clock_now()
     entry = await setup_entry(hass)
     await hass.async_block_till_done()
