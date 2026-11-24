@@ -113,12 +113,18 @@ breaker's ([research](research/2026-11-14-tuya-datapoint-countdown.md)).
 #### Tuya inching switches
 
 The Tuya WHD02 (maker string `_TZ3000_skueekg3`, Zigbee model `TS0001`) and the Mowe MW781Z (`_TZ300A_rncj86af`, model
-`TS0726`) keep a persistent auto-off, "inching", which Zigbee2MQTT writes in one publish, which set auto-off and clear
-auto-off send ([research](research/tuya/2026-11-24-inching.md)). Both are single-switch devices with a time measured on
-the device (5 s and 63 s on the WHD02, 5 s on the MW781Z). The time is whole seconds from 1 s, and the setting can't be
-read back, so the result is `sent`. The WHD02's `TS000F` variant, the Moes ZM4LT3 (`_TZ3000_mzcp0of6`, reported having no
-effect) and every other Tuya switch Zigbee2MQTT gives inching stay with the other Tuya plugs and switches below. Turn on
-with timer is refused on these two, as on those.
+`TS0726`) keep a persistent auto-off, "inching", which set auto-off and clear auto-off write
+([research](research/tuya/2026-11-24-inching.md)). Both are single-switch devices with a time measured on the device
+(5 s and 63 s on the WHD02, 5 s on the MW781Z). They are admitted by maker string, so a string not named here is not.
+
+- **Time:** whole seconds, from 1 s to 65,535 s.
+- **Sent, not confirmed:** the setting can't be read back, so the result is `sent`, and get attributes reports no
+  auto-off setting for these devices.
+- **No auto-on,** and turn on with timer is refused, as on the other Tuya plugs and switches below.
+- **Not these:** the WHD02's `TS000F` variant, the Moes ZM4LT3 (`_TZ3000_mzcp0of6`, reported having no effect) and every
+  other Tuya switch whose Zigbee2MQTT definition has an inching setting stay with the other Tuya plugs and switches
+  below. The datapoint devices (`TS0601`) time themselves by a countdown, a different mechanism
+  ([above](#tuya-datapoint-devices-with-one-countdown)).
 
 #### Tuya plugs and switches
 
@@ -156,12 +162,26 @@ Labs on.
 
 ### Sonoff
 
-Sonoff's single-channel relays and dimmer (ZBMINIR2 and its white label MINI-ZBD, ZBMicro, MINI-ZB1GS, MINI-ZB1GSP,
-BASIC-ZB1GSP, S61SZBTPB, MINI-ZBDIM) keep a persistent auto-off, "inching", which Zigbee2MQTT writes in one publish, which
-set auto-off and clear auto-off send ([research](research/sonoff/2026-11-24-inching.md)). The setting
-can't be read back, so the result is `sent`. The S60ZBTPF and S60ZBTPG plugs are not built: Zigbee2MQTT's disable is
-reported to have no effect on them, so clear auto-off would leave the plug pulsing. The 2-gang MINI-ZB2GS waits on
-per-endpoint addressing.
+Sonoff's relays and dimmers keep a persistent auto-off, "inching", which set auto-off and clear auto-off write
+([research](research/sonoff/2026-11-24-inching.md)). Their other features aren't built yet. A two-gang MINI-ZB2GS
+waits on [per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt).
+
+#### Sonoff inching relays
+
+The single-channel models ZBMINIR2 (and its white label MINI-ZBD), ZBMicro, MINI-ZB1GS, MINI-ZB1GSP, BASIC-ZB1GSP,
+S61SZBTPB and the MINI-ZBDIM dimmer, admitted by model on Zigbee2MQTT's definition, not on a test of the device.
+
+- **Time:** half seconds, from 0.5 s to 3,599.5 s (just under an hour), on every model, the ones that take longer
+  included.
+- **Sent, not confirmed:** the setting can't be read back, so the result is `sent`, and get attributes reports no
+  auto-off setting for these devices.
+- **No auto-on:** DeviceSide sets the relay to turn off after the time, never to turn on again.
+
+#### Sonoff S60 plugs
+
+The S60ZBTPF and S60ZBTPG are not built, even with Labs on: users report Zigbee2MQTT's disable has no effect on them
+([Zigbee2MQTT #31799](https://github.com/Koenkk/zigbee2mqtt/issues/31799)), so clear auto-off would leave the plug
+pulsing.
 
 ### Gledopto
 

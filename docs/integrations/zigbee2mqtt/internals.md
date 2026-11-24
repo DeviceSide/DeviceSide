@@ -240,6 +240,73 @@ result is `sent`, or `rejected` by `set_check`. Evidence: Z2M 2.14.3 and the ZHC
   can't see exposes, so until `bridge/devices` lists the device it is Unplaced, refused as `class_unknown`. D1Z
   (ZHC v26.126.0) and SFD02-Z_2 (v26.127.0) are newer than the ZHC Z2M 2.14.3 ships, so match nothing on it.
 
+### `set_auto_off` and `clear_auto_off`
+
+Persistent auto-off, "inching", one publish to the set topic, by Z2M's composite `inching_control_set`. Serve only
+their classes' own calls (`AdapterScope.own_calls_only`): the Sonoff and Tuya inching classes, below. Every other class
+is refused as `not_built`, and a target not yet placed as `class_unknown`. `native_groups=False`, so a Z2M group falls
+back to its members. `confirmable=False`: the result is `sent`, or `rejected` by `set_check`. Evidence: ZHC at
+`ed29f800`, read 2026-11-24, and upstream reports; no device was probed
+([Sonoff](research/sonoff/2026-11-24-inching.md), [Tuya](research/tuya/2026-11-24-inching.md)).
+
+- **No readback.** The composite's access is SET only: no `/get`, and no converter reads it. Z2M publishes the value
+  written as state (`return {state: {[key]: value}}`), so its state is the last write, not the device's. The S60 showed
+  inching inactive after pairing while it ran ([Zigbee2MQTT #31604](https://github.com/Koenkk/zigbee2mqtt/issues/31604)).
+  So `get_attributes` reports no auto-off setting for these classes.
+- **The off arrives as an On/Off report.** When inching fires the device sends a `genOnOff` report, `ON` then `OFF`
+  at the set time (ZBMINIR2: [ZHC #13383](https://github.com/Koenkk/zigbee-herdsman-converters/issues/13383), 1 s;
+  Mowe: [ZHC #13118](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13118), 5 s). Whether a 0.5 s pulse is
+  reported on every model is unknown.
+
+**Sonoff** (`families/sonoff/inching.py`): `{"inching_control_set": {"inching_control": "ENABLE", "inching_time": t,
+"inching_mode": "OFF"}}`; clear sends `"DISABLE"`, `inching_time` 0.5, `inching_mode` `"OFF"`.
+
+- **What Z2M sends.** `sonoffExtend.inchingControlSet` ([ZHC `sonoff.ts#L2686-L2775`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/ed29f80014f11cd3234e0e7371d1aace44e08982/src/devices/sonoff.ts#L2686-L2775))
+  sends cluster 0xFC11 (`customClusterEwelink`) command `protocolData` (0x01) with manufacturer code 0x1286 and 11
+  bytes: `01 17 07 80`, a mode byte (bit 7 inching enabled unless `DISABLE`, bit 0 mode ON unless `"OFF"`), the
+  channel, the time in 0.5 s units as little endian 16 bits, two zero bytes, and an XOR checksum.
+- **The mode-ON trap.** The mode bit is set unless `inching_mode` reads `"OFF"`, so a write that omits it is mode ON:
+  the relay switches on at once and turns back on after every off ([ZHC #13383](https://github.com/Koenkk/zigbee-herdsman-converters/issues/13383)).
+  Both calls always send `"OFF"`.
+- **A 16-bit time.** ZHC writes the time into two bytes and zeroes the next two, while the ZHA quirk PR reads all four
+  as one 32-bit value (ZHADH #5317). So on the 86,399.5 s models (MINI-ZBDIM, MINI-ZB1GSP, MINI-ZB1GS) anything over
+  32,767.5 s would truncate through ZHC. `DurationLimits` is 0.5 s to 3,599.5 s step 0.5 s on every model, so one class
+  holds them all (inferred from the source, not tested on a device).
+- **Mode OFF is relay-neutral.** Arming mode OFF changes no state; the relay pulses on its next turn-on
+  ([ZHC #13383](https://github.com/Koenkk/zigbee-herdsman-converters/issues/13383)). `clear_auto_off` leaves the output as it is.
+- **S60ZBTPF, S60ZBTPG.** Not built: users report `DISABLE` having no effect on firmware 1.0.2
+  ([Zigbee2MQTT #31799](https://github.com/Koenkk/zigbee2mqtt/issues/31799)), so a clear would leave the plug pulsing.
+- **MINI-ZB2GS.** Its composite is per endpoint (suffixed fields), so it waits on per-endpoint addressing.
+- **The class rule** reads `bridge/devices`' definition: its `model` in the allowlist and a top-level
+  `inching_control_set` expose.
+
+**Tuya** (`families/tuya/inching.py`): `{"inching_control_set": {"inching_control_1": "ENABLE", "inching_time_1": N}}`;
+clear sends `"DISABLE"` and `inching_time_1` 1. N is whole seconds, 1 to 65,535 (the expose's min, max and step; the
+wire is a 16-bit count of seconds, so no sub-second).
+
+- **What Z2M sends.** `valueConverter.inchingSwitch.to` ([ZHC `lib/tuya.ts#L2901-L2918`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/ed29f80014f11cd3234e0e7371d1aace44e08982/src/lib/tuya.ts#L2901-L2918))
+  builds, per gang with both fields given, three bytes (channel and enable bit, then the seconds, big endian),
+  encodes them base64 and concatenates; `tz.inchingSwitch` ([`#L3406-L3419`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/ed29f80014f11cd3234e0e7371d1aace44e08982/src/lib/tuya.ts#L3406-L3419)) sends
+  the base64 text, as ASCII, as command 0xFB on cluster 0xE000, endpoint 1. So the wire holds four bytes a gang, not the
+  three Tuya's document shows; it works on hardware ([ZHC #13118](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13118),
+  [#13879](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13879)).
+- **Both fields are required.** A gang missing either is skipped and the command carries an empty payload, so each call
+  sends the time too, 1 s with a disable.
+- **Gang 4 and up are mis-encoded.** The channel byte is `2 ** (i-1)` where Tuya's document gives `(i-1) << 1`: equal
+  for gangs 1 to 3, wrong from the fourth ([ZHC #13655](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13655),
+  open). Inferred from the code and the PR, not tested. Why multi-gang waits.
+- **One write may replace the whole table.** On the TS0004 in that PR a write for one gang disabled the others; unknown
+  elsewhere. A second reason multi-gang waits.
+- **The two strings.** WHD02 `_TZ3000_skueekg3` (5 s and 63 s measured, read back right) and Mowe MW781Z
+  `_TZ300A_rncj86af` (5 s measured). `_TZ3000_mzcp0of6` and `_TZ3000_p26flek3` were reported to have no effect. The
+  class rule reads the maker string and a top-level `inching_control_set` expose (ZHC enables the WHD02's only on
+  model `TS0001`, so its `TS000F` variant is out).
+- **Readback exists upstream but isn't used.** The device reports attribute 0xD003 (base64, decoded by a `fromZigbee`
+  converter) and ZHC has no `convertGet`; the report is best effort and device dependent, and ZHC decodes a phantom
+  gang on some devices ([Zigbee2MQTT #32248](https://github.com/Koenkk/zigbee2mqtt/issues/32248)).
+- **Countdown on the same channel is unknown.** Neither string is in a class `turn_on_for` serves, so the two never
+  share one.
+
 ### `set_attributes`
 
 Z2M's generic `command` payload, one per field. A color goes as xy, or hue and saturation on a light without xy.
