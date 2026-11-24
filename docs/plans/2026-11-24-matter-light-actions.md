@@ -67,7 +67,11 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
     its OnOff entity (`addressing.onoff_endpoint`). A light with no Level Control server on that endpoint gets
     `not_dimmable` (Shelly's reason). Color features come from Color Control's FeatureMap (`<ep>/768/65532`), read
     from the node cache, sync, as `lt_feature` does. The LT check stays for these adapters too.
-12. **Groups:** HA's Matter has no group entities. Nothing to do.
+12. **Set_attributes reads HA's color modes** (decided during step 2): `core/zcl_write.commands()` takes HA's
+    `supported_color_modes`, which HA derives from the Color FeatureMap, so set_attributes doesn't read the FeatureMap;
+    `addressing.color_features` serves step 5's hue check. OnLevel is read only when the call sets a brightness, since it
+    decides only the level the next On comes up at.
+13. **Groups:** HA's Matter has no group entities. Nothing to do.
 
 ## Steps
 
