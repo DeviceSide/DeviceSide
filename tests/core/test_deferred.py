@@ -1,5 +1,5 @@
-"""The register's one mechanical condition (docs/deferred.md, Device facts across integrations): which integrations'
-families read a Zigbee catalog module. A third one reopens that entry."""
+"""The register's one mechanical condition (docs/deferred.md, Device facts across integrations): which integrations
+read a Zigbee catalog module, from a family or from outside one (`refusals.py`). A third one reopens that entry."""
 
 import ast
 from importlib.util import resolve_name
@@ -29,21 +29,18 @@ def reads_catalog(path: Path) -> bool:
     return any(name == CATALOG or name.startswith(f"{CATALOG}.") for name in imported(path))
 
 
-def test_only_zha_and_zigbee2mqtt_families_read_the_zigbee_catalog():
+def test_only_zha_and_zigbee2mqtt_read_the_zigbee_catalog():
     registry = AdapterRegistry.discover()
     readers = {
         key
-        for key, info in registry.integrations.items()
-        for family in info.families
+        for key in registry.integrations
         if any(
             reads_catalog(source)
-            for source in (REPO / f"custom_components/deviceside/integrations/{key}/families/{family.key}").rglob(
-                "*.py"
-            )
+            for source in (REPO / f"custom_components/deviceside/integrations/{key}").rglob("*.py")
         )
     }
     assert readers == {"zha", "zigbee2mqtt"}, (
-        f"integrations whose families read a zigbee/ catalog module are now {sorted(readers)}. A new reader meets a "
+        f"integrations that read a zigbee/ catalog module are now {sorted(readers)}. A new reader meets a "
         "Revisit when condition of docs/deferred.md's 'Device facts across integrations' entry: reopen it. Either way, "
         "update this set with a repo maintainer."
     )
