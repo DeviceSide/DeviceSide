@@ -23,7 +23,9 @@ publishes as it connects.
   Zigbee2MQTT shows it as a light. So does a TS011F plug on Tuya's countdown for turn on with timer, as the group's
   timer isn't the plug's: each light gets its own, and so does a plug Zigbee2MQTT shows as a light. One it shows as a
   switch is skipped (`not_addressable`), with a warning, as no light reaches it: target its switch beside the group, and
-  it gets its countdown, with no warning. Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes its
+  it gets its countdown, with no warning. A Tuya datapoint device with one countdown makes a group fall back on turn on
+  with timer the same way, and turn off with timer always runs a group as its devices, each on its own: a Zigbee group
+  has no call for it ([integrations](../../integrations.md#what-cant-be-done-and-why)). Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes its
   groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group is in
   Labs, and turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on. If DeviceSide
   can't subscribe to Zigbee2MQTT's bridge at all, it logs a warning, groups run only with Labs on, and,
@@ -39,8 +41,8 @@ Signify's Hue devices (manufacturer `Philips`). A Hue smart plug gets no turn on
 
 Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). Most run
 Tuya's own countdown instead of the Zigbee timer, and Zigbee2MQTT turns the Zigbee timer into a plain on. So turn on
-with timer uses Tuya's countdown on the TS011F plugs below, and isn't built yet on the rest: the
-Zigbee timer would turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)).
+with timer uses Tuya's countdown on the TS011F plugs and the datapoint devices with one countdown below, which take
+turn off with timer too, and isn't built yet on the rest: the Zigbee timer would turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)).
 Their other features aren't built yet either, as none has passed on a Tuya device and nothing predicts Tuya's
 firmware takes the standard commands. DeviceSide refuses them, even with Labs on.
 
@@ -69,21 +71,63 @@ Tuya TS011F and left it on ([internals](../../internals.md#tested-behavior)). A 
 shows it as a light, so the actions for lights alone, such as stop, refuse it there as not built yet; turn on with
 timer still takes it.
 
+#### Tuya datapoint devices with one countdown
+
+Tuya datapoint devices (they speak only Tuya's own protocol) whose Zigbee2MQTT definition, the Model on the device's
+Zigbee2MQTT page, gives one `countdown` setting, in seconds, for the whole device: dimmers, wall switches, relays, a
+plug and a valve. Turn on with timer and turn off with timer send the on or the off with that countdown, and the device
+toggles back when it ends. They are admitted by Model, on a reading of each one's Zigbee2MQTT definition, not on a test
+of the device ([research](research/2026-11-14-tuya-datapoint-countdown.md),
+[the call](research/2026-11-24-tuya-datapoint-call.md)). A Model not listed here is one of the
+[other Tuya datapoint devices](#other-tuya-datapoint-devices), even with a countdown setting, until its definition is
+read. If you try one, please report whether it works.
+
+- **Up to 12 hours:** ZDMS16-1, ZOT60 (a TS011F plug on Tuya's protocol), FK_V02, GL-SPI-206P, SFD02-Z, SFD02-Z_2,
+  QADZ1LR, `TS0601_dimmer_1_gang_1`, `TS0601_dimmer_1_gang_2`, `TS0601_dimmer_5`, MG-ZG01W, `_TZE28C1000000_jlbsptkl`,
+  ZMS-206US-1.
+- **Up to 24 hours:** TO-DM-W/B, `TS0601_multifunction_switch`, D1Z, D5Z.
+- **Up to 7,210 s (2 h 10 s):** AVATTO ZBS16.
+
+D1Z and SFD02-Z_2 need a Zigbee2MQTT release after 2.14.3, which doesn't have their definitions yet.
+
+The timer runs in whole seconds, from 1 s to the device's limit: a duration is rounded to the nearest second, and one
+rounded or over the limit reports `clamped_to`, the value sent. Nothing is read back, so the result is `sent`; get
+attributes isn't built for these devices. On a GL-SPI-206P, which gets the on or off twice, a call can report failed
+while its timer runs ([internals](internals.md#turn_off_for)).
+
+**The toggle and its cancelling are Tuya's general spec, not measured here.** Tuya's countdown spec says the device
+turns off when the countdown ends if it is on, and on if it is off, and that the countdown is cleared when the device's
+on/off state changes (its button, the Tuya app, a schedule) or it loses power
+([Tuya, General Countdown](https://developer.tuya.com/en/miniapp/solution-ai/ability/lamp-solution/lamp/module-set/common-countdown.md)). That page is Tuya's guide for its Wi-Fi and Bluetooth lamp panels, not for
+Zigbee; that these devices follow it is an inference, which Zigbee2MQTT's own description of the setting, "Toggle the
+device after a set duration", agrees with ([research](research/2026-11-24-tuya-datapoint-call.md), §2). So a light
+turned off by hand during a timer shouldn't come back on, but no device here has been tried.
+
+Left with the other Tuya datapoint devices, though their definitions have a countdown: devices with several switches,
+and any whose countdown Zigbee2MQTT names per switch (`countdown_l1`), as DeviceSide's command would reach only the
+first ([Sharp edges](#sharp-edges)); timers in minutes, hours or a list of steps; three irrigation valves (FK-BV05,
+ZVL-PRO, ZG-308Z), whose countdown may be a preset run time rather than a timer, so a valve could be left open; the
+LYAI-14, whose source says it ignores the countdown; and a few whose setting may not be a plain timer, such as a circuit
+breaker's ([research](research/2026-11-14-tuya-datapoint-countdown.md)).
+
 #### Tuya plugs and switches
 
 Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white
 labels), and lights, such as bulbs and dimmers. No feature is built for them yet, as above.
 
-#### Tuya datapoint devices
+#### Other Tuya datapoint devices
 
-Tuya devices that speak only Tuya's own protocol (model `TS0601`). No feature is built for them yet, as above; they
-take no standard Zigbee reads or writes, and their timer is Tuya's own countdown, which isn't built for them.
+Tuya devices that speak only Tuya's own protocol (model `TS0601`), but for the
+[ones with one countdown](#tuya-datapoint-devices-with-one-countdown). No feature is built for them yet, as above; they
+take no standard Zigbee reads or writes, and their timer is Tuya's own countdown, which isn't built for them: on a
+device with several switches it needs a command per switch.
 
 Until Zigbee2MQTT publishes its devices after Home Assistant connects to MQTT, or while it is still pairing one,
 DeviceSide knows a rebadged Tuya device only by what Home Assistant shows: the vendor `Tuya`, or a model starting
 `TS`. One shown under another brand, as another brand's device (Lidl's, or Gledopto's GL-SPI-206P, which runs Tuya's
 own protocol), can't be told apart from that brand's own devices for those first moments. So turn on with timer
-refuses every light, plug or switch but a Hue one (`class_unknown`), even with Labs on, until
+refuses every light, plug or switch but a Hue one (`class_unknown`), and turn off with timer every one, even with Labs
+on, until
 Zigbee2MQTT lists it as fully paired (interviewed), with its own Zigbee manufacturer and model. A group with such a
 light in it runs its other lights, each on its own, one command per light. A device whose pairing never completes stays
 refused until you pair it again in Zigbee2MQTT, and until then its groups run their other lights one by one.
@@ -101,7 +145,8 @@ Labs on.
 Gledopto's LED controllers and bulbs. Zigbee2MQTT sends some of them a plain on, a pause, then the brightness, rather
 than the standard command a Hue bulb gets, and some turn on when their color is set while off
 ([research](research/2026-11-14-timed-on-call-patterns.md)). So no feature is built for them yet, and DeviceSide
-refuses them, even with Labs on.
+refuses them, even with Labs on. The GL-SPI-206P, which runs Tuya's own protocol, is one of the
+[Tuya datapoint devices with one countdown](#tuya-datapoint-devices-with-one-countdown).
 
 ### IKEA
 
@@ -153,7 +198,7 @@ DeviceSide sets three Zigbee2MQTT options:
 ## Failed sends
 
 When Zigbee2MQTT logs that it couldn't send a command (a busy coordinator refusing a group command, say), raise,
-lower, stop, turn on with timer and set attributes report that light or group failed, with the reason Zigbee2MQTT
+lower, stop, turn on with timer, turn off with timer and set attributes report that light or group failed, with the reason Zigbee2MQTT
 gave (`busy`). These actions answer up to 2 s later than before while DeviceSide listens for that line; a command
 Zigbee2MQTT answers with the light's state ends the wait at once.
 
@@ -164,7 +209,8 @@ light's new state, usually within a fraction of a second. If that takes over 5 s
 longer than asked.
 
 A Tuya TS011F plug gets Tuya's countdown instead, with its own limits ([Tuya TS011F plugs](#tuya-ts011f-plugs)); it
-reports its state when the timer ends, so DeviceSide reads nothing back.
+reports its state when the timer ends, so DeviceSide reads nothing back. So does a Tuya datapoint device with one
+countdown ([its section](#tuya-datapoint-devices-with-one-countdown)), with its own limits too.
 
 The result is `sent`: Zigbee2MQTT doesn't confirm a timer, or report the light's state after one. Device
 Side reads the state back after the light turns on and when the timer ends, so Home Assistant stays right. A
@@ -176,6 +222,18 @@ timer.
 
 **Cancelling.** `turn_off` cancels the timer. A new timer replaces the old one, longer or shorter, as on ZHA: Zigbee2MQTT
 sends the same `OnWithTimedOff` (untested on Zigbee2MQTT).
+
+## Turn off with timer
+
+Only the [Tuya datapoint devices with one countdown](#tuya-datapoint-devices-with-one-countdown) take it: DeviceSide
+turns the device off with its countdown set, and the device turns itself back on when the countdown ends. No other
+Zigbee device has a call for it ([integrations](../../integrations.md#what-cant-be-done-and-why)), so DeviceSide
+refuses every other light, plug or switch as not built yet, and runs a group as its devices. The result is `sent`:
+nothing is read back.
+
+**Cancelling.** By Tuya's spec, turning the device on cancels the timer, as any change of its on/off state does, and a
+new timer replaces the old one. Turning off a device already off changes nothing on it, so Tuya's spec doesn't say it
+cancels the timer (untested).
 
 ## Smooth color changes
 
@@ -191,7 +249,7 @@ sends the same `OnWithTimedOff` (untested on Zigbee2MQTT).
 
 `get_attributes` reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can be stale.
 A group returns one entry, averaged over the lights that are on, as Hue averages a room. It reads only Hue's lights
-yet: other brands' reads aren't built. Tuya's countdown plugs, which Turn on with timer runs on, are refused: their
+yet: other brands' reads aren't built, Tuya's datapoint devices' included. Tuya's countdown plugs, which Turn on with timer runs on, are refused: their
 time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 
 ## Sharp edges

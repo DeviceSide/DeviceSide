@@ -26,9 +26,10 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # 70 and 71): Z2M has no `on_time` converter for a definition built with `onOffCountdown`, or for a datapoint
     # device, so it sends a plain On and the device stays on. Each has a call that would work, Z2M's `countdown`, which
     # isn't built for them: converter A's for a TS011F Z2M shows no `countdown` for and the TS011F's kin (v0.1.0 serves
-    # it to the countdown plugs alone, Verified or in Labs, plan Decision 72), the datapoint one for TS0601 devices
-    # (v0.1.x, docs/plans/2026-11-15-tuya-datapoint-countdown.md). The action's failure harms, so the dispatcher refuses
-    # a device not yet placed as well, which could be one of them (plan Decision 26).
+    # it to the countdown plugs alone, Verified or in Labs, plan Decision 72), the datapoint one for the TS0601 devices
+    # outside the datapoint classes (families/tuya/datapoint.py serves the single-endpoint ones research names). The
+    # action's failure harms, so the dispatcher refuses a device not yet placed as well, which could be one of them
+    # (plan Decision 26).
     "turn_on_for": {
         # Every other brand's lights, plugs and switches (docs/evidence.md, In Labs): no pass, and research names only
         # some makers' lights as running the timer, some lights turning on and never off, and most plugs ignoring it
@@ -60,8 +61,11 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
         TUYA_TS011F: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-lab-probe.md"),
         TUYA_ZCL: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
-        # The harm today: a datapoint device's definition has no `on_time` converter either, so it gets a plain On
-        # (timed-on call patterns); the call that would serve it is the datapoint countdown (its research note).
+        # The datapoint devices outside the datapoint classes: multi-gang ones and every countdown named per endpoint
+        # (they need per-endpoint addressing), timers in minutes, hours or an enum, the definitions left out by
+        # datapoint.py, and any research hasn't read. Their definition has no `on_time` converter either, so they get a
+        # plain On (timed-on call patterns); the call that would serve most is the datapoint countdown (its research
+        # note), addressed per endpoint.
         TUYA_MCU: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
         # Reported failing the countdown with harm (plan Decisions 35 and 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(
@@ -74,7 +78,9 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # `/get` and the plug's reports carry the countdown last set (internals.md, Tuya's countdown, P6). A read, whose
     # failure doesn't harm (Action.failure_harms; docs/evidence.md, When today's call harms a class). The TS011Fs off
     # the countdown are in no scope: no other action serves them, so there is nothing to read back around
-    # (docs/evidence.md, "A read serves only").
+    # (docs/evidence.md, "A read serves only"). The datapoint classes, which turn_on_for and turn_off_for serve, are in
+    # no scope here either and hold no entry: whether they report the time left is unprobed, so the read is not built
+    # yet, and the registry refuses a not_built entry on a read, whose failure doesn't harm.
     "get_attributes": dict.fromkeys(
         COUNTDOWNS,
         NoKnownMethod(

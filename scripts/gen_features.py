@@ -115,7 +115,9 @@ LEGEND = (
 # fails). Users read why in docs/integrations.md, at IMPOSSIBLE. A feature that only some devices can't do stays
 # blank, and that page says so.
 NO_PATH = {
-    # Matter `OnWithTimedOff` is on-then-off only: there is no off-then-on timer to send.
+    # Matter `OnWithTimedOff` is on-then-off only: there is no off-then-on timer to send. Zigbee's is the same, so a
+    # Zigbee group, and a Zigbee device but Tuya's, has no call for it either; that is only some of an integration's
+    # targets, as Tuya's datapoint countdown serves turn off with timer on Zigbee2MQTT, so no Zigbee cell is marked.
     ("Turn off with timer", "matter"),
     # Hue bridge timers ignore a manual on or off, so they can't be cancelled the way users expect.
     ("Turn off with timer", "hue"),

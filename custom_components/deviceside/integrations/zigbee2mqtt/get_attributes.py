@@ -34,7 +34,8 @@ class Z2MGetAttributes(Z2MAdapter[Request]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Switches are in Labs, but no class is served on one (docs/evidence.md, "A read serves only"):
-        # turn_on_for serves only Tuya's countdown plugs there, which this read refuses (refusals.py).
+        # turn_on_for and turn_off_for serve only Tuya's countdown plugs, which this read refuses (refusals.py), and its
+        # datapoint devices, whose read isn't built, there.
         domains=verified(Platform.LIGHT) | labs(Platform.SWITCH),
         **class_scope("get_attributes"),
         confirmable=True,

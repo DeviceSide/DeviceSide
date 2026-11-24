@@ -136,7 +136,7 @@ Each mark links its proof: 🟢 its records, 🟡 and ⚪ the class's section on
 | [Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): check Manufacturer and the countdown setting on the plug's Zigbee2MQTT page | | | | | | | | |
 | &emsp;[_TZ3000_0zfrhq4i, _TZ3000_gznh2xla, _TZ3000_okaz9tjs, or _TZ3000_typdpbpg](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) ✔ | 🟢 [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) | | | | | | 🔴 [why](#tuya-ts011f-plugs) | |
 | &emsp;[other makers with a countdown setting](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) | | | | | | 🔴 [why](#tuya-ts011f-plugs) | |
-| [AVATTO ZBS16 (a Tuya datapoint relay), single-endpoint Tuya datapoint devices with a 12-hour countdown, single-endpoint Tuya datapoint devices with a 24-hour countdown](integrations/zigbee2mqtt/index.md#tuya) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya) | | | | | | |
+| [Tuya datapoint devices with one countdown](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | | | | | | |
 | [other brands' lights](integrations/zigbee2mqtt/index.md#other-brands) | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) | | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) |
 
 ### ZHA
