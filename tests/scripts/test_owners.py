@@ -15,6 +15,8 @@ PATHS = ow.package_paths()
 PKG = "custom_components/deviceside/integrations/acme/"
 TUYA_DIR = PKG + "families/tuya/"
 CATALOG = "custom_components/deviceside/zigbee/tuya.py"
+REASONS = "custom_components/deviceside/zigbee/reasons.py"
+REASONS_TEST = "tests/zigbee/test_reasons.py"
 REPO = tuple(sorted(gen_codeowners.REPO_MAINTAINERS))
 
 ACME = ow.Package("acme")
@@ -26,6 +28,8 @@ TUYA_GROUP = ow.Group(TUYA, "acme", ("tina",), ("alice",))
 HUE_GROUP = ow.Group(HUE, "acme", ("alice",))
 CATALOG_ACME = ow.Group(SHARED, "acme", ("tina",), ("alice",))
 CATALOG_ZETA = ow.Group(SHARED, "zeta", ("zed",), ("zoe",))
+READS_ACME = ow.Group(ow.SHARED_CATALOG, "acme", ("alice",))
+READS_ZETA = ow.Group(ow.SHARED_CATALOG, "zeta", ("zoe",))
 SHARED_CODE = ow.Group(None, None, REPO)
 
 
@@ -44,12 +48,18 @@ def build_tree(repo):
     repo.commit(ow.FAMILY_INIT.format(key="acme", family="hue"), family("hue", ()))
     repo.commit(ow.FAMILY_INIT.format(key="zeta", family="tuya"), family("tuya", ("zed",)))
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
+    repo.commit(REASONS, 'OTHER_TIMER_REASON = "why"\n')
+    # An integration whose families read no catalog file: one has no catalog file, the other a shared file's name.
+    repo.commit(ow.INIT.format(key="newt"), integration("newt", ("nina",)))
+    repo.commit(ow.FAMILY_INIT.format(key="newt", family="gledopto"), family("gledopto", ("gil",)))
+    repo.commit(ow.FAMILY_INIT.format(key="newt", family="reasons"), family("reasons", ("rita",)))
 
 
 @pytest.fixture
 def tree(repo, monkeypatch, tmp_path_factory):
     """`main`: `acme` (alice) with a `tuya` family (tina) and a `hue` one with no maintainers of its own, `zeta`
-    (zoe) with a `tuya` family (zed), and the catalog file the `tuya` families share."""
+    (zoe) with a `tuya` family (zed), the catalog file the `tuya` families share and a shared one, and `newt` (nina)
+    with a `gledopto` family (gil) and a `reasons` one (rita), neither of a key with a catalog file."""
     monkeypatch.chdir(repo.path)
     from_template(repo, build_tree, tmp_path_factory)
     return repo
@@ -60,7 +70,12 @@ def at_main():
 
 
 def test_the_paths_match_gen_codeowners():
-    assert PATHS == (gen_codeowners.PATHS, gen_codeowners.FAMILY_PATHS, gen_codeowners.CATALOG_PATHS)
+    assert PATHS == (
+        gen_codeowners.PATHS,
+        gen_codeowners.FAMILY_PATHS,
+        gen_codeowners.CATALOG_PATHS,
+        gen_codeowners.SHARED_CATALOG_PATHS,
+    )
 
 
 def test_the_family_key_shape_matches_the_registry():
@@ -86,6 +101,10 @@ def test_a_path_with_a_trailing_newline_matches_no_file_template():
         # A family that isn't on the rev is its integration's.
         (PKG + "families/newco/__init__.py", [ACME_GROUP]),
         (CATALOG, [CATALOG_ACME, CATALOG_ZETA]),
+        # A shared catalog file and its test: every catalog-reading integration's, never a family's; `newt` reads none,
+        # its `reasons` family included.
+        (REASONS, [READS_ACME, READS_ZETA]),
+        (REASONS_TEST, [READS_ACME, READS_ZETA]),
         # Shared code, and an integration that isn't on the rev yet: the repo maintainers'.
         ("custom_components/deviceside/core/scope.py", [SHARED_CODE]),
         ("custom_components/deviceside/integrations/newint/bridge.py", [SHARED_CODE]),
@@ -106,6 +125,7 @@ def test_the_gates_set_is_every_groups_handles(tree):
     assert ow.owners(TUYA, rev) == {"tina", "alice"}
     assert ow.owners(HUE, rev) == {"alice"}
     assert ow.owners(SHARED, rev) == {"tina", "alice", "zed", "zoe"}
+    assert ow.owners(ow.SHARED_CATALOG, rev) == {"alice", "zoe"}
     with pytest.raises(ow.NotOnRev) as err:
         ow.owners(ow.Package("newint"), rev)
     assert err.value.key == "newint"
@@ -121,6 +141,10 @@ def test_the_gates_set_is_every_groups_handles(tree):
         ("alice", [PKG + "families/hue/rules.py"], []),
         # A family maintainer on the shared catalog: the other stack's family.
         ("tina", [CATALOG], [CATALOG_ZETA]),
+        # A family maintainer, or one of a family named for it, on a shared catalog file: every reading integration.
+        ("tina", [REASONS], [READS_ACME, READS_ZETA]),
+        ("rita", [REASONS], [READS_ACME, READS_ZETA]),
+        ("alice", [REASONS], [READS_ZETA]),
         # A partial owner sees only what they don't own.
         ("alice", [PKG + "bridge.py", TUYA_DIR + "rules.py"], [TUYA_GROUP]),
         # Someone who owns nothing: every group, shared code included.
@@ -160,6 +184,7 @@ def test_the_label_is_the_one_route_issue_writes():
         (ACME, "acme", "`acme`"),
         (TUYA, "acme/tuya", "`acme`'s `tuya` family"),
         (SHARED, "zigbee/tuya", "the `tuya` catalog"),
+        (ow.SHARED_CATALOG, "zigbee", "the `zigbee/` catalog's shared files"),
     ],
 )
 def test_a_package_names_itself(package, slug, text):
@@ -173,6 +198,22 @@ def test_the_cli_prints_a_line_per_group(tree, capsys):
         "`acme`'s `tuya` family: @tina, and `acme`'s @alice (2 paths)",
         "the `tuya` catalog (`acme`'s `tuya` family): @tina, and `acme`'s @alice (1 path)",
         "the `tuya` catalog (`zeta`'s `tuya` family): @zed, and `zeta`'s @zoe (1 path)",
+    ]
+
+
+def test_a_shared_catalog_file_no_family_reads_is_shared_code(repo, monkeypatch):
+    monkeypatch.chdir(repo.path)
+    repo.commit(ow.INIT.format(key="acme"), integration("acme", ("alice",)))
+    repo.commit(ow.FAMILY_INIT.format(key="acme", family="hue"), family("hue", ("tina",)))
+    repo.commit(REASONS, 'OTHER_TIMER_REASON = "why"\n')
+    assert list(ow.owned([REASONS], at_main(), PATHS)) == [SHARED_CODE]
+
+
+def test_the_cli_names_a_shared_catalog_files_groups(tree, capsys):
+    assert ow.main([REASONS, "--rev", "main"]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "the `zigbee/` catalog's shared files (`acme`): @alice (1 path)",
+        "the `zigbee/` catalog's shared files (`zeta`): @zoe (1 path)",
     ]
 
 

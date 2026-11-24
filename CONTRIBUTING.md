@@ -34,7 +34,7 @@ Every code pull request follows these steps:
    - **The classification snapshot** (`tests/integrations/<x>/test_classification.py`), only if the change moves a device it lists out of its class.
    - **The model you tested,** in your bundle's `devices.yaml` (`models`), or in `docs/models.yaml` when another integration already lists it (move the entry there from its bundle). A model is credited on the card only by a `_manual.json` row on an item that isn't in Labs; your own run goes in Testing evidence.
 
-   Merge: the family's maintainers when every file is the family's or the catalog's; the integration's when the snapshot or the bundle changes; a repo maintainer for `docs/models.yaml`.
+   Merge: the family's maintainers when every file is the family's or the catalog's, except `zigbee/reasons.py` and its test, which need a Zigbee integration's maintainer; the integration's when the snapshot or the bundle changes; a repo maintainer for `docs/models.yaml`.
 
    </details>
 
