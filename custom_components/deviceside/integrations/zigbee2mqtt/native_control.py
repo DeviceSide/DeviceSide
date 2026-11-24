@@ -25,10 +25,10 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import group_id, options_address, z2m_address, z2m_device
+from .addressing import Address, group_address, known_base, options_address, z2m_device
 from .bridge import OPTION, ensure_options, group_members, state_reply
 from .families.hue import HUE_MANUFACTURER
-from .restore_journal import Address, journal, locks
+from .restore_journal import Key, journal, locks
 from ...core.errors import describe
 from ...core.fields import COLOR_TEMP, COLORS
 from ...core.models import Target
@@ -41,7 +41,7 @@ COLOR_FIELDS = COLORS | COLOR_TEMP
 _REPLY_CAP_S = 1.0
 
 
-def _restores(hass: HomeAssistant) -> dict[Address, asyncio.Task[None]]:
+def _restores(hass: HomeAssistant) -> dict[Key, asyncio.Task[None]]:
     return get_runtime(hass).integration_state.setdefault("zigbee2mqtt_native_control_restores", {})
 
 
@@ -51,7 +51,9 @@ async def settled(hass: HomeAssistant, target: Target) -> None:
     For a publish that must go out with the user's value, whatever action ran on the target just before. A cancel of
     the waiter leaves the restore running; a restore cancelled at shutdown ends the wait.
     """
-    if (address := options_address(target)) is None or (restore := _restores(hass).get(address)) is None:
+    if (address := options_address(hass, target)) is None or (
+        restore := _restores(hass).get((address.kind, address.z2m_id))
+    ) is None:
         return
     try:
         await asyncio.shield(restore)
@@ -115,7 +117,7 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
             lock.release()
 
 
-async def _take(hass: HomeAssistant, target: Target, address: Address, need: bool) -> bool:
+async def _take(hass: HomeAssistant, target: Target, address: Key, need: bool) -> bool:
     """Set the option to need, under the address's lock; whether a restore is due after the body: the option may
     have changed, or a restore is still owed from before."""
     journaled = False
@@ -143,7 +145,7 @@ async def _take(hass: HomeAssistant, target: Target, address: Address, need: boo
     return await _owed(hass, address, target.entity_id, "so this action pays no restore it owes") is not None
 
 
-def _restore_task(hass: HomeAssistant, address: Address, restore: Coroutine[Any, Any, None]) -> None:
+def _restore_task(hass: HomeAssistant, address: Key, restore: Coroutine[Any, Any, None]) -> None:
     # Tracked, so HA's shutdown waits for the restore rather than cancelling it. The lock keeps one restore per address.
     task = hass.async_create_task(restore, "zigbee2mqtt hue_native_control restore")
     restores = _restores(hass)
@@ -154,7 +156,7 @@ def _restore_task(hass: HomeAssistant, address: Address, restore: Coroutine[Any,
 async def _restore(
     hass: HomeAssistant,
     target: Target,
-    address: Address,
+    address: Key,
     need: bool,
     replied: asyncio.Future[None] | None,
     unsubscribe: Callable[[], None],
@@ -182,7 +184,7 @@ async def _restore(
         lock.release()
 
 
-async def _owe(hass: HomeAssistant, address: Address, value: bool, entity_id: str) -> bool:
+async def _owe(hass: HomeAssistant, address: Key, value: bool, entity_id: str) -> bool:
     """Journal the user's value as owed, so a restart before the restore doesn't leave the option flipped; whether
     this call added the entry (an earlier one still owed is kept)."""
     try:
@@ -197,7 +199,7 @@ async def _owe(hass: HomeAssistant, address: Address, value: bool, entity_id: st
         return False
 
 
-async def _owed(hass: HomeAssistant, address: Address, entity_id: str, consequence: str) -> bool | None:
+async def _owed(hass: HomeAssistant, address: Key, entity_id: str, consequence: str) -> bool | None:
     """The value the journal owes back at the address, or None (none owed, or the journal unreadable, which the
     caller's consequence ends the warning with)."""
     try:
@@ -213,7 +215,7 @@ async def _owed(hass: HomeAssistant, address: Address, entity_id: str, consequen
         return None
 
 
-async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id: str) -> None:
+async def _strike(hass: HomeAssistant, address: Key, value: bool, entity_id: str) -> None:
     try:
         held = await journal(hass)
     except Exception as err:  # noqa: BLE001 - nothing is struck; the entry is paid again when the journal reads
@@ -235,7 +237,7 @@ async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id:
         )
 
 
-async def _put_back(hass: HomeAssistant, target: Target, address: Address, fallback: bool) -> None:
+async def _put_back(hass: HomeAssistant, target: Target, address: Key, fallback: bool) -> None:
     """Restore the user's value, the one the journal owes (fallback when none is), and strike it off once Z2M
     confirmed it."""
     found = f"so it puts back {fallback}, the value it found"
@@ -256,17 +258,17 @@ async def _reply(target: Target, replied: asyncio.Future[None] | None) -> None:
         _LOGGER.debug("No state from Zigbee2MQTT for %s in %s s", target.entity_id, _REPLY_CAP_S)
 
 
-async def _hue_address(hass: HomeAssistant, target: Target) -> Address | None:
+async def _hue_address(hass: HomeAssistant, target: Target) -> Key | None:
     """Where the target's options live, for a Hue device or a group with a Hue member; None for anything else."""
-    if (group := group_id(target)) is not None:
-        return ("group", group) if await _has_hue_member(hass, target, group) else None
+    if (group := group_address(hass, target)) is not None:
+        return ("group", group.z2m_id) if await _has_hue_member(hass, target, group) else None
     if target.device is not None and target.device.manufacturer == HUE_MANUFACTURER:
-        return ("device", ieee) if (ieee := z2m_address(target.device)) is not None else None
+        return ("device", device.z2m_id) if (device := options_address(hass, target)) is not None else None
     return None
 
 
-async def _has_hue_member(hass: HomeAssistant, target: Target, group: str) -> bool:
-    for ieee in await group_members(hass, group):
+async def _has_hue_member(hass: HomeAssistant, target: Target, group: Address) -> bool:
+    for ieee in await group_members(hass, group.base, group.z2m_id):
         device = z2m_device(hass, target, ieee)
         if device is not None and device.manufacturer == HUE_MANUFACTURER:
             return True
@@ -276,7 +278,7 @@ async def _has_hue_member(hass: HomeAssistant, target: Target, group: str) -> bo
 async def _set(
     hass: HomeAssistant,
     target: Target,
-    address: Address,
+    address: Key,
     value: bool,
     restoring: bool = False,
     ahead: Callable[[str, dict], Awaitable[None]] | None = None,
@@ -304,7 +306,7 @@ async def _set(
 
     kind, z2m_id = address
     try:
-        await ensure_options(hass, kind, [z2m_id], wanted, confirmed, ahead)
+        await ensure_options(hass, known_base(hass, target), kind, [z2m_id], wanted, confirmed, ahead)
     except Exception as err:  # noqa: BLE001 - the command goes out (or went out) as the option stood
         if not restoring:
             _warn_set(target, value, err)

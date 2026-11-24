@@ -9,7 +9,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import restore_journal as rj
 
-from ...fixtures.zigbee2mqtt import INFO
+from ...fixtures.zigbee2mqtt import INFO, add_z2m_bridge
 
 STORE = "deviceside.zigbee2mqtt_restore_journal"
 STATE = "zigbee2mqtt/bridge/state"
@@ -45,7 +45,8 @@ async def settle() -> None:
 
 async def start(hass, entry) -> None:
     """The bridge cache, wired to the replay as entry setup wires it."""
-    await bridge_cache.async_setup(hass, entry, lambda: rj.request_replay(hass))
+    add_z2m_bridge(hass, entry)
+    await bridge_cache.async_setup(hass, entry, lambda base: rj.request_replay(hass, base))
     await replayed(hass)
 
 
@@ -180,7 +181,8 @@ async def test_a_replay_waits_for_the_address_lock(hass, setup_production, broke
     lock = rj.locks(hass).setdefault(LAMP, asyncio.Lock())
     await lock.acquire()
 
-    await bridge_cache.async_setup(hass, setup_production, lambda: rj.request_replay(hass))
+    add_z2m_bridge(hass, setup_production)
+    await bridge_cache.async_setup(hass, setup_production, lambda base: rj.request_replay(hass, base))
     await settle()
     assert broker.requests() == []
     held = await rj.journal(hass)
@@ -196,22 +198,22 @@ async def test_an_online_during_a_replay_runs_it_once_more(hass, setup_productio
     runs: list[None] = []
     release = asyncio.Event()
 
-    async def slow_replay(hass):
+    async def slow_replay(hass, base):
         runs.append(None)
         await release.wait()
 
     monkeypatch.setattr(rj, "replay", slow_replay)
 
-    rj.request_replay(hass)
+    rj.request_replay(hass, "zigbee2mqtt")
     await settle()
-    rj.request_replay(hass)
-    rj.request_replay(hass)
+    rj.request_replay(hass, "zigbee2mqtt")
+    rj.request_replay(hass, "zigbee2mqtt")
     assert len(runs) == 1
     release.set()
     await replayed(hass)
     assert len(runs) == 2
 
-    rj.request_replay(hass)
+    rj.request_replay(hass, "zigbee2mqtt")
     await replayed(hass)
     assert len(runs) == 3
 
@@ -222,7 +224,7 @@ async def test_an_unreadable_journal_warns(hass, setup_production, monkeypatch, 
 
     monkeypatch.setattr(rj.Journal, "load", unreadable)
 
-    await rj.replay(hass)
+    await rj.replay(hass, "zigbee2mqtt")
 
     assert (
         "Couldn't read the hue_native_control restore journal: OSError('unreadable'), so owed restores wait"
@@ -239,7 +241,7 @@ async def test_a_strike_that_fails_warns(hass, setup_production, broker, mqtt_up
 
     monkeypatch.setattr(held, "strike", broken)
 
-    await rj.replay(hass)
+    await rj.replay(hass, "zigbee2mqtt")
 
     assert (
         "Couldn't strike the hue_native_control restore for a Zigbee2MQTT device with no light off the journal: "
@@ -252,6 +254,7 @@ async def test_entry_setup_wires_the_replay(hass, setup_production, broker, mqtt
     """Reloading the entry runs bridge_cache.async_setup as lifecycle.setup wires it: the retained online pays."""
     left_owed(hass_storage, {"device/0x01": False})
     option_is(broker, "0x01", True)
+    add_z2m_bridge(hass, setup_production)
 
     assert await hass.config_entries.async_reload(setup_production.entry_id)
     await hass.async_block_till_done()

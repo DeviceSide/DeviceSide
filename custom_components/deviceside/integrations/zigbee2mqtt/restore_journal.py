@@ -13,7 +13,7 @@ from typing import Literal
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
-from .addressing import entity_name
+from .addressing import Address, entity_name
 from .bridge import OPTION, ensure_options
 from .bridge_cache import KINDS
 from ...core.errors import describe
@@ -26,10 +26,10 @@ _LOCKS_KEY = "zigbee2mqtt_native_control_locks"
 _REPLAYS_KEY = "zigbee2mqtt_restore_replays"
 _VERSION = 1
 
-type Address = tuple[Literal["device", "group"], str]  # Z2M's options section and the ID in it
+type Key = tuple[Literal["device", "group"], str]  # Z2M's options section and the ID in it (base topic: step 4)
 
 
-def locks(hass: HomeAssistant) -> dict[Address, asyncio.Lock]:
+def locks(hass: HomeAssistant) -> dict[Key, asyncio.Lock]:
     """One lock per address, held by whatever sets or restores its option: an action from the set to the restore,
     a replay for each entry it pays."""
     return get_runtime(hass).integration_state.setdefault(_LOCKS_KEY, {})
@@ -59,11 +59,11 @@ class Journal:
                 continue
             self.owed[key] = value
 
-    def owes(self, address: Address) -> bool | None:
+    def owes(self, address: Key) -> bool | None:
         """The value owed back at this address, or None."""
         return self.owed.get(_key(address))
 
-    async def add(self, address: Address, value: bool) -> bool:
+    async def add(self, address: Key, value: bool) -> bool:
         """Owe value, unless an earlier restore is still owed: that one holds the user's own value, where this one
         may be an action's flipped value. Whether this call added it; a save that fails (or is cancelled) takes it
         back out of memory, and raises."""
@@ -77,14 +77,14 @@ class Journal:
             raise
         return True
 
-    async def strike(self, address: Address, value: bool) -> None:
+    async def strike(self, address: Key, value: bool) -> None:
         """Strike the entry once value, the one written back, is what it owes; another value leaves it owed."""
         if self.owed.get(key := _key(address)) == value:
             del self.owed[key]
             await self._store.async_save(self.owed)
 
 
-def _key(address: Address) -> str:
+def _key(address: Key) -> str:
     return f"{address[0]}/{address[1]}"
 
 
@@ -113,14 +113,16 @@ class _Replays:
     def __init__(self) -> None:
         self.task: asyncio.Task[None] | None = None
         self.again = False
+        self.base = ""  # of the instance that last said online
 
 
 @callback
-def request_replay(hass: HomeAssistant) -> None:
+def request_replay(hass: HomeAssistant, base: str) -> None:
     """Pay what is owed, in a task of its own: on each online from bridge/state. One replay at a time: an online
     arriving while one runs makes it run once more after, so an entry it failed on while Z2M was going down is
     retried."""
     replays: _Replays = get_runtime(hass).integration_state.setdefault(_REPLAYS_KEY, _Replays())
+    replays.base = base
     if replays.task is not None and not replays.task.done():
         replays.again = True
         return
@@ -130,13 +132,14 @@ def request_replay(hass: HomeAssistant) -> None:
 async def _replay_until_settled(hass: HomeAssistant, replays: _Replays) -> None:
     while True:
         replays.again = False
-        await replay(hass)
+        await replay(hass, replays.base)
         if not replays.again:
             return
 
 
-async def replay(hass: HomeAssistant) -> None:
-    """Write back every value left owed, striking each off once Z2M has it, under the address's lock.
+async def replay(hass: HomeAssistant, base: str) -> None:
+    """Write back every value left owed, on the instance with this base topic (an entry carries none yet), striking
+    each off once Z2M has it, under the address's lock.
 
     Only an option still holding the flipped value is written: one the user has set to their value since (in Z2M's
     UI) is left as it is, and struck. An entry an action paid while the replay waited for its lock is skipped. One
@@ -151,14 +154,15 @@ async def replay(hass: HomeAssistant) -> None:
         return
     for key in list(held.owed):
         kind, z2m_id = key.split("/", 1)
-        address: Address = (kind, z2m_id)  # type: ignore[assignment] - load keeps only device and group keys
-        name = entity_name(hass, kind, z2m_id)  # type: ignore[arg-type] - as address above
+        address: Key = (kind, z2m_id)  # type: ignore[assignment] - load keeps only device and group keys
+        name = entity_name(hass, Address(base, kind, z2m_id))  # type: ignore[arg-type] - as address above
         async with locks(hass).setdefault(address, asyncio.Lock()):
             if (value := held.owes(address)) is None:
                 continue
             try:
                 await ensure_options(
                     hass,
+                    base,
                     kind,
                     [z2m_id],
                     lambda current, value=value: {OPTION: value} if bool(current.get(OPTION)) != value else {},

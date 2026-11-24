@@ -10,7 +10,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from . import bridge_cache
-from .addressing import group_id, state_entity, state_topic, z2m_device
+from .addressing import group_address, state_entity, state_topic, z2m_device
 from .bridge import group_members, members_of
 from ...core.errors import Reason
 from ...core.models import Target
@@ -35,8 +35,9 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
     member it lists has no device in HA; the group then counts as a Labs item, and the dispatcher refuses it where
     the call harms a class (turn_on_for).
     """
-    if (gid := group_id(target)) is None or (cache := bridge_cache.get(hass)) is None:
+    if (address := group_address(hass, target)) is None or (cache := bridge_cache.get(hass)) is None:
         return None
+    gid = address.z2m_id
     if (groups := cache.parsed("groups")) is None or not any(str(g.get("id")) == gid for g in groups):
         return None
     members, complete = _members(hass, target, members_of(groups, gid))
@@ -53,8 +54,11 @@ async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
     (`unaddressable`), so only get_attributes reads a group without it, averaging the others; each one left out is
     logged at DEBUG.
     """
-    members, _complete = _members(hass, group, await group_members(hass, group_id(group)))
-    lights = [member for member in members if _available(member) and state_topic(member) is not None]
+    address = group_address(hass, group)
+    if address is None:
+        raise LookupError(f"{group.entity_id} is not a group Zigbee2MQTT lists")
+    members, _complete = _members(hass, group, await group_members(hass, address.base, address.z2m_id))
+    lights = [member for member in members if _available(member) and state_topic(hass, member) is not None]
     if dropped := [member for member in lights if not member.addressable]:
         # The first report of "my group's reading leaves out my two-gang" holds why.
         _LOGGER.debug(

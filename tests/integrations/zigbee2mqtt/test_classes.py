@@ -25,7 +25,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from .conftest import DEVICES, PLUG, SENT, SET, TUYA, TUYA_MCU, call, commands, group, interviewed, light
 from ...conftest import allow_labs, refusal
 from ...conftest import call as call_service
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_bridge, add_z2m_entity, add_z2m_group, z2m_entry
 
 STRINGS = Path(__file__).parents[3] / "custom_components" / "deviceside" / "translations" / "en.json"
 IKEA = ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm")
@@ -81,7 +81,7 @@ async def test_a_device_bridge_devices_does_not_list_yet_is_placed_by_the_regist
 
 
 def test_the_bridge_cache_indexes_bridge_devices_once_per_payload():
-    cache = bridge_cache.BridgeCache()
+    cache = bridge_cache.BridgeCache("zigbee2mqtt")
     cache._payloads["devices"] = (
         '[{"ieee_address": "0x01", "model_id": "TS011F"}, "junk", {"model_id": "x"}, {"ieee_address": 5}, '
         '{"ieee_address": null}]'
@@ -407,6 +407,7 @@ def two_gang(
     entry = hass.config_entries.async_entries("mqtt")[0]
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id,
+        via_device_id=add_z2m_bridge(hass, entry).id,
         identifiers={("mqtt", f"zigbee2mqtt_{GANG}")},
         manufacturer="Philips",
         name="two_gang",

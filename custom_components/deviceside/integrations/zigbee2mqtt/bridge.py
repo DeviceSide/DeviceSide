@@ -23,9 +23,9 @@ _RETAINED_TIMEOUT_S = 2.0
 _REPLY_TIMEOUT_S = 5.0
 
 
-async def group_members(hass: HomeAssistant, group: str) -> list[str]:
+async def group_members(hass: HomeAssistant, base: str, group: str) -> list[str]:
     """The IEEE addresses of a Z2M group's members, from bridge/groups; none for a group it doesn't list."""
-    return members_of(await retained(hass, "groups"), group)
+    return members_of(await retained(hass, base, "groups"), group)
 
 
 def members_of(groups: list[dict], group: str) -> list[str]:
@@ -34,10 +34,10 @@ def members_of(groups: list[dict], group: str) -> list[str]:
     return [member["ieee_address"] for member in members if member.get("ieee_address")]
 
 
-async def has_feature(hass: HomeAssistant, ieees: list[str], name: str) -> bool:
+async def has_feature(hass: HomeAssistant, base: str, ieees: list[str], name: str) -> bool:
     """Whether every one of these devices' Z2M definitions exposes a feature by this name, from bridge/devices: Z2M
     gives a group only the features its members share."""
-    devices = await retained(hass, "devices")
+    devices = await retained(hass, base, "devices")
     exposing = {
         device.get("ieee_address")
         for device in devices
@@ -51,7 +51,7 @@ def _exposes(name: str, features: list[dict]) -> bool:
     return any(feature.get("name") == name or _exposes(name, feature.get("features", [])) for feature in features)
 
 
-async def retained(hass: HomeAssistant, suffix: str) -> Any:
+async def retained(hass: HomeAssistant, base: str, suffix: str) -> Any:
     """The parsed retained message on bridge/<suffix>; raises TimeoutError when Z2M hasn't published one, or published
     one that doesn't parse.
 
@@ -65,7 +65,7 @@ async def retained(hass: HomeAssistant, suffix: str) -> Any:
         and (held := cache.parsed(suffix)) is not None
     ):
         return held
-    return parse(await first_retained(hass, suffix), f"bridge/{suffix}")
+    return parse(await first_retained(hass, base, suffix), f"bridge/{suffix}")
 
 
 def parse(payload: str, what: str) -> Any:
@@ -76,13 +76,13 @@ def parse(payload: str, what: str) -> Any:
         raise TimeoutError(f"no parseable {what} from Zigbee2MQTT") from None
 
 
-async def first_retained(hass: HomeAssistant, suffix: str) -> str:
+async def first_retained(hass: HomeAssistant, base: str, suffix: str) -> str:
     """The raw retained message on bridge/<suffix>, from a fresh subscription; raises TimeoutError when none comes.
 
     Its arrival shows that subscriptions queued before it have reached the broker too.
     """
     payload: asyncio.Future[str] = hass.loop.create_future()
-    unsubscribe = await mqtt.async_subscribe(hass, bridge_topic(suffix), first_payload(payload))
+    unsubscribe = await mqtt.async_subscribe(hass, bridge_topic(base, suffix), first_payload(payload))
     try:
         return await wait(payload, _RETAINED_TIMEOUT_S, f"no bridge/{suffix} from Zigbee2MQTT")
     finally:
@@ -91,6 +91,7 @@ async def first_retained(hass: HomeAssistant, suffix: str) -> str:
 
 async def ensure_options(
     hass: HomeAssistant,
+    base: str,
     kind: Literal["device", "group"],
     z2m_ids: list[str],
     wanted: Callable[[dict], dict],
@@ -112,7 +113,7 @@ async def ensure_options(
     transactions: list[str] = []
     unsubscribes: list[Callable[[], None]] = []
     try:
-        current = await _options_source(hass, cache, kind, pending, unsubscribes)
+        current = await _options_source(hass, base, cache, kind, pending, unsubscribes)
         for z2m_id in z2m_ids:
             before = current(z2m_id)
             if not (options := wanted(before)):
@@ -124,7 +125,7 @@ async def ensure_options(
             pending[transaction] = hass.loop.create_future()
             await publish(
                 hass,
-                bridge_topic(f"request/{kind}/options"),
+                bridge_topic(base, f"request/{kind}/options"),
                 {"id": z2m_id, "options": options, "transaction": transaction},
             )
             answer = await wait(pending[transaction], _REPLY_TIMEOUT_S, "no reply from Zigbee2MQTT")
@@ -146,6 +147,7 @@ async def ensure_options(
 
 async def _options_source(
     hass: HomeAssistant,
+    base: str,
     cache: bridge_cache.BridgeCache | None,
     kind: str,
     pending: dict[str, asyncio.Future[dict]],
@@ -162,9 +164,9 @@ async def _options_source(
     # the broker in one batch: the retained bridge/info arriving shows the reply topic is subscribed too, before a
     # request goes out. With the cache's reply topics live, bridge/info alone is read.
     if not shared:
-        reply_topic = bridge_topic(f"response/{kind}/options")
+        reply_topic = bridge_topic(base, f"response/{kind}/options")
         unsubscribes.append(await mqtt.async_subscribe(hass, reply_topic, bridge_cache.reply_router(pending)))
-    unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic("info"), first_payload(info)))
+    unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(base, "info"), first_payload(info)))
     fresh = parse(await wait(info, _RETAINED_TIMEOUT_S, "no bridge/info from Zigbee2MQTT"), "bridge/info")
     return lambda z2m_id: fresh.get("config", {}).get(section, {}).get(z2m_id, {})
 
@@ -190,8 +192,8 @@ def logged_options(hass: HomeAssistant, target: Target) -> dict:
     a warning).
     """
     cache = bridge_cache.get(hass)
-    address = options_address(target)
-    settings = cache.settings(f"{address[0]}s", address[1]) if cache is not None and address is not None else None
+    address = options_address(hass, target)
+    settings = cache.settings(f"{address.kind}s", address.z2m_id) if cache is not None and address is not None else None
     return {OPTION: None if settings is None else bool(settings.get(OPTION))}
 
 
@@ -201,7 +203,7 @@ async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> Non
     await set_check.note(hass, target, payload)
     if _LOGGER.isEnabledFor(logging.DEBUG):
         _LOGGER.debug("%s: sending mqtt set %s with %s", target.reported_id, payload, logged_options(hass, target))
-    await publish(hass, topic(target, "set"), payload)
+    await publish(hass, topic(hass, target, "set"), payload)
 
 
 async def publish(hass: HomeAssistant, mqtt_topic: str, payload: dict) -> None:
@@ -231,7 +233,7 @@ async def wait(future: asyncio.Future[Any], timeout: float, what: str) -> Any:
 async def state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Future[None] | None, Callable[[], None]]:
     """A future for Z2M's next state publish for the target, subscribed before the caller publishes, and its
     unsubscribe; no future when the target has no state topic or the subscribe failed."""
-    if (light_topic := state_topic(target)) is None:
+    if (light_topic := state_topic(hass, target)) is None:
         return None, lambda: None
     published: asyncio.Future[None] = hass.loop.create_future()
 

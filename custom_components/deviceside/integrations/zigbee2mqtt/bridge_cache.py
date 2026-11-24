@@ -36,7 +36,7 @@ from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
-from .addressing import bridge_topic
+from .addressing import bridge_bases, bridge_topic
 from ...core.errors import describe
 from ...core.runtime import DATA
 
@@ -53,7 +53,8 @@ LOG = "logging"
 class BridgeCache:
     """The held bridge topics, and the options replies awaited by transaction."""
 
-    def __init__(self, on_online: Callable[[], None] = lambda: None) -> None:
+    def __init__(self, base: str, on_online: Callable[[str], None] = lambda _base: None) -> None:
+        self.base = base  # of the Zigbee2MQTT instance whose bridge topics this holds
         self._on_online = on_online
         self._payloads: dict[str, str] = {}
         self._parsed: dict[str, tuple[str, Any]] = {}
@@ -134,7 +135,7 @@ class BridgeCache:
     def _on_barrier(self, msg: mqtt.ReceiveMessage) -> None:
         self.replies_live = True
         if _says_online(msg.payload):
-            self._on_online()
+            self._on_online(self.base)
 
     @callback
     def _on_connection(self, connected: bool) -> None:
@@ -158,12 +159,16 @@ class BridgeCache:
         # In this order, so the barrier follows the response topics and the log in HA's batch.
         for kind in KINDS:
             self._unsubscribes.append(
-                await mqtt.async_subscribe(hass, bridge_topic(f"response/{kind}/options"), reply_router(self.pending))
+                await mqtt.async_subscribe(
+                    hass, bridge_topic(self.base, f"response/{kind}/options"), reply_router(self.pending)
+                )
             )
-        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(LOG), self._on_log))
+        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(self.base, LOG), self._on_log))
         for suffix in HELD:
-            self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(suffix), self._keeper(suffix)))
-        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(_BARRIER), self._on_barrier))
+            self._unsubscribes.append(
+                await mqtt.async_subscribe(hass, bridge_topic(self.base, suffix), self._keeper(suffix))
+            )
+        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(self.base, _BARRIER), self._on_barrier))
         self._unsubscribes.append(mqtt.async_subscribe_connection_status(hass, self._on_connection))
 
 
@@ -256,15 +261,21 @@ def get(hass: HomeAssistant) -> BridgeCache | None:
     return runtime.integration_state.get(_KEY)
 
 
-async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callable[[], None] = lambda: None) -> None:
+async def async_setup(
+    hass: HomeAssistant, entry: ConfigEntry, on_online: Callable[[str], None] = lambda _base: None
+) -> None:
     """Hold the bridge topics once MQTT is set up, until the entry unloads. Runs as the entry's background task.
 
-    Calls on_online each time bridge/state says online, its retained message included, so at startup and whenever
-    Z2M comes back.
+    Calls on_online, with the base topic, each time bridge/state says online, its retained message included, so at
+    startup and whenever Z2M comes back. The cache is of the first instance (by base topic) whose bridge HA knows,
+    none when it knows none; one cache per instance follows.
     """
     if not await mqtt.async_wait_for_mqtt_client(hass):
         return
-    cache = BridgeCache(on_online)
+    if not (bases := sorted(set(bridge_bases(hass).values()))):
+        _LOGGER.debug("No Zigbee2MQTT bridge with a known bridge entity, so no bridge cache")
+        return
+    cache = BridgeCache(bases[0], on_online)
     state = hass.data[DATA].integration_state
 
     @callback

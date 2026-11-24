@@ -657,7 +657,7 @@ async def test_no_need_writes_nothing(hass, setup_production, broker):
 
 def hold_info(hass, broker) -> None:
     """The bridge cache holding the broker's bridge/info as it stands, as it does once MQTT is up."""
-    cache = bridge_cache.BridgeCache()
+    cache = bridge_cache.BridgeCache("zigbee2mqtt")
     cache._payloads["info"] = json.dumps(broker.retained[INFO])
     hass.data[DATA].integration_state[bridge_cache._KEY] = cache
 

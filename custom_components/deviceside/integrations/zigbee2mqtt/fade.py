@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .adapter import Z2MAdapter
-from .addressing import not_addressable, topic, z2m_address
+from .addressing import known_base, not_addressable, topic, z2m_address
 from .bridge import has_feature, publish, publish_set
 from .classes import class_scope
 from .color_refresh import refresh_color
@@ -293,7 +293,9 @@ async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Ta
     """Whether a hue or saturation move meets a light whose Z2M definition lacks color_hs."""
     if request.attribute == BRIGHTNESS_FIELD:
         return False
-    return not await has_feature(hass, [z2m_address(light.device) for light in lights], COLOR_HS)
+    return not await has_feature(
+        hass, known_base(hass, lights[0]), [z2m_address(light.device) for light in lights], COLOR_HS
+    )
 
 
 def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
@@ -354,7 +356,7 @@ def end_read(hass: HomeAssistant, target: Target, lights: list[Target], attribut
             return
         for light in lights:
             try:
-                await publish(hass, topic(light, "get"), {"state": "", "brightness": ""})
+                await publish(hass, topic(hass, light, "get"), {"state": "", "brightness": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
                 _LOGGER.debug("End read-back for %s failed: %s", light.entity_id, describe(err))
 

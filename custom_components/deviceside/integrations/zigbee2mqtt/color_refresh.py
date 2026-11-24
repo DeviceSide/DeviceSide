@@ -40,7 +40,7 @@ async def refresh_color(hass: HomeAssistant, target: Target, silent: bool = Fals
         return
     for light in lights:
         try:
-            await publish(hass, topic(light, "get"), {"color": ""})
+            await publish(hass, topic(hass, light, "get"), {"color": ""})
         except Exception as err:  # noqa: BLE001 - as above, and the group's other members still get theirs
             _stale(light, err)
 

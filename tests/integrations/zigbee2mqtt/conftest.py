@@ -158,7 +158,7 @@ class HeldGroups(bridge_cache.BridgeCache):
     and the classifier."""
 
     def __init__(self, broker) -> None:
-        super().__init__()
+        super().__init__("zigbee2mqtt")
         self.broker = broker
 
     def parsed(self, suffix: str):
@@ -273,7 +273,7 @@ def target(hass, entity_id: str) -> Target:
 def live(hass, setup_production, broker, monkeypatch):
     """The bridge cache with its response topics and bridge/logging live, as once MQTT is up, so sets are checked
     (set_check.py)."""
-    cache = bridge_cache.BridgeCache()
+    cache = bridge_cache.BridgeCache("zigbee2mqtt")
     cache.replies_live = True
     hass.data[DATA].integration_state[bridge_cache._KEY] = cache
     broker.subscribers.setdefault(LOGGING, []).append(cache._on_log)

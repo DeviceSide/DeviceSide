@@ -1,8 +1,13 @@
-"""Extract the Z2M device or group address from the HA device registry."""
+"""Extract the Z2M device or group address, and its instance's base topic, from the HA registries.
+
+A target's base topic is its bridge's: Z2M links every device and group to its bridge (`via_device`) and puts the base
+topic in each bridge entity's unique_id (docs/integrations/zigbee2mqtt/research/2026-11-24-base-topics.md). No base
+topic is assumed here, so a target whose device has no such bridge is not addressable.
+"""
 
 import logging
 import re
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -15,13 +20,75 @@ from ...core.models import Target
 _LOGGER = logging.getLogger(__name__)
 
 IDENTIFIER_PREFIX = "zigbee2mqtt_"  # of the identifier Z2M registers each device and group under
-_Z2M_BASE_TOPIC = "zigbee2mqtt"
-# Z2M encodes the base topic in a group's identifier as character codes joined with no separator
-# (getEncodedBaseTopic in lib/extension/homeassistant.ts).
-_ENCODED_BASE_TOPIC = "".join(str(ord(c)) for c in _Z2M_BASE_TOPIC)
 # A group's address is <encoded base topic>_<group ID>; a device's is its IEEE, which starts with 0x.
 _GROUP_ADDRESS = re.compile(r"^(\d+)_(\d+)$")
 _IEEE_ADDRESS = re.compile(r"^0x[0-9a-fA-F]+$")
+# The bridge's device identifier, `zigbee2mqtt_bridge_<coordinator IEEE>`.
+_BRIDGE_IDENTIFIER = re.compile(r"zigbee2mqtt_bridge_(0x[0-9a-fA-F]+)")
+# A bridge entity's unique_id, `bridge_<coordinator IEEE>_<object_id>_<base topic>`, the base topic verbatim (spaces and
+# `/` included). The object_ids are Z2M's fixed eight; some are disabled by default, so any one counts. Longer first,
+# as `restart` begins `restart_required`.
+_BRIDGE_ENTITY = re.compile(
+    r"bridge_(0x[0-9a-fA-F]+)_"
+    r"(?:restart_required|coordinator_version|connection_state|network_map|permit_join|log_level|restart|version)"
+    r"_(.+)"
+)
+
+
+class Address(NamedTuple):
+    """Where a target's Z2M options and commands live: its instance's base topic, the kind of entity, and its ID there
+    (an IEEE for a device, the group ID for a group)."""
+
+    base: str
+    kind: Literal["device", "group"]
+    z2m_id: str
+
+
+def encode_base_topic(base: str) -> str:
+    """Z2M's encoding of the base topic in a group's identifier: each character's code point, joined with no separator
+    (getEncodedBaseTopic in lib/extension/homeassistant.ts)."""
+    return "".join(str(ord(c)) for c in base)
+
+
+def _bridge_base(hass: HomeAssistant, bridge: dr.DeviceEntry) -> str | None:
+    """The base topic in a Z2M bridge device's entities' unique_ids, disabled ones included; None for a device that
+    isn't a Z2M bridge or has no bridge entity of its own coordinator."""
+    ieee = next(
+        (m[1] for kind, ident in bridge.identifiers if kind == "mqtt" and (m := _BRIDGE_IDENTIFIER.fullmatch(ident))),
+        None,
+    )
+    if ieee is None:
+        return None
+    for entry in er.async_entries_for_device(er.async_get(hass), bridge.id, include_disabled_entities=True):
+        if entry.platform == "mqtt" and (m := _BRIDGE_ENTITY.fullmatch(entry.unique_id)) and m[1] == ieee:
+            return m[2]
+    return None
+
+
+def bridge_bases(hass: HomeAssistant) -> dict[str, str]:
+    """Each Z2M bridge device's id and its instance's base topic, for the bridges with a known bridge entity."""
+    return {
+        device.id: base for device in dr.async_get(hass).devices if (base := _bridge_base(hass, device)) is not None
+    }
+
+
+def _device_base(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
+    """The base topic of the bridge the device links to (`via_device`)."""
+    if device.via_device_id is None or (bridge := dr.async_get(hass).async_get(device.via_device_id)) is None:
+        return None
+    return _bridge_base(hass, bridge)
+
+
+def base_topic(hass: HomeAssistant, target: Target) -> str | None:
+    """The base topic of the target's Zigbee2MQTT instance, from its device's bridge; None when it has none known."""
+    return None if target.device is None else _device_base(hass, target.device)
+
+
+def known_base(hass: HomeAssistant, target: Target) -> str:
+    """base_topic of a target an action has accepted (supports() refuses one with none); LookupError otherwise."""
+    if (base := base_topic(hass, target)) is None:
+        raise LookupError(f"{target.entity_id} has no known Zigbee2MQTT base topic")
+    return base
 
 
 def device_identifier(address: str) -> tuple[str, str]:
@@ -40,16 +107,16 @@ def z2m_device(hass: HomeAssistant, group: Target, address: str) -> dr.DeviceEnt
     return dr.async_get(hass).async_get_device_by_identifier(device_identifier(address), entry_id)
 
 
-def entity_name(hass: HomeAssistant, kind: Literal["device", "group"], z2m_id: str) -> str:
+def entity_name(hass: HomeAssistant, address: Address) -> str:
     """The light entity HA has for a Z2M device (by IEEE) or group (by ID), for a log line, which never names the
     IEEE, group ID, friendly name or topic; "a Zigbee2MQTT <kind> with no light" when HA has none."""
-    address = z2m_id if kind == "device" else f"{_ENCODED_BASE_TOPIC}_{z2m_id}"
+    identified = address.z2m_id if address.kind == "device" else f"{encode_base_topic(address.base)}_{address.z2m_id}"
     entities = er.async_get(hass)
-    for device in dr.async_get(hass).async_get_devices(identifiers={device_identifier(address)}):
+    for device in dr.async_get(hass).async_get_devices(identifiers={device_identifier(identified)}):
         for entry in er.async_entries_for_device(entities, device.id):
             if entry.domain == Platform.LIGHT:
                 return entry.entity_id
-    return f"a Zigbee2MQTT {kind} with no light"
+    return f"a Zigbee2MQTT {address.kind} with no light"
 
 
 def z2m_address(device: dr.DeviceEntry) -> str | None:
@@ -74,32 +141,41 @@ def is_z2m_group(hass: HomeAssistant, target: Target) -> bool:
     return _GROUP_ADDRESS.match(addr) is not None
 
 
-def topic(target: Target, suffix: str) -> str | None:
-    """MQTT topic <base>/<address>/<suffix> for this Z2M entity, or None when it cannot be addressed.
-
-    The suffix is "set" for a command and "get" for a read. A device is addressed by IEEE and a group
-    by ID, both under the default base topic. A group's identifier carries its base topic, so a group
-    on any other base topic gets None rather than a dead topic; a device's doesn't, so a custom base
-    topic still gives a device a topic here; `not_addressable` refuses it by its unique_id.
-    """
-    if target.device is None:
+def options_address(hass: HomeAssistant, target: Target) -> Address | None:
+    """Where the target's Z2M options and commands live, or None when it cannot be addressed: its device has no known
+    bridge, or it is a group whose encoded base topic isn't its bridge's (a group of the other instance). Asks Z2M
+    nothing."""
+    if target.device is None or (addr := z2m_address(target.device)) is None:
         return None
-    addr = z2m_address(target.device)
-    if addr is None:
+    if (base := base_topic(hass, target)) is None:
         return None
     if group := _GROUP_ADDRESS.match(addr):
         encoded_base, group_id = group.groups()
-        if encoded_base != _ENCODED_BASE_TOPIC:
-            return None
-        return f"{_Z2M_BASE_TOPIC}/{group_id}/{suffix}"
-    return f"{_Z2M_BASE_TOPIC}/{addr}/{suffix}"
+        return Address(base, "group", group_id) if encoded_base == encode_base_topic(base) else None
+    return Address(base, "device", addr)
 
 
-def state_unique_id(address: str, domain: str) -> str:
+def group_address(hass: HomeAssistant, target: Target) -> Address | None:
+    """options_address of a group entity; None for anything else."""
+    return address if (address := options_address(hass, target)) is not None and address.kind == "group" else None
+
+
+def topic(hass: HomeAssistant, target: Target, suffix: str) -> str | None:
+    """MQTT topic <base>/<address>/<suffix> for this Z2M entity, or None when it cannot be addressed.
+
+    The suffix is "set" for a command and "get" for a read. A device is addressed by IEEE and a group by ID, under the
+    base topic of the target's bridge (`options_address`).
+    """
+    if (address := options_address(hass, target)) is None:
+        return None
+    return f"{address.base}/{address.z2m_id}/{suffix}"
+
+
+def state_unique_id(address: str, domain: str, base: str) -> str:
     """The unique_id Z2M's discovery gives a device's unsuffixed state entity in the domain: `<ieee>_<domain>_<base
     topic>`, from a `switch`/`light` expose with no endpoint (`${ID}_${object_id}_${base_topic}`, object_id the
     domain; lib/extension/homeassistant.ts)."""
-    return f"{address}_{domain}_{_Z2M_BASE_TOPIC}"
+    return f"{address}_{domain}_{base}"
 
 
 def not_addressable(hass: HomeAssistant, target: Target, *, reads_state: bool = False) -> str | None:
@@ -110,69 +186,57 @@ def not_addressable(hass: HomeAssistant, target: Target, *, reads_state: bool = 
     DeviceSide's set and get topics name the device alone, with the unsuffixed `state` key (internals.md,
     Addressing), so a call reaches exactly the entity Z2M defines by that key. Any other entity in the domain is
     refused: a gang (`light_l2`: the call would switch the default endpoint), and a config switch beside a plug (a
-    child lock or a presence sensor's indicator: the call would switch the device itself). A device on a custom base
-    topic is refused too, its unique_id ending in that topic."""
-    if topic(target, "set") is None or (reads_state and not target.is_group and state_topic(target) is None):
+    child lock or a presence sensor's indicator: the call would switch the device itself). A target whose device has
+    no known bridge is refused too: its base topic, so its topic, is unknown."""
+    if target.device is not None and z2m_address(target.device) is not None and base_topic(hass, target) is None:
+        # The first report of "my Zigbee2MQTT light was refused" holds why.
+        _LOGGER.debug(
+            "%s: its device has no Zigbee2MQTT bridge with a known bridge entity, so its base topic is unknown",
+            target.entity_id,
+        )
         return Reason.NOT_ADDRESSABLE
-    if not target.is_group and target.device is not None:
-        address = z2m_address(target.device)
-        if address is None or target.entry.unique_id != state_unique_id(address, target.domain):
-            # The first report of "my plug (or two-gang's light) was refused" holds why.
-            _LOGGER.debug(
-                "%s: it isn't its device's unsuffixed %s entity on the default base topic, so a call on its device"
-                " topic wouldn't reach it",
-                target.entity_id,
-                target.domain,
-            )
-            return Reason.NOT_ADDRESSABLE
+    if (address := options_address(hass, target)) is None or (
+        reads_state and not target.is_group and state_topic(hass, target) is None
+    ):
+        return Reason.NOT_ADDRESSABLE
+    if not target.is_group and target.entry.unique_id != state_unique_id(address.z2m_id, target.domain, address.base):
+        # The first report of "my plug (or two-gang's light) was refused" holds why.
+        _LOGGER.debug(
+            "%s: it isn't its device's unsuffixed %s entity, so a call on its device topic wouldn't reach it",
+            target.entity_id,
+            target.domain,
+        )
+        return Reason.NOT_ADDRESSABLE
     return None
 
 
 def state_entity(hass: HomeAssistant, device: dr.DeviceEntry, domain: str) -> er.RegistryEntry | None:
     """The device's unsuffixed state entity in the domain (`state_unique_id`), whether or not it is disabled; None
-    when it has none."""
-    if (address := z2m_address(device)) is None:
+    when it has none, or its bridge is unknown."""
+    if (address := z2m_address(device)) is None or (base := _device_base(hass, device)) is None:
         return None
+    wanted = state_unique_id(address, domain, base)
     return next(
         (
             e
             for e in er.async_entries_for_device(er.async_get(hass), device.id, include_disabled_entities=True)
-            if e.domain == domain and e.platform == "mqtt" and e.unique_id == state_unique_id(address, domain)
+            if e.domain == domain and e.platform == "mqtt" and e.unique_id == wanted
         ),
         None,
     )
 
 
-def state_topic(target: Target) -> str | None:
+def state_topic(hass: HomeAssistant, target: Target) -> str | None:
     """MQTT topic <base>/<friendly name> on which Z2M publishes this entity's state, or None.
 
     Z2M names the HA device after its friendly name (a user's rename is name_by_user, which this ignores).
-    Addressable like topic(), with the same default base topic.
+    Addressable like topic(), under the same base topic.
     """
-    if topic(target, "set") is None or not target.device.name:
+    if (address := options_address(hass, target)) is None or not target.device.name:
         return None
-    return f"{_Z2M_BASE_TOPIC}/{target.device.name}"
+    return f"{address.base}/{target.device.name}"
 
 
-def group_id(target: Target) -> str | None:
-    """The Z2M group ID of a group entity on the default base topic, or None for anything else."""
-    if target.device is None or (addr := z2m_address(target.device)) is None:
-        return None
-    if (group := _GROUP_ADDRESS.match(addr)) is None or group.group(1) != _ENCODED_BASE_TOPIC:
-        return None
-    return group.group(2)
-
-
-def options_address(target: Target) -> tuple[Literal["device", "group"], str] | None:
-    """Where the target's Z2M options live: its kind and ID there ("group" for a group on the default base topic,
-    else "device" by IEEE), or None when it cannot be addressed. Asks Z2M nothing."""
-    if (group := group_id(target)) is not None:
-        return "group", group
-    if target.device is not None and (address := z2m_address(target.device)) is not None:
-        return "device", address
-    return None
-
-
-def bridge_topic(suffix: str) -> str:
-    """Z2M's bridge topic <base>/bridge/<suffix>, under the default base topic like topic()."""
-    return f"{_Z2M_BASE_TOPIC}/bridge/{suffix}"
+def bridge_topic(base: str, suffix: str) -> str:
+    """Z2M's bridge topic <base>/bridge/<suffix> of the instance on this base topic."""
+    return f"{base}/bridge/{suffix}"

@@ -192,9 +192,9 @@ async def test_a_move_after_a_group_call_from_ha_plans_after_its_forget(hass, br
     released = asyncio.Event()
     group_members = bridge.group_members
 
-    async def slow_members(hass, group_id):
+    async def slow_members(hass, base, group_id):
         await released.wait()
-        return await group_members(hass, group_id)
+        return await group_members(hass, base, group_id)
 
     monkeypatch.setattr(members, "group_members", slow_members)
     async_mock_service(hass, "light", "turn_on")

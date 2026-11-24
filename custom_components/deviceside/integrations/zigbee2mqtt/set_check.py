@@ -107,7 +107,7 @@ class Watch:
 
     async def note(self, target: Target, owner: str, bound_s: float) -> None:
         if (entity := self.entities.get(target.entity_id)) is None:
-            if (light_topic := state_topic(target)) is None:
+            if (light_topic := state_topic(self.hass, target)) is None:
                 return
             try:
                 # HA's own entity subscribes to this topic, so the subscription is live at once (as state_reply).
