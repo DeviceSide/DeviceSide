@@ -24,3 +24,10 @@ TS011F_MODEL = "TS011F"
 # (https://github.com/Koenkk/zigbee2mqtt/issues/30493). ZCL_MANUFACTURER_PATTERN matches it.
 COUNTDOWN_HARMED_MANUFACTURER = "_TZ3000_gjnozsaz"
 COUNTDOWN_HARMED_MODEL = TS011F_MODEL
+
+# The Tuya maker strings whose Zigbee2MQTT definition enables inching, the persistent auto-off, and for which a time was
+# measured on the device (docs/integrations/zigbee2mqtt/research/tuya/2026-11-24-inching.md, §1: ZHC#13879, ZHC#13118).
+# The WHD02 (zigbee model `TS0001`; ZHC enables it on that model alone, so its `TS000F` variant is out) and the Mowe
+# MW781Z (`TS0726`). `_TZ3000_mzcp0of6` and `_TZ3000_p26flek3` are enabled or were, and reported having no effect.
+INCHING_WHD02_MANUFACTURER = "_TZ3000_skueekg3"
+INCHING_MW781Z_MANUFACTURER = "_TZ300A_rncj86af"

@@ -85,7 +85,7 @@ def test_the_two_adapters_serve_only_their_own_calls_in_labs_on_lights_and_switc
     for action, own in (("set_auto_off", inching.SET_AUTO_OFF), ("clear_auto_off", inching.CLEAR_AUTO_OFF)):
         scope = scopes[action]
         assert scope.own_calls_only
-        assert dict(scope.own_calls) == {"sonoff_inching": own}
+        assert scope.own_calls["sonoff_inching"] is own
         assert not scope.confirmable
         assert not scope.native_groups
         assert scope.class_level("sonoff_inching", "light") is Level.LABS

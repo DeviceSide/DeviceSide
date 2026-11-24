@@ -31,6 +31,9 @@ PLUG = ("Tuya", "TS011F_plug_1")
 SONOFF_ZBMINIR2 = ("SONOFF", "ZBMINIR2")
 SONOFF_STRINGS = ("SONOFF", "ZBMINIR2")
 INCHING = frozenset({"state", "inching_control_set"})
+TUYA_WHD02 = ("_TZ3000_skueekg3", "TS0001")  # the WHD02, whose inching is measured
+TUYA_MW781Z = ("_TZ300A_rncj86af", "TS0726")  # the Mowe MW781Z, whose inching is measured
+TUYA_NO_EFFECT = ("_TZ3000_mzcp0of6", "TS0003")  # inching enabled in ZHC, reported having no effect
 MOES = ("Moes", "ZM-105")  # a vendor and definition no registry rule reads
 
 
@@ -88,6 +91,21 @@ DEVICES = {
     # The 2-gang's composite is per endpoint, so the device has none; and a model off the list, whatever it exposes.
     "sonoff_two_gang": (device(("SONOFF", "MINI-ZB2GS"), SONOFF_STRINGS, "MINI-ZB2GS", NO_COUNTDOWN), "other"),
     "sonoff_unlisted_model": (device(("SONOFF", "NEW-MODEL"), SONOFF_STRINGS, "NEW-MODEL", INCHING), "other"),
+    # Tuya's inching: the two measured strings that expose the composite, ahead of the `tuya_zcl` rules that class them
+    # otherwise (the WHD02's `_TZ3000_` string by manufacturer, the MW781Z's `TS0726` by model). Its TS000F variant (no
+    # composite) and the string reported having no effect (composite exposed) stay `tuya_zcl`.
+    "tuya_inching_whd02": (device(MOES, TUYA_WHD02, "WHD02", INCHING), "tuya_inching"),
+    "tuya_inching_mw781z": (device(MOES, TUYA_MW781Z, "TS0726_1_gang_scene_switch", INCHING), "tuya_inching"),
+    "tuya_inching_whd02_without_the_composite": (device(MOES, TUYA_WHD02, "WHD02", NO_COUNTDOWN), "tuya_zcl"),
+    "tuya_inching_whd02_ts000f": (
+        device(MOES, ("_TZ3000_skueekg3", "TS000F"), "TS000F_switch_module_1", NO_COUNTDOWN),
+        "tuya_zcl",
+    ),
+    "tuya_inching_reported_no_effect": (
+        device(MOES, TUYA_NO_EFFECT, "TS0003_switch_module_2", INCHING),
+        "tuya_zcl",
+    ),
+    "tuya_inching_before": (device(("Tuya", "WHD02")), "tuya_zcl"),
     "nothing_known": (device((None, None)), "other"),
     # A Tuya device under another vendor's definition: that vendor's class, or `other`, until its strings arrive, then
     # its Tuya class.

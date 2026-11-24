@@ -20,6 +20,7 @@ from homeassistant.const import Platform
 
 from .countdown import COUNTDOWN
 from .datapoint import DATAPOINT_CALLS, DATAPOINT_CLASSES, DATAPOINT_RULES
+from .inching import CLEAR_AUTO_OFF, SET_AUTO_OFF
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, labs, verified
 from .....zigbee.tuya import (
@@ -27,6 +28,8 @@ from .....zigbee.tuya import (
     COUNTDOWN_HARMED_MODEL,
     DATAPOINT_MANUFACTURER_PATTERN,
     DATAPOINT_MODEL,
+    INCHING_MW781Z_MANUFACTURER,
+    INCHING_WHD02_MANUFACTURER,
     TS011F_MODEL,
     ZCL_MANUFACTURER_PATTERN,
     ZCL_MODEL_PATTERN,
@@ -34,6 +37,9 @@ from .....zigbee.tuya import (
 
 # A Tuya device on the Zigbee On/Off cluster (TS011F, TS000x and white labels): its timer is Tuya's countdown.
 TUYA_ZCL = "tuya_zcl"
+# The single-endpoint Tuya switches whose inching, a persistent auto-off, has a time measured on the device
+# (inching.py): set_auto_off and clear_auto_off serve them in Labs. Every other action leaves them as `tuya_zcl`.
+TUYA_INCHING = "tuya_inching"
 # The TS011F plug, a Tuya ZCL device whose failure of turn_on_for's call is measured (Decision 16), matched by its
 # model so every firmware inherits the refusal: a TS011F that isn't on Tuya's countdown below.
 TUYA_TS011F = "tuya_ts011f"
@@ -65,7 +71,7 @@ COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
 # Tuya's TS011F plugs, on its countdown or not.
 _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
 # Every Tuya class, in the order the cards list them (scripts/gen_compat.py reads a scope's classes in its order).
-_ALL = (TUYA_ZCL, *_TS011F, *DATAPOINT_CLASSES, TUYA_MCU)
+_ALL = (TUYA_ZCL, TUYA_INCHING, *_TS011F, *DATAPOINT_CLASSES, TUYA_MCU)
 # The classes that can be lights: Tuya's ZCL and datapoint devices include bulbs, dimmers and LED controllers
 # (TS0501B, TS110E, TS0601 dimmers), as well as plugs and switches.
 _LIGHTS = (TUYA_ZCL, *DATAPOINT_CLASSES, TUYA_MCU)
@@ -85,6 +91,13 @@ _DATAPOINT_MODEL = re.escape(DATAPOINT_MODEL)
 # ZOT60, a TS011F whose `countdown` is a datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The
 # expose doesn't tell A from B), is the datapoint rules', which run first.
 _COUNTDOWN = {"zigbee_model": _TS011F_MODEL, "exposes": "countdown"}
+
+# Inching: the two measured maker strings, whose definition exposes the composite for the whole device (ZHC enables the
+# WHD02's on its `TS0001` model alone, so its `TS000F` variant exposes none and stays `tuya_zcl`).
+_INCHING = {
+    "zigbee_manufacturer": "|".join(map(re.escape, (INCHING_WHD02_MANUFACTURER, INCHING_MW781Z_MANUFACTURER))),
+    "exposes": "inching_control_set",
+}
 
 # The Zigbee strings and the definition, from bridge/devices. The datapoint countdown's definitions go first
 # (datapoint.py): the ZOT60 is a TS011F with converter A's expose, and the rest TS0601s or `_TZE…` strings, which the
@@ -109,6 +122,9 @@ ZIGBEE_RULES = (
     Rule(TUYA_TS011F, {"zigbee_model": _TS011F_MODEL}),
     Rule(TUYA_MCU, {"zigbee_model": _DATAPOINT_MODEL}),
     Rule(TUYA_MCU, {"zigbee_manufacturer": DATAPOINT_MANUFACTURER_PATTERN}),
+    # Before the rules that class these strings today: the WHD02's `_TZ3000_…` string (`tuya_zcl`'s manufacturer rule)
+    # and the MW781Z's `TS0726` model (its `_TZ300A_…` string matches no pattern here).
+    Rule(TUYA_INCHING, _INCHING),
     Rule(TUYA_ZCL, {"zigbee_manufacturer": ZCL_MANUFACTURER_PATTERN}),
     Rule(TUYA_ZCL, {"zigbee_model": ZCL_MODEL_PATTERN}),
 )
@@ -142,9 +158,20 @@ _TURN_ON_FOR = FamilyScope(
 # each sent its own call (datapoint.py), the one call any Zigbee device has for it.
 _TURN_OFF_FOR = FamilyScope(capabilities=labs(*DATAPOINT_CLASSES), own_calls=DATAPOINT_CALLS)
 
+# set_auto_off and clear_auto_off: the inching class alone, in Labs on research, each sent its own call (inching.py), so
+# a group with one falls back to its members. Switches, as both strings are single-endpoint switches.
+_AUTO_OFF = {
+    "set_auto_off": FamilyScope(
+        capabilities=labs(TUYA_INCHING, domains=(Platform.SWITCH,)), own_calls={TUYA_INCHING: SET_AUTO_OFF}
+    ),
+    "clear_auto_off": FamilyScope(
+        capabilities=labs(TUYA_INCHING, domains=(Platform.SWITCH,)), own_calls={TUYA_INCHING: CLEAR_AUTO_OFF}
+    ),
+}
+
 FAMILY = Family(
     key="tuya",
     maintainers=(),
     classes=CLASSES,
-    scopes={"turn_on_for": _TURN_ON_FOR, "turn_off_for": _TURN_OFF_FOR},
+    scopes={"turn_on_for": _TURN_ON_FOR, "turn_off_for": _TURN_OFF_FOR, **_AUTO_OFF},
 )

@@ -139,6 +139,7 @@ Each mark links its proof: 🟢 its records, 🟡 and ⚪ the class's section on
 | &emsp;[_TZ3000_0zfrhq4i, _TZ3000_gznh2xla, _TZ3000_okaz9tjs, or _TZ3000_typdpbpg](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) ✔ | 🟢 [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) | | | | | | | 🔴 [why](#tuya-ts011f-plugs) | |
 | &emsp;[other makers with a countdown setting](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) | | | | | | | 🔴 [why](#tuya-ts011f-plugs) | |
 | [Tuya datapoint devices with one countdown](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | | | | | | | |
+| [Tuya WHD02 (_TZ3000_skueekg3, model TS0001) and Mowe MW781Z (_TZ300A_rncj86af)](integrations/zigbee2mqtt/index.md#tuya) | | | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya) | | | | | | |
 | [other brands' lights](integrations/zigbee2mqtt/index.md#other-brands) | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) | | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) |
 
 ### ZHA
@@ -213,6 +214,7 @@ Fields proven less than their feature:
 | <a id="tuya-ts011f-plugs"></a>Tuya TS011F plugs | Zigbee2MQTT | get attributes | Its timer reads back the time it was set to, not the time left, so DeviceSide can't read it | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-15-tuya-countdown-probe.md) |
 | Tuya TS011F plugs (_TZ3000_gjnozsaz) | Zigbee2MQTT, ZHA | turn on with timer | Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when asked, and the timer that would serve it isn't built | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
 | Tuya TS011F plugs (no countdown setting) | Zigbee2MQTT | turn on with timer | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| Tuya WHD02 (_TZ3000_skueekg3, model TS0001) and Mowe MW781Z (_TZ300A_rncj86af) | Zigbee2MQTT | turn on with timer | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | uncertified Matter devices | Matter | turn on with timer | Nothing has tested its timer, so it could stay on, and DeviceSide's own off isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/internals.md#what-decides-the-call) |
 
 <!-- evidence:end -->

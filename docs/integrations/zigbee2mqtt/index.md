@@ -110,6 +110,16 @@ ZVL-PRO, ZG-308Z), whose countdown may be a preset run time rather than a timer,
 few whose setting may not be a plain timer, such as a circuit
 breaker's ([research](research/2026-11-14-tuya-datapoint-countdown.md)).
 
+#### Tuya inching switches
+
+The Tuya WHD02 (maker string `_TZ3000_skueekg3`, Zigbee model `TS0001`) and the Mowe MW781Z (`_TZ300A_rncj86af`, model
+`TS0726`) keep a persistent auto-off, "inching", which Zigbee2MQTT writes in one publish, which set auto-off and clear
+auto-off send ([research](research/tuya/2026-11-24-inching.md)). Both are single-switch devices with a time measured on
+the device (5 s and 63 s on the WHD02, 5 s on the MW781Z). The time is whole seconds from 1 s, and the setting can't be
+read back, so the result is `sent`. The WHD02's `TS000F` variant, the Moes ZM4LT3 (`_TZ3000_mzcp0of6`, reported having no
+effect) and every other Tuya switch Zigbee2MQTT gives inching stay with the other Tuya plugs and switches below. Turn on
+with timer is refused on these two, as on those.
+
 #### Tuya plugs and switches
 
 Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white

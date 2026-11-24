@@ -16,7 +16,7 @@ from .docs import RESEARCH
 from .families.hue import HUE
 from .families.ikea import IKEA, IKEA_TIMER_HARMED
 from .families.sonoff import SONOFF_INCHING, SONOFF_S60
-from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
+from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_INCHING, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 from ...zigbee.ikea import TIMER_HARMED_REASON
 from ...zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
@@ -58,7 +58,10 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         ),
         # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
         TUYA_TS011F: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-lab-probe.md"),
-        TUYA_ZCL: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
+        **dict.fromkeys(
+            (TUYA_ZCL, TUYA_INCHING),  # inching left `tuya_zcl` for its auto-off, so keeps its entry (families/tuya)
+            NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
+        ),
         # The datapoint devices outside the datapoint classes: multi-gang ones and every countdown named per endpoint
         # (they need per-endpoint addressing), timers in minutes, hours or an enum, the definitions left out by
         # datapoint.py, and any research hasn't read. Their definition has no `on_time` converter either, so they get a

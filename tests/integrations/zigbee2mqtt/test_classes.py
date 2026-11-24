@@ -141,6 +141,9 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         # Hue's plug, on the switch domain alone; its bulbs keep their own level.
         ("hue", {"turn_on_for"}, {"turn_off_for"} | AUTO_OFF, set()),
         ("tuya_zcl", {"turn_on_for"}, ALL, set()),
+        # Tuya's inching: set_auto_off and clear_auto_off serve it in Labs, and it keeps `tuya_zcl`'s refusal on
+        # turn_on_for and its place in no other scope.
+        ("tuya_inching", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"}, set()),
         # Nor a TS011F off the countdown, so get_attributes doesn't read it.
         ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"} | AUTO_OFF, set()),
         # Reported failing Tuya's countdown with harm (Decision 41).
@@ -180,7 +183,14 @@ def test_where_each_class_is_refused(capability, harmed, not_built, no_method):
     assert {action for action, scope in scopes.items() if capability not in scope.capabilities} == not_built
 
 
-SWITCH_ONLY = {"tuya_ts011f", "tuya_countdown", *tuya.VERIFIED_COUNTDOWNS, "tuya_countdown_harmed", "sonoff_s60"}
+SWITCH_ONLY = {
+    "tuya_ts011f",
+    "tuya_countdown",
+    *tuya.VERIFIED_COUNTDOWNS,
+    "tuya_countdown_harmed",
+    "sonoff_s60",
+    "tuya_inching",
+}
 
 
 def test_actions_for_lights_alone_never_hold_a_switch_only_class():
