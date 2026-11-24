@@ -169,8 +169,14 @@ class LightNode:
     def apply(self, endpoint_id: int, command: object) -> None:
         ep = f"{endpoint_id}/"
         match command.command.split(".")[-1]:
-            case "MoveToLevel" | "MoveToLevelWithOnOff":
+            case "MoveToLevel":
                 self.attributes[ep + "8/0"] = command.level
+            case "MoveToLevelWithOnOff":
+                # Level 0 ends at the lowest level, 1, and turns the light off; any other turns it on.
+                self.attributes[ep + "8/0"] = max(command.level, 1)
+                self.attributes[ep + "6/0"] = command.level > 0
+            case "MoveToSaturation":
+                self.attributes[ep + "768/1"] = command.saturation
             case "MoveToColorTemperature":
                 self.attributes[ep + "768/7"] = command.colorTemperatureMireds
             case "MoveToColor":
@@ -229,9 +235,11 @@ def chip_command(cluster: str, name: str, *fields: str) -> type:
     )
 
 
-# The Level and Color Control commands set_attributes sends. transitionTime, optionsMask and optionsOverride are on
-# each, as in chip's Objects.py.
+# The Level and Color Control commands set_attributes and the raises and lowers send. transitionTime, optionsMask and
+# optionsOverride are on each MoveTo, and moveMode, rate, optionsMask and optionsOverride on each Move, as in chip's
+# Objects.py.
 _OPTIONS = ("transitionTime", "optionsMask", "optionsOverride")
+_MOVE = ("moveMode", "rate", "optionsMask", "optionsOverride")
 LEVEL_COMMANDS = {
     "MoveToLevel": ("level", *_OPTIONS),
     "MoveToLevelWithOnOff": ("level", *_OPTIONS),
@@ -240,6 +248,9 @@ COLOR_COMMANDS = {
     "MoveToHueAndSaturation": ("hue", "saturation", *_OPTIONS),
     "MoveToColor": ("colorX", "colorY", *_OPTIONS),
     "MoveToColorTemperature": ("colorTemperatureMireds", *_OPTIONS),
+    "MoveToSaturation": ("saturation", *_OPTIONS),
+    "MoveHue": _MOVE,
+    "EnhancedMoveHue": _MOVE,
 }
 
 

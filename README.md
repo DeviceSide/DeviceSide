@@ -86,9 +86,9 @@ DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* 
 **[Matter](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md)**
 
 - [WiZ Smart Plug](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#wiz-smart-plug) ✔: 🟢 turn on with timer, get attributes
-- [certified Matter lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices): 🟡 get attributes · ⚪ turn on with timer, set without turning on
+- [certified Matter lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices): 🟡 get attributes · ⚪ turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on
 - [certified Matter plugs and switches](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices): 🟡 get attributes · ⚪ turn on with timer
-- [multi-endpoint Matter lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#multi-endpoint-devices): ⚪ set without turning on
+- [multi-endpoint Matter lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#multi-endpoint-devices): ⚪ smooth dimming, smooth saturation, smooth hue, set without turning on
 
 **[Control4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md)**
 
