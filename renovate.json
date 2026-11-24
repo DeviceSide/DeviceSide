@@ -154,6 +154,24 @@
         "aiohue"
       ],
       "enabled": false
+    },
+    {
+      "description": "github-actions: a digest update never automerges. A moved tag arrives as a digest update, and the 3-day wait counts from the commit's date, which a tag moved onto an old commit passes at once.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Workflows that hold the maintainer-merge app key or cut releases: no CI runs them, so a green check proves nothing. Any update here is for review.",
+      "matchFileNames": [
+        ".github/workflows/maintainer-merge.yml",
+        ".github/workflows/cut-*.yml"
+      ],
+      "automerge": false
     }
   ]
 }
