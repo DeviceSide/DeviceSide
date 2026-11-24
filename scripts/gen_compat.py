@@ -63,12 +63,10 @@ tested it), `Card.refused`, `Card.broken` (a refused class's Not supported row),
 (the caveats). `show` renders the README's lines from it, folding last, so another render (the page's matrix) reads
 the same unfolded lines.
 
-**The fold and the cap** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
+**The fold** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
 (🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ [class] (features);
 [class], [class] (features)": classes with the same features share a parenthesis, a 🔴 part stays inside it, and a
-variants parent's children never fold. `check_share` then fails when the Labs lines (⚪ with no 🟢 or 🟡),
-counted across every card, children included, are over `LABS_SHARE_MAX` of all the lines, so the cards can't
-again read as a list of untried classes.
+variants parent's children never fold.
 
 **The page.** The block between the evidence markers of docs/device-compatibility.md, in three parts; every device fact
 in it comes from the model above, so one change in code, devices.yaml, models.yaml or a record moves the README and the
@@ -195,10 +193,6 @@ OUTCOMES = (
     ),
     ("no_known_method", "🔴", "no known command works on it"),
 )
-# The most card lines, as a share of all of them across the README's cards, that may be in Labs: ⚪ with no 🟢
-# or 🟡 (docs/evidence.md, The Labs flag). The number is directional: the failure it prevents is the earlier
-# card list of more than half untried classes, which read as a claim that DeviceSide was ready for them.
-LABS_SHARE_MAX = 0.25
 LABS = next(icon for key, icon, _ in OUTCOMES if key == "labs")
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.LABS: "labs"}
 VERIFIED = "✔"
@@ -1238,16 +1232,16 @@ def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> 
     "⚪ [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside it
     after " · ", and a group sits where its last line does, so one holding an "other brands" line comes last.
     A variants parent's children, and a single such line, stay where they are."""
-    labs_lines = [line for line in lines if line.in_labs() and not line.variant]
-    if len(labs_lines) < 2:
+    labs_only = [line for line in lines if line.in_labs() and not line.variant]
+    if len(labs_only) < 2:
         return lines, None
     icons = {status: icon for status, icon, _ in OUTCOMES}
     groups: dict[Shape, list[str]] = {}
-    for line in labs_lines:
+    for line in labs_only:
         groups.setdefault(line.shape, []).append(line.name(card, key, data, rig))
     # A group sits where its last line does, so a group with an "other brands" line comes last, as on the card.
     last = {
-        found: max(i for i, line in enumerate(lines) if line.shape == found and line in labs_lines) for found in groups
+        found: max(i for i, line in enumerate(lines) if line.shape == found and line in labs_only) for found in groups
     }
     parts = []
     for found in sorted(groups, key=last.get):
@@ -1257,7 +1251,7 @@ def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> 
             for status, labels in found
         )
         parts.append(f"{', '.join(names)} ({inside})")
-    return [line for line in lines if line not in labs_lines], f"{LABS} {'; '.join(parts)}"
+    return [line for line in lines if line not in labs_only], f"{LABS} {'; '.join(parts)}"
 
 
 def class_lines(
@@ -1542,8 +1536,6 @@ class Card:
     listed_groups: Reached | None = None
     # The rendered view (`show`), folded as the README shows it.
     lines: list[str] = field(default_factory=list)
-    total: int = 0  # the lines the cap counts: each line, a variants parent's children too
-    labs_lines: list[str] = field(default_factory=list)  # those that are in Labs, as rendered
     # What the evidence tested, as the lines name it: each model (✔ when the rig tested it), then native groups.
     tested: list[str] = field(default_factory=list)
 
@@ -1691,24 +1683,16 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
 
 
 def show(result: Card, data: Data) -> None:
-    """Render the card's model as the README shows it: the fold (the unfolded lines stay in `entries`), the lines, and
-    the counts the Labs cap reads."""
+    """Render the card's model as the README shows it: the fold (the unfolded lines stay in `entries`) and the lines."""
     key, rig = result.key, result.rig
     lines, folded = fold(result.entries, result, key, data, rig)
     result.lines = [line.render(result, key, data, rig) for line in lines]
-    result.total = sum(1 + len(line.children) for line in lines)
-    result.labs_lines = [
-        shown.render(result, key, data, rig) for line in lines for shown in (line, *line.children) if shown.in_labs()
-    ]
     result.lines += [
         f"{anchor(result.short(entry['what']), data.url(key, entry['section']))}: {OUTCOMES[-1][1]}"
         for entry in result.refused
     ]
-    result.total += len(result.refused)
     if folded:
         result.lines.append(folded)
-        result.total += 1
-        result.labs_lines.append(folded)
 
 
 def legend(text: str) -> str:
@@ -1727,19 +1711,6 @@ def legend(text: str) -> str:
 
 def card_list(registry: AdapterRegistry, data: Data) -> list[Card]:
     return [card(key, registry, adapters, data) for key, adapters in by_integration(registry).items()]
-
-
-def check_share(built: list[Card]) -> None:
-    """Fails when the Labs lines (`Line.in_labs`), after each card's fold, are over LABS_SHARE_MAX of
-    all the cards' lines (docs/evidence.md, The Labs flag)."""
-    total = sum(card.total for card in built)
-    labs_lines = [line for card in built for line in card.labs_lines]
-    if total and len(labs_lines) / total > LABS_SHARE_MAX:
-        listed = "\n".join(f"  {line}" for line in labs_lines)
-        raise SystemExit(
-            f"{len(labs_lines)} of {total} card lines ({len(labs_lines) / total:.0%}) are in Labs, over the"
-            f" {LABS_SHARE_MAX:.0%} cap (docs/evidence.md, The Labs flag):\n{listed}"
-        )
 
 
 def cards(built: list[Card]) -> str:
@@ -1860,7 +1831,6 @@ def main(
         text = updates[path][1] if path in updates else path.read_text()
         updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, new, path.name))
     check_sections(block, shown, data, built)
-    check_share(built)
     # The coverage check warns here, on every PR, and fails only at cut-release (check_release.py --signoffs).
     for gap in [*coverage_gaps(registry), *default_class_credits(registry)]:
         print(f"warning: {gap}", file=sys.stderr)

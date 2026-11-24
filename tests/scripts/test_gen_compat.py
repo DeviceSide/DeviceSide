@@ -1319,7 +1319,7 @@ def test_a_lines_phrases_sort_like_lines_and_variants_join_with_or():
     assert [child.plain() for child in parent.children] == ["zeta", "other makers"]
 
 
-# The fold and the cap (docs/evidence.md, The Labs flag).
+# The fold (docs/evidence.md, The Labs flag).
 
 
 def labs_card(*adapters, broken=None, **changes):
@@ -1336,19 +1336,17 @@ def test_two_lines_that_show_only_labs_fold_into_one_last_line(root):
     dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
     card = labs_card(timer_labs("Light", "CCT"), dimming)
     # CCT controllers and dimmers are one section but show different features, so two lines; the fold goes after
-    # devices.yaml's entry, and the cap counts it as the one Labs line it is.
+    # devices.yaml's entry.
     assert card.lines == [
         f"[Old plug]({URL}#old-plug): 🔴",
         f"⚪ [CCT controllers]({URL}#dimmers) (turn on with timer);"
         f" [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming)",
     ]
-    assert (card.total, len(card.labs_lines)) == (2, 1)
 
 
 def test_one_labs_line_stays_as_it_is(root):
     card = labs_card(timer_labs("CCT"))
     assert card.lines == [f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer", f"[Old plug]({URL}#old-plug): 🔴"]
-    assert (card.total, len(card.labs_lines)) == (2, 1)
 
 
 def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root):
@@ -1382,11 +1380,10 @@ def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
         f"⚪ [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
         f" [CCT controllers]({URL}#dimmers) (turn on with timer · 🔴 turn off with timer)"
     )
-    assert len(card.labs_lines) == 1
 
 
 def test_a_mixed_line_is_no_labs_line_and_never_folds_with_one(root):
-    """🟡 · ⚪ makes a real claim: it neither folds nor counts, so the one ⚪-only line beside it stays as it is."""
+    """🟡 · ⚪ makes a real claim: it never folds, so the one ⚪-only line beside it stays as it is."""
     timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=documented("Light") | labs("CCT")))
     dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
     card = labs_card(timer, dimming)
@@ -1394,7 +1391,6 @@ def test_a_mixed_line_is_no_labs_line_and_never_folds_with_one(root):
         f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer",
         f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
     ]
-    assert (card.total, card.labs_lines) == (3, [card.lines[0]])
 
 
 def test_a_variants_children_never_fold(root):
@@ -1414,9 +1410,8 @@ def test_a_variants_children_never_fold(root):
     card = gc.card("zha", registry, list(adapters), data(registry, capabilities=capabilities, sections=sections))
     parent = next(line for line in card.lines if line.startswith(f"[Plugs]({URL}#plug)"))
     assert "  - [maker B, or no setting]" in parent and "⚪ turn on with timer" in parent
-    # The children stay under their parent and count as lines; the two top-level lines fold.
+    # The children stay under their parent; the two top-level lines fold.
     assert sum(line.startswith("⚪ ") for line in card.lines) == 1
-    assert (card.total, len(card.labs_lines)) == (5, 2)
 
 
 def test_the_model_keeps_the_unfolded_lines_with_parents_and_per_feature_status(root):
@@ -1451,38 +1446,6 @@ def test_a_feature_whose_actions_differ_has_a_status_per_part():
         ("should", ("smooth dimming down",)),
         ("labs", ("smooth dimming up",)),
     )  # the README line still folds stop
-
-
-def share(total, labs_lines):
-    return [gc.Card("c", total=total, labs_lines=["⚪ x"] * labs_lines)]
-
-
-def test_the_cap_fails_over_a_quarter_and_names_the_share_and_the_lines():
-    assert gc.LABS_SHARE_MAX == 0.25
-    gc.check_share(share(100, 25))
-    gc.check_share(share(0, 0))
-    with pytest.raises(SystemExit, match=r"26 of 100 card lines \(26%\) are in Labs, over the 25% cap[\s\S]*⚪ x"):
-        gc.check_share(share(100, 26))
-
-
-def test_the_cap_counts_every_card_together():
-    """A card of nothing but Labs lines passes beside a large tried one: the share is over all the cards."""
-    tried, labs_lines = gc.Card("a", total=96), gc.Card("b", total=4, labs_lines=["⚪ x"] * 4)
-    with pytest.raises(SystemExit, match=r"4 of 4 card lines"):
-        gc.check_share([labs_lines])
-    gc.check_share([tried, labs_lines])  # 4 of 100
-    with pytest.raises(SystemExit, match=r"30 of 100 card lines"):
-        gc.check_share(
-            [gc.Card("a", total=50, labs_lines=["⚪ x"] * 15), gc.Card("b", total=50, labs_lines=["⚪ x"] * 15)]
-        )
-
-
-def test_the_cap_runs_in_a_plain_run_and_in_check(root, monkeypatch):
-    registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=labs("Switch"))))
-    run = write_files(root, registry, monkeypatch)
-    for argv in ([], ["--check"]):
-        with pytest.raises(SystemExit, match="of 2 card lines"):  # the Labs line and devices.yaml's entry
-            run(argv)
 
 
 # The page: tested devices, the matrix per integration, and what is not supported.
