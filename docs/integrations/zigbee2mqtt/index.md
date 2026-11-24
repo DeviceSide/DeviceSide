@@ -106,14 +106,18 @@ turned off by hand during a timer shouldn't come back on, but no device here has
 Left with the other Tuya datapoint devices, though their definitions have a countdown: devices with several switches,
 and any whose countdown Zigbee2MQTT names per switch (`countdown_l1`), as DeviceSide's command would reach only the
 first ([Sharp edges](#sharp-edges)); timers in minutes, hours or a list of steps; three irrigation valves (FK-BV05,
-ZVL-PRO, ZG-308Z), whose countdown may be a preset run time rather than a timer, so a valve could be left open; the
-LYAI-14, whose source says it ignores the countdown; and a few whose setting may not be a plain timer, such as a circuit
+ZVL-PRO, ZG-308Z), whose countdown may be a preset run time rather than a timer, so a valve could be left open; and a
+few whose setting may not be a plain timer, such as a circuit
 breaker's ([research](research/2026-11-14-tuya-datapoint-countdown.md)).
 
 #### Tuya plugs and switches
 
 Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white
 labels), and lights, such as bulbs and dimmers. No feature is built for them yet, as above.
+
+The LYAI-14 irrigation valve (model `TS0049`) is one of them, as it switches on the standard commands. Zigbee2MQTT
+shows a countdown setting for it, but its definition's source says the valve ignores the countdown and runs its own
+default 10 minutes, so it doesn't get Tuya's datapoint countdown ([research](research/2026-11-14-tuya-datapoint-countdown.md), §5).
 
 #### Other Tuya datapoint devices
 
@@ -126,8 +130,8 @@ Until Zigbee2MQTT publishes its devices after Home Assistant connects to MQTT, o
 DeviceSide knows a rebadged Tuya device only by what Home Assistant shows: the vendor `Tuya`, or a model starting
 `TS`. One shown under another brand, as another brand's device (Lidl's, or Gledopto's GL-SPI-206P, which runs Tuya's
 own protocol), can't be told apart from that brand's own devices for those first moments. So turn on with timer
-refuses every light, plug or switch but a Hue one (`class_unknown`), and turn off with timer every one, even with Labs
-on, until
+refuses every light, plug or switch but a Hue one (`class_unknown`), even with Labs on, and so does turn off with timer
+(`class_unknown`; a Hue light, known from the start, it refuses as not built yet), until
 Zigbee2MQTT lists it as fully paired (interviewed), with its own Zigbee manufacturer and model. A group with such a
 light in it runs its other lights, each on its own, one command per light. A device whose pairing never completes stays
 refused until you pair it again in Zigbee2MQTT, and until then its groups run their other lights one by one.

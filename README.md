@@ -151,17 +151,17 @@ actions:
           message: "Heater timer not confirmed: {{ result['switch.heater'].status }}"
 ```
 
-| Field               | Description                                                                                                                                                  |
-|:------------------- |:------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `target`            | Lights and switches (required)                                                                                                                               |
-| `duration`          | Delay until the device turns off (required). Up to 7 days on Shelly, 6,553.4 s (about 1 h 49 min) on Zigbee and Matter, longer on Zigbee2MQTT's Tuya devices |
-| `brightness`        | Brightness (minimum 0.4%). ZHA, Z2M, Shelly                                                                                                                  |
-| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                                                            |
-| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                                                      |
-| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M, Shelly                                                                                                     |
-| `xy_color`          | Color as `[x, y]`. Z2M, Shelly                                                                                                                               |
-| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                                                             |
-| `response_variable` | Variable that receives the response from each entity (optional)                                                                                              |
+| Field               | Description                                                                                                                                                                          |
+|:------------------- |:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `target`            | Lights and switches (required)                                                                                                                                                       |
+| `duration`          | Delay until the device turns off (required). Up to 7 days on Shelly, 6,553.4 s (about 1 h 49 min) on Zigbee and Matter, longer on Zigbee2MQTT's Tuya countdown and datapoint devices |
+| `brightness`        | Brightness (minimum 0.4%). ZHA, Z2M, Shelly                                                                                                                                          |
+| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                                                                                    |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                                                                              |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M, Shelly                                                                                                                             |
+| `xy_color`          | Color as `[x, y]`. Z2M, Shelly                                                                                                                                                       |
+| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                                                                                     |
+| `response_variable` | Variable that receives the response from each entity (optional)                                                                                                                      |
 
 <details>
 <summary>Results</summary>
@@ -198,11 +198,11 @@ Turn off, then on after a delay. Timer runs on the device. Example use case:
 
 - Power-cycle a router.
 
-| Field               | Description                                                                                                         |
-|:------------------- |:------------------------------------------------------------------------------------------------------------------- |
-| `target`            | Lights and switches (required)                                                                                      |
-| `duration`          | Delay until the device turns on (required). Up to 7 days on Shelly; 2, 12 or 24 hours on Zigbee2MQTT's Tuya devices |
-| `response_variable` | Variable that receives the response from each entity (optional)                                                     |
+| Field               | Description                                                                                                                          |
+|:------------------- |:------------------------------------------------------------------------------------------------------------------------------------ |
+| `target`            | Lights and switches (required)                                                                                                       |
+| `duration`          | Delay until the device turns on (required). Up to 7 days on Shelly; 2 h 10 s, 12 or 24 hours on Zigbee2MQTT's Tuya datapoint devices |
+| `response_variable` | Variable that receives the response from each entity (optional)                                                                      |
 
 <details>
 <summary>Results</summary>

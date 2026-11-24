@@ -114,8 +114,9 @@ around.
   NotBuilt ("whether it reports time left is unprobed"), not NoKnownMethod.
 - `scripts/gen_features.py` `NO_PATH`: `turn_off_for` impossible on Zigbee groups (and Matter) only.
   `docs/integrations.md`, What can't be done: non-Tuya Zigbee devices have no call for `turn_off_for`.
-- `docs/integrations/zigbee2mqtt/index.md`: a `###` per class (what sets it apart, why admitted, the toggle caveat
-  citing Tuya's spec, the source); `devices.yaml`: each class's card phrase and section; `internals.md`: a "Tuya's
+- `docs/integrations/zigbee2mqtt/index.md`: one `####` section for the three classes, under `### Tuya` as the page nests
+  the Tuya classes, since they differ only by limit (step 4's plan review; the plan first said a `###` per class): what
+  sets them apart, why admitted, the toggle caveat citing Tuya's spec, the source; `devices.yaml`: each class's card phrase and section; `internals.md`: a "Tuya's
   datapoint countdown" section with the call and the ZHC reading, linking the research file. Regenerate README and
   `docs/device-compatibility.md` (`scripts/gen_compat.py`).
 
