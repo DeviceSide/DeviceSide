@@ -81,3 +81,4 @@ hostnames in commits, docs or research files.
 Intent: Aqara color bulbs Verified on Zigbee2MQTT as a new `aqara` class, on probes and rig records; research what
 vendors publish to decide whether a call pattern can make other devices Documented.
 Touches: custom_components/deviceside/integrations/zigbee2mqtt/families/aqara/**, custom_components/deviceside/integrations/zigbee2mqtt/families/__init__.py, custom_components/deviceside/integrations/zigbee2mqtt/refusals.py, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, docs/models.yaml, docs/device-compatibility.md, docs/research/**, README.md, .github/CODEOWNERS
+Depends-on: jasonmx/HA-rig#108
