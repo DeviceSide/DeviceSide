@@ -72,6 +72,16 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
     `addressing.color_features` serves step 5's hue check. OnLevel is read only when the call sets a brightness, since it
     decides only the level the next On comes up at.
 13. **Groups:** HA's Matter has no group entities. Nothing to do.
+14. **set_attributes leaves the slots before its wait** (decided after PR 1, from its audit Medium; built in step 5).
+    PR 1's `send` holds an integration slot (Matter's `max_concurrency` is 2) through `WRITE_FADE_WAIT_S` and the
+    read-back, so a call to n lights takes about 0.6 s per pair more than it needs. `execute` becomes two passes: a
+    first `self.gather` sends each light's commands in its slot and keeps what its read-back needs (expected values,
+    OnLevel or not, dropped) by `reported_id`; then one `asyncio.sleep(WRITE_FADE_WAIT_S)` outside every slot; then a
+    second `self.gather` over the lights that sent something runs `read_back`, each in a slot of its own, so the
+    deadline still bounds it. A light the first pass rejected or left unchanged keeps that result. ZHA's refreshes run
+    outside the slots for the same reason (`zha/set_attributes.py`). Tests pin, with `max_concurrency` 2 and four
+    lights, that every light's commands go out before the first read, and that one sleep runs per call. The call
+    transcript keeps its commands and reads; only their order across lights may change.
 
 ## Steps
 
@@ -91,12 +101,14 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
    with the quirks. Run `scripts/gen_compat.py` and the README regeneration. Add the read-back entry to deferred.md.
    Then the audit and ready, per the global rules.
 
-**PR 2: raise/lower and stop** (branch `wt/matter-light-fades`, off main after PR 1 merges, `Depends-on` PR 1)
+**PR 2: raise/lower and stop** (branch `wt/matter-light-fades`, off main after PR 1 merged as `fde92568`)
 
 4. Core: `raises_from_off` on LevelFade (Decision 6), with a unit test in core's tests.
 5. `integrations/matter/fade.py`: a MatterFade(LevelFade) for brightness and saturation (Decisions 4–6), and a hue
    adapter on the ZHA hue-move pattern (it tracks the cycling lights for stop). Add the six thin action modules, the
-   way `zha/raise_brightness.py` is, and register them in `ADAPTERS`.
+   way `zha/raise_brightness.py` is, and register them in `ADAPTERS`. Also Decision 14: set_attributes' wait and
+   read-back leave the slots; while there, fix the two PR 1 audit Lows on lines this touches (`color_feature_map_path`
+   unused by `color_features`; `unsupported_reason`'s docstring saying "OnOff timer").
 6. `integrations/matter/stop.py`: Decisions 8 and 10.
 7. Docs, as step 3: index.md sections for smooth dimming and stop, internals.md module sections, regenerate. Then the
    audit and ready.
@@ -105,9 +117,12 @@ Risky step for its own audit range: step 5 (the soft-off restore's job and cance
 
 ## Handoff
 
-- **Done (2026-11-24):** PR 1, steps 1–3, on `wt/matter-set-attributes` (worktree `deviceside-wt-matter-set-attributes`), PR #591, audited CLEAN (0 Critical/High; 1 Medium, 6 Low left in the report) and marked ready. Each step's last commit carries its `Plan review:` note.
-- **Next:** PR 2, steps 4–7, once #591 merges: `wait-pr 591`, then a worktree on `wt/matter-light-fades` off main, `pr-draft` this plan with `Depends-on: #591`. Step 5 gets its own `/audit-code` range.
-- **Carried from PR 1:** Decision 12. The Level/Color IDs, color capability bits (`HUE_SATURATION`, `ENHANCED_HUE`, `XY_COLOR`, `TEMPERATURE_COLOR`) and `XY_SCALE` live in `core/zcl.py`. `addressing.color_features` and `make_command` exist for step 5's hue check and the Move/Stop builders. Audit Lows to keep in mind where step 5 touches the same lines: `color_feature_map_path` is unused by `color_features`; `unsupported_reason`'s docstring still says "OnOff timer"; set_attributes holds an integration slot through its 0.6 s wait (the Medium).
+- **Done:** PR 1, steps 1–3, merged as #591 (`fde92568`). Decision 14 (the audit Medium) added after it, for step 5.
+- **Next:** PR 2, steps 4–7, on `wt/matter-light-fades` (worktree `deviceside-wt-matter-light-fades`), draft PR
+  opened with this plan. Start at step 4. Step 5 gets its own `/audit-code` range.
+- **Carried from PR 1:** Decision 12. The Level/Color IDs, color capability bits (`HUE_SATURATION`, `ENHANCED_HUE`,
+  `XY_COLOR`, `TEMPERATURE_COLOR`) and `XY_SCALE` live in `core/zcl.py`. `addressing.color_features` and
+  `make_command` exist for step 5's hue check and the Move/Stop builders.
 - **Open decisions:** none.
 
 ## Verification
