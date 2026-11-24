@@ -74,15 +74,13 @@ def test_the_menu_prefills_only_fields_its_form_has(form):
     assert template["title"] == f"{form.title}: "
 
 
-def test_the_device_report_lists_every_integration_for_routing():
-    """Each integration's title, sorted, then the catch-all: route_issue.py matches the choices by title."""
-    from custom_components.deviceside.core.registry import AdapterRegistry
+def test_the_device_report_routes_on_its_integration_dropdown():
+    """route_issue.py finds the dropdown by label; gen_codeowners.py writes its options (its test checks them)."""
     from scripts import route_issue
 
     [dropdown] = [element for element in load(TEMPLATES / "device_report.yml")["body"] if element["type"] == "dropdown"]
     assert dropdown["attributes"]["label"] == route_issue.LABEL
-    titles = sorted(info.title for info in AdapterRegistry.discover().available_integrations())
-    assert dropdown["attributes"]["options"] == [*titles, route_issue.OTHER]
+    assert dropdown["attributes"]["options"][-1] == route_issue.OTHER
 
 
 def test_the_menu_lists_the_forms_in_the_chooser_s_order():
