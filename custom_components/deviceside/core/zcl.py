@@ -23,6 +23,10 @@ COLOR_TEMPERATURE = 0x0007  # ColorTemperatureMireds
 MOVE_UP = 0x01
 MOVE_DOWN = 0x03
 
+# Level and Color Control's Options bit 0, ExecuteIfOff (ZCL's Options attribute, Matter's OptionsBitmap): set in a
+# command's options mask and override, the command applies to a light that is off, which stores the value and stays off.
+EXECUTE_IF_OFF = 0x01
+
 # Color capability bits, one layout in ZCL's ColorCapabilities (0x400A) and Matter's Color Control FeatureMap (0xFFFC).
 HUE_SATURATION = 0x01
 ENHANCED_HUE = 0x02

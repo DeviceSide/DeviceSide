@@ -28,7 +28,7 @@ from ...core.errors import NOT_STORED, Reason
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
-from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S, XY_SCALE
+from ...core.zcl import EXECUTE_IF_OFF, WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S, XY_SCALE
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -42,7 +42,7 @@ from ...core.zcl_write import (
 
 # The write fade is core/zcl.py's, as on ZHA. The override sets ExecuteIfOff for this command only, so the light
 # takes it while off; Options stays untouched.
-_EXECUTE_IF_OFF = {"transtime": WRITE_FADE_TENTHS, "optionsMask": 1, "optionsOverride": 1}
+_EXECUTE_IF_OFF = {"transtime": WRITE_FADE_TENTHS, "optionsMask": EXECUTE_IF_OFF, "optionsOverride": EXECUTE_IF_OFF}
 
 # The fade is 0.4 s from when the bulb gets the command; a read inside it answers a level between the old and the
 # target. Wait it out, with a margin for the command's trip, before reading.
