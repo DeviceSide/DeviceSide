@@ -109,33 +109,18 @@ past unit tests.
 
 ## Handoff
 
-2026-11-24, from the session that ran steps 0–2.
+2026-11-24, from the session that ran steps 3–5 (steps 0–2: f2093149..ee3dd97a).
 
 **Done**
-- Step 0: #580 closed; worktree `.claude/worktrees/z2m-any-base-topic`, branch `wt/z2m-any-base-topic`, draft PR #581.
-- Step 1: `docs/integrations/zigbee2mqtt/research/2026-11-24-base-topics.md` (47b04d33, review fixes 57ac6736).
-  Decision 2 holds upstream (2.14.3) and live (one instance, default base). The probe ran from Jason's shell: the
-  sandboxed Python can't reach the LAN HA, and the auto-mode classifier refuses using the rig token from this side.
-- Step 2: f2093149, review fixes 17d4a3a3 (its `Plan review:` note). `addressing.py` reads the base from the via
-  bridge's entities (a base every bridge entity admits, single survivor, else refused). `Address(base, kind, z2m_id)`.
-  Interim guard: `bridge_cache.get(hass, base=None)` returns the one cache only for its own base.
-  Suite 3062 passed, `--transcripts=check`, no transcript changed.
+- Step 3: c9327b33, review and audit fixes e94b0f6f (its `Plan review:` note). One `BridgeCache` per base, followed by
+  `addressing.follow_bases` (shared with the color-modes watch). Step audit: no Critical/High; Lows 4, 5, 8 left in it.
+- Step 4: fa03dd3b, 7656ea87 (its `Plan review:` note). Journal keyed by `Address`, store v2 nested by base, v1 moved
+  under `zigbee2mqtt`, replay per base.
+- Step 5: f6cd64b2, review fixes 0eb1341f and the base-topic placeholders after it. #575 reply drafted, not posted.
 
-**Next: step 3** (opus implementer, its own `/audit-code` of the range), then steps 4 and 5, then the PR audit.
+**Decisions after the plan**
+7. A restore owed on a base renamed for good stays owed and unpaid: accepted as a known limit (`internals.md`). (Orchestrator, step 4 review)
 
-**Carried into step 3**
-- No cache when no bridge is registered at setup (`bridge_cache.async_setup` returns early): the registry-update
-  handling fixes it.
-- `set_check.checked` still calls `bridge_cache.get(hass)` with no base: it listens to one log across several
-  targets; move it per base.
-- The `base=None` path of `bridge_cache.get` is interim: remove it once every caller passes a base.
-
-**Carried into step 4**
-- `restore_journal.request_replay` sets `replays.base` on every call and replays every owed key on that base:
-  harmless with one cache, wrong with several ("last online wins"). Keys carrying the base fix it.
-- The journal's type alias was renamed `Key` (the new `Address` is addressing's).
-
-**Peers**: #582 (Tuya datapoint countdown, branch `wt/tuya-datapoint-single`) overlaps `integrations/zigbee2mqtt/**`.
-Its session was told: `publish_set` keeps its signature; addressing helpers and `bridge_cache.get` gain the base.
+**Next**: PR audit, `owner-findings` (all files are @jasonmx's), `gh pr ready`. Post the #575 reply once Jason approves it.
 
 **Open decisions**: none.

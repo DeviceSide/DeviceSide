@@ -153,7 +153,7 @@ raises.
 ### `turn_on_for`
 
 Publishes `{"state": "ON", "on_time": <s>}`; Z2M sends `OnWithTimedOff` (`on_time` to 0.1 s; max 6553.4 s). With
-fields, `light.turn_on` goes first, and the timer waits for Z2M's state publish on `zigbee2mqtt/<friendly name>`
+fields, `light.turn_on` goes first, and the timer waits for Z2M's state publish on `<base topic>/<friendly name>`
 (up to 5 s). Sent straight after, Z2M would publish the light's state from before the fields landed, which Home
 Assistant keeps, and the two would contend on the mesh, delaying the timer by seconds.
 
@@ -214,7 +214,7 @@ time, answered on the state topic:
 - `lightingColorCtrl`: `colorMode`, then only the attributes of the light's own modes, since one missing attribute
   fails the whole read.
 
-A failed read raises at once when Z2M logs it on `zigbee2mqtt/bridge/logging`, else after 5 s. A group reads its
+A failed read raises at once when Z2M logs it on `<base topic>/bridge/logging`, else after 5 s. A group reads its
 members in turn: averages over the lit ones (all, when all are off), and a `timer` only when every lit member has
 one, the longest.
 
