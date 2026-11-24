@@ -25,13 +25,14 @@ back on with no timer ([internals](internals.md#what-decides-the-call)).
 runs itself; `stop` halts it and reads where it halted. A full-range `sweep_time` runs 0.1 s to about 109 minutes; one
 outside that is clamped (`clamped_to`).
 
-- **Soft off.** About 1 s after a fade to 0 % has run, the light's old level is put back while it stays off, so the
-  next plain on comes back there. A brightness move, a `stop` or a light call from Home Assistant before then cancels
+- **Soft off.** Once a fade to 0 % has run, the light's old level is put back while it stays off, so the next plain
+  on comes back there. A brightness move, a `stop` or a light call from Home Assistant before then cancels
   that, and a `stop` during the fade leaves the light on at the level it halted at. A light turned on elsewhere in the
   meantime keeps its level. A restart of Home Assistant before the restore loses it, and the light comes back at its
   lowest level.
-- **`stop`** reads the light twice, 0.2 s apart: `confirmed` when it held still, `sent` (`still_fading`) when it
-  kept moving. A light that is off gets nothing (`unchanged`, `off`).
+- **`stop`** reads where the light halted: `confirmed` when it held still, `sent` (`still_fading`) when it kept
+  moving. A slow move, such as a long hue cycle, can read `confirmed` while it still moves
+  ([internals](internals.md#stop)). A light that is off gets nothing (`unchanged`, `off`).
 
 ## Smooth color changes
 
@@ -88,7 +89,7 @@ A Matter light takes the same `OnWithTimedOff` command and timer reads as a plug
 vendor and product IDs give it, as a plug does, and inherits that class's features. Its endpoint needs the Lighting
 feature, as [above](#matter). Smooth dimming, smooth color changes and set without turning on are admitted by
 research, not a run, and no Matter light is on the rig yet: certification tests the fade, move and stop commands on a
-light that is on, and the set-while-off command on a light that is off for brightness and xy color, since Matter 1.0
+light that is on, and, since Matter 1.0, the set-while-off command on a light that is off for brightness and xy color
 ([research](research/2026-11-24-level-color.md), Q1). A device report is how they move up.
 
 ### Multi-endpoint devices

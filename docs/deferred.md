@@ -142,12 +142,13 @@ Design 3.
 ## Matter set_attributes and stop without the read-back
 
 Matter's `set_attributes` reads back every attribute it set, 0.6 s after the last command, to tell `confirmed` from
-`sent` ([internals](integrations/matter/internals.md#set_attributes)), and its `stop` reads each light twice, 0.2 s
-apart, to tell `confirmed` from `still_fading` ([internals](integrations/matter/internals.md#stop)). A class that
+`sent` ([internals](integrations/matter/internals.md#set_attributes)), and its `stop` reads each light twice to tell
+`confirmed` from `still_fading` ([internals](integrations/matter/internals.md#stop)). A class that
 leaves Labs on a pass could drop them, saving the waits and the reads, and report `sent` as ZHA does.
 
-**Why not now:** every Matter class is in Labs, admitted by research, and a light answers SUCCESS to a command it
-didn't carry out (one the override fails to unblock does), so the reads are the only signal a device report has.
+**Why not now:** every Matter class is in Labs, admitted by research. A light answers SUCCESS to a `set_attributes`
+command it didn't carry out (one the override fails to unblock does), and `stop`'s reads are what tell a light that
+halted from one still moving, so the reads are the only signal a device report has.
 
 **Revisit when:**
 - a Matter class's `set_attributes` or `stop` leaves Labs on a pass.
