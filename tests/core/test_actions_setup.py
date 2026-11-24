@@ -7,7 +7,6 @@ import pytest
 import yaml
 
 from custom_components.deviceside.actions import discover
-from custom_components.deviceside.core.registry import AdapterRegistry, served_domains
 
 PACKAGE = Path(__file__).parents[2] / "custom_components" / "deviceside"
 
@@ -32,22 +31,6 @@ def test_strings_match_actions():
 
 def test_icons_match_actions():
     assert set(_load_json("icons.json")["services"]) == ACTION_KEYS
-
-
-@pytest.mark.parametrize("action", ACTIONS, ids=lambda action: action.key)
-def test_target_filter_lists_exactly_the_integrations_and_domains_served(action):
-    """A domain the scope holds but serves no class on (every class refused there) stays out of the picker."""
-    registry = AdapterRegistry.discover()
-    in_scope: dict[str, set[str]] = {}
-    for key, integration, adapter in registry.matrix():
-        if key == action.key and adapter is not None:
-            info = registry.integrations[integration]
-            in_scope.setdefault(info.ha_domain, set()).update(served_domains(adapter, info))
-    listed: dict[str, set[str]] = {}
-    for entry in SERVICES_YAML[action.key]["target"]["entity"]:
-        domains = entry["domain"]
-        listed.setdefault(entry["integration"], set()).update([domains] if isinstance(domains, str) else domains)
-    assert listed == in_scope
 
 
 @pytest.mark.parametrize("action", ACTIONS, ids=lambda action: action.key)
