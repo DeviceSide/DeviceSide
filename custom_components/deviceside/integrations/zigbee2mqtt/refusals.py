@@ -17,6 +17,8 @@ from .families.hue import HUE
 from .families.ikea import IKEA, IKEA_TIMER_HARMED
 from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
+from ...zigbee.ikea import TIMER_HARMED_REASON
+from ...zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
 
 # What the user reads after core's "can't take this action yet" (errors.py, the not_built key).
 _STAYS_ON = "Zigbee2MQTT would turn it on with no timer, so it would stay on"
@@ -31,31 +33,20 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # action's failure harms, so the dispatcher refuses a device not yet placed as well, which could be one of them
     # (plan Decision 26).
     "turn_on_for": {
-        # Every other brand's lights, plugs and switches (docs/evidence.md, In Labs): no pass, and research names only
-        # some makers' lights as running the timer, some lights turning on and never off, and most plugs ignoring it
-        # or reading it as a vendor countdown. The call that would serve them, a host-side off, isn't built.
         OTHER: NotBuilt(
-            reason="Too few reports say its brand runs the timer, and some lights and most plugs turn on and "
-            "never off, so it could stay on; DeviceSide's own off, which would serve it, isn't built",
+            reason=OTHER_TIMER_REASON,
             source=RESEARCH + "2026-11-14-timed-on-call-patterns.md",
         ),
-        # Hue's plug and IKEA's outlets, on the switch domain alone: their bulbs keep their class's level, the plugs
-        # have no pass, and plugs needn't implement OnWithTimedOff. The calls that would serve them, a host-side off or
-        # the plug's auto-off, aren't built.
         **dict.fromkeys(
             (HUE, IKEA),
             NotBuilt(
-                reason="Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, "
-                "and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built",
+                reason=SWITCH_TIMER_REASON,
                 source=RESEARCH + "2026-11-14-timed-on-call-patterns.md",
                 domains=frozenset({Platform.SWITCH}),
             ),
         ),
-        # Reported turned on by a unicast timer and never off, while the same call by group did turn them off; the
-        # cause is unknown. A host-side off would serve them.
         IKEA_TIMER_HARMED: NotBuilt(
-            reason="It is reported to turn on with the timer and never turn off, and DeviceSide's own off, which would "
-            "serve it, isn't built",
+            reason=TIMER_HARMED_REASON,
             source="https://github.com/Koenkk/zigbee2mqtt/issues/29158",
         ),
         # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
