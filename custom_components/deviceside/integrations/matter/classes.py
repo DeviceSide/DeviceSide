@@ -66,6 +66,12 @@ _PRODUCTS = {(4107, 8979): WIZ_PLUG}
 # as certification tests one endpoint, a bridge's software answers for its devices, and an uncertified one is untested.
 TURN_ON_FOR = verified(WIZ_PLUG) | labs(OTHER)
 GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER)
+# The light actions (set_attributes, and what follows it) are in Labs on `other` and `multi_endpoint`, admitted by
+# research (docs/integrations/matter/research/2026-11-24-level-color.md; plan Decision 2): certification tests Level
+# and Color Control on every endpoint a node holds them, so endpoint count doesn't decide the outcome. `bridged` and
+# `uncertified` are not built, so they are left out of capabilities with no NotBuilt entries: these actions don't harm,
+# and the registry refuses such an entry.
+LIGHT_ACTIONS = labs(OTHER, MULTI_ENDPOINT)
 
 # turn_on_for's failure harms (docs/evidence.md, When today's call harms a class), so these three, which its scope
 # doesn't serve, carry entries: they make core refuse a node that reports no VendorID yet (no class, so it could be

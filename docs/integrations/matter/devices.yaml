@@ -6,7 +6,13 @@ column_order: 5
 capabilities:
   # The classes integrations/matter/classes.py names.
   wiz_plug: {phrase: WiZ Smart Plug, section: WiZ Smart Plug}
-  multi_endpoint: {phrase: multi-outlet Matter devices, section: Multi-outlet devices}
-  other: {phrase: certified Matter devices, section: Certified devices}
+  multi_endpoint:
+    phrase: multi-outlet Matter devices
+    section: Multi-outlet devices
+    domains: {light: multi-endpoint Matter lights, switch: multi-outlet Matter devices}
+  other:
+    phrase: certified Matter devices
+    section: Certified devices
+    domains: {light: certified Matter lights, switch: certified Matter plugs and switches}
   bridged: {phrase: devices behind a Matter bridge, section: Matter bridges}
   uncertified: {phrase: uncertified Matter devices, section: Uncertified devices}
