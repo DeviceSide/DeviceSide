@@ -32,6 +32,7 @@ from custom_components.deviceside.core.scope import (
     Unplaced,
     documented,
     labs,
+    labs_fields,
     verified,
 )
 
@@ -908,6 +909,156 @@ async def test_a_group_flagged_by_a_field_does_not_fall_back(hass, fake, reset_s
         assert await refusal(hass, "turn_on_for", data) == "labs_off"
 
     assert "turn_on_for: light.fake_group falls back" not in caplog.text
+
+
+# A fade in Labs on class C alone (AdapterScope.class_labs): with the option off it is dropped there, not refused.
+FADE_LABS_ON_C = AdapterScope(
+    domains=verified("light"),
+    duration=LIMITS,
+    fields=verified("brightness", "transition"),
+    capabilities=verified("A", "C"),
+    class_labs=labs_fields("transition", classes=("C",)),
+    native_groups=True,
+)
+FADE = {"duration": 5, "brightness": 9, "transition": 1}
+
+
+def sent_fields(reset_script) -> list[tuple[list[str], frozenset[str]]]:
+    """Each run's targets and the fields its request carried."""
+    return [(ids, request.fields_present()) for _, _, request, ids in reset_script.calls]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_field_in_labs_on_a_class_is_dropped_there_while_labs_is_off(hass, fake, reset_script, caplog):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    add_fake_entity(hass, fake, "light.c", attributes=FULL)
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", FADE_LABS_ON_C):
+        response = await call(hass, "turn_on_for", {"entity_id": "light.c", **FADE})
+
+    assert response == {"light.c": SENT | {"capability": "C", "detail": "fields_dropped"}}
+    assert sent_fields(reset_script) == [(["light.c"], frozenset({"brightness"}))]
+    assert "turn_on_for on fake: light.c drops ['transition'], in Labs on class ('C',)" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_call_left_only_a_field_in_labs_on_its_class_is_unchanged(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.c", attributes=FULL)
+    allow_labs(hass, False)
+
+    scope = AdapterScope(
+        fields=verified("brightness"),
+        capabilities=verified("A", "C"),
+        class_labs=labs_fields("brightness", classes=("C",)),
+    )
+
+    with patch.object(FakeSetAttributes, "scope", scope):
+        response = await call(hass, "set_attributes", {"entity_id": "light.c", "brightness": 50})
+
+    assert response == {
+        "light.c": {"status": "unchanged", "integration": "fake", "capability": "C", "detail": "fields_dropped"}
+    }
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_field_in_labs_on_a_class_is_sent_with_labs_on_and_on_another_class(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a", attributes=FULL)
+    add_fake_entity(hass, fake, "light.c", attributes=FULL)
+
+    with patch.object(FakeTurnOnFor, "scope", FADE_LABS_ON_C):
+        allow_labs(hass, False)
+        assert await call(hass, "turn_on_for", {"entity_id": "light.a", **FADE}) == {
+            "light.a": SENT | {"capability": "A"}
+        }
+        allow_labs(hass, True)
+        assert await call(hass, "turn_on_for", {"entity_id": "light.c", **FADE}) == {
+            "light.c": SENT | {"capability": "C"}
+        }
+
+    every = frozenset({"brightness", "transition"})
+    assert sent_fields(reset_script) == [(["light.a"], every), (["light.c"], every)]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_classes_that_drop_a_field_in_labs_and_those_that_keep_it_run_apart(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a", attributes=FULL)
+    add_fake_entity(hass, fake, "light.c", attributes=FULL)
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", FADE_LABS_ON_C):
+        response = await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.c"], **FADE})
+
+    assert response == {
+        "light.a": SENT | {"capability": "A"},
+        "light.c": SENT | {"capability": "C", "detail": "fields_dropped"},
+    }
+    assert sorted(sent_fields(reset_script)) == [
+        (["light.a"], frozenset({"brightness", "transition"})),
+        (["light.c"], frozenset({"brightness"})),
+    ]
+
+
+def fade_group(hass, fake):
+    """light.fake_group, a native group of light.a and light.c."""
+    for member in ("light.a", "light.c"):
+        add_fake_entity(hass, fake, member, attributes=FULL)
+    add_fake_entity(
+        hass,
+        fake,
+        "light.fake_group",
+        attributes={"fake_members": ["light.a", "light.c"], **FULL},
+        unique_id="group:light.fake_group",
+    )
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_native_group_with_a_member_holding_a_field_in_labs_falls_back_while_labs_is_off(
+    hass, fake, reset_script, caplog
+):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    fade_group(hass, fake)
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", FADE_LABS_ON_C):
+        response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", **FADE})
+
+    # Each member is judged alone: light.a keeps the fade, light.c drops it.
+    assert "turn_on_for: light.fake_group falls back to its members (labs_off)" in caplog.text
+    assert response == {
+        "light.a": SENT | {"capability": "A"},
+        "light.c": SENT | {"capability": "C", "detail": "fields_dropped"},
+    }
+    assert sorted(sent_fields(reset_script)) == [
+        (["light.a"], frozenset({"brightness", "transition"})),
+        (["light.c"], frozenset({"brightness"})),
+    ]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_native_group_with_a_member_holding_a_field_in_labs_runs_whole_with_labs_on(hass, fake, reset_script):
+    fade_group(hass, fake)
+    allow_labs(hass, True)
+
+    with patch.object(FakeTurnOnFor, "scope", FADE_LABS_ON_C):
+        response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", **FADE})
+
+    assert list(response) == ["light.fake_group"]
+    assert sent_fields(reset_script) == [(["light.fake_group"], frozenset({"brightness", "transition"}))]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_native_group_on_a_labs_domain_is_refused_whatever_its_members_fields(hass, fake, reset_script, caplog):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    fade_group(hass, fake)
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", replace(FADE_LABS_ON_C, domains=labs("light"))):
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.fake_group", **FADE}) == "labs_off"
+
+    assert "light.fake_group falls back" not in caplog.text
+    assert reset_script.calls == []
 
 
 @pytest.mark.usefixtures("classed")

@@ -87,6 +87,11 @@ def labs(*items: str, domains: Collection[str] | None = None, only: bool = False
     return _levels(items, Level.LABS, domains, only)
 
 
+def labs_fields(*fields: str, classes: Collection[str]) -> dict[str, frozenset[str]]:
+    """The fields in Labs on each of `classes` alone (AdapterScope.class_labs)."""
+    return dict.fromkeys(classes, frozenset(fields))
+
+
 class CaveatKind(Enum):
     """A risk the adapter ships with (docs/evidence.md, Caveats); not a level."""
 
@@ -205,6 +210,9 @@ class AdapterScope:
     # Fields the adapter takes though the light's state says it can't (a design gap between the upstream integration
     # and HA): never dropped as lacked on a light. Each must be in `fields`, whose level gates it like any field's.
     unlisted: frozenset[str] = frozenset()
+    # Fields in Labs on some classes alone (labs_fields), by class: a call carrying one to such a class is Labs, and
+    # with the option off the dispatcher drops the field (docs/evidence.md, Levels). Each field is in `fields`.
+    class_labs: Mapping[str, frozenset[str]] = field(default_factory=dict)
     # The classes the adapter serves (docs/evidence.md, Device classes), as IntegrationInfo.capability names them;
     # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
     # the class, so each stands on its own evidence: a sibling's untested one is in Labs unless it is Documented.
@@ -249,8 +257,9 @@ class AdapterScope:
                 raise ValueError(f"not_built {name!r} names no domain, or one the scope doesn't serve")
         self._check_own_calls()
         self._check_on_domains()
+        self._check_class_labs()
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
-        for name in ("domains", "fields", "capabilities", "no_known_method", "not_built", "own_calls"):
+        for name in ("domains", "fields", "class_labs", "capabilities", "no_known_method", "not_built", "own_calls"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
@@ -261,14 +270,21 @@ class AdapterScope:
 
     def level(self, domain: str, classes: Collection[str | None] = (), fields: Collection[str] = ()) -> Level:
         """The weakest level among the in-scope items a call touches: its domain, its classes (when the scope lists
-        capabilities: the target's, or a native group's members') and the fields it carries. Domain and fields must
-        be in scope, as supports() has checked; a class outside the scope, or None (one the integration couldn't
-        name, or a group whose members it can't list), counts as a Labs item, so a call let past on another ground
-        fails safe instead of raising."""
+        capabilities: the target's, or a native group's members') and the fields it carries, a field in Labs on one of
+        its classes (class_labs) as a Labs item. Domain and fields must be in scope, as supports() has checked; a class
+        outside the scope, or None (one the integration couldn't name, or a group whose members it can't list), counts
+        as a Labs item, so a call let past on another ground fails safe instead of raising."""
         levels = [self.domains[domain], *(self.fields[name] for name in fields)]
         if self.capabilities is not None:
             levels += [self.class_level(name, domain) for name in classes]
+            if self.class_labs_fields(classes) & set(fields):
+                levels.append(Level.LABS)
         return min(levels)
+
+    def class_labs_fields(self, classes: Collection[str | None]) -> frozenset[str]:
+        """The fields in Labs on any of the classes (class_labs); None has none, and an Unplaced class reads as the
+        class it names."""
+        return frozenset().union(*(self.class_labs.get(name, ()) for name in classes if name is not None))
 
     def class_level(self, name: str | None, domain: str) -> Level:
         """A class's level in a domain: its entry's, where that holds the domain (an OnDomains entry names some alone),
@@ -375,6 +391,23 @@ class AdapterScope:
                 raise ValueError(
                     f"class {name!r} is held on domains the scope doesn't serve: {sorted(map(str, entry.domains))}"
                 )
+
+    def _check_class_labs(self) -> None:
+        if not self.class_labs:
+            return
+        if self.capabilities is None:
+            raise ValueError("class_labs needs capabilities: it names classes")
+        if unserved := sorted(self.class_labs.keys() - self.capabilities.keys()):
+            raise ValueError(f"class_labs names classes the scope doesn't serve: {unserved}")
+        for name, names in self.class_labs.items():
+            if not names or names - LACKABLE:
+                raise ValueError(f"class_labs {name!r} names no field, or one a light's state never lacks")
+            if untested := sorted(names - self.fields.keys()):
+                raise ValueError(f"class_labs {name!r} names fields outside the scope's fields: {untested}")
+            if dropped := sorted(names & self.drops):
+                raise ValueError(f"class_labs {name!r} names fields the scope drops: {dropped}")
+            if flagged := sorted(item for item in names if self.fields[item] is Level.LABS):
+                raise ValueError(f"class_labs {name!r} names fields already in Labs on every class: {flagged}")
 
     def _check_unlisted(self) -> None:
         if unknown := self.unlisted - LACKABLE:

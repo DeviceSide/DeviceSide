@@ -98,6 +98,11 @@ is refused unless the Labs option is on. To flag a whole adapter, flag its domai
     never qualifies, as the test's field values are its own. The PR names the marker and what slips past it
     ([Matter](integrations/matter/internals.md#what-decides-the-call)).
 
+A field can be in Labs on some classes alone (`labs_fields(...)`, `AdapterScope.class_labs`) while it keeps its level in
+`fields` on the rest. With the Labs option off it is dropped on those classes (`fields_dropped`), not refused; with it
+on, the call is Labs. A pass on such a class credits no model on its card for that action, as a record doesn't say which
+fields a test sent.
+
 A sign-off covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
@@ -288,7 +293,8 @@ needs a call that isn't built, so it is not built yet too.
 ## The Labs flag
 
 Labs is the lowest [level](#levels), and the Labs flag is that level: the item is not yet judged ready for everyone.
-In code it is the per-axis marker `labs(...)`, beside `verified(...)` and `documented(...)`. A call takes the weakest
+In code it is the per-axis marker `labs(...)`, beside `verified(...)` and `documented(...)`, and `labs_fields(...)` for a
+field in Labs on some classes alone ([Levels](#levels)). A call takes the weakest
 level among the items it touches, its domain always among them, so an adapter whose domains are all `labs(...)` is
 flagged whole. A flagged item is refused unless the user turns on the Labs option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
 other item behaves.
@@ -300,7 +306,8 @@ a failed report; without it, it stays not built. A passing rig record or `_manua
 evidence a maintainer can use to lift its flag for the next release, skipping that soak; it is not a requirement to lift
 it. Whether to lift is the maintainer's judgment, by how complex the feature is and how complete its tests are: a
 developer may run the first few rig cases before the full suite exists, so a flagged item may have passing runs and stay
-flagged. Lifting makes `labs(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item
+flagged. Lifting makes `labs(...)` into `verified(...)` (an adapter flagged whole: its domains), and removes a
+`labs_fields(...)` entry, so the field takes its `fields` level on those classes too; a flagged item
 that qualifies as Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting
 a flag is a change to the integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels the
