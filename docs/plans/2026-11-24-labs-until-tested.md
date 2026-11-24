@@ -10,7 +10,7 @@ tested item ships unflagged and an untested one ships in Labs on a sourced call.
 the release gate, the coverage check and the cards agree with it.
 Touches: `docs/evidence.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/design.md`, `docs/device-compatibility.md`
 (hand-written part), `docs/deferred.md`, `.github/pull_request_template.md`, `scripts/check_release.py`,
-`scripts/gen_compat.py`, `tests/scripts/`, `.claude/skills/release/SKILL.md`, `docs/plans/`, README and other
+`scripts/gen_compat.py`, `tests/scripts/`, `custom_components/deviceside/core/scope.py` (the `Level.LABS` comment), `.claude/skills/release/SKILL.md`, `docs/plans/`, README and other
 generated files (regenerated).
 Depends-on: none.
 
