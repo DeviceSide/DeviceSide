@@ -20,6 +20,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from ...core.errors import Reason
+from ...core.identifiers import identifier_values
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ def _bridge_base(hass: HomeAssistant, bridge: dr.DeviceEntry) -> str | None:
     """The base topic in a Z2M bridge device's entities' unique_ids, disabled ones included; None for a device that
     isn't a Z2M bridge or has no bridge entity of its own coordinator."""
     ieee = next(
-        (m[1] for kind, ident in bridge.identifiers if kind == "mqtt" and (m := _BRIDGE_IDENTIFIER.fullmatch(ident))),
+        (m[1] for ident in identifier_values(bridge, "mqtt") if (m := _BRIDGE_IDENTIFIER.fullmatch(ident))),
         None,
     )
     if ieee is None:
@@ -236,8 +237,8 @@ def z2m_address(device: dr.DeviceEntry) -> str | None:
     ("mqtt", "zigbee2mqtt_<encoded base topic>_<group ID>"). Anything else with the prefix (the bridge's own
     device, say) is not addressable and gives None.
     """
-    for itype, ident in device.identifiers:
-        if itype == "mqtt" and ident.startswith(IDENTIFIER_PREFIX):
+    for ident in identifier_values(device, "mqtt"):
+        if ident.startswith(IDENTIFIER_PREFIX):
             addr = ident[len(IDENTIFIER_PREFIX) :]
             if _IEEE_ADDRESS.match(addr) or _GROUP_ADDRESS.match(addr):
                 return addr

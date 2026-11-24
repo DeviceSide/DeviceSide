@@ -77,6 +77,12 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   The fix that addresses each endpoint, its topic named by the Z2M 2.6.0+ endpoint names, is deferred
   ([per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt)).
 
+- **A device identifier of other than two parts, on any integration's device, stopped the bridge cache at setup.** HA
+  types identifiers as pairs but stores any tuple. Unpacking each as a pair raised `ValueError` while the cache and the
+  color-mode watcher found their bridges, so neither started and every device but Hue's stayed Unplaced
+  (`class_unknown`). Seen on a HomeKit device's 3-part identifier, 2026-11-24 rig. Fixed by
+  `core/identifiers.py`, which reads each identifier by its first two parts and skips one with fewer.
+
 ## Modules
 
 One section per adapter module, named after it.
