@@ -23,11 +23,11 @@ banned on one integration is refused wherever that call reaches that device.
   never above Documented, never across signatures (ZHA's spec tenths call and Zigbee2MQTT's Tuya seconds recipe are
   different calls).
 
-`IKEA_TIMER_HARMED`, today copied between `integrations/zha/refusals.py` and `integrations/zigbee2mqtt/refusals.py`,
-would become a derived ban, citing the catalog's reason text rather than carrying its own copy. Until then, a PR
+`IKEA_TIMER_HARMED`, today an entry in both `integrations/zha/refusals.py` and `integrations/zigbee2mqtt/refusals.py`
+built from the catalog's reason (`zigbee/ikea.py`), would become one derived ban. Until then, a PR
 argues Documented by hand under tenet 5 (`docs/evidence.md`).
 
-**Why not now:** two integrations share Zigbee calls, with one copied ban. Signatures can't be frame-pinned on
+**Why not now:** two integrations share Zigbee calls, with one ban held on both. Signatures can't be frame-pinned on
 Zigbee2MQTT, where the converter builds the frame.
 
 **Revisit when:**
@@ -103,7 +103,7 @@ A kit of the rig, so an integration's maintainers can commit records for hardwar
 `integrations/zha/families/ikea/__init__.py` and `integrations/zigbee2mqtt/families/ikea/__init__.py` are about 50
 near-identical lines, and their `test_classes.py` files are near-copies (the v0.1.0rc2 audit, §1 and §5; #532).
 Sharing the rules would put them beside the catalog's strings (`custom_components/deviceside/zigbee/ikea.py`), with
-one test parametrized over both stacks. The shared refusal reasons stay #532's.
+one test parametrized over both stacks. The shared refusal reasons are already in the catalog (#583).
 
 **Why not now:** one family is a near-copy, and sharing its rules lets one integration's family maintainer change
 the other's classification.
