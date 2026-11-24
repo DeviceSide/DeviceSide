@@ -581,11 +581,12 @@ def write_bundles(root, monkeypatch, bundles=BUNDLE, shared=None):
 
 
 def write_files(root, registry, monkeypatch):
-    page, readme = root / "page.md", root / "README.md"
+    page, readme, intro = root / "page.md", root / "README.md", root / "integrations.md"
     models = write_bundles(root, monkeypatch)
     page.write_text(PROSE + "<!-- evidence:start -->\n<!-- evidence:end -->\n")
     readme.write_text("# R\n\n<!-- devices:start -->\n<!-- devices:end -->\n\nAfter.\n")
-    return lambda argv: gc.main(argv, registry, page, readme, models)
+    intro.write_text("# I\n\nPages:\n\n<!-- integrations:start -->\n<!-- integrations:end -->\n\nAfter.\n")
+    return lambda argv: gc.main(argv, registry, page, readme, models, intro)
 
 
 def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, capsys, monkeypatch):
@@ -593,7 +594,7 @@ def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, 
     device = record(root, "zha", "stop")
     run = write_files(root, registry, monkeypatch)
     assert run(["--check"]) == 1  # nothing generated yet
-    assert "page.md and README.md out of date" in capsys.readouterr().err
+    assert "page.md and README.md and integrations.md out of date" in capsys.readouterr().err
     assert run([]) == 0
     assert run(["--check"]) == 0
     assert (root / "README.md").read_text().endswith("<!-- devices:end -->\n\nAfter.\n")
@@ -603,6 +604,24 @@ def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, 
     assert "page.md out of date" in capsys.readouterr().err
     assert run([]) == 0
     assert "9.9.9" in (root / "page.md").read_text()
+
+
+def test_the_intro_lists_each_integration_in_card_order_and_regenerates_when_stale(root, capsys, monkeypatch):
+    registry = FakeRegistry(adapter("zha", "stop"))
+    record(root, "zha", "stop")
+    run = write_files(root, registry, monkeypatch)
+    assert run([]) == 0
+    text = (root / "integrations.md").read_text()
+    assert text == (
+        "# I\n\nPages:\n\n<!-- integrations:start -->\n"
+        "- [ZHA](integrations/zha/index.md)\n- [Hue](integrations/hue/index.md)\n"
+        "<!-- integrations:end -->\n\nAfter.\n"
+    )
+    (root / "integrations.md").write_text(text.replace("(integrations/zha", "(integrations/other"))
+    assert run(["--check"]) == 1
+    assert "integrations.md out of date" in capsys.readouterr().err
+    assert run([]) == 0
+    assert (root / "integrations.md").read_text() == text
 
 
 def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_sections(root, monkeypatch):
@@ -722,8 +741,8 @@ def test_level_words_in_prose_pass_the_heading_check_but_a_heading_fails():
         gc.check_headings("hue", "# Hue\n\n## Try it: Labs\n")
 
 
-def test_the_checked_in_readme_and_page_match_the_real_records():
-    """Both are generated: run the real check so local pytest catches a record or scope that drifts them."""
+def test_the_checked_in_readme_and_pages_match_the_real_records():
+    """All three are generated: run the real check so local pytest catches a record or scope that drifts them."""
     assert gc.main(["--check"]) == 0
 
 
