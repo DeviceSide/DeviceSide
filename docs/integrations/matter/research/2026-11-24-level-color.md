@@ -85,9 +85,9 @@ Tests (same YAML structure at V and M; file lists identical in names apart from 
 ## Q2. Reference server behavior (ember codegen, `src/app/clusters/level-control/codegen/level-control.cpp` @M)
 [file @M](https://github.com/project-chip/connectedhomeip/blob/0233fac8c37223e88d915addce8e8e034bb8a513/src/app/clusters/level-control/codegen/level-control.cpp)
 - Mid-transition read: YES instantaneous. A timer (`emberAfLevelControlClusterServerTickCallback`, L398) steps
-  CurrentLevel every `eventDurationMs = transitionTimeMs / |delta|` (L982) via `SetCurrentLevelQuietReport`; the stored
+  CurrentLevel every `eventDurationMs = transitionTimeMs / |delta|` (L1076) via `SetCurrentLevelQuietReport`; the stored
   attribute is the current interpolated level. Only *reporting* is throttled (Q3), not the stored/read value.
-  (Reading the tick body L398-560 only partly verified; the Set call at L474 and quiet setter at L367-395 confirmed.)
+  (Reading the tick body L398-560 only partly verified; the Set call at L452 and quiet setter at L367-395 confirmed.)
 - Stop (L1292-1318): cancels the timer, `SetCurrentLevelQuietReport(..., state->quietCurrentLevel.value(), true)` (publishes
   the value where it is), sets RemainingTime 0. It holds. `Stop` is gated by ExecuteIfOff (below); `StopWithOnOff` is not.
 - ExecuteIfOff gate `shouldExecuteIfOff` (L566-648): returns true (executes) unless ALL of: command is a non-WithOnOff command
@@ -160,13 +160,20 @@ Tests (same YAML structure at V and M; file lists identical in names apart from 
 ## Q5. python-matter-server / chip.clusters
 - `MatterClient.send_device_command(node_id, endpoint_id, command: ClusterCommand, response_type=None, timed_request_timeout_ms=None, interaction_timeout_ms=None)`;
   payload = `dataclass_to_dict(command)`; the command name is the class name. [client.py L445-470 @PMS](https://github.com/matter-js/python-matter-server/blob/4c820ed12bac349dda372031e9757c67b9fd9048/matter_server/client/client.py#L445-L470)
-  HA entity wrapper: [entity.py L443-456 @HA](https://github.com/home-assistant/core/blob/112e3548608f89297987c46bbfbca9666737e5b1/homeassistant/components/matter/entity.py#L443-L456)
+  HA entity wrapper: [entity.py L443-456 @HA](https://github.com/home-assistant/core/blob/112e3548608f89297987c46bbfbca9666737e5b1/homeassistant/components/matter/entity.py#L444-L456)
   (omits node/endpoint args; passes **kwargs through).
 - Field names (chip/matter.clusters Objects): `optionsMask`, `optionsOverride` on every LevelControl and ColorControl command
   with Options (python tests at M: `MoveToLevel(level=0, transitionTime=0, optionsMask=1, optionsOverride=1)` TC_LVL_9_1.py L192;
   `MoveToLevelWithOnOff(level=..., transitionTime=100, optionsMask=0, optionsOverride=0)` TC_LVL_2_3.py L142; HA uses the same kwargs).
   Other names (camelCase): `level`, `transitionTime`, `moveMode`, `rate`, `stepMode`, `stepSize`, `colorX`, `colorY`, `hue`, `saturation`
-  (UNVERIFIED for Objects.py itself; names confirmed only via HA light.py/tests).
+  Checked against [Objects.py @M](https://github.com/project-chip/connectedhomeip/blob/0233fac8c37223e88d915addce8e8e034bb8a513/src/controller/python/matter/clusters/Objects.py) (step 1 of the plan, 2026-11-24): LevelControl MoveToLevel/MoveToLevelWithOnOff
+  `level, transitionTime (nullable), optionsMask, optionsOverride`; Move `moveMode, rate (nullable)`; Stop/StopWithOnOff
+  `optionsMask, optionsOverride`; ColorControl MoveToHueAndSaturation `hue, saturation`, MoveToColor `colorX, colorY`,
+  MoveToColorTemperature `colorTemperatureMireds`, MoveHue/EnhancedMoveHue/MoveSaturation `moveMode, rate`, StopMoveStep
+  `optionsMask, optionsOverride`, each with `transitionTime` where it has one. Attribute IDs: LevelControl (0x0008)
+  CurrentLevel 0x0000, OnLevel 0x0011, Options 0x000F; ColorControl (0x0300) CurrentHue 0x0000, CurrentSaturation 0x0001,
+  CurrentX 0x0003, CurrentY 0x0004, ColorTemperatureMireds 0x0007, ColorMode 0x0008, EnhancedCurrentHue 0x4000, FeatureMap
+  0xFFFC (HS 0x1, EHUE 0x2, CL 0x4, XY 0x8, CT 0x10).
 - The server is matter.js: its log of an HA call shows omitted options sent as `optionsMask: { executeIfOff: false, coupleColorTempToLevel: false }`
   (issue 168257 comment), i.e. omitted = mask 0 = no override. matter.js server UI exposes an "Execute if Off" checkbox (issue 175904).
 - Level-control Options bit names: ExecuteIfOff (bit 0), CoupleColorTempToLevel (bit 1).
