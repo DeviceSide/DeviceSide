@@ -12,6 +12,7 @@ from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
+from custom_components.deviceside.integrations.zigbee2mqtt.addressing import Address
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import AT_THE_BOTTOM, transition_cache, waiting
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
@@ -187,7 +188,7 @@ async def test_a_failed_restore_warns_and_stays_owed(hass, setup_production, bro
     assert (
         "Couldn't put Zigbee2MQTT's hue_native_control back to False for light.lamp, so it may stay True" in caplog.text
     )
-    assert (await journal(hass)).owed == {f"device/{IEEE}": False}
+    assert (await journal(hass)).owed == {Address("zigbee2mqtt", "device", IEEE): False}
 
 
 # Groups: the group's own option, and only with a Hue member
@@ -577,11 +578,11 @@ async def test_shutdown_during_the_reply_wait_still_restores(hass, setup_product
     async with nc.native_control(hass, target(hass, entity_id), True):
         pass
     await asyncio.sleep(0)
-    nc._restores(hass)[("device", IEEE)].cancel()
+    nc._restores(hass)[Address("zigbee2mqtt", "device", IEEE)].cancel()
     await nc.settled(hass, target(hass, entity_id))  # ends the wait rather than raising into the caller
 
     assert options(broker) == [True, False]
-    assert not locks(hass)[("device", IEEE)].locked()
+    assert not locks(hass)[Address("zigbee2mqtt", "device", IEEE)].locked()
 
 
 async def test_caller_cancelled_in_the_body_still_restores(hass, setup_production, broker):
@@ -612,7 +613,7 @@ async def test_settled_is_immediate_without_a_change(hass, setup_production, bro
     await nc.settled(hass, target(hass, "light.lamp"))
 
     assert broker.requests() == []
-    assert not locks(hass)[("device", IEEE)].locked()
+    assert not locks(hass)[Address("zigbee2mqtt", "device", IEEE)].locked()
 
 
 async def test_a_timer_after_a_brightness_fade_waits_for_its_restore(
@@ -747,12 +748,12 @@ async def test_a_confirmed_restore_leaves_nothing_owed(hass, setup_production, b
 async def test_a_later_owe_keeps_the_users_value_owed(hass, setup_production):
     held = await journal(hass)
 
-    assert await held.add(("device", IEEE), False)
-    assert not await held.add(("device", IEEE), True)
-    await held.strike(("device", IEEE), True)
+    assert await held.add(Address("zigbee2mqtt", "device", IEEE), False)
+    assert not await held.add(Address("zigbee2mqtt", "device", IEEE), True)
+    await held.strike(Address("zigbee2mqtt", "device", IEEE), True)
 
-    assert held.owed == {f"device/{IEEE}": False}
-    await held.strike(("device", IEEE), False)
+    assert held.owed == {Address("zigbee2mqtt", "device", IEEE): False}
+    await held.strike(Address("zigbee2mqtt", "device", IEEE), False)
     assert held.owed == {}
 
 
@@ -841,7 +842,7 @@ async def test_a_same_need_call_pays_a_restore_still_owed(hass, setup_production
     user's value back."""
     hue_bulb(hass)
     broker.retained[INFO]["config"]["devices"][IEEE][nc.OPTION] = True
-    await (await journal(hass)).add(("device", IEEE), False)
+    await (await journal(hass)).add(Address("zigbee2mqtt", "device", IEEE), False)
 
     async with nc.native_control(hass, target(hass, "light.lamp"), True):
         assert options(broker) == []
@@ -856,7 +857,7 @@ async def test_an_opposite_need_call_restores_the_owed_value(hass, setup_product
     restore writes the owed off, not the on it found."""
     hue_bulb(hass)
     broker.retained[INFO]["config"]["devices"][IEEE][nc.OPTION] = True
-    await (await journal(hass)).add(("device", IEEE), False)
+    await (await journal(hass)).add(Address("zigbee2mqtt", "device", IEEE), False)
 
     async with nc.native_control(hass, target(hass, "light.lamp"), False):
         assert options(broker) == [False]
