@@ -583,6 +583,10 @@ def test_a_scope_that_serves_only_own_calls_and_the_base_come_together():
     class Baseless(FakeTurnOffFor):
         scope = ONLY_OWN
 
-    for cls in (Flagless, Baseless):
+    # The mixin after a base with an execute of its own: that one runs, so it counts as no mixin.
+    class Shadowed(FakeTurnOffFor, OwnCallsOnly):
+        scope = ONLY_OWN
+
+    for cls in (Flagless, Baseless, Shadowed):
         with pytest.raises(ValueError, match="own_calls_only\\) and the OwnCallsOnly base come together"):
             _registry([cls], CLASSED_INFO)

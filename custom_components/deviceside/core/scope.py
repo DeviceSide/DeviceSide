@@ -226,7 +226,7 @@ class AdapterScope:
     # The adapter serves only its classes' own calls, and has no call of its own (core/adapter.py, OwnCallsOnly, whose
     # execute nothing reaches): every class it serves is in own_calls, and `refusal` refuses every target whose class
     # has none, a class not yet known (None or Unplaced) as class_unknown with Labs on or off, any other as not_built.
-    # Why a flag, not entries: a class the integration couldn't name has no entry to match, and would reach execute.
+    # Why a flag, not refusal entries: docs/design.md, AdapterScope.own_calls_only.
     own_calls_only: bool = False
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.

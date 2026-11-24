@@ -236,7 +236,8 @@ class AdapterRegistry:
             if cls.action not in self.actions:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
             check_classes(cls, info)
-            if cls.scope.own_calls_only != issubclass(cls, OwnCallsOnly):
+            # The mixin's execute, not one an earlier base gives, is the one the class runs.
+            if cls.scope.own_calls_only != (cls.execute is OwnCallsOnly.execute):
                 raise ValueError(
                     f"{cls.__name__}: a scope that serves only own calls (own_calls_only) and the OwnCallsOnly base "
                     "come together"
