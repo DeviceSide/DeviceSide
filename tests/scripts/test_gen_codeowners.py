@@ -160,6 +160,33 @@ def test_a_familys_existing_paths_follow_its_integrations_then_the_catalog(stack
     ]
 
 
+def test_the_shared_catalog_files_go_to_the_reading_integrations_never_a_family(stacks):
+    """`control4` reads the catalog through its `tuya` family; `hue`'s only family has no catalog file."""
+    (stacks / "custom_components/deviceside/zigbee/reasons.py").write_text("")
+    (stacks / "tests/zigbee/test_reasons.py").write_text("")
+    text = gco.generate(
+        registry(
+            hue=info("jasonmx", "dave", families=(family("hue", "zed"),)),
+            control4=info("alice", families=(family("tuya", "tina"),)),
+        ),
+        stacks,
+    )
+    assert text.endswith(
+        "/custom_components/deviceside/zigbee/tuya.py @tina @alice @jasonmx\n"
+        "/tests/zigbee/test_tuya.py @tina @alice @jasonmx\n"
+        "/custom_components/deviceside/zigbee/reasons.py @alice @jasonmx\n"
+        "/tests/zigbee/test_reasons.py @alice @jasonmx\n"
+    )
+
+
+def test_a_family_keyed_for_a_shared_catalog_file_is_an_error(stacks):
+    (stacks / "custom_components/deviceside/integrations/hue/families/reasons").mkdir()
+    with pytest.raises(
+        SystemExit, match="hue: family reasons would hold the shared custom_components/deviceside/zigbee/reasons.py"
+    ):
+        gco.generate(registry(hue=info("jasonmx", families=(family("reasons"),))), stacks)
+
+
 def test_a_family_without_a_package_is_an_error(stacks):
     with pytest.raises(SystemExit, match="hue: no package for family sengled"):
         gco.generate(registry(hue=info("jasonmx", families=(family("sengled"),))), stacks)
