@@ -70,9 +70,25 @@ raises the issue (`issue_registry.async_create_issue`, keyed on the action and d
 reports.
 
 **Revisit when:**
-- at the second release after v0.1.0, a Labs class still has no device report.
+- at the second release after v0.1.0, a Labs class still has no device report;
+- a Labs item that entered with no pass has no device report one release after it shipped.
 
 **Plan:** [`docs/plans/2026-11-18-experimental-listing.md`](plans/2026-11-18-experimental-listing.md), Decision 6
+
+## Field lifts checked against a record
+
+The coverage check would ask a field lifted out of Labs (a `labs_fields(...)` entry removed, or a field lifted in
+`fields`) for a passing test that sent it, as it asks a Verified class or domain for one. Until then a field lifts on
+the maintainer's word (`docs/evidence.md`, The Labs flag).
+
+**Why not now:** a record doesn't say which fields a test sent, and the rig that writes the records is another repo,
+so no check can ask a field for its record.
+
+**Revisit when:**
+- a field is found lifted out of Labs with no record or row of a test that sent it;
+- the record schema (`docs/test-records.schema.json`) gains the fields a test sent.
+
+**Plan:** [`docs/plans/2026-11-24-labs-until-tested.md`](plans/2026-11-24-labs-until-tested.md), Decision 8
 
 ## Per-family test records and docs
 

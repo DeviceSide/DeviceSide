@@ -39,9 +39,9 @@ Code and docs use these terms. Each one's rules live where its link points.
   refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
 - **Level**: how a scope item is proven: Verified, Documented or Labs. Rules: [evidence.md](evidence.md#levels).
   User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) not yet judged ready for everyone; also the
-  option (`labs`, off by default) that lets calls touching a flagged item through. Only the dispatcher reads the
-  option. Rules: [evidence.md](evidence.md#the-labs-flag).
+- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) not yet passed on a real device, or held back
+  by a maintainer; also the option (`labs`, off by default) that lets calls touching a flagged item through. Only the
+  dispatcher reads the option. Rules: [evidence.md](evidence.md#the-labs-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
   `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
   [device-compatibility.md](device-compatibility.md#levels-of-proof).
@@ -59,7 +59,8 @@ Code and docs use these terms. Each one's rules live where its link points.
 - **Test record**: the evidence that an adapter works on real hardware, in
   `docs/integrations/<integration>/test-records/`. Format: [evidence.md](evidence.md#sign-off-format).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
-  the GitHub issue is its record. How it counts: [evidence.md](evidence.md#the-labs-flag); contrary reports:
+  the GitHub issue is its record. A working one, cited in a maintainer's `_manual.json` row, can release a Labs item.
+  How it counts: [evidence.md](evidence.md#the-labs-flag); contrary reports:
   [Levels](evidence.md#levels).
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).

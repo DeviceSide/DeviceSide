@@ -50,7 +50,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 
 1. User experience is the north star: actions make devices do what users expect, predictably and with low latency,
    and we offer only what's likely to meet that bar.
-2. Probe before you build: when unsure how a device responds, run a cheap probe and record what it shows.
+2. Probe before you build: when unsure how a device you can reach responds, run a cheap probe and record what it shows;
+   with none at hand, build from a cited source to Labs.
 3. Verify, then trust: a verified fact stands across firmware, HA and code changes until evidence contradicts it.
 4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis.
 5. Proof follows the call and the class: code that sends the same call to the same class of device inherits its
@@ -60,8 +61,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
 8. Test to decide: a hardware run needs a decision its result takes (a design choice, a foundation, lifting a Labs flag,
    a surprise, a release), run at the last point that can take it: the release's run for a device a maintainer
-   reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
-   on a run without naming the decision.
+   reaches, so no merge waits on a run; the contributor's PR for their own devices. A new item is flagged until its pass
+   is on record. No plan gates a step on a run without naming the decision.
 9. Retest what the change exercises: only the cases whose call or reply handling changed. Evidence binds to the
    action's call transcript, and a change reopens it only when a segment it was tested on changes or goes.
 

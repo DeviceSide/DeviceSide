@@ -187,7 +187,12 @@ TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 OUTCOMES = (
     ("works", "🟢", "works"),
     ("should", "🟡", "should work: same call pattern as a tested device"),
-    ("labs", "⚪", "Labs: built but not yet proven. Enable Labs in Configure > Settings"),
+    (
+        "labs",
+        "⚪",
+        "Labs: built from the maker's docs or others' reports, not yet tested by us."
+        " Enable Labs in Configure > Settings",
+    ),
     ("no_known_method", "🔴", "no known command works on it"),
 )
 # The most card lines, as a share of all of them across the README's cards, that may be in Labs: ⚪ with no 🟢
