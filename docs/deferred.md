@@ -139,17 +139,18 @@ actions on a multi-gang Tuya one.
 **Plan:** the multi-gang payloads: [`docs/plans/2026-11-15-tuya-datapoint-countdown.md`](plans/2026-11-15-tuya-datapoint-countdown.md),
 Design 3.
 
-## Matter set_attributes without the read-back
+## Matter set_attributes and stop without the read-back
 
 Matter's `set_attributes` reads back every attribute it set, 0.6 s after the last command, to tell `confirmed` from
-`sent` ([internals](integrations/matter/internals.md#set_attributes)). A class that leaves Labs on a pass could drop
-it, saving the wait and the reads, and report `sent` as ZHA does.
+`sent` ([internals](integrations/matter/internals.md#set_attributes)), and its `stop` reads each light twice, 0.2 s
+apart, to tell `confirmed` from `still_fading` ([internals](integrations/matter/internals.md#stop)). A class that
+leaves Labs on a pass could drop them, saving the waits and the reads, and report `sent` as ZHA does.
 
-**Why not now:** every Matter class is in Labs, admitted by research, and a light that ignores the override still
-answers SUCCESS, so the read-back is the only signal a device report has.
+**Why not now:** every Matter class is in Labs, admitted by research, and a light answers SUCCESS to a command it
+didn't carry out (one the override fails to unblock does), so the reads are the only signal a device report has.
 
 **Revisit when:**
-- a Matter class's `set_attributes` leaves Labs on a pass.
+- a Matter class's `set_attributes` or `stop` leaves Labs on a pass.
 
 **Plan:** [`docs/plans/2026-11-24-matter-light-actions.md`](plans/2026-11-24-matter-light-actions.md), Decision 8
 
