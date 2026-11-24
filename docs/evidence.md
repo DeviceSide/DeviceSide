@@ -320,7 +320,8 @@ other item behaves.
 
 An item is in Labs until a real device has passed it. The pass is the author's own test or a user's working report,
 on record; a maintainer judges whether it is enough. So an item tested before it merges ships unflagged, and one
-nobody can test yet ships in Labs, untested, until someone with the device reports.
+nobody can test yet ships in Labs, untested, until someone with the device reports. The default class is the exception:
+no pass lifts it ([Unknown is flagged, never Verified](#device-classes)).
 
 Every new feature (action, integration, domain, capability or field) ships at the level its evidence gives: Verified for
 what the author's test exercised (Documented where [Levels](#levels) allows), and `labs(...)` for the rest. An item
