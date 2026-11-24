@@ -92,11 +92,11 @@ page together, and `--check` proves both.
 Every model a test-records file names must be in docs/models.yaml or its bundle's devices.yaml, whatever its test's
 result (`check_models`). The prose outside the evidence markers is hand-written and kept as written.
 
-**The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class no
-record reaches on every run, `--check` included, and never fails here: `check_release.py --signoffs` fails on it at
-the cut. It also warns (`check_release.default_class_credits`) of each model a passing record or manual row credits in
-its integration's default class where that is in Labs: the pass can never lift a flag, so the model needs a class
-of its own; this warning never fails anywhere.
+**The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class (on an
+integration that names none, Verified domain) no record reaches on every run, `--check` included, and never fails
+here: `check_release.py --signoffs` fails on it at the cut. It also warns (`check_release.default_class_credits`) of
+each model a passing record or manual row credits in its integration's default class where that is in Labs: the pass
+can never lift a flag, so the model needs a class of its own; this warning never fails anywhere.
 
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
 integrations, `type`, optional `section`: the model's heading on the generated page, its `name` by default; a model

@@ -408,10 +408,14 @@ def released(fake_repo, tmp_path_factory):
     return fake_repo
 
 
+# Documented, not Verified: the coverage check asks a Verified domain of a class-less integration for a record.
+PLAIN = AdapterScope(domains=documented("light"))
+
+
 def registry(**scopes: AdapterScope) -> FakeRegistry:
     """fake's two adapters, with the scopes given by action, and other's turn_on_for."""
-    adapters = {(action, "fake"): scopes.get(action, AdapterScope()) for action in ("turn_on_for", "stop")}
-    return FakeRegistry(adapters | {("turn_on_for", "other"): AdapterScope()})
+    adapters = {(action, "fake"): scopes.get(action, PLAIN) for action in ("turn_on_for", "stop")}
+    return FakeRegistry(adapters | {("turn_on_for", "other"): PLAIN})
 
 
 @pytest.fixture
@@ -749,7 +753,7 @@ def test_a_base_git_cannot_resolve_fails(released, monkeypatch):
         cr.main(["--signoffs"], registry())
 
 
-CAVEAT = AdapterScope(caveat=Caveat(CaveatKind.UNTESTED_FIX, ISSUE))
+CAVEAT = AdapterScope(domains=documented("light"), caveat=Caveat(CaveatKind.UNTESTED_FIX, ISSUE))
 
 
 def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released, gate):
@@ -1027,10 +1031,46 @@ def test_a_record_naming_a_class_on_an_integration_that_names_none_is_an_error(r
     assert cr.gates(classed(stop=SCOPE, turn_on_for=SCOPE))[2] == []
 
 
-def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap(fake_repo):
+def test_an_adapter_flagged_whole_or_a_classless_one_not_verified_has_no_gap(fake_repo):
     flagged = AdapterScope(domains=labs("light"), capabilities=verified("hue"))
     assert cr.coverage_gaps(classed(turn_on_for=flagged)) == []
-    assert cr.coverage_gaps(FakeRegistry({("turn_on_for", "fake"): AdapterScope()})) == []
+    assert cr.coverage_gaps(FakeRegistry({("turn_on_for", "fake"): PLAIN})) == []
+
+
+def test_a_verified_domain_of_a_classless_integration_needs_a_passing_test_in_it(fake_repo):
+    """An integration that names no classes: its domains stand in for them."""
+    scope = AdapterScope(domains=verified("light", "switch"))
+    found = FakeRegistry({("turn_on_for", "fake"): scope})
+    gap = lambda domain: f"fake turn_on_for: domain `{domain}` is Verified but no record reaches it"  # noqa: E731
+    assert cr.coverage_gaps(found) == [gap("light"), gap("switch")]
+    classes_record_v3(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", None)))
+    assert cr.coverage_gaps(found) == [gap("switch")]
+    classes_record_v3(
+        fake_repo, "turn_on_for", ran("light", device("LTA009", "1", None)), ran("switch", device("LTA009", "1", None))
+    )
+    assert cr.coverage_gaps(found) == []
+
+
+def test_a_classless_domain_with_a_record_in_another_or_a_failing_one_is_a_gap(fake_repo):
+    found = FakeRegistry({("turn_on_for", "fake"): AdapterScope(domains=verified("switch"))})
+    classes_record_v3(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", None)))
+    assert cr.coverage_gaps(found) == ["fake turn_on_for: domain `switch` is Verified but no record reaches it"]
+    classes_record_v3(fake_repo, "turn_on_for", ran("switch", device("LTA009", "1", None)), skipped())
+    assert cr.coverage_gaps(found) == []
+    path = fake_repo.path / RECORDS / "turn_on_for.json"
+    data = json.loads(path.read_text())
+    data["result"] = "fail"
+    path.write_text(text(data))
+    assert len(cr.coverage_gaps(found)) == 1
+
+
+def test_a_manual_row_covers_a_classless_domain_and_labs_or_documented_is_not_asked(fake_repo):
+    scope = AdapterScope(domains=verified("light") | documented("switch") | labs("cover"))
+    found = FakeRegistry({("turn_on_for", "fake"): scope})
+    assert cr.coverage_gaps(found) == ["fake turn_on_for: domain `light` is Verified but no record reaches it"]
+    (fake_repo.path / MANUAL).parent.mkdir(parents=True, exist_ok=True)
+    (fake_repo.path / MANUAL).write_text(manual_file(signoff(calls=bound("turn_on_for"))))
+    assert cr.coverage_gaps(found) == []
 
 
 def default_classed(scope: AdapterScope) -> FakeRegistry:

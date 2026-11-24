@@ -29,8 +29,10 @@ saying why its records and each manual row naming it were rejected. With --json,
 changed action that has no sign-off (caveat or not), as a JSON list: the rig's run selection, an all-Labs action left
 out. With --reruns, prints instead a JSON object of those integrations, each with the suites to run: for each such
 action, its records that are not format 3, failing or reopened, and its plain suite when it has none. It also runs the
-coverage check, failing on each gap: for an integration that names classes (`IntegrationInfo.capability`), every class
-an adapter not flagged whole holds as Verified needs a passing test that reached it in a passing record of the action
+coverage check, failing on each gap: for an integration that names no classes, each domain an adapter holds as
+Verified needs a passing test in that domain in a passing record of the action, or a `_manual.json` row naming it; for
+one that names classes (`IntegrationInfo.capability`), every class an adapter not flagged whole holds as Verified needs
+a passing test that reached it in a passing record of the action
 (format 2 and 3: a device of the test with that class, a native group's test crediting each member's; format 1: the
 test's `classes`), or a `_manual.json` row naming the action (format 3: in `calls`; format 2: in `passed`) one of whose
 devices has the class. `scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`), with a
@@ -273,14 +275,38 @@ def runs_only_in_labs(scope: AdapterScope) -> bool:
     )
 
 
+def tested_domains(integration: str, action: str) -> set[str]:
+    """The domains the action's passing records tested: each passing test's, in a passing record. A `_manual.json`
+    row names none (`manual_rows`); the caller counts it as covering each."""
+    return {domain for _, _, domain in credited(integration, action) if domain is not None} | {
+        test["domain"]
+        for path in passing(integration, action)
+        for test in load(path)["tests"]
+        if test["result"] == "pass" and "domain" in test
+    }
+
+
 def coverage_gaps(registry) -> list[str]:
     """Each class an adapter of an integration that names classes holds as Verified, with no passing record test or
     manual row for its action that reached it: one held on every domain, in any domain; one held on some domains alone
     (OnDomains), in each of them, as a record in one domain proves nothing about another. A manual row names no domain,
-    so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified."""
+    so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified.
+
+    On an integration that names no classes, each domain the adapter holds as Verified, with no passing test in that
+    domain (`tested_domains`) and no manual row for the action. Fields are not asked (docs/deferred.md, Field lifts
+    checked against a record)."""
     gaps = []
     for _, adapter in adapters(registry):
-        if not names_classes(adapter) or adapter.scope.all_labs:
+        if adapter.scope.all_labs:
+            continue
+        if not names_classes(adapter):
+            tested = tested_domains(adapter.integration, adapter.action)
+            manual_row = bool(manual_rows(adapter.integration, adapter.action))
+            gaps += [
+                f"{adapter.integration} {adapter.action}: domain `{domain}` is Verified but no record reaches it"
+                for domain, level in sorted(adapter.scope.domains.items())
+                if level is Level.VERIFIED and domain not in tested and not manual_row
+            ]
             continue
         found = reached(adapter.integration, adapter.action)
         for item, level, domains in sorted(adapter.scope.class_entries(), key=lambda entry: entry[0]):
