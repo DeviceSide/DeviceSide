@@ -86,5 +86,93 @@
     null
    ]
   ]
+ },
+ {
+  "action": "clear_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": null,
+    "send": "<function>"
+   },
+   "request": {},
+   "targets": [
+    [
+     "switch.sonoff",
+     "switch.sonoff",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.sonoff",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x02/set",
+      "{\"inching_control_set\": {\"inching_control\": \"DISABLE\", \"inching_time\": 0.5, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "clear_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": null,
+    "send": "<function>"
+   },
+   "request": {},
+   "targets": [
+    [
+     "switch.whd",
+     "switch.whd",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "tuya_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.whd",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control_1\": \"DISABLE\", \"inching_time_1\": 1}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
  }
 ]

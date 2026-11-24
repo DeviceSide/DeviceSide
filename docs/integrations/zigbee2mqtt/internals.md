@@ -15,6 +15,10 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   (`1221051039810110150109113116116` for `zigbee2mqtt`; `getEncodedBaseTopic` in Z2M's
   `lib/extension/homeassistant.ts`), and topic `<base topic>/<group ID>/set`. `resolveEntity` falls back to the
   ID-keyed `groups` map, so a rename doesn't break it either, but a device whose friendly name is that number wins.
+  Z2M discovers one entity per member `expose` type (light, switch, lock, cover; `GROUP_SUPPORTED_TYPES` and `getConfigs` in
+  `lib/extension/homeassistant.ts`, Z2M master `3c841fdf`), so a group of switches is `switch.<group>`, and a mixed group has
+  a light and a switch. A group entity has no endpoint name, `object_id` `switch` (or `light`) and `unique_id`
+  `<group ID>_switch_<base>`; a groupcast from either entity reaches every member, whatever its domain.
   Members come from `<base topic>/bridge/groups`, features from `<base topic>/bridge/devices`, and each entity's
   options from Z2M's settings (`bridge/info`). All three are held for the entry's life (`bridge_cache.py`):
   subscribed once MQTT is up, kept as Z2M republishes them (devices and groups on a device or group change, settings
