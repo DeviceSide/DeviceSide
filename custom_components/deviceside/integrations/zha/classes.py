@@ -37,6 +37,7 @@ from .addressing import address
 from .families import FAMILIES, RULES
 from .refusals import REFUSALS
 from ...core import scope
+from ...core.identifiers import identifier_values
 from ...core.models import Target
 from ...core.rules import match
 from ...core.scope import OTHER, ClassDomains, ClassLevel, labs
@@ -96,7 +97,7 @@ def zigbee_manufacturer(hass: HomeAssistant, device: dr.DeviceEntry) -> str | No
     registry device, the one the rules read; None for a device ZHA didn't register or the gateway doesn't hold. ZHA
     registers a device by identifier ("zha", its IEEE) (HA core homeassistant/components/zha/helpers.py,
     ZHADeviceProxy.device_info)."""
-    ieee = next((ident for domain, ident in device.identifiers if domain == "zha"), None)
+    ieee = next(identifier_values(device, "zha"), None)
     if ieee is None or (zigpy := zcl.zigpy_device(hass, ieee)) is None:
         return None
     return zigpy.manufacturer if isinstance(zigpy.manufacturer, str) and zigpy.manufacturer else None

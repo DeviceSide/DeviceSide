@@ -11,7 +11,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache, members
+from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, bridge, bridge_cache, classes, members
 
 from ...fixtures.zigbee2mqtt import (
     GROUPS,
@@ -102,6 +102,33 @@ async def test_subscribes_the_response_topics_before_the_barrier(hass, setup_pro
 
     assert online.topics == HELD_TOPICS
     assert len(connection.callbacks) == 1
+
+
+async def test_a_device_identifier_of_other_than_two_parts_does_not_stop_the_cache(
+    hass, setup_production, online, connection, mqtt_up, monkeypatch
+):
+    monkeypatch.setattr(classes, "bridge_cache", bridge_cache)  # the real cache, not the fixture's stand-in
+    other = MockConfigEntry(domain="homekit_controller")
+    other.add_to_hass(hass)
+    for identifiers in ({("homekit_controller", "a", "b")}, {("homekit_controller",)}):
+        dr.async_get(hass).async_get_or_create(config_entry_id=other.entry_id, identifiers=identifiers)
+    entity_id = add_z2m_entity(
+        hass,
+        setup_production,
+        "light.one",
+        ieee="0x01",
+        name="one",
+        manufacturer="IKEA of Sweden",
+        model_id="LED1836G9",
+    )
+    online.retained[DEVICES] = [
+        {"ieee_address": "0x01", "manufacturer": "IKEA of Sweden", "model_id": "LED1836G9", "interview_completed": True}
+    ]
+
+    await start(hass, setup_production)
+
+    target = resolve(hass, get_runtime(hass).registry, entity_id)
+    assert INTEGRATION.capability(hass, target) == "ikea"
 
 
 async def test_groups_devices_and_info_come_from_the_cache(hass, setup_production, online, connection, mqtt_up):

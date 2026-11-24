@@ -5,6 +5,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from .addressing import IDENTIFIER_PREFIX
+from ...core.identifiers import identifier_values
 
 
 def detect(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry | None) -> bool:
@@ -15,4 +16,4 @@ def detect(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry 
     """
     if device is None:
         return False
-    return any(itype == "mqtt" and ident.startswith(IDENTIFIER_PREFIX) for itype, ident in device.identifiers)
+    return any(ident.startswith(IDENTIFIER_PREFIX) for ident in identifier_values(device, "mqtt"))
