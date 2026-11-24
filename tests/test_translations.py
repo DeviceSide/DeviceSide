@@ -77,7 +77,7 @@ def test_the_collection_finds_what_the_code_raises():
         "targets_failed",
         "no_entities_matched",
     } <= _USED["exceptions"]
-    assert _USED["issues"] == set()
+    assert _USED["issues"] == {"migrate_hue_dimmer"}
     assert _USED["options.step"] == {
         "init",
         "settings",
