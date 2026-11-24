@@ -40,8 +40,8 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
 5. **Raise from off** (brightness only): first `MoveToLevel(1)` with ExecuteIfOff, then
    `MoveToLevelWithOnOff(end, T)`, so the light fades in from the bottom (ZHA's preset). **Lower to 0** is
    `MoveToLevelWithOnOff(0, T)`. Once the fade has run, the start level goes back with `MoveToLevel(start)` and
-   ExecuteIfOff, so the light stays off and comes back at its old level, as on Hue and ZHA. A later move, a stop, or
-   a light call from HA cancels that restore, using the same job key and `ha_watch` resolver pattern as
+   ExecuteIfOff, so the light stays off and comes back at its old level, as on Hue and ZHA. A later brightness move, a stop,
+   or a light call from HA cancels that restore (a color move leaves it: the level fade still ends off), using the same job key and `ha_watch` resolver pattern as
    `zha/fade.py`'s `soft_off_restores`.
 6. **Saturation on an off light** is unchanged with `off`. Add `raises_from_off: ClassVar[bool] = True` to LevelFade.
    Matter's saturation adapters set it False. Shelly and Control4 don't change. This is the only core change (it needs a
