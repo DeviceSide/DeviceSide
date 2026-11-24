@@ -2,6 +2,7 @@
 
 from .classes import CLASSES, OTHER, capability
 from .get_attributes import MatterGetAttributes
+from .set_attributes import MatterSetAttributes
 from .turn_on_for import MatterTurnOnFor
 from ...core.scope import IntegrationInfo
 
@@ -16,4 +17,4 @@ INTEGRATION = IntegrationInfo(
     max_concurrency=2,
 )
 
-ADAPTERS = [MatterGetAttributes, MatterTurnOnFor]
+ADAPTERS = [MatterGetAttributes, MatterSetAttributes, MatterTurnOnFor]

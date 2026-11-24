@@ -9,6 +9,16 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
 
 from .addressing import Address, group_entity_id
+from ...core.zcl import COLOR_CLUSTER as COLOR_CLUSTER
+from ...core.zcl import COLOR_TEMPERATURE as COLOR_TEMPERATURE
+from ...core.zcl import CURRENT_HUE as CURRENT_HUE
+from ...core.zcl import CURRENT_LEVEL as CURRENT_LEVEL
+from ...core.zcl import CURRENT_SATURATION as CURRENT_SATURATION
+from ...core.zcl import CURRENT_X as CURRENT_X
+from ...core.zcl import CURRENT_Y as CURRENT_Y
+from ...core.zcl import ENHANCED_HUE as ENHANCED_HUE
+from ...core.zcl import HUE_SATURATION as HUE_SATURATION
+from ...core.zcl import LEVEL_CLUSTER as LEVEL_CLUSTER
 from ...core.zcl import ON_OFF as ON_OFF
 from ...core.zcl import ON_OFF_CLUSTER as ON_OFF_CLUSTER
 from ...core.zcl import ON_TIME as ON_TIME
@@ -16,24 +26,14 @@ from ...core.zcl_write import level as level
 
 _LOGGER = logging.getLogger(__name__)
 
-LEVEL_CLUSTER = 0x0008
-CURRENT_LEVEL = 0x0000
 MOVE_TO_LEVEL = 0x00
 STOP = 0x03
 MOVE_TO_LEVEL_WITH_ON_OFF = 0x04
 
-COLOR_CLUSTER = 0x0300
-CURRENT_HUE = 0x0000
-CURRENT_SATURATION = 0x0001
-CURRENT_X = 0x0003
-CURRENT_Y = 0x0004
-COLOR_TEMPERATURE = 0x0007
 COLOR_MODE = 0x0008
 ENHANCED_CURRENT_HUE = 0x4000
 ENHANCED_COLOR_MODE = 0x4001
 COLOR_CAPABILITIES = 0x400A
-HUE_SATURATION = 0x01  # ColorCapabilities bit 0
-ENHANCED_HUE = 0x02  # ColorCapabilities bit 1
 MOVE_TO_SATURATION = 0x03
 MOVE_TO_HUE_AND_SATURATION = 0x06
 MOVE_TO_COLOR = 0x07

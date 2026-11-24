@@ -38,6 +38,7 @@ from ...core.transition import (
     hs_color,
     lit,
 )
+from ...core.zcl import XY_SCALE
 from ...core.zcl_fade import MIN_STEP, brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
@@ -501,7 +502,7 @@ def saturation_fade(
             params = {"saturation": round(limit * 254 / 100), "transition_time": tenths}
             return zcl.COLOR_CLUSTER, zcl.MOVE_TO_SATURATION, params
         x, y = color_hs_to_xy(hs_color(light)[0], limit)
-        params = {"color_x": round(x * 65535), "color_y": round(y * 65535)}
+        params = {"color_x": round(x * XY_SCALE), "color_y": round(y * XY_SCALE)}
         return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, params | {"transition_time": tenths}
 
     commands = {light.entity_id: command(light) for light in movers}

@@ -145,6 +145,8 @@ set_attributes:
       - domain: light
         integration: hue
       - domain: light
+        integration: matter
+      - domain: light
         integration: mqtt
       - domain: light
         integration: shelly

@@ -1,11 +1,21 @@
 """Matter addressing: what refuses a target before anything is sent, for every action, and the unique_id and
 client lookups."""
 
+import sys
+from types import SimpleNamespace
+
 import pytest
 
 from custom_components.deviceside.integrations.matter.addressing import (
+    color_feature_map_path,
+    color_features,
+    color_path,
+    has_level,
+    level_path,
+    make_command,
     matter_client,
     node_id_from_unique_id,
+    on_level_path,
     onoff_endpoint,
 )
 
@@ -90,3 +100,62 @@ def test_matter_client_without_entry_id_uses_first_loaded_entry(hass):
     entry, _, _ = matter_device(hass, endpoint_id=EP)
 
     assert matter_client(hass) is entry.runtime_data.adapter.matter_client
+
+
+def test_attribute_paths_are_endpoint_cluster_attribute():
+    assert level_path(1) == "1/8/0"
+    assert level_path(2, 0x0011) == "2/8/17"
+    assert on_level_path(1) == "1/8/17"
+    assert color_path(1, 0x0000) == "1/768/0"
+    assert color_path(1, 0x0001) == "1/768/1"
+    assert color_path(1, 0x0003) == "1/768/3"
+    assert color_path(1, 0x0004) == "1/768/4"
+    assert color_path(3, 0x0007) == "3/768/7"
+    assert color_feature_map_path(1) == "1/768/65532"
+
+
+def _node(attributes):
+    return SimpleNamespace(node_data=SimpleNamespace(attributes=attributes))
+
+
+def test_has_level_is_the_endpoints_current_level_in_the_cache():
+    node = _node({"1/8/0": 128, "2/6/0": True})
+
+    assert has_level(node, 1) is True
+    assert has_level(node, 2) is False
+    assert has_level(_node({}), 1) is False
+
+
+def test_color_features_reads_the_feature_map_or_is_zero():
+    node = _node({"1/768/65532": 0x1F, "2/768/65532": "bad"})
+
+    assert color_features(node, 1) == 0x1F
+    assert color_features(node, 2) == 0
+    assert color_features(node, 3) == 0
+
+
+@pytest.mark.parametrize(
+    ("cluster", "command", "fields"),
+    [
+        ("LevelControl", "MoveToLevel", {"level": 10, "transitionTime": 5, "optionsMask": 1, "optionsOverride": 1}),
+        ("LevelControl", "Stop", {"optionsMask": 1, "optionsOverride": 1}),
+        (
+            "ColorControl",
+            "MoveToHueAndSaturation",
+            {"hue": 1, "saturation": 2, "transitionTime": 3, "optionsMask": 1, "optionsOverride": 1},
+        ),
+        ("ColorControl", "MoveToColorTemperature", {"colorTemperatureMireds": 300, "transitionTime": 0}),
+        ("ColorControl", "EnhancedMoveHue", {"moveMode": 1, "rate": 20, "optionsMask": 1, "optionsOverride": 1}),
+    ],
+)
+def test_make_command_builds_the_chip_command_with_the_exact_fields(monkeypatch, cluster, command, fields):
+    def factory(**kwargs):
+        return SimpleNamespace(**kwargs)
+
+    commands = SimpleNamespace(**{command: factory})
+    objects = SimpleNamespace(**{cluster: SimpleNamespace(Commands=commands)})
+    chip_clusters = SimpleNamespace(Objects=objects)
+    monkeypatch.setitem(sys.modules, "chip", SimpleNamespace(clusters=chip_clusters))
+    monkeypatch.setitem(sys.modules, "chip.clusters", chip_clusters)
+
+    assert vars(make_command(cluster, command, **fields)) == fields

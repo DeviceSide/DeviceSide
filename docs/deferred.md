@@ -139,6 +139,20 @@ actions on a multi-gang Tuya one.
 **Plan:** the multi-gang payloads: [`docs/plans/2026-11-15-tuya-datapoint-countdown.md`](plans/2026-11-15-tuya-datapoint-countdown.md),
 Design 3.
 
+## Matter set_attributes without the read-back
+
+Matter's `set_attributes` reads back every attribute it set, 0.6 s after the last command, to tell `confirmed` from
+`sent` ([internals](integrations/matter/internals.md#set_attributes)). A class that leaves Labs on a pass could drop
+it, saving the wait and the reads, and report `sent` as ZHA does.
+
+**Why not now:** every Matter class is in Labs, admitted by research, and a light that ignores the override still
+answers SUCCESS, so the read-back is the only signal a device report has.
+
+**Revisit when:**
+- a Matter class's `set_attributes` leaves Labs on a pass.
+
+**Plan:** [`docs/plans/2026-11-24-matter-light-actions.md`](plans/2026-11-24-matter-light-actions.md), Decision 8
+
 ## Inching readback on Zigbee2MQTT
 
 Read the persisted inching setting back, so `set_auto_off` and `clear_auto_off` could be `confirmed` and
@@ -205,7 +219,7 @@ others are reported to have no effect ([research](integrations/zigbee2mqtt/resea
 
 One file per entry, in place of this page, once one file costs more than it saves.
 
-**Why not now:** thirteen entries.
+**Why not now:** fourteen entries.
 
 **Revisit when:**
 - it holds more than 30 entries;

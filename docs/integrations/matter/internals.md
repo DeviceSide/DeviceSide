@@ -15,7 +15,9 @@ A target is addressed only when its unique ID's cluster and attribute are OnOff.
 on the same endpoint (Eve's child lock), and they're refused `not_addressable`
 ([research](research/2026-11-16-onoff-addressing.md)).
 
-Lights take the same command and reads as plugs, behind the same Lighting feature check.
+Lights take the same command and reads as plugs, behind the same Lighting feature check. A light's Level Control
+(cluster 8) and Color Control (`0x0300`, 768) servers are on its OnOff entity's endpoint; one with no Level Control
+server there (no CurrentLevel, `<endpoint>/8/0`, in the node cache) is refused `not_dimmable`.
 
 ## What decides the call
 
@@ -90,6 +92,54 @@ OffWaitTime 0 (Upstream defects), and a non-zero value is the branch certificati
 Live reads of `OnTime` and `OnOff`, as the plug tested never reports OnTime on its
 subscription, so the node cache reads 0 mid-timer (Tested behavior). A timer is reported only while OnOff is on.
 `turns` is always `off`.
+
+### `set_attributes`
+
+`core/zcl_write.commands()` builds the commands from HA's `supported_color_modes`, as on ZHA (plan Decision 12), and
+each goes as its own `send_device_command`, one after another, with `transitionTime=4` (`core/zcl.py`'s
+`WRITE_FADE_TENTHS`), `optionsMask=1` and `optionsOverride=1`: the Options bitmap's ExecuteIfOff bit for that command
+only, so a light that is off stores the value and stays off. Brightness is `LevelControl.MoveToLevel` (`level` 1–254),
+never `MoveToLevelWithOnOff`, which turns the light on; color temperature `ColorControl.MoveToColorTemperature`
+(mireds clamped to the light's range); color `MoveToColor` (`colorX`/`colorY` as round(x × 65535)), or
+`MoveToHueAndSaturation` (both 0–254) on a light without xy. `min_brightness`/`max_brightness` alone first read
+CurrentLevel (`<ep>/8/0`) live; a light already within them gets nothing (`unchanged`, `within_limits`), and a
+read that fails rejects the light, as nothing was sent yet.
+
+Then, after `WRITE_FADE_WAIT_S` (0.6 s, past the 0.4 s fade, so a mid-fade value isn't read), a live
+`read_attribute` of each attribute the commands set: CurrentLevel for MoveToLevel, ColorTemperatureMireds
+(`<ep>/768/7`) for MoveToColorTemperature, CurrentX and CurrentY (`/768/3`, `/768/4`) for MoveToColor, CurrentHue
+and CurrentSaturation (`/768/0`, `/768/1`) for MoveToHueAndSaturation. Each must read within one step of the value
+sent, as a light rounds to its own resolution: `confirmed`, else `sent` (`attributes_not_reported`), with the values
+sent and read logged at DEBUG. A read that raises is `sent` (`readback_failed`). OnLevel (`<ep>/8/17`) is read only
+when a brightness went to a light HA shows off, since it decides only the level the next On comes up at: non-null is
+`sent` (`on_level_set`) whatever the rest reads. By the spec, and in the reference server's
+`emberAfOnOffClusterLevelControlEffectCallback`, an On goes to OnLevel when it is non-null, else to CurrentLevel
+([research](research/2026-11-24-level-color.md), Q2). DeviceSide never writes OnLevel: it is the user's device setting.
+
+Why it reads back (plan Decision 8): no Matter light has run on the rig, and the quirks below make a write a light
+accepted no proof it kept it. Dropping the read-back per class: `docs/deferred.md`.
+
+Quirks:
+
+- **A blocked command answers SUCCESS.** In the reference server, a Level or Color command the ExecuteIfOff gate
+  blocks (`shouldExecuteIfOff`) returns `Status::Success` having done nothing, so a light that mishandles the
+  override can't be told from one that took it except by the read-back
+  ([`level-control.cpp`](https://github.com/project-chip/connectedhomeip/blob/0233fac8c37223e88d915addce8e8e034bb8a513/src/app/clusters/level-control/codegen/level-control.cpp),
+  [`color-control-server.cpp`](https://github.com/project-chip/connectedhomeip/blob/0233fac8c37223e88d915addce8e8e034bb8a513/src/app/clusters/color-control-server/codegen/color-control-server.cpp);
+  research, Q2).
+- **IKEA KAJPLATS stores the level but comes on at its old one.** Tested with MoveToLevel and ExecuteIfOff on two IKEA
+  lamps: both took the write while off (CurrentLevel moved, the lamp stayed off), but on the next `On` the VARMBLIXT
+  came up at the stored level and the KAJPLATS at its previous one, though both advertise the same Level Control
+  features ([home-assistant/core#174089 comment](https://github.com/home-assistant/core/pull/174089#issuecomment-4892555029);
+  research, Q6). Whether its OnLevel was set wasn't reported, so the cause is open; `on_level_set` would show it.
+  Labs evidence, not a class of its own yet.
+- **The override is certified for brightness and xy color only.** TC-LVL-3.1 (steps 5–6) and TC-CC-5.1 send
+  MoveToLevel and MoveToColor to an off light with mask 1 / override 1 since Matter 1.0; no test does so for
+  MoveToHueAndSaturation or MoveToColorTemperature (plan Decision 3; research, Q1). HA core's own `matter` light sends
+  all three color commands with the same override
+  ([`light.py`](https://github.com/home-assistant/core/blob/112e3548608f89297987c46bbfbca9666737e5b1/homeassistant/components/matter/light.py)),
+  and its brightness as `MoveToLevelWithOnOff` with none, which is why it can't set a light while off
+  ([home-assistant/core#175904](https://github.com/home-assistant/core/issues/175904)).
 
 ## Tested behavior
 

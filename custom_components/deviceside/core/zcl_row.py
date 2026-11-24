@@ -13,13 +13,13 @@ from homeassistant.util.color import color_temperature_mired_to_kelvin
 from .color import hs_row, xy_row
 from .fields import BRIGHTNESS_FIELD
 from .timer import timer_row
+from .zcl import XY_SCALE
 
 # ColorMode (0x0008) and EnhancedColorMode (0x4001): the attributes that set the light's color. Only the enhanced one
 # has enhanced hue.
 _HS, _XY, _COLOR_TEMP, _ENHANCED_HS = 0, 1, 2, 3
 _MAX_LEVEL = 254  # CurrentLevel, CurrentHue and CurrentSaturation all top out at 0xFE
 _MAX_ENHANCED_HUE = 65535
-_MAX_XY = 65535
 
 
 def zcl_row(attributes: dict, now: datetime | None = None, *, xy_first: bool = False) -> dict:
@@ -53,7 +53,7 @@ def _color(attributes: dict, xy_first: bool) -> dict:
     # A light in a hue mode keeps its xy current too, so one whose read left out hue and saturation reports that.
     xy = None
     if mode in (_HS, _XY, _ENHANCED_HS) and "currentX" in attributes and "currentY" in attributes:
-        xy = (round(attributes["currentX"] / _MAX_XY, 4), round(attributes["currentY"] / _MAX_XY, 4))
+        xy = (round(attributes["currentX"] / XY_SCALE, 4), round(attributes["currentY"] / XY_SCALE, 4))
     if hs is not None and (xy is None or not xy_first):
         return hs_row(*hs)
     return xy_row(*xy) if xy is not None else {}

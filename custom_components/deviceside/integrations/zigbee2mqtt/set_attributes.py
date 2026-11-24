@@ -28,7 +28,7 @@ from ...core.errors import NOT_STORED, Reason
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
-from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
+from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S, XY_SCALE
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -64,7 +64,11 @@ def _wire(command: Command) -> dict:
         case MoveToColorTemp(mireds):
             cluster, name, params = _COLOR, "moveToColorTemp", {"colortemp": mireds}
         case MoveToColor(x, y):
-            cluster, name, params = _COLOR, "moveToColor", {"colorx": round(x * 65535), "colory": round(y * 65535)}
+            cluster, name, params = (
+                _COLOR,
+                "moveToColor",
+                {"colorx": round(x * XY_SCALE), "colory": round(y * XY_SCALE)},
+            )
         case MoveToHueAndSaturation(hue, saturation):
             cluster, name, params = _COLOR, "moveToHueAndSaturation", {"hue": hue, "saturation": saturation}
     return {"command": {"cluster": cluster, "command": name, "payload": {**params, **_EXECUTE_IF_OFF}}}

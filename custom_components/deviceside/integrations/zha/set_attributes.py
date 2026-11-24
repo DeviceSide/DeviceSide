@@ -28,7 +28,7 @@ from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
-from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
+from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S, XY_SCALE
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -64,7 +64,7 @@ def _wire(command: Command) -> Wire:
         case MoveToColorTemp(mireds):
             return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR_TEMP, {"color_temp_mireds": mireds, **_EXECUTE_IF_OFF}
         case MoveToColor(x, y):
-            params = {"color_x": round(x * 65535), "color_y": round(y * 65535)}
+            params = {"color_x": round(x * XY_SCALE), "color_y": round(y * XY_SCALE)}
             return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, {**params, **_EXECUTE_IF_OFF}
         case MoveToHueAndSaturation(hue, saturation):
             params = {"hue": hue, "saturation": saturation}

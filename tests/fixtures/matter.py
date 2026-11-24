@@ -15,7 +15,8 @@ follows what the adapter reads at runtime:
 """
 
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, make_dataclass
+from dataclasses import field as dc_field
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import ClassVar
@@ -156,6 +157,49 @@ def add_matter_entity(
     return entity_id
 
 
+class LightNode:
+    """The attribute table of a Matter light, which commands change as the node would: a MoveTo command sets its
+    attributes (what a light does with the ExecuteIfOff override, on or off) and reads answer from the table, so a test
+    changes a value, or the answer to one path, to make the light keep something else."""
+
+    def __init__(self, attributes: dict[str, object]) -> None:
+        self.attributes = dict(attributes)
+        self.refused: set[str] = set()  # paths whose read raises
+
+    def apply(self, endpoint_id: int, command: object) -> None:
+        ep = f"{endpoint_id}/"
+        match command.command.split(".")[-1]:
+            case "MoveToLevel" | "MoveToLevelWithOnOff":
+                self.attributes[ep + "8/0"] = command.level
+            case "MoveToColorTemperature":
+                self.attributes[ep + "768/7"] = command.colorTemperatureMireds
+            case "MoveToColor":
+                self.attributes[ep + "768/3"] = command.colorX
+                self.attributes[ep + "768/4"] = command.colorY
+            case "MoveToHueAndSaturation":
+                self.attributes[ep + "768/0"] = command.hue
+                self.attributes[ep + "768/1"] = command.saturation
+
+    def read(self, node_id: int, attribute_path: str) -> dict:
+        if attribute_path in self.refused:
+            raise ConnectionError("lost connection")
+        return {attribute_path: self.attributes.get(attribute_path)}
+
+
+def light_device(
+    hass: HomeAssistant, attributes: dict[str, object] | None = None, endpoint_id: int = 1, **node: object
+) -> tuple[MockConfigEntry, AsyncMock, AsyncMock, LightNode]:
+    """A Matter light, class `other` unless `node` says otherwise: Level Control on its endpoint (CurrentLevel 100,
+    OnLevel null) and `attributes` over that, answering as a LightNode. Returns matter_device's three, then the node."""
+    node.setdefault("vendor_id", 4874)
+    node.setdefault("product_id", 80)
+    light = LightNode({f"{endpoint_id}/8/0": 100, f"{endpoint_id}/8/17": None} | (attributes or {}))
+    entry, send_cmd, read_attr = matter_device(hass, endpoint_id, attributes=light.attributes, **node)
+    send_cmd.side_effect = lambda node_id, endpoint_id, command: light.apply(endpoint_id, command)
+    read_attr.side_effect = light.read
+    return entry, send_cmd, read_attr, light
+
+
 @dataclass
 class OnWithTimedOff:
     """chip's OnOff.Commands.OnWithTimedOff: the command's name, which chip's class carries as its type, and its
@@ -171,6 +215,34 @@ class OnWithTimedOff:
         self.command = f"{self.cluster}.{type(self).__name__}"
 
 
+def chip_command(cluster: str, name: str, *fields: str) -> type:
+    """chip's `<cluster>.Commands.<name>`, as a dataclass of exactly those field names (an unknown one raises, as chip's
+    does), recording its qualified name as `command`. Field names are the ones chip's Objects.py gives."""
+
+    def post_init(self) -> None:
+        self.command = f"{cluster}.{name}"
+
+    return make_dataclass(
+        name,
+        [*((field_name, int, 0) for field_name in fields), ("command", str, dc_field(init=False))],
+        namespace={"__post_init__": post_init, "cluster": cluster},
+    )
+
+
+# The Level and Color Control commands set_attributes sends. transitionTime, optionsMask and optionsOverride are on
+# each, as in chip's Objects.py.
+_OPTIONS = ("transitionTime", "optionsMask", "optionsOverride")
+LEVEL_COMMANDS = {
+    "MoveToLevel": ("level", *_OPTIONS),
+    "MoveToLevelWithOnOff": ("level", *_OPTIONS),
+}
+COLOR_COMMANDS = {
+    "MoveToHueAndSaturation": ("hue", "saturation", *_OPTIONS),
+    "MoveToColor": ("colorX", "colorY", *_OPTIONS),
+    "MoveToColorTemperature": ("colorTemperatureMireds", *_OPTIONS),
+}
+
+
 @pytest.fixture
 def mock_chip(monkeypatch):
     """Inject a minimal mock for chip.clusters into sys.modules.
@@ -180,7 +252,16 @@ def mock_chip(monkeypatch):
     the exact onOffControl/onTime/offWaitTime values that the adapter passed.
     """
 
-    mock_objects = SimpleNamespace(OnOff=SimpleNamespace(Commands=SimpleNamespace(OnWithTimedOff=OnWithTimedOff)))
+    def commands(cluster: str, table: dict) -> SimpleNamespace:
+        return SimpleNamespace(
+            Commands=SimpleNamespace(**{name: chip_command(cluster, name, *fields) for name, fields in table.items()})
+        )
+
+    mock_objects = SimpleNamespace(
+        OnOff=SimpleNamespace(Commands=SimpleNamespace(OnWithTimedOff=OnWithTimedOff)),
+        LevelControl=commands("LevelControl", LEVEL_COMMANDS),
+        ColorControl=commands("ColorControl", COLOR_COMMANDS),
+    )
     mock_chip_clusters = SimpleNamespace(Objects=mock_objects)
     mock_chip_pkg = SimpleNamespace(clusters=mock_chip_clusters)
 

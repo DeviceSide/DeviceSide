@@ -38,7 +38,7 @@ class MoveToColorTemp:
 
 @dataclass(frozen=True, slots=True)
 class MoveToColor:
-    """CIE xy, 0–1; the adapter scales it to the ZCL's 0–65535."""
+    """CIE xy, 0–1; the adapter scales it by core/zcl.py's XY_SCALE."""
 
     x: float
     y: float
