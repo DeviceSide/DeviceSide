@@ -264,7 +264,7 @@ def runs_only_in_labs(scope: AdapterScope) -> bool:
     Release gate."""
     if scope.all_labs:
         return True
-    if not scope.capabilities:
+    if not scope.capabilities or not scope.domains:
         return False
     return all(
         scope.domains[domain] is Level.LABS
