@@ -271,23 +271,30 @@ def _restore_job(hass: HomeAssistant, target: Target, start: float, token: objec
     its level."""
 
     async def run() -> None:
-        restores = soft_off_restores(hass)
-        if restores.get(target.entity_id) is not token:
-            return
-        del restores[target.entity_id]
-        try:
-            light = _Light(hass, target)
-            if await light.read(onoff_attr_path(light.ep_id)) is False:
-                _LOGGER.debug("Restoring %s to %.1f %% after a soft off", target.entity_id, start)
-                await light.send(
-                    target, "LevelControl", "MoveToLevel", level=level(start), transitionTime=0, **_EXECUTE_IF_OFF
+        # Under the light's lock, so a move's read-to-send can't interleave with the restore's.
+        async with light_lock(hass, target):
+            restores = soft_off_restores(hass)
+            if restores.get(target.entity_id) is not token:
+                return
+            try:
+                light = _Light(hass, target)
+                off = await light.read(onoff_attr_path(light.ep_id)) is False
+                if restores.get(target.entity_id) is not token:  # a light call from HA took it during the read
+                    return
+                del restores[target.entity_id]
+                if off:
+                    _LOGGER.debug("Restoring %s to %.1f %% after a soft off", target.entity_id, start)
+                    await light.send(
+                        target, "LevelControl", "MoveToLevel", level=level(start), transitionTime=0, **_EXECUTE_IF_OFF
+                    )
+            except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
+                if restores.get(target.entity_id) is token:
+                    del restores[target.entity_id]
+                _LOGGER.warning(
+                    "matter couldn't put back %s's level after a soft off: %s, so its next plain turn on comes up dim",
+                    target.entity_id,
+                    describe(err),
                 )
-        except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
-            _LOGGER.warning(
-                "matter couldn't put back %s's level after a soft off: %s, so its next plain turn on comes up dim",
-                target.entity_id,
-                describe(err),
-            )
 
     return run
 

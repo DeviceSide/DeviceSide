@@ -1,11 +1,13 @@
 """Matter raise and lower: a live read of OnOff and the level, then one MoveTo with a TransitionTime for the distance
 left; the soft off's restore and what cancels it; hue as MoveHue or EnhancedMoveHue until a stop."""
 
+import asyncio
 from dataclasses import asdict
+from datetime import timedelta
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
-from pytest_homeassistant_custom_component.common import async_mock_service
+from pytest_homeassistant_custom_component.common import async_fire_time_changed, async_mock_service
 
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter.fade import cancel_restore, hue_moves, soft_off_restores
@@ -282,6 +284,80 @@ async def test_a_failed_restore_is_logged_and_the_light_stays_off(hass, caplog):
 
     assert len(commands(send_cmd)) == 1
     assert "matter couldn't put back light.bulb's level after a soft off" in caplog.text
+
+
+async def test_an_ha_light_call_during_the_restores_own_read_leaves_the_light_alone(hass):
+    """The call replaces our fade: the restore's MoveToLevel would jump a light it turns on to the old level."""
+    send_cmd, read_attr, _ = light(hass)
+    start = wall_clock_now()
+    await call(hass, "lower_brightness", BULB)
+    async_mock_service(hass, "light", "turn_on")
+    read = read_attr.side_effect
+
+    async def turn_on_during_the_read(node_id, attribute_path):
+        await hass.services.async_call("light", "turn_on", BULB, blocking=True)
+        return read(node_id, attribute_path)
+
+    read_attr.side_effect = turn_on_during_the_read
+    await advance(hass, start, 3.6)
+
+    assert commands(send_cmd) == [level_command("MoveToLevelWithOnOff", 0, 25)]
+    assert soft_off_restores(hass) == {}
+
+
+async def test_a_move_arriving_during_the_restores_own_read_goes_out_after_it(hass):
+    """The light's lock holds the move until the restore is done: the restore reaches the light while it is still off,
+    and nothing of it follows the move's commands."""
+    send_cmd, read_attr, _ = light(hass)
+    start = wall_clock_now()
+    await call(hass, "lower_brightness", BULB)
+    read = read_attr.side_effect
+    moves = []
+
+    def raise_during_the_read(node_id, attribute_path):
+        if not moves:
+            moves.append(hass.async_create_task(call(hass, "raise_brightness", {**BULB, "limit": 30})))
+        return read(node_id, attribute_path)
+
+    read_attr.side_effect = raise_during_the_read
+    await advance(hass, start, 3.6)
+    await moves[0]
+
+    assert commands(send_cmd) == [
+        level_command("MoveToLevelWithOnOff", 0, 25),
+        RESTORE_50,
+        PRESET,
+        level_command("MoveToLevelWithOnOff", 76, 15),
+    ]
+
+
+async def test_a_restore_due_while_a_move_holds_the_light_sends_nothing(hass):
+    """A move between its read and its send holds the light's lock: the restore waits, then finds the move took it."""
+    send_cmd, read_attr, _ = light(hass)
+    start = wall_clock_now()
+    await call(hass, "lower_brightness", BULB)
+    read = read_attr.side_effect
+    fired = []
+
+    async def restore_due_during_the_moves_read(node_id, attribute_path):
+        if not fired:
+            fired.append(True)
+            # The restore's timer fires and its job starts, waiting on the lock (not awaited: the move holds it).
+            async_fire_time_changed(hass, start + timedelta(seconds=3.6))
+            for _ in range(5):
+                await asyncio.sleep(0)
+        return read(node_id, attribute_path)
+
+    read_attr.side_effect = restore_due_during_the_moves_read
+    await call(hass, "raise_brightness", {**BULB, "limit": 30})
+    await hass.async_block_till_done()
+
+    assert commands(send_cmd) == [
+        level_command("MoveToLevelWithOnOff", 0, 25),
+        PRESET,
+        level_command("MoveToLevelWithOnOff", 76, 15),
+    ]
+    assert soft_off_restores(hass) == {}
 
 
 # Saturation
