@@ -48,16 +48,18 @@ instance, on the default base topic.
 | Parsed base topic, every one | `'zigbee2mqtt'` |
 | Z2M devices whose registry `via_device_id` is the bridge | 36 of 36 (3 with a light) |
 | Z2M groups whose registry `via_device_id` is the bridge | 1 of 1 (with a light), encoded base `1221051039810110150109113116116` = `zigbee2mqtt` |
-| Discovery payloads with `via_device` = `zigbee2mqtt_bridge_0x<ieee>` | every device (281) and group (1) payload; the 5 bridge payloads have none |
+| Discovery payloads with `via_device` = `zigbee2mqtt_bridge_0x<ieee>` | 281 device-entity payloads and 1 group-entity payload; the 5 bridge payloads have none |
 
-Five of the eight bridge object_ids show: the diagnostics list only the entities MQTT has loaded. The other three
+Five of the eight bridge object_ids show, consistent with the diagnostics listing only the entities MQTT has loaded: the other three
 (`restart_required`, `coordinator_version`, `network_map`) are disabled by default upstream (`enabled_by_default:
 false`, L2334, L2391, L2403), so a reader keyed on one object_id could miss. Reading every entity-registry entry of the bridge, disabled
-ones included, and matching any of the eight is what holds.
+ones included, and matching any of the eight is what holds; this probe didn't read disabled registry entries, so
+step 2's unit tests pin that read.
 
 ## Findings
 
 1. A Z2M device's or group's base topic is exact from public registries: its device's `via_device_id` is its
-   bridge, and any of the bridge's entity unique_ids ends in the base topic. Upstream and live agree.
+   bridge, and any of the bridge's entity unique_ids ends in the base topic. Upstream and live agree on the default base; a custom base
+   and two instances rest on upstream alone, untested live.
 2. A group's identifier encodes its instance's base topic, so it can be checked against its bridge's.
 3. The base topic is used verbatim: #575's leading spaces are part of it, and HA's UI hides them.
