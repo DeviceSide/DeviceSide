@@ -9,35 +9,39 @@ needs at least 95% line coverage; one missing from the report has none.
 
 --signoffs: evidence binds to an action's call transcript, `tests/integrations/<key>/calls/<action>.json` (written by
 `pytest --transcripts=write`, tests/transcripts.py): a list of segments, each a call path the unit tests pin. Evidence
-cites the git blob id of the transcript it was tested against and is read back with `git cat-file`, so a run on a
-branch still resolves after a squash merge that landed the transcript unchanged; a blob git doesn't have stands for
-nothing. Evidence stands while every segment of its transcript occurs, unchanged, in HEAD's (`segments_hold`): a test
-added, or a new call path, reopens nothing; a segment changed or removed reopens it, whatever code changed it (an
-integration's package or `core/`). A changed action's evidence must also hold every segment HEAD's transcript gained
-since the tag's (`Calls.gained`), so a run from before the change can't sign it off; with no tag's
-transcript, standing is enough. An action is changed when HEAD's transcript of it doesn't hold every segment of the
-last release tag's (the latest `vX.Y.Z` that is an ancestor of HEAD), or the tag has none, or there is no tag; its last
-change is the latest commit touching its transcript. Each changed action needs a sign-off of its own: its rig records
-(`<action>.json`, and each `<action>-<option>.json` there is) all format 3, passing and standing, or a format 3
-`_manual.json` row whose `calls` names the action and stands, by a maintainer of the integration or a repo maintainer
-(`REPO_MAINTAINERS`). A row's and a record's `commit` is provenance: nothing here checks it. A format 1 (converted from
-markdown) or format 2 (bound to the package, not the calls) record, and a format 2 row (`passed`), sign off nothing.
-Without a sign-off, a 🔧 Untested fix caveat on the action's adapter stands in. A suite that is no action's
-(`config_entry.json`) is outside the gate. Prints a line per changed action naming its sign-off (kind, source, commit,
-signer) or the caveat standing in, and fails on each with neither, saying why its records and each manual row naming it
-were rejected. With --json, prints instead the integrations with a changed action that has no sign-off (caveat or not),
-as a JSON list: the rig's run selection. With --reruns, prints instead a JSON object of those integrations, each with
-the suites to run: for each such action, its records that are not format 3, failing or reopened, and its plain suite
-when it has none. It also runs the coverage check, failing on each gap: for an integration that names classes
-(`IntegrationInfo.capability`), every class an adapter not flagged whole holds as Verified needs a passing test that
-reached it in a passing record of the action (format 2 and 3: a device of the test with that class, a native group's
-test crediting each member's; format 1: the test's `classes`), or a `_manual.json` row naming the action (format 3: in
-`calls`; format 2: in `passed`) one of whose devices has the class. `scripts/gen_compat.py` prints the same gaps as
-warnings on every run (`coverage_gaps`), with a warning (`default_class_credits`) for each model a passing record or
-manual row credits in the integration's default class where that is in Labs, as its pass can never lift a flag.
+cites the git blob id of the transcript it was tested against and is read back with `git cat-file`, so a run on a branch
+still resolves after a squash merge that landed the transcript unchanged; a blob git doesn't have stands for nothing.
+Evidence stands while every segment of its transcript occurs, unchanged, in HEAD's (`segments_hold`): a test added, or a
+new call path, reopens nothing; a segment changed or removed reopens it, whatever code changed it (an integration's
+package or `core/`). A changed action's evidence must also hold every segment HEAD's transcript gained since the tag's
+(`Calls.gained`), so a run from before the change can't sign it off; with no tag's transcript, standing is enough. An
+action is changed when HEAD's transcript of it doesn't hold every segment of the last release tag's (the latest `vX.Y.Z`
+that is an ancestor of HEAD), or the tag has none, or there is no tag; its last change is the latest commit touching its
+transcript. Each changed action needs a sign-off of its own: its rig records (`<action>.json`, and each
+`<action>-<option>.json` there is) all format 3, passing and standing, or a format 3 `_manual.json` row whose `calls`
+names the action and stands, by a maintainer of the integration or a repo maintainer (`REPO_MAINTAINERS`). A row's and a
+record's `commit` is provenance: nothing here checks it. A format 1 (converted from markdown) or format 2 (bound to the
+package, not the calls) record, and a format 2 row (`passed`), sign off nothing. Without a sign-off, a 🔧 Untested fix
+caveat on the action's adapter stands in, and an all-Labs action needs neither (`runs_only_in_labs`; printed "in Labs:
+no sign-off needed"). A suite that is no action's (`config_entry.json`) is outside the gate. Prints a line per changed
+action naming its sign-off (kind, source, commit, signer) or the caveat standing in, and fails on each with neither,
+saying why its records and each manual row naming it were rejected. With --json, prints instead the integrations with a
+changed action that has no sign-off (caveat or not), as a JSON list: the rig's run selection, an all-Labs action left
+out. With --reruns, prints instead a JSON object of those integrations, each with the suites to run: for each such
+action, its records that are not format 3, failing or reopened, and its plain suite when it has none. It also runs the
+coverage check, failing on each gap: for an integration that names no classes, each domain an adapter holds as
+Verified needs a passing test in that domain in a passing record of the action, or a `_manual.json` row naming it; for
+one that names classes (`IntegrationInfo.capability`), every class an adapter not flagged whole holds as Verified needs
+a passing test that reached it in a passing record of the action
+(format 2 and 3: a device of the test with that class, a native group's test crediting each member's; format 1: the
+test's `classes`), or a `_manual.json` row naming the action (format 3: in `calls`; format 2: in `passed`) one of whose
+devices has the class. `scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`), with a
+warning (`default_class_credits`) for each model a passing record or manual row credits in the integration's default
+class where that is in Labs, as its pass can never lift a flag.
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the
-integrations with a changed action that has no sign-off, and every adapter with an Untested fix caveat. Empty when
+integrations with a changed action that has no sign-off (an all-Labs one too: its report arrives that way), and every
+adapter with an Untested fix caveat. Empty when
 there are none.
 
 Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked against docs/test-records.schema.json
@@ -77,7 +81,7 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.config_flow import REPORT_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
+from custom_components.deviceside.core.scope import AdapterScope, CaveatKind, Level  # noqa: E402
 from scripts.check_tag import git as git_in  # noqa: E402
 from scripts.check_tag import releases  # noqa: E402
 from scripts.gen_codeowners import REPO_MAINTAINERS  # noqa: E402
@@ -252,14 +256,57 @@ def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
     return {(name, domain) for name, domain in found if name is not None}
 
 
+def runs_only_in_labs(scope: AdapterScope) -> bool:
+    """Whether no call of the adapter runs with the Labs option off: its domains are flagged whole (`all_labs`), or it
+    names classes and every class it admits is in Labs on every domain it serves, as a domain's level and a class's
+    meet at the weaker (`AdapterScope.level`). A field in Labs on some classes alone (`class_labs`) doesn't count: a
+    call without it runs. Release-gate only: the dispatcher gates per call and never asks this. docs/evidence.md,
+    Release gate."""
+    if scope.all_labs:
+        return True
+    if not scope.capabilities or not scope.domains:
+        return False
+    return all(
+        scope.domains[domain] is Level.LABS
+        or all(
+            scope.class_level(name, domain) is Level.LABS for name in scope.capabilities if scope.admits(name, domain)
+        )
+        for domain in scope.domains
+    )
+
+
+def tested_domains(integration: str, action: str) -> set[str]:
+    """The domains the action's passing records tested: each passing test's, in a passing record. A `_manual.json`
+    row names none (`manual_rows`); the caller counts it as covering each."""
+    return {
+        test["domain"]
+        for path in passing(integration, action)
+        for test in load(path)["tests"]
+        if test["result"] == "pass" and "domain" in test
+    }
+
+
 def coverage_gaps(registry) -> list[str]:
     """Each class an adapter of an integration that names classes holds as Verified, with no passing record test or
     manual row for its action that reached it: one held on every domain, in any domain; one held on some domains alone
     (OnDomains), in each of them, as a record in one domain proves nothing about another. A manual row names no domain,
-    so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified."""
+    so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified.
+
+    On an integration that names no classes, each domain the adapter holds as Verified, with no passing test in that
+    domain (`tested_domains`) and no manual row for the action. Fields are not asked (docs/deferred.md, Field lifts
+    checked against a record)."""
     gaps = []
     for _, adapter in adapters(registry):
-        if not names_classes(adapter) or adapter.scope.all_labs:
+        if adapter.scope.all_labs:
+            continue
+        if not names_classes(adapter):
+            tested = tested_domains(adapter.integration, adapter.action)
+            manual_row = bool(manual_rows(adapter.integration, adapter.action))
+            gaps += [
+                f"{adapter.integration} {adapter.action}: domain `{domain}` is Verified but no record reaches it"
+                for domain, level in sorted(adapter.scope.domains.items())
+                if level is Level.VERIFIED and domain not in tested and not manual_row
+            ]
             continue
         found = reached(adapter.integration, adapter.action)
         for item, level, domains in sorted(adapter.scope.class_entries(), key=lambda entry: entry[0]):
@@ -375,6 +422,7 @@ class Gate:
     rejected: tuple[str, ...]
     caveated: bool
     reruns: tuple[str, ...] = ()
+    in_labs: bool = False
 
     @property
     def name(self) -> str:
@@ -382,7 +430,7 @@ class Gate:
 
     @property
     def passes(self) -> bool:
-        return self.signoff is not None or self.caveated
+        return self.signoff is not None or self.caveated or self.in_labs
 
 
 def last_release() -> str | None:
@@ -599,7 +647,10 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
             caveat = own[action].scope.caveat
             untested = caveat is not None and caveat.kind is CaveatKind.UNTESTED_FIX
             last = last_change(key, action, base)
-            found.append(Gate(key, action, last, signoff, tuple(rejected), untested, () if signoff else tuple(reruns)))
+            in_labs = runs_only_in_labs(own[action].scope)
+            found.append(
+                Gate(key, action, last, signoff, tuple(rejected), untested, () if signoff else tuple(reruns), in_labs)
+            )
     return base, found, errors
 
 
@@ -609,17 +660,20 @@ def describe(gate: Gate) -> str:
     if signoff := gate.signoff:
         signer = f", @{signoff.signed_by}" if signoff.signed_by else ""
         return f"{head}; signed off by {signoff.kind} {signoff.source} at {signoff.commit[:7]}{signer}"
+    if gate.in_labs:
+        return f"{head}; in Labs: no sign-off needed"
     if gate.passes:
         return f"{head}; no sign-off, Untested fix stands in"
     rejected = "".join(f" ({why})" for why in gate.rejected)
     return f"{head}; no sign-off{rejected}, and no Untested fix"
 
 
-def unsigned(found: Sequence[Gate]) -> dict[str, list[str]]:
-    """The integrations with a changed action that has no sign-off, caveated or not, each with the suites to run."""
+def unsigned(found: Sequence[Gate], *, in_labs: bool = False) -> dict[str, list[str]]:
+    """The integrations with a changed action that has no sign-off, caveated or not, each with the suites to run. An
+    all-Labs action's is left out (it needs none to run), unless `in_labs`: the call for testers names it."""
     reruns: dict[str, set[str]] = {}
     for gate in found:
-        if gate.signoff is None:
+        if gate.signoff is None and (in_labs or not gate.in_labs):
             reruns.setdefault(gate.integration, set()).update(gate.reruns)
     return {integration: sorted(suites) for integration, suites in reruns.items()}
 
@@ -627,7 +681,7 @@ def unsigned(found: Sequence[Gate]) -> dict[str, list[str]]:
 def release_notes(registry, found: list[Gate]) -> str:
     """The release notes' call for testers: the integrations with a changed action that has no sign-off, and every
     adapter with an Untested fix caveat."""
-    titles = [registry.integrations[integration].title for integration in unsigned(found)]
+    titles = [registry.integrations[integration].title for integration in unsigned(found, in_labs=True)]
     untested = [
         name
         for name, adapter in adapters(registry)

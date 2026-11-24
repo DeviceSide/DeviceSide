@@ -1,20 +1,24 @@
 # Evidence
 
-What DeviceSide must know about a device before a feature ships, and what a release needs. This page is the one home
-for these rules; other docs point here. Settled in [the evidence-rules plan](plans/2026-11-12-evidence-rules.md);
+What DeviceSide must know about a device before a feature ships to everyone, and what a release needs. This page is the
+one home for these rules; other docs point here. Settled in [the evidence-rules plan](plans/2026-11-12-evidence-rules.md);
 device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
 
 ## Tenets
 
 1. **User experience is the north star.** Actions make devices do what users expect, predictably and with low
    latency, and DeviceSide offers only what's likely to meet that bar. If that holds, nothing else matters.
-2. **Probe before you build.** When unsure how a device responds to a call, run a cheap probe rather than assume.
-   Record what it shows as a fact (the bundle's `internals.md`, dated). Where its source goes depends on whether a
-   shipped call depends on the fact staying true:
+2. **Probe before you build.** When unsure how a device you can reach responds to a call, run a cheap probe rather than
+   assume. Record what it shows as a fact (the bundle's `internals.md`, dated). Where its source goes depends on whether
+   a shipped call depends on the fact staying true:
    - **Yes: a fact test.** The rig re-runs it (`--facts`) when that call changes, and `test-records/_facts.json` keeps
      each dated result. A watched test covers what only a person can see.
    - **No: `research/`.** The fact decided scope or design, and no shipped call depends on it. A dated file, never
      edited; if evidence suggests it has changed, repeat the probe by hand in a new file.
+
+   With no device at hand, build from a source (the vendor's documentation, an upstream integration that ships the
+   call, or research) to Labs, and cite it in the bundle's `internals.md`: the first device report is the probe
+   ([in Labs](#no-known-method-not-built-yet-in-labs)).
 
    *Example:* a bulb set to red while off must come on red, with no flash of its old color. HA's state can't show the
    flash, and the call sequence DeviceSide sends decides it, so it's a watched fact test (`set_attributes`,
@@ -42,21 +46,22 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    only when its result takes a decision. Five decisions do:
    - *a design choice:* tenet 2's probe, before the build. A call already seen working on the device (your own
      automation, an upstream integration that ships it, a research file recording a run) needs none: cite it in
-     the bundle's `internals.md`. A vendor's document alone still needs the probe;
+     the bundle's `internals.md`. A vendor's document alone still needs the probe on a device the builder can reach;
+     with none, the build goes to Labs on its source (tenet 2);
    - *a foundation:* before further steps build on a design no verified fact covers, one run of the rig cases whose
      failure would discard that work;
    - *lifting a Labs flag* ([the Labs flag](#the-labs-flag));
    - *a surprise:* the run that root-causes it (tenet 4);
    - *a release:* the sign-off, due before the last RC, or the one that clears a caveat ([release gate](#release-gate)).
 
-   Run a test at the last point that can still take its decision. For a device the rig or a maintainer can reach,
-   that is the release's run, so merging a PR waits for none: unit tests pin the call, a new item starts flagged, the
-   gate runs at the cut, and the code may change again before then. For a contributor's own devices, it is their pull
-   request, as no later run is sure to reach them: one test of the finished build, at the commit whose calls ship
-   ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build works, which a maintainer needs to merge it
-   and, later, to lift its flag. A plan gates a step on a run only by naming the decision its result takes. This
-   prevents a release held up by runs whose results changed nothing, and replaces the practice of a rig run per step
-   or per PR.
+   Run a test at the last point that can still take its decision. For a device the rig or a maintainer can reach, that
+   is the release's run, so merging a PR waits for none: unit tests pin the call, a new item is flagged until its pass
+   is on record, the gate runs at the cut, and the code may change again before then. For a contributor's own devices,
+   it is their pull request, as no later run is sure to reach them: one test of the finished build, at the commit whose
+   calls ship ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build works, which a maintainer needs to
+   merge it, and lets what it exercised ship unflagged ([the Labs flag](#the-labs-flag)). A plan gates a step on a run
+   only by naming the decision its result takes. This prevents a release held up by runs whose results changed nothing,
+   and replaces the practice of a rig run per step or per PR.
 9. **Retest what the change exercises.** After a run, a change reopens only the evidence for actions whose call, or
    whose handling of the device's reply, it changes (tenet 5), wherever the code it edits lives. A machine decides
    which: evidence binds to the action's [call transcript](#release-gate), what the unit tests saw it send and make of
@@ -86,8 +91,9 @@ A scope item (an entity domain, class or field of an adapter) is Verified, Docum
 is refused unless the Labs option is on, but a field in Labs on some classes alone is dropped there (below). To flag a
 whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
 
-- **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
-  tested is the maintainer's choice; the rig is a tool, not a requirement.
+- **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test, or signed off on
+  users' working reports of it in a `_manual.json` row ([the Labs flag](#the-labs-flag)). How it was tested is the
+  maintainer's choice; the rig is a tool, not a requirement.
 - **Documented:** no known class departs, and the class takes either
   - **a sibling's call:** it differs from a Verified class's call only in addressing, and siblings share one vendor's
     firmware, whose documentation gives the call identically for both (Shelly's components). A class spanning vendors
@@ -98,6 +104,8 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
     a marker certified devices carry and known uncertified ones don't, and on the one part the test runs on. A write
     never qualifies, as the test's field values are its own. The PR names the marker and what slips past it
     ([Matter](integrations/matter/internals.md#what-decides-the-call)).
+- **Labs:** built on a sourced call and untested, as no real device has passed it yet, or tested and held back by a
+  maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
 
 A field can be in Labs on some classes alone (`labs_fields(...)`, `AdapterScope.class_labs`) while it keeps its level in
 `fields` on the rest. With the Labs option off it is dropped on those classes (`fields_dropped`), not refused; with it
@@ -196,22 +204,23 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
   it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
-  class not admitted to Labs (below), as research predicts most of it fails the default call or no pass (on it or its
-  kin) or research admits it, while another call is known or plausible. The integration names it, and the adapter's
+  class not admitted to Labs (below), as research predicts most of it fails the default call or no source admits it,
+  while another call is known or plausible. The integration names it, and the adapter's
   scope holds it in neither `capabilities` nor `no_known_method`. It is refused (`not_built`), and the card leaves it
   out, as no one can list every feature that could be built.
-- **In Labs:** a class still behind the flag, admitted on a reason to expect the call works: a pass on a
-  device of the class (the builder's own probe or run counts, tenet 2), a pass of the exact call it would get on its kin
-  ([above](#device-classes)), or research predicting most of the class accepts it. Without any of these, or with
-  research predicting most fail, it stays not built. Labs admits only what its evidence names: a pass, on the class
-  or its kin, admits a class only where it is one firmware family, and research admits the vendors or identities it
-  names, not the class around them; the rest of the class stays not built. On an action whose failure harms, turning on
-  Labs is the user's consent to what's in it, so a class in Labs there runs with the option on. An identity reported
-  harmed there is split off as not built (`NotBuilt`, below), and a target not yet placed is still refused
-  (`class_unknown`, below). On a failed report, the maintainer triaging it takes on the fix, keeping the class in
-  Labs, or makes the class not built, as their time allows; one they stop fixing becomes not built. A not built class
-  returns with a contributor's PR and a passing run on their own device. The class is in scope as `labs(...)` and runs
-  behind the flag.
+- **In Labs:** a class still behind the flag, admitted on a sourced call: a cited reason to expect the call works. The
+  source is one of three: the vendor's documentation, an upstream integration that ships the call, or research, which
+  includes a pass on a device of the class (the builder's own probe or run counts, tenet 2) and a pass of the exact call
+  it would get on its kin ([above](#device-classes)). No pass is needed. Without a source, or with research predicting
+  most of the class fails, it stays not built. Labs admits only what its source names: a pass, on the class or its kin,
+  admits a class only where it is one firmware family, and a document, an upstream integration or research admits the
+  vendors, models or identities it names, not the class around them; the rest of the class stays not built. On an action
+  whose failure harms, turning on Labs is the user's consent to what's in it, so a class in Labs there runs with the
+  option on. An identity reported harmed there is split off as not built (`NotBuilt`, below), and a target not yet
+  placed is still refused (`class_unknown`, below). On a failed report, the maintainer triaging it takes on the fix,
+  keeping the class in Labs, or makes the class not built, as their time allows; one they stop fixing becomes not built.
+  A not built class returns with a PR that brings a sourced call, or a passing run. The class is in scope as `labs(...)`
+  and runs behind the flag.
 
 Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
 built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
@@ -264,21 +273,27 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 
 ### The coverage check
 
-Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
-that reached it; one held on some domains alone needs it in each of them, from a test in that domain (a manual row names
-no domain, so it covers each). A record names the class each test's devices reached, and a manual row each device's. A
-native group's test credits each member's class, from its members' entries (the response's `member_capabilities`,
-[action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one call reached each member (a null one
-credits none; the cards add "native groups", never the members' models). A group with a null-class member is on no card,
-as "native groups" needs every member's class named and unflagged, while its named members still count here; a manual
-row credits every class it lists to every action it passed, so a row whose actions reached different classes is split. A
-manual row may carry `group`, as a rig group test does: its devices are the members, credited as a group test's are; the
-evidence table shows it as "group, by hand", and the card "native groups", with no ✔ from it. A scene's test is a
-group's, its members the scene's lights. A null class credits none, here or on the cards, as does a test that didn't
-pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names it, for example
-"zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py --signoffs` fails on it
-at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it suffices
-(tenet 7), and it applies to integrations that name classes.
+On an integration that names classes, every class an adapter's scope holds as Verified needs a passing record test, or a
+`_manual.json` row, for that action that reached it; one held on some domains alone needs it in each of them, from a
+test in that domain (a manual row names no domain, so it covers each). A record names the class each test's devices
+reached, and a manual row each device's. A native group's test credits each member's class, from its members' entries
+(the response's `member_capabilities`, [action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one
+call reached each member (a null one credits none; the cards add "native groups", never the members' models). A group
+with a null-class member is on no card, as "native groups" needs every member's class named and unflagged, while its
+named members still count here; a manual row credits every class it lists to every action it passed, so a row whose
+actions reached different classes is split. A manual row may carry `group`, as a rig group test does: its devices are
+the members, credited as a group test's are; the evidence table shows it as "group, by hand", and the card "native
+groups", with no ✔ from it. A scene's test is a group's, its members the scene's lights. A null class credits none, here
+or on the cards, as does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer
+sees it early, and names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
+`scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
+checks that evidence exists, not that it suffices (tenet 7).
+
+On an integration that names no classes, each domain an adapter's scope holds as Verified needs a passing test in that
+domain in a passing record of the action, or a `_manual.json` row naming the action (a manual row names no domain, so
+it covers each), with the same warning in `scripts/gen_compat.py` and the same failure at `cut-release`. Neither
+check asks a field for its record, as a record doesn't say which fields a test sent
+([deferred](deferred.md#field-lifts-checked-against-a-record)).
 
 *Example:* with Zigbee2MQTT's classes `hue`, `ikea`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and
 `other` (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue`
@@ -294,7 +309,8 @@ needs a call that isn't built, so it is not built yet too.
 
 ## The Labs flag
 
-Labs is the lowest [level](#levels), and the Labs flag is that level: the item is not yet judged ready for everyone.
+Labs is the lowest [level](#levels), and the Labs flag is that level: the item has not yet passed on a real device,
+or a maintainer holds it back.
 In code it is the per-axis marker `labs(...)`, beside `verified(...)` and `documented(...)`, and `labs_fields(...)` for a
 field in Labs on some classes alone ([Levels](#levels)). A call takes the weakest
 level among the items it touches, its domain always among them, so an adapter whose domains are all `labs(...)` is
@@ -302,31 +318,45 @@ flagged whole. A flagged item is refused unless the user turns on the Labs optio
 dropped there instead. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
 other item behaves.
 
-Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
-users who opt in. A class is admitted behind the flag only on the evidence [in
-Labs](#no-known-method-not-built-yet-in-labs) names (a pass on the class or its kin, or research), which also handles
-a failed report; without it, it stays not built. A passing rig record or `_manual.json` sign-off on a flagged item is
-evidence a maintainer can use to lift its flag for the next release, skipping that soak; it is not a requirement to lift
-it. Whether to lift is the maintainer's judgment, by how complex the feature is and how complete its tests are: a
-developer may run the first few rig cases before the full suite exists, so a flagged item may have passing runs and stay
-flagged. Lifting makes `labs(...)` into `verified(...)` (an adapter flagged whole: its domains), and removes a
-`labs_fields(...)` entry, so the field takes its `fields` level on those classes too; a flagged item
-that qualifies as Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting
-a flag is a change to the integration's package, so one of its maintainers approves it, as for any change there
-([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels the
-same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
+An item is in Labs until a real device has passed it. The pass is the author's own test or a user's working report,
+on record; a maintainer judges whether it is enough. So an item tested before it merges ships unflagged, and one
+nobody can test yet ships in Labs, untested, until someone with the device reports. The default class is the exception:
+no pass lifts it ([Unknown is flagged, never Verified](#device-classes)).
 
-For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
-sign-off carrying them (`reports`, [Sign-off format](#sign-off-format)), which the compatibility page shows "by report".
-The maintainer judges how many are enough (tenet 7); nothing counts them in code.
+Every new feature (action, integration, domain, capability or field) ships at the level its evidence gives: Verified for
+what the author's test exercised (Documented where [Levels](#levels) allows), and `labs(...)` for the rest. An item
+enters Labs only on the sourced call [in Labs](#no-known-method-not-built-yet-in-labs) names (the vendor's
+documentation, an upstream integration that ships it, or research), which also handles a failed report; without one, it
+stays not built. A maintainer may still flag a tested item that is complex, to soak with users who opt in, as an
+exception, giving the reason in its PR. Lifting a flag needs at least one pass on record: a rig record, or a
+`_manual.json` row (`reports` for users', [Sign-off format](#sign-off-format)). Whether that is enough is the
+maintainer's judgment (tenet 7), by how complex the item is and how complete its tests are: a developer may run the
+first few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. A field
+lifts only on a test that sent it, which no check can tell, as a record doesn't say which fields a test sent
+([deferred](deferred.md#field-lifts-checked-against-a-record)). Lifting makes `labs(...)` into `verified(...)` (an
+adapter flagged whole: its domains), and removes a `labs_fields(...)` entry, so the field takes its `fields` level on
+those classes too; a flagged item that qualifies as Documented becomes `documented(...)` in a PR that argues the sibling
+case ([Levels](#levels)). Lifting a flag is a change to the integration's package, so one of its maintainers approves
+it, as for any change there ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set
+their own classes' levels the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
-The cards never credit a tested model from a pass on a flagged item while its flag stands, and keep Labs lines
-(⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) to at most a quarter of all card lines, counted across every card,
-folding two or more top-level ones on a card into one ⚪ line (`scripts/gen_compat.py`, which fails over the cap).
+Users' working reports are one of the pass's two sources, and the only one for an item no maintainer can test: a
+maintainer's `_manual.json` sign-off carrying them (`reports`, [Sign-off format](#sign-off-format)) verifies the
+item, which the compatibility page shows "by report". The maintainer judges how many are enough (tenet 7); nothing
+counts them in code.
+
+The cards never credit a tested model from a pass on a flagged item while its flag stands, and fold two or more
+top-level Labs lines on a card (⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) into one ⚪ line
+(`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `labs("Light")`: a user's report of a Gen3 Dimmer jumping on
 `DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
-lets a Shelly maintainer lift the flag, once they judge the tests complete: their PR makes it `verified("Light")`.
+lets a Shelly maintainer lift the flag, once they judge that pass enough: their PR makes it `verified("Light")`.
+
+*Example:* Zigbee2MQTT's set auto-off and clear auto-off on Tuya and Sonoff inching switches are in Labs, untested.
+They entered on research into Zigbee2MQTT's device definitions and users' reports upstream
+([Zigbee2MQTT](integrations/zigbee2mqtt/index.md#tuya-inching-switches)), and no maintainer has such a device. A
+user's working report, cited in a maintainer's `_manual.json` row, lifts the flag on what it covers.
 
 ## Caveats
 
@@ -347,16 +377,16 @@ A deprecation gets a hand-written note in that release's notes, not a caveat.
 
 ## Release gate
 
-Each action whose calls changed since the last release tag needs a sign-off. An action's **call transcript**,
-`tests/integrations/<x>/calls/<action>.json`, holds a **segment** for each distinct way the unit tests run it: the
-request, each call sent at the wire with its reply, and the result. [`tests/transcripts.py`](../tests/transcripts.py)
-records them and gives the normalization rules; CI fails a PR whose transcripts don't match its code. An action has
-changed when HEAD's transcript no longer holds every segment of the tag's, or the tag has none: a segment changed or
-removed counts, wherever the code that changed it lives (an integration's package, `core/`, `actions/`); a segment
-added (a new test, a new class's own call) doesn't, nor does a source change that leaves every segment as it was. A
-flag lifted or a class added changes no call; the [coverage check](#the-coverage-check) holds those. An action whose
-adapter has `native_groups` needs a segment run on a group, which `--transcripts` enforces: without one, a change to
-what it does on a group reopens no evidence.
+Each action whose calls changed since the last release tag needs a sign-off, an all-Labs one aside (below). An action's
+**call transcript**, `tests/integrations/<x>/calls/<action>.json`, holds a **segment** for each distinct way the unit
+tests run it: the request, each call sent at the wire with its reply, and the result.
+[`tests/transcripts.py`](../tests/transcripts.py) records them and gives the normalization rules; CI fails a PR whose
+transcripts don't match its code. An action has changed when HEAD's transcript no longer holds every segment of the
+tag's, or the tag has none: a segment changed or removed counts, wherever the code that changed it lives (an
+integration's package, `core/`, `actions/`); a segment added (a new test, a new class's own call) doesn't, nor does a
+source change that leaves every segment as it was. A flag lifted or a class added changes no call; the [coverage
+check](#the-coverage-check) holds those. An action whose adapter has `native_groups` needs a segment run on a group,
+which `--transcripts` enforces: without one, a change to what it does on a group reopens no evidence.
 
 - **Evidence binds to a transcript** by the git blob id of the one it was tested against (`calls`), and **stands**
   while HEAD's transcript of the action holds every segment of it. A blob is its content's hash, so a run on a PR
@@ -388,11 +418,18 @@ what it does on a group reopens no evidence.
   action that has no sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others
   to test. But `cut-release` checks the latest RC's commit, so land the sign-offs or Untested fix caveats before the
   last RC.
-- **No sign-off at the cut:** `cut-release` fails unless each changed action without one carries 🔧 Untested fix on
-  its adapter; no other caveat, nor the Labs flag alone, stands in. A repo maintainer picks whichever is most
-  likely to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the
-  current code mostly works; ship it marked 🔧 Untested fix when the current code is broken and the fix is low-risk;
-  or, when it is risky, put it behind the Labs flag and mark it 🔧 Untested fix.
+- **An all-Labs action needs no sign-off:** one none of whose calls runs with the Labs option off (its adapter flagged
+  whole, or every class its scope serves in Labs in every domain it serves) passes the gate with no sign-off and no
+  caveat, as no user gets its call without opting in. A field in Labs on some classes alone (`class_labs`) doesn't
+  make an action all-Labs. A mixed action, some of whose calls run with the option off, still needs a sign-off: a
+  rerun on the devices a maintainer has gives it, as a sign-off must hold the gained segments, not have exercised
+  them.
+- **No sign-off at the cut:** `cut-release` fails unless each changed action without one, an all-Labs one aside,
+  carries 🔧 Untested fix on its adapter; no other caveat stands in. A repo maintainer picks whichever is most likely
+  to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the current
+  code mostly works; ship it marked 🔧 Untested fix when the current code is broken and the fix is low-risk; or, when
+  it is risky, put it behind the Labs flag, alone when that makes the action all-Labs, and marked 🔧 Untested fix
+  otherwise.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 

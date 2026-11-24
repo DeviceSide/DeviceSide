@@ -53,7 +53,7 @@ DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* 
 
 🟢 works · ✔ verified on automated rig<br>
 🟡 should work: same call pattern as a tested device<br>
-⚪ Labs: built but not yet proven. Enable Labs in Configure > Settings<br>
+⚪ Labs: not yet passed on a real device, or held back to soak. Enable Labs in Configure > Settings<br>
 🔴 no known command works on it
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
