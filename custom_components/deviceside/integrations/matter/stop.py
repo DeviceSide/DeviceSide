@@ -33,7 +33,8 @@ from ...core.zcl import CURRENT_HUE, CURRENT_LEVEL, CURRENT_SATURATION, HUE_SATU
 _LOGGER = logging.getLogger(__name__)
 
 # Two reads this far apart say whether the light still moves: a light that kept fading reads differently, one that
-# halted reads the same. A fade changes CurrentLevel by a step within a transition's smallest unit, 0.1 s (core/zcl.py).
+# halted reads the same. A fade slower than a step per 0.2 s (a long hue cycle) can read the same and is confirmed
+# while still moving (internals.md, stop). 0.2 s is two of a transition's 0.1 s units (core/zcl.py).
 READ_GAP_S = 0.2
 # Neither command moves anything with nothing running, so no override is needed: the light's own Options apply.
 _STOP = {"optionsMask": 0, "optionsOverride": 0}
