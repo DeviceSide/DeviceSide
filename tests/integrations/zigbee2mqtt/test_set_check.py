@@ -1,6 +1,7 @@
 """Zigbee2MQTT set check: a set Z2M logs as failed makes its target rejected; the check never delays a publish."""
 
 import asyncio
+import json
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -8,14 +9,15 @@ import pytest
 from homeassistant.core import ServiceCall
 from homeassistant.helpers import device_registry as dr
 
-from custom_components.deviceside.core.models import Status
+from custom_components.deviceside.core.models import EntityResult, Status
+from custom_components.deviceside.core.runtime import DATA
 from custom_components.deviceside.core.scope import OwnCall
-from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, set_check, turn_on_for
+from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, bridge_cache, set_check, turn_on_for
 from custom_components.deviceside.integrations.zigbee2mqtt.adapter import Z2MAdapter
 from custom_components.deviceside.integrations.zigbee2mqtt.bridge import publish_set
 from custom_components.deviceside.integrations.zigbee2mqtt.stop import Z2MStop
 
-from .conftest import SENT, SET, answer, call, commands, failure, group, light, log, target
+from .conftest import SENT, SET, answer, call, commands, failure, group, light, live_on, log, target
 from .test_set_attributes import DIMMABLE, bulb
 from ...fixtures.zigbee2mqtt import IEEE
 
@@ -259,7 +261,7 @@ async def test_a_state_topic_that_wont_subscribe_is_sent_unchecked(hass, broker,
 
 async def test_a_watch_closed_mid_subscribe_drops_the_subscription(hass, broker, live):
     entity_id = light(hass, broker)
-    watch = set_check.Watch(hass, live)
+    watch = set_check.Watch(hass)
     watch.close()
 
     await watch.note(target(hass, entity_id), entity_id, set_check.BOUND_S)
@@ -268,9 +270,28 @@ async def test_a_watch_closed_mid_subscribe_drops_the_subscription(hass, broker,
     assert broker.subscribers["zigbee2mqtt/lamp"] == []
 
 
+async def test_a_cache_stopped_mid_subscribe_leaves_the_entity_unchecked(hass, broker, live, monkeypatch):
+    entity_id = light(hass, broker)
+    subscribe = broker.subscribe
+
+    async def stopping(hass, topic, msg_callback):
+        unsubscribe = await subscribe(hass, topic, msg_callback)
+        hass.data[DATA].integration_state[bridge_cache._KEY].pop("zigbee2mqtt")  # its bridge went meanwhile
+        return unsubscribe
+
+    monkeypatch.setattr(set_check.mqtt, "async_subscribe", stopping)
+    watch = set_check.Watch(hass)
+
+    await watch.note(target(hass, entity_id), entity_id, set_check.BOUND_S)
+
+    assert watch.entities == {}
+    assert broker.subscribers["zigbee2mqtt/lamp"] == []
+    assert live._log_listeners == []
+
+
 async def test_a_no_state_publish_keeps_an_earlier_publishs_longer_bound(hass, broker, live):
     entity_id = light(hass, broker)
-    watch = set_check.Watch(hass, live)
+    watch = set_check.Watch(hass)
     lamp = target(hass, entity_id)
     start = hass.loop.time()
 
@@ -293,7 +314,7 @@ async def test_two_sends_noting_one_entity_at_once_both_own_it(hass, broker, liv
         return unsubscribe
 
     monkeypatch.setattr(set_check.mqtt, "async_subscribe", slow)
-    watch = set_check.Watch(hass, live)
+    watch = set_check.Watch(hass)
     lamp = target(hass, entity_id)
 
     await asyncio.gather(
@@ -305,3 +326,54 @@ async def test_two_sends_noting_one_entity_at_once_both_own_it(hass, broker, liv
     assert len(broker.subscribers["zigbee2mqtt/lamp"]) == 1
     watch.close()
     assert broker.subscribers["zigbee2mqtt/lamp"] == []
+
+
+class _Sets:
+    """An adapter as set_check.checked uses it, publishing one set per target: no dispatcher run, so no transcript."""
+
+    action = "lower_brightness"
+    integration = "zigbee2mqtt"
+
+    async def gather(self, hass, targets, send):
+        return [await send(t) for t in targets]
+
+
+async def _sets(hass, targets) -> dict[str, tuple[Status, str | None]]:
+    async def send(lamp):
+        await publish_set(hass, lamp, {"brightness": 50})
+        return EntityResult(lamp.entity_id, Status.SENT, "zigbee2mqtt")
+
+    results = await set_check.checked(_Sets(), hass, targets, send)
+    return {r.entity_id: (r.status, r.detail) for r in results}
+
+
+async def test_a_failure_counts_only_on_the_instance_whose_log_has_it(hass, broker, live):
+    """Friendly names are unique within one instance alone: a line on one instance's bridge/logging never fails the
+    same-named light of another."""
+    up = live_on(hass, broker, "z2m_up")
+    light(hass, broker)
+    light(hass, broker, "light.up_lamp", "0x02", base="z2m_up", name="lamp")
+
+    def on_set(topic: str, payload: dict) -> None:
+        if topic == "z2m_up/0x02/set":
+            line = json.dumps({"level": "error", "message": LAMP_UNDELIVERED})
+            asyncio.get_running_loop().call_soon(broker.deliver, "z2m_up/bridge/logging", line)
+
+    broker.on_set = on_set
+
+    results = await _sets(hass, [target(hass, "light.lamp"), target(hass, "light.up_lamp")])
+
+    assert results == {"light.lamp": (Status.SENT, None), "light.up_lamp": (Status.REJECTED, "send_failed")}
+    assert up._log_listeners == [] and live._log_listeners == []  # each listened to for the call alone
+
+
+async def test_a_target_whose_instance_has_no_live_cache_is_unchecked(hass, broker, live):
+    light(hass, broker)
+    light(hass, broker, "light.up_lamp", "0x02", base="z2m_up")
+    # On the first instance's log, which a check of every target against one log would read as up_lamp's failure.
+    answer(broker, "z2m_up/0x02/set", line=LAMP_UNDELIVERED.replace("'lamp'", "'up_lamp'"))
+
+    results = await _sets(hass, [target(hass, "light.lamp"), target(hass, "light.up_lamp")])
+
+    assert results == {"light.lamp": (Status.SENT, None), "light.up_lamp": (Status.SENT, None)}
+    assert "z2m_up/up_lamp" not in broker.topics

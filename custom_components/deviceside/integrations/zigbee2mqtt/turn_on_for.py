@@ -137,7 +137,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
             unsubscribe()
 
     def _schedule_reads(self, hass: HomeAssistant, target: Target, on_time: float, read_on: bool) -> None:
-        get_topic = topic(target, "get")
+        get_topic = topic(hass, target, "get")
 
         async def read() -> None:
             try:

@@ -2,18 +2,23 @@
 
 native_control.py changes the option for one publish and restores it after. A restart or crash between the
 two would leave the user's option flipped for good, so each change is journaled as its request goes out and struck off
-once the restore is confirmed. `replay` pays what is left owed, each time Z2M's bridge/state says online (entry setup
-hooks it to the bridge cache): at startup, and again after a Z2M that was offline comes back.
+once the restore is confirmed. `replay` pays what is left owed on an instance, each time that instance's bridge/state
+says online (entry setup hooks it to each base topic's bridge cache): at startup, and again after a Z2M that was
+offline comes back.
+
+Each entry is keyed by its full Address, base topic included, as two instances can both have group 7. Store version 1
+keyed by kind and ID alone, when only the default base topic was addressable, so its entries move under that base.
+Known limit, on a renamed base topic: docs/integrations/zigbee2mqtt/internals.md#addressing.
 """
 
 import asyncio
 import logging
-from typing import Literal
+from typing import Any
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
-from .addressing import entity_name
+from .addressing import Address, entity_name
 from .bridge import OPTION, ensure_options
 from .bridge_cache import KINDS
 from ...core.errors import describe
@@ -24,9 +29,20 @@ _LOGGER = logging.getLogger(__name__)
 _KEY = "zigbee2mqtt_restore_journal"
 _LOCKS_KEY = "zigbee2mqtt_native_control_locks"
 _REPLAYS_KEY = "zigbee2mqtt_restore_replays"
-_VERSION = 1
+_VERSION = 2  # 2: owed values by base topic, then "<kind>/<Z2M ID>"; 1 had no base topic
+_V1_BASE = "zigbee2mqtt"  # Z2M's default base topic, the only one version 1 could address
 
-type Address = tuple[Literal["device", "group"], str]  # Z2M's options section and the ID in it
+type _Stored = dict[str, dict[str, bool]]
+
+
+class _Store(Store[_Stored]):
+    async def _async_migrate_func(self, old_major_version: int, old_minor_version: int, old_data: Any) -> Any:
+        """Version 1's entries, moved under the base topic they were owed on, verbatim: `load` checks them as it
+        checks version 2's. A newer version than this code knows never gets here (HA's Store raises
+        UnsupportedStorageVersionError, and `journal` retries), so it is left on disk unread rather than overwritten."""
+        if old_major_version == 1:
+            return {_V1_BASE: old_data} if isinstance(old_data, dict) and old_data else old_data
+        raise NotImplementedError  # a newer minor version of this one: HA keeps the data as it is
 
 
 def locks(hass: HomeAssistant) -> dict[Address, asyncio.Lock]:
@@ -36,14 +52,15 @@ def locks(hass: HomeAssistant) -> dict[Address, asyncio.Lock]:
 
 
 class Journal:
-    """The owed values by "<kind>/<Z2M ID>"; each is the user's value, to write back."""
+    """The owed values by address; each is the user's value, to write back."""
 
     def __init__(self, hass: HomeAssistant) -> None:
-        self._store: Store[dict[str, bool]] = Store(hass, _VERSION, "deviceside.zigbee2mqtt_restore_journal")
-        self.owed: dict[str, bool] = {}
+        self._store = _Store(hass, _VERSION, "deviceside.zigbee2mqtt_restore_journal")
+        self.owed: dict[Address, bool] = {}
 
     async def load(self) -> None:
-        """Read what a previous run left; an entry that isn't "<device|group>/<ID>": bool is dropped with a warning."""
+        """Read what a previous run left; an entry that isn't <base>: {"<device|group>/<ID>": bool} is dropped with a
+        warning. Raises when the store can't be read, a newer version's included, so nothing overwrites it."""
         loaded = await self._store.async_load() or {}
         if not isinstance(loaded, dict):
             _LOGGER.warning(
@@ -52,40 +69,46 @@ class Journal:
                 type(loaded).__name__,
             )
             return
-        for key, value in loaded.items():
-            kind, _, z2m_id = str(key).partition("/")
-            if kind not in KINDS or not z2m_id or not isinstance(value, bool):
+        for base, entries in loaded.items():
+            if not base or not isinstance(entries, dict):
                 _LOGGER.warning("Skipped a malformed %s restore journal entry, so that restore is lost", OPTION)
                 continue
-            self.owed[key] = value
+            for key, value in entries.items():
+                kind, _, z2m_id = str(key).partition("/")
+                if kind not in KINDS or not z2m_id or not isinstance(value, bool):
+                    _LOGGER.warning("Skipped a malformed %s restore journal entry, so that restore is lost", OPTION)
+                    continue
+                self.owed[Address(base, kind, z2m_id)] = value  # type: ignore[arg-type] - kind is one of KINDS
 
     def owes(self, address: Address) -> bool | None:
         """The value owed back at this address, or None."""
-        return self.owed.get(_key(address))
+        return self.owed.get(address)
 
     async def add(self, address: Address, value: bool) -> bool:
         """Owe value, unless an earlier restore is still owed: that one holds the user's own value, where this one
         may be an action's flipped value. Whether this call added it; a save that fails (or is cancelled) takes it
         back out of memory, and raises."""
-        if (key := _key(address)) in self.owed:
+        if address in self.owed:
             return False
-        self.owed[key] = value
+        self.owed[address] = value
         try:
-            await self._store.async_save(self.owed)
+            await self._store.async_save(self._stored())
         except BaseException:
-            self.owed.pop(key, None)
+            self.owed.pop(address, None)
             raise
         return True
 
     async def strike(self, address: Address, value: bool) -> None:
         """Strike the entry once value, the one written back, is what it owes; another value leaves it owed."""
-        if self.owed.get(key := _key(address)) == value:
-            del self.owed[key]
-            await self._store.async_save(self.owed)
+        if self.owed.get(address) == value:
+            del self.owed[address]
+            await self._store.async_save(self._stored())
 
-
-def _key(address: Address) -> str:
-    return f"{address[0]}/{address[1]}"
+    def _stored(self) -> _Stored:
+        stored: _Stored = {}
+        for address, value in self.owed.items():
+            stored.setdefault(address.base, {})[f"{address.kind}/{address.z2m_id}"] = value
+        return stored
 
 
 async def journal(hass: HomeAssistant) -> Journal:
@@ -108,35 +131,42 @@ async def _load(hass: HomeAssistant) -> Journal:
 
 
 class _Replays:
-    """The replay in flight, and whether bridge/state said online again while it ran."""
+    """An instance's replay in flight, and whether its bridge/state said online again while it ran."""
 
     def __init__(self) -> None:
         self.task: asyncio.Task[None] | None = None
         self.again = False
 
 
+def replays(hass: HomeAssistant) -> dict[str, _Replays]:
+    """Each base topic's replay."""
+    return get_runtime(hass).integration_state.setdefault(_REPLAYS_KEY, {})
+
+
 @callback
-def request_replay(hass: HomeAssistant) -> None:
-    """Pay what is owed, in a task of its own: on each online from bridge/state. One replay at a time: an online
-    arriving while one runs makes it run once more after, so an entry it failed on while Z2M was going down is
+def request_replay(hass: HomeAssistant, base: str) -> None:
+    """Pay what is owed on the instance with this base topic, in a task of its own: on each online from its
+    bridge/state. One replay at a time per instance, and instances' replays run side by side: an online arriving while
+    its instance's replay runs makes it run once more after, so an entry it failed on while Z2M was going down is
     retried."""
-    replays: _Replays = get_runtime(hass).integration_state.setdefault(_REPLAYS_KEY, _Replays())
-    if replays.task is not None and not replays.task.done():
-        replays.again = True
+    held = replays(hass).setdefault(base, _Replays())
+    if held.task is not None and not held.task.done():
+        held.again = True
         return
-    replays.task = hass.async_create_background_task(_replay_until_settled(hass, replays), "zigbee2mqtt replay")
+    held.task = hass.async_create_background_task(_replay_until_settled(hass, base, held), "zigbee2mqtt replay")
 
 
-async def _replay_until_settled(hass: HomeAssistant, replays: _Replays) -> None:
+async def _replay_until_settled(hass: HomeAssistant, base: str, held: _Replays) -> None:
     while True:
-        replays.again = False
-        await replay(hass)
-        if not replays.again:
+        held.again = False
+        await replay(hass, base)
+        if not held.again:
             return
 
 
-async def replay(hass: HomeAssistant) -> None:
-    """Write back every value left owed, striking each off once Z2M has it, under the address's lock.
+async def replay(hass: HomeAssistant, base: str) -> None:
+    """Write back every value left owed on the instance with this base topic, striking each off once Z2M has it, under
+    the address's lock. Another instance's entries wait for its own online, so one whose bridge is gone stays owed.
 
     Only an option still holding the flipped value is written: one the user has set to their value since (in Z2M's
     UI) is left as it is, and struck. An entry an action paid while the replay waited for its lock is skipped. One
@@ -149,18 +179,17 @@ async def replay(hass: HomeAssistant) -> None:
             "Couldn't read the %s restore journal: %s, so owed restores wait for the next online", OPTION, describe(err)
         )
         return
-    for key in list(held.owed):
-        kind, z2m_id = key.split("/", 1)
-        address: Address = (kind, z2m_id)  # type: ignore[assignment] - load keeps only device and group keys
-        name = entity_name(hass, kind, z2m_id)  # type: ignore[arg-type] - as address above
+    for address in [owed for owed in held.owed if owed.base == base]:
+        name = entity_name(hass, address)
         async with locks(hass).setdefault(address, asyncio.Lock()):
             if (value := held.owes(address)) is None:
                 continue
             try:
                 await ensure_options(
                     hass,
-                    kind,
-                    [z2m_id],
+                    base,
+                    address.kind,
+                    [address.z2m_id],
                     lambda current, value=value: {OPTION: value} if bool(current.get(OPTION)) != value else {},
                     # INFO only for a write Z2M confirmed: one the user had made already writes nothing.
                     lambda _id, value=value, name=name: _LOGGER.info(

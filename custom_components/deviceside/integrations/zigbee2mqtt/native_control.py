@@ -25,10 +25,10 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import group_id, options_address, z2m_address, z2m_device
+from .addressing import Address, group_address, options_address, z2m_device
 from .bridge import OPTION, ensure_options, group_members, state_reply
 from .families.hue import HUE_MANUFACTURER
-from .restore_journal import Address, journal, locks
+from .restore_journal import journal, locks
 from ...core.errors import describe
 from ...core.fields import COLOR_TEMP, COLORS
 from ...core.models import Target
@@ -51,7 +51,7 @@ async def settled(hass: HomeAssistant, target: Target) -> None:
     For a publish that must go out with the user's value, whatever action ran on the target just before. A cancel of
     the waiter leaves the restore running; a restore cancelled at shutdown ends the wait.
     """
-    if (address := options_address(target)) is None or (restore := _restores(hass).get(address)) is None:
+    if (address := options_address(hass, target)) is None or (restore := _restores(hass).get(address)) is None:
         return
     try:
         await asyncio.shield(restore)
@@ -258,15 +258,15 @@ async def _reply(target: Target, replied: asyncio.Future[None] | None) -> None:
 
 async def _hue_address(hass: HomeAssistant, target: Target) -> Address | None:
     """Where the target's options live, for a Hue device or a group with a Hue member; None for anything else."""
-    if (group := group_id(target)) is not None:
-        return ("group", group) if await _has_hue_member(hass, target, group) else None
+    if (group := group_address(hass, target)) is not None:
+        return group if await _has_hue_member(hass, target, group) else None
     if target.device is not None and target.device.manufacturer == HUE_MANUFACTURER:
-        return ("device", ieee) if (ieee := z2m_address(target.device)) is not None else None
+        return options_address(hass, target)
     return None
 
 
-async def _has_hue_member(hass: HomeAssistant, target: Target, group: str) -> bool:
-    for ieee in await group_members(hass, group):
+async def _has_hue_member(hass: HomeAssistant, target: Target, group: Address) -> bool:
+    for ieee in await group_members(hass, group.base, group.z2m_id):
         device = z2m_device(hass, target, ieee)
         if device is not None and device.manufacturer == HUE_MANUFACTURER:
             return True
@@ -302,9 +302,8 @@ async def _set(
         requested = restoring or bool(current.get(OPTION)) != value
         return {OPTION: value} if requested else {}
 
-    kind, z2m_id = address
     try:
-        await ensure_options(hass, kind, [z2m_id], wanted, confirmed, ahead)
+        await ensure_options(hass, address.base, address.kind, [address.z2m_id], wanted, confirmed, ahead)
     except Exception as err:  # noqa: BLE001 - the command goes out (or went out) as the option stood
         if not restoring:
             _warn_set(target, value, err)

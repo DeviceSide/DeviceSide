@@ -196,8 +196,9 @@ time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 
 ## Sharp edges
 
-- **Custom base topic.** Groups and devices on a base topic other than `zigbee2mqtt` are refused
-  (`not_addressable`).
+- **A renamed base topic** leaves the old one's bridge entities in Home Assistant, and until you remove them
+  DeviceSide can't tell which base is live, so that Zigbee2MQTT's lights are refused (`not_addressable`). Remove the
+  old base topic's Zigbee2MQTT Bridge entities ([internals](internals.md#addressing)).
 - **A device named with a bare number** that matches a group's ID gets that group's commands.
 - **Devices with several lights or switches** (a two-gang switch, a dual-channel Gledopto, a two-gang relay) are
   refused (`not_addressable`) by every action, each of their lights or switches, the first too (a plug's own child

@@ -32,7 +32,16 @@ from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2
 
 from ...conftest import Clock, leaked, unload_mock_entries
 from ...conftest import call as call_service
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import (
+    DEFAULT_BASE,
+    GROUPS,
+    IEEE,
+    INFO,
+    Broker,
+    add_z2m_entity,
+    add_z2m_group,
+    z2m_entry,
+)
 
 unload_mock_mqtt_entries = unload_mock_entries("mqtt")
 
@@ -116,10 +125,10 @@ def broker(hass, monkeypatch):
 
     # The dispatcher lists a group's members from bridge/groups as the running cache would hold it, once the entry is
     # set up; a test's own cache stays, once it holds bridge/groups.
-    def held(hass):
-        if (cache := bridge_cache.get(hass)) is not None and cache.parsed("groups") is not None:
+    def held(hass, base):
+        if (cache := bridge_cache.get(hass, base)) is not None and cache.parsed("groups") is not None:
             return cache
-        return HeldGroups(fake) if DATA in hass.data else None
+        return HeldGroups(fake) if DATA in hass.data and base == "zigbee2mqtt" else None
 
     monkeypatch.setattr(members, "bridge_cache", SimpleNamespace(get=held))
     monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=held))
@@ -158,7 +167,7 @@ class HeldGroups(bridge_cache.BridgeCache):
     and the classifier."""
 
     def __init__(self, broker) -> None:
-        super().__init__()
+        super().__init__("zigbee2mqtt")
         self.broker = broker
 
     def parsed(self, suffix: str):
@@ -209,15 +218,18 @@ def light(
     zigbee: tuple[str | None, str | None] | None | type[REGISTRY] = REGISTRY,
     interviewed: bool | None = None,
     color_mode: str = "xy",
+    base: str = DEFAULT_BASE,
+    name: str | None = None,
 ) -> str:
-    """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR.
+    """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR, on the
+    instance with this base topic, under this friendly name (by default the entity_id's object id).
 
     Its bridge/devices entry holds the Zigbee manufacturer and model `zigbee` names. By default, REGISTRY, the
     registry's manufacturer and ZIGBEE_MODEL: an interviewed device of that vendor that shows no Tuya string. None
     writes an entry with neither, as Zigbee2MQTT lists a device mid-interview, which the classifier can't place by
     them. `interview_completed` is `interviewed`, by default whether `zigbee` names any string.
     """
-    name = entity_id.split(".")[1]
+    name = name or entity_id.split(".")[1]
     entries = hass.config_entries.async_entries("mqtt")
     entry = entries[0] if entries else z2m_entry(hass)
     attributes: dict = {"supported_color_modes": XY if modes is None else modes}
@@ -233,6 +245,8 @@ def light(
         name=name,
         manufacturer=manufacturer,
         model_id=model_id,
+        base_topic=base,
+        bridge_base=base,
     )
     broker.devices[ieee] = (name, {"lightingColorCtrl": {**COLOR, **(color or {})}})
     broker.retained[INFO]["config"]["devices"].setdefault(ieee, {})
@@ -273,14 +287,19 @@ def target(hass, entity_id: str) -> Target:
 def live(hass, setup_production, broker, monkeypatch):
     """The bridge cache with its response topics and bridge/logging live, as once MQTT is up, so sets are checked
     (set_check.py)."""
-    cache = bridge_cache.BridgeCache()
-    cache.replies_live = True
-    hass.data[DATA].integration_state[bridge_cache._KEY] = cache
-    broker.subscribers.setdefault(LOGGING, []).append(cache._on_log)
-    for kind in bridge_cache.KINDS:
-        reply_topic = f"zigbee2mqtt/bridge/response/{kind}/options"
-        broker.subscribers.setdefault(reply_topic, []).append(bridge_cache.reply_router(cache.pending))
     monkeypatch.setattr(set_check, "BOUND_S", 0.05)
+    return live_on(hass, broker, "zigbee2mqtt")
+
+
+def live_on(hass, broker, base: str) -> bridge_cache.BridgeCache:
+    """A live bridge cache, as `live`, for the instance on this base topic."""
+    cache = bridge_cache.BridgeCache(base)
+    cache.replies_live = True
+    hass.data[DATA].integration_state.setdefault(bridge_cache._KEY, {})[base] = cache
+    broker.subscribers.setdefault(f"{base}/bridge/logging", []).append(cache._on_log)
+    for kind in bridge_cache.KINDS:
+        reply_topic = f"{base}/bridge/response/{kind}/options"
+        broker.subscribers.setdefault(reply_topic, []).append(bridge_cache.reply_router(cache.pending))
     return cache
 
 

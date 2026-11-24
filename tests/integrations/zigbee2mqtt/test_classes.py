@@ -25,7 +25,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from .conftest import DEVICES, PLUG, SENT, SET, TUYA, TUYA_MCU, call, commands, group, interviewed, light
 from ...conftest import allow_labs, refusal
 from ...conftest import call as call_service
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_bridge, add_z2m_entity, add_z2m_group, z2m_entry
 
 STRINGS = Path(__file__).parents[3] / "custom_components" / "deviceside" / "translations" / "en.json"
 IKEA = ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm")
@@ -81,7 +81,7 @@ async def test_a_device_bridge_devices_does_not_list_yet_is_placed_by_the_regist
 
 
 def test_the_bridge_cache_indexes_bridge_devices_once_per_payload():
-    cache = bridge_cache.BridgeCache()
+    cache = bridge_cache.BridgeCache("zigbee2mqtt")
     cache._payloads["devices"] = (
         '[{"ieee_address": "0x01", "model_id": "TS011F"}, "junk", {"model_id": "x"}, {"ieee_address": 5}, '
         '{"ieee_address": null}]'
@@ -407,6 +407,7 @@ def two_gang(
     entry = hass.config_entries.async_entries("mqtt")[0]
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id,
+        via_device_id=add_z2m_bridge(hass, entry).id,
         identifiers={("mqtt", f"zigbee2mqtt_{GANG}")},
         manufacturer="Philips",
         name="two_gang",
@@ -924,7 +925,7 @@ async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_
 
 async def test_a_hue_device_runs_with_no_bridge_cache(hass, setup_production, broker, monkeypatch):
     lamp = light(hass, broker, manufacturer="Philips")
-    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass: None))
+    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass, base: None))
 
     assert await call(hass, "turn_on_for", {"entity_id": lamp, "duration": 5}) == {lamp: SENT}
 
@@ -933,7 +934,7 @@ async def test_a_tuya_device_is_refused_with_no_bridge_cache(hass, setup_product
     """Without the cache (its subscribe failed) no device but a Hue one is ever placed, so a Tuya plug stays refused,
     and the debug log says what it waits for."""
     plug = light(hass, broker, "light.plug", manufacturer=PLUG[0], model_id=PLUG[1])
-    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass: None))
+    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass, base: None))
     allow_labs(hass)
     caplog.set_level(logging.DEBUG, logger=classes.__name__)
 
