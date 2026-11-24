@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from custom_components.deviceside.core import registry as registry_module
 from scripts import gen_services as gs
 
 SOURCE = """\
@@ -40,7 +41,7 @@ def registry(served, actions=("turn_on", "turn_off", "stop")):
 
 @pytest.fixture
 def reg(monkeypatch):
-    monkeypatch.setattr(gs, "served_domains", lambda adapter, info: set(info.domains))
+    monkeypatch.setattr(registry_module, "served_domains", lambda adapter, info: set(info.domains))
     return registry({"shelly": {"switch", "light"}, "zha": {"light"}})
 
 

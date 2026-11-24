@@ -49,8 +49,11 @@ INIT = INTEGRATIONS + "{key}/__init__.py"
 FAMILY_INIT = INTEGRATIONS + "{key}/families/{family}/__init__.py"
 README = "README.md"
 COMPAT = "docs/device-compatibility.md"
-# Generated output: CODEOWNERS wholly, the other two inside their marked blocks (check_maintainer_merge.py, BLOCKS).
-GENERATED = frozenset({README, COMPAT, ".github/CODEOWNERS"})
+INTEGRATIONS_PAGE = "docs/integrations.md"
+SERVICES = "custom_components/deviceside/services.yaml"
+DEVICE_REPORT = ".github/ISSUE_TEMPLATE/device_report.yml"
+# Generated output: CODEOWNERS wholly, the others in their generated parts (check_maintainer_merge.py, BLOCKS).
+GENERATED = frozenset({README, COMPAT, INTEGRATIONS_PAGE, SERVICES, DEVICE_REPORT, ".github/CODEOWNERS"})
 # What a path template's `{key}` and `{family}` match: an integration's package name, and a family's as the registry
 # shapes it (core/registry.py, FAMILY_KEY; tests/scripts/test_owners.py pins them equal), which no `__init__.py` or
 # `__pycache__` beside the families is.

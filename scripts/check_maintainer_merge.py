@@ -9,8 +9,8 @@ read on the base branch by `scripts/owners.py`, the one owner lookup, so a PR ca
 - in the catalog's shared files (`SHARED_CATALOG_PATHS`): the maintainers of every integration with a family of a key
   that has a catalog file, never a family's, so a family maintainer can't reword every family's refusals;
 - elsewhere in an integration's package (`PATHS`), its `refusals.py` included: the integration's maintainers;
-- generated output that CI's `--check` proves (`.github/CODEOWNERS`, and `README.md` and
-  `docs/device-compatibility.md` inside their generated blocks): anyone who owns the rest;
+- generated output that CI's `--check` proves (`GENERATED` in `scripts/owners.py`: `.github/CODEOWNERS` whole, the
+  rest in the parts `BLOCKS` strips): anyone who owns the rest;
 - anything else: nobody.
 
 A family's path whose family isn't on the base branch is its integration's. This refuses a PR that:
@@ -21,7 +21,11 @@ A family's path whose family isn't on the base branch is its integration's. This
   bound to `INTEGRATION` or `FAMILY` or not (the unsupported integration `integrations/hue/v1.py` declares), adds or
   removes such a call, or leaves an integration's or family's maintainers unreadable (a repo maintainer's, as is
   appointing one);
-- changes `README.md` or `docs/device-compatibility.md` outside its generated blocks;
+- changes a file of `BLOCKS` outside its generated blocks: `README.md`, `docs/device-compatibility.md` and
+  `docs/integrations.md` outside their `<!-- name:start -->` / `<!-- name:end -->` markers, `services.yaml` outside
+  its actions' `target:` blocks (`gen_services.authored`), and the device report form outside its
+  `# name:start` / `# name:end` comment lines. The markers stay in what's compared, so a PR can't add a pair to
+  hide text; a hand edit inside a generated part fails its generator's `--check`;
 - sets or clears a `caveat` (a repo maintainer's, `docs/evidence.md`).
 
 No rule here names a refusal entry (`NoKnownMethod`, `NotBuilt`): an integration with families keeps them in its
@@ -49,19 +53,25 @@ Exits 1 when the PR may not merge this way, with the reason on stdout and as `re
 import argparse
 import ast
 import os
+import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import NamedTuple
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from scripts import gen_services  # noqa: E402
 from scripts import owners as lookup  # noqa: E402
 from scripts.check_protected import authored  # noqa: E402
 from scripts.owners import (  # noqa: E402
     COMPAT,
+    DEVICE_REPORT,
     GENERATED,
+    INTEGRATIONS_PAGE,
     README,
+    SERVICES,
     Package,
     Templates,
     called,
@@ -74,7 +84,24 @@ from scripts.owners import (  # noqa: E402
     show,
 )
 
-BLOCKS = (README, COMPAT)
+# A YAML file's generated block: whole lines, the comment lines kept, what's between them the generator's
+# (gen_codeowners.py writes the device report's options between `# integrations:start` and `# integrations:end`).
+COMMENT_BLOCK = re.compile(r"^([ \t]*# (\w+):start[ \t]*\n).*?^([ \t]*# \2:end[ \t]*)$", re.DOTALL | re.MULTILINE)
+
+
+def commented(text: str) -> str:
+    """The text with what's between each `# name:start` / `# name:end` comment-line pair removed."""
+    return COMMENT_BLOCK.sub(r"\1\3", text)
+
+
+# Each file generated in part, and its hand-written rest; the rest of GENERATED is generated whole.
+BLOCKS: dict[str, Callable[[str], str]] = {
+    README: authored,
+    COMPAT: authored,
+    INTEGRATIONS_PAGE: authored,
+    SERVICES: gen_services.authored,
+    DEVICE_REPORT: commented,
+}
 # The calls whose `maintainers=` name owners.
 DECLARES = frozenset({"IntegrationInfo", "Family"})
 
@@ -155,8 +182,8 @@ def check(base: str, head: str, commenter: str, templates: Templates) -> list[Pa
     before = {path: marks(show(merge_base, path), path) for path in files if path.endswith(".py")}
     after = {path: marks(show(head, path), path) for path in before}
     check_maintainers(packages, head, before, after)
-    for path in BLOCKS:
-        if path in files and authored(show(merge_base, path)) != authored(show(head, path)):
+    for path, rest in BLOCKS.items():
+        if path in files and rest(show(merge_base, path)) != rest(show(head, path)):
             raise Refused(f"it changes {path} outside its generated blocks")
     for path in before:
         if before[path].caveats != after[path].caveats:

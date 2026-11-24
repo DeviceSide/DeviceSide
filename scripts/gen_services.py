@@ -18,13 +18,15 @@ import argparse
 import re
 import sys
 from pathlib import Path
-
-import yaml
+from typing import TYPE_CHECKING
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
+# PyYAML and the registry are imported where they're used: check_maintainer_merge.py imports `authored` and runs on
+# the standard library alone.
+if TYPE_CHECKING:
+    from custom_components.deviceside.core.registry import AdapterRegistry
 
 SERVICES = REPO / "custom_components" / "deviceside" / "services.yaml"
 ACTION_KEY = re.compile(r"^([a-z_][a-z0-9_]*):\s*$")
@@ -33,6 +35,8 @@ TARGET_LINE = re.compile(r"^  target:(\s.*)?$")
 
 def targets(registry: AdapterRegistry) -> dict[str, dict[str, set[str]]]:
     """Each action key's entity domains served, by the HA domain of the integration serving them."""
+    from custom_components.deviceside.core.registry import served_domains
+
     found: dict[str, dict[str, set[str]]] = {}
     for key, integration, adapter in registry.matrix():
         if adapter is not None:
@@ -86,6 +90,8 @@ def authored(text: str) -> str:
 
 
 def generate(text: str, registry: AdapterRegistry) -> str:
+    import yaml
+
     wanted = targets(registry)
     pieces = _split(text)
     found = [action for action, _ in pieces if action]
@@ -115,6 +121,8 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None,
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail when services.yaml is out of date")
     args = parser.parse_args(argv)
+
+    from custom_components.deviceside.core.registry import AdapterRegistry
 
     path = repo / SERVICES.relative_to(REPO)
     current = path.read_text()
