@@ -20,6 +20,7 @@ from .families.tuya import TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 from ...zigbee.ikea import TIMER_HARMED_REASON
 from ...zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
+from ...zigbee.tuya import COUNTDOWN_HARMED_REASON
 
 REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # turn_on_for's call harms each of these (docs/evidence.md, When today's call harms a class): it ends on with no
@@ -47,8 +48,7 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         # The countdown misbehaves on this string (Z2M #30493: the time left jumps back at random), and Tuya's inching
         # (cluster 0xE000, command 0xFB), which would plausibly serve it, isn't built (plan Decision 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(
-            reason="Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when "
-            "asked, and the timer that would serve it isn't built",
+            reason=COUNTDOWN_HARMED_REASON,
             source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         ),
         # Tuya's recipe would serve it, parked (internals.md, "Tuya's recipe, parked"); today's tenths harm it (Tested

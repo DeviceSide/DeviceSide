@@ -49,7 +49,8 @@ def test_a_pattern_fully_matches_its_strings_alone(pattern, matching, others):
 
 def test_a_pattern_is_named_one_and_every_other_constant_is_a_literal_string():
     """The name says which a rule may use as it is and which it must escape: a `*_PATTERN` holds a regex, and no other
-    constant holds anything `re.escape` would change but the `_` of Tuya's manufacturer strings."""
+    constant holds anything `re.escape` would change but the `_` of Tuya's manufacturer strings. A `*_REASON` is text
+    the user reads, which no rule matches."""
     constants = {name: value for name, value in vars(tuya).items() if name.isupper()}
 
     assert all(isinstance(value, str) for value in constants.values())
@@ -58,7 +59,7 @@ def test_a_pattern_is_named_one_and_every_other_constant_is_a_literal_string():
         "ZCL_MANUFACTURER_PATTERN",
         "ZCL_MODEL_PATTERN",
     }
-    literals = {name: value for name, value in constants.items() if not name.endswith("_PATTERN")}
+    literals = {name: value for name, value in constants.items() if not name.endswith(("_PATTERN", "_REASON"))}
     assert [name for name, value in literals.items() if not re.fullmatch(r"\w+", value)] == []
 
 
@@ -72,3 +73,10 @@ def test_the_catalog_imports_nothing():
     tree = ast.parse(Path(tuya.__file__).read_text())
 
     assert [node for node in ast.walk(tree) if isinstance(node, ast.Import | ast.ImportFrom)] == []
+
+
+def test_the_countdown_harmed_reason_reads_as_it_does_to_the_user():
+    assert tuya.COUNTDOWN_HARMED_REASON == (
+        "Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when "
+        "asked, and the timer that would serve it isn't built"
+    )
