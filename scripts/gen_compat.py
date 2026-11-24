@@ -162,6 +162,7 @@ from scripts.check_release import (  # noqa: E402
 )
 from scripts.check_release import load as read_record  # noqa: E402
 from scripts.check_release import manual as read_manual  # noqa: E402
+from scripts.gen_codeowners import plain_title  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 from scripts.gen_features import anchors, bundle, columns, integration_columns, page, slug  # noqa: E402
 
@@ -1733,7 +1734,8 @@ def cards(built: list[Card]) -> str:
 def integration_links(registry: AdapterRegistry) -> str:
     """One bullet per integration, in card order, linking its page relative to `docs/integrations.md`."""
     items = [
-        f"- [{registry.integrations[key].title}](integrations/{key}/index.md)" for key in integration_columns(registry)
+        f"- [{plain_title(registry.integrations[key])}](integrations/{key}/index.md)"
+        for key in integration_columns(registry)
     ]
     return "\n".join([INTEGRATIONS[0], *items, INTEGRATIONS[1]])
 

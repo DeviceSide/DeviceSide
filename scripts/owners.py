@@ -7,7 +7,9 @@ What holds a path, read at a rev (CLAUDE.md, Maintainers; the templates are `gen
 - in the catalog's shared files (`SHARED_CATALOG_PATHS`), read by a family on the rev: every integration that reads it;
 - in the catalog (`CATALOG_PATHS`), shared by a family of its key on the rev: that key's catalog;
 - elsewhere in an integration's package (`PATHS`): the integration (a family not on the rev is its integration's);
-- generated output (`GENERATED`): nothing, as it follows its inputs;
+- generated output (`GENERATED`): nothing, as it follows its inputs; the files generated only in part (`README.md`, the
+  compatibility page, `docs/integrations.md`, `services.yaml`, the device report form) report none either, though a
+  hand edit outside their generated parts is the repo maintainers' (`check_maintainer_merge.py` refuses it);
 - anything else: shared code, the repo maintainers'.
 
 Each holder has one *owner group*, or for the catalog one per family of its key, and for its shared files one per

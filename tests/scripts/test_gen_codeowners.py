@@ -231,5 +231,33 @@ def test_a_form_without_both_markers_is_an_error(repo):
         gco.main([], registry(control4=info()), repo)
 
 
+@pytest.mark.parametrize("title", ["Zigbee2MQTT", "ZHA", "Control4", "Hue", "Matter", "Shelly", "Acme Hub (v2)"])
+def test_a_plain_title_passes(title):
+    assert gco.plain_title(info(title=title)) == title
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Evil\n  - type: input",
+        "Evil\r",
+        "Tab\there",
+        "A: b",
+        "# x",
+        "[x](y)",
+        "a]b",
+        "*x",
+        "a`b",
+        " Lead",
+        "Trail ",
+        "",
+    ],
+)
+def test_a_title_that_would_inject_into_the_dropdown_fails_loudly(repo, title):
+    with pytest.raises(SystemExit, match="isn't one line"):
+        gco.main([], registry(control4=info(title=title)), repo)
+    assert (repo / ".github" / "ISSUE_TEMPLATE" / "device_report.yml").read_text() == FORM
+
+
 def test_the_committed_files_are_current():
     assert gco.main(["--check"]) == 0

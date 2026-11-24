@@ -624,6 +624,14 @@ def test_the_intro_lists_each_integration_in_card_order_and_regenerates_when_sta
     assert (root / "integrations.md").read_text() == text
 
 
+@pytest.mark.parametrize("title", ["Evil\n\n## Injected", "a](https://x)", "[x]", "# x"])
+def test_a_title_that_would_inject_into_the_intro_links_fails_loudly(monkeypatch, title):
+    monkeypatch.setattr(gc, "integration_columns", lambda registry: ["acme"])
+    registry = SimpleNamespace(integrations={"acme": SimpleNamespace(title=title)})
+    with pytest.raises(SystemExit, match="isn't one line"):
+        gc.integration_links(registry)
+
+
 def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_sections(root, monkeypatch):
     models = write_bundles(root, monkeypatch)
     (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Dimmers\n")

@@ -30,6 +30,7 @@ Usage: scripts/gen_codeowners.py [--check]
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -42,6 +43,9 @@ CODEOWNERS = REPO / ".github" / "CODEOWNERS"
 MANIFEST = REPO / "custom_components" / "deviceside" / "manifest.json"
 DEVICE_REPORT = REPO / ".github" / "ISSUE_TEMPLATE" / "device_report.yml"
 DROPDOWN = ("# integrations:start", "# integrations:end")
+# What a title may hold, written as-is into a YAML option and a Markdown link: one line of letters, digits and plain
+# punctuation, so no title adds a form field or markup to a generated part.
+TITLE = re.compile(r"[^\W_][\w .+()/-]*(?<! )")
 # The repo maintainers: admin on the repo, owners of shared code, merging any PR. The one source of their handles;
 # manifest.json's codeowners must match it.
 REPO_MAINTAINERS: tuple[str, ...] = ("jasonmx",)
@@ -124,6 +128,13 @@ def generate(registry: AdapterRegistry, repo: Path = REPO) -> str:
     return "\n".join(lines) + "\n"
 
 
+def plain_title(info) -> str:
+    """The integration's title, after checking it is plain text; raises SystemExit otherwise."""
+    if not TITLE.fullmatch(info.title):
+        raise SystemExit(f"IntegrationInfo title {info.title!r} isn't one line of letters, digits and ` .+()/-`")
+    return info.title
+
+
 def generate_device_report(text: str, registry: AdapterRegistry) -> str:
     """The form with its Integration options replaced by the registry's titles, one per line, sorted."""
     start, end = DROPDOWN
@@ -133,7 +144,7 @@ def generate_device_report(text: str, registry: AdapterRegistry) -> str:
         raise SystemExit(f"device_report.yml: expected one '{start}' line, then one '{end}' line")
     first, last = marks[start][0], marks[end][0]
     indent = lines[first][: len(lines[first]) - len(lines[first].lstrip())]
-    titles = sorted(info.title for info in registry.available_integrations())
+    titles = sorted(plain_title(info) for info in registry.available_integrations())
     options = [f"{indent}- {title}\n" for title in titles]
     return "".join([*lines[: first + 1], *options, *lines[last:]])
 
