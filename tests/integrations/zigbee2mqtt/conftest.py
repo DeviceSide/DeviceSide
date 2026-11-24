@@ -345,3 +345,16 @@ SET = f"zigbee2mqtt/{IEEE}/set"
 GET = f"zigbee2mqtt/{IEEE}/get"
 # An off light is put here first, so a fade from off starts at the bottom, not the level it kept.
 BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
+
+# The inching families' shared test inputs: the composite and switch exposes Z2M lists, and the call's data and topic.
+COMPOSITE = {"type": "composite", "name": "inching_control_set", "property": "inching_control_set", "access": 2}
+STATE = {"type": "switch", "features": [{"name": "state", "property": "state"}]}
+
+
+def request(service: str, entity_id: str) -> dict:
+    """The call's data: clear_auto_off takes no duration."""
+    return {"entity_id": entity_id} | ({"duration": 5} if service == "set_auto_off" else {})
+
+
+def topic(ieee: str = "0x01") -> str:
+    return SET.replace(SET.split("/")[1], ieee)

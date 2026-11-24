@@ -146,8 +146,9 @@ Until Zigbee2MQTT publishes its devices after Home Assistant connects to MQTT, o
 DeviceSide knows a rebadged Tuya device only by what Home Assistant shows: the vendor `Tuya`, or a model starting
 `TS`. One shown under another brand, as another brand's device (Lidl's, or Gledopto's GL-SPI-206P, which runs Tuya's
 own protocol), can't be told apart from that brand's own devices for those first moments. So turn on with timer
-refuses every light, plug or switch but a Hue one (`class_unknown`), even with Labs on, and so does turn off with timer
-(`class_unknown`; a Hue light, known from the start, it refuses as not built yet), until
+refuses every light, plug or switch but a Hue one (`class_unknown`), even with Labs on, and so do turn off with timer
+(`class_unknown`; a Hue light, known from the start, it refuses as not built yet), set auto-off and clear auto-off
+(`class_unknown`), until
 Zigbee2MQTT lists it as fully paired (interviewed), with its own Zigbee manufacturer and model. A group with such a
 light in it runs its other lights, each on its own, one command per light. A device whose pairing never completes stays
 refused until you pair it again in Zigbee2MQTT, and until then its groups run their other lights one by one.

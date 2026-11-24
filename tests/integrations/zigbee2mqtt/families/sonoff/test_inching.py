@@ -11,12 +11,22 @@ from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, rule
 from custom_components.deviceside.integrations.zigbee2mqtt.families import sonoff
 from custom_components.deviceside.integrations.zigbee2mqtt.families.sonoff import inching
 
-from ...conftest import DEVICES, SET, answer, call, commands, failure, group, light
+from ...conftest import (
+    COMPOSITE,
+    DEVICES,
+    SENT,
+    STATE,
+    answer,
+    call,
+    commands,
+    failure,
+    group,
+    light,
+    request,
+    topic,
+)
 from .....conftest import allow_labs, refusal
 
-SENT = {"status": "sent", "integration": "zigbee2mqtt"}
-COMPOSITE = {"type": "composite", "name": "inching_control_set", "property": "inching_control_set", "access": 2}
-STATE = {"type": "switch", "features": [{"name": "state", "property": "state"}]}
 ENABLE = {"inching_control": "ENABLE", "inching_time": 1.0, "inching_mode": "OFF"}
 # Every allowlisted definition model (ZHC src/devices/sonoff.ts), by the entity the device shows as.
 MODELS = ["ZBMINIR2", "MINI-ZBD", "ZBMicro", "MINI-ZB1GS", "MINI-ZB1GSP", "BASIC-ZB1GSP", "S61SZBTPB", "MINI-ZBDIM"]
@@ -38,15 +48,6 @@ def relay(
     entry = next(device for device in broker.retained[DEVICES] if device["ieee_address"] == ieee)
     entry["definition"] = {"model": definition, "exposes": [STATE, COMPOSITE] if exposes is None else exposes}
     return entity_id
-
-
-def request(service: str, entity_id: str) -> dict:
-    """The call's data: clear_auto_off takes no duration."""
-    return {"entity_id": entity_id} | ({"duration": 5} if service == "set_auto_off" else {})
-
-
-def topic(ieee: str = "0x01") -> str:
-    return SET.replace(SET.split("/")[1], ieee)
 
 
 @pytest.mark.parametrize("model", MODELS)

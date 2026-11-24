@@ -11,12 +11,22 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from custom_components.deviceside.integrations.zigbee2mqtt.families.tuya import inching
 from custom_components.deviceside.zigbee import tuya as catalog
 
-from ...conftest import DEVICES, SET, answer, call, commands, failure, group, light
+from ...conftest import (
+    COMPOSITE,
+    DEVICES,
+    SENT,
+    STATE,
+    answer,
+    call,
+    commands,
+    failure,
+    group,
+    light,
+    request,
+    topic,
+)
 from .....conftest import allow_labs, refusal
 
-SENT = {"status": "sent", "integration": "zigbee2mqtt"}
-COMPOSITE = {"type": "composite", "name": "inching_control_set", "property": "inching_control_set", "access": 2}
-STATE = {"type": "switch", "features": [{"name": "state", "property": "state"}]}
 ENABLE = {"inching_control_1": "ENABLE", "inching_time_1": 5}
 DISABLE = {"inching_control_1": "DISABLE", "inching_time_1": 1}
 # The two strings, each as Zigbee2MQTT lists it: the WHD02 (research/tuya/2026-11-24-inching.md, ZHC#13879) and the Mowe
@@ -36,15 +46,6 @@ def switch(hass, broker, strings=WHD02, exposes=None, entity_id: str = "switch.r
     entry = next(device for device in broker.retained[DEVICES] if device["ieee_address"] == ieee)
     entry["definition"] = {"model": definition, "exposes": [STATE, COMPOSITE] if exposes is None else exposes}
     return entity_id
-
-
-def request(service: str, entity_id: str) -> dict:
-    """The call's data: clear_auto_off takes no duration."""
-    return {"entity_id": entity_id} | ({"duration": 5} if service == "set_auto_off" else {})
-
-
-def topic(ieee: str = "0x01") -> str:
-    return SET.replace(SET.split("/")[1], ieee)
 
 
 def fields(strings, *exposes: str) -> dict:
@@ -201,7 +202,10 @@ async def test_a_set_z2m_logs_failed_is_rejected(hass, setup_production, broker)
 async def test_a_group_falls_back_so_each_member_gets_its_own_call(hass, setup_production, broker):
     """A Z2M group's call isn't the composite, so the group falls back to its members."""
     entity_id = group(
-        hass, broker, one={"manufacturer": "Tuya", "model_id": "WHD02", "zigbee": (WHD02[0], WHD02[1])}, two={}
+        hass,
+        broker,
+        one={"manufacturer": "Tuya", "model_id": "WHD02", "zigbee": (WHD02[0], WHD02[1])},
+        two={},
     )
     for entry in broker.retained[DEVICES]:
         if entry["ieee_address"] == "0x01":

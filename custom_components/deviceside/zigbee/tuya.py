@@ -1,5 +1,6 @@
-"""Tuya's Zigbee strings, as both Zigbee stacks' Tuya rules read them off the device's own manufacturer and model.
-Which class a match gives, and the order the rules run in, is each integration's.
+"""Tuya's Zigbee strings, as the Zigbee stacks' Tuya rules read them off the device's own manufacturer and model.
+Which class a match gives, and the order the rules run in, is each integration's. The two inching strings are read by
+Zigbee2MQTT alone for now: ZHA has no inching call (deferred).
 
 Two kinds of constant, told apart by name. A `*_PATTERN` is a regex the string must fully match, used as it is. Every
 other is a literal string, the device's own: a rule that tests it wraps it in `re.escape`, so a character with a regex
