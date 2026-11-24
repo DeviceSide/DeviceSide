@@ -17,7 +17,9 @@ from custom_components.deviceside.core.scope import (
     CaveatKind,
     IntegrationInfo,
     Level,
+    documented,
     labs,
+    labs_fields,
     verified,
 )
 from scripts import check_release as cr
@@ -760,12 +762,60 @@ def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released,
 
 @pytest.mark.parametrize(
     "scope",
-    [AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)), AdapterScope(domains=labs("light"))],
-    ids=["unmaintained", "labs"],
+    [
+        AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)),
+        AdapterScope(domains=verified("light"), capabilities=verified("hue") | labs("ikea")),
+        AdapterScope(domains=verified("light"), capabilities=verified("hue") | documented("ikea")),
+        AdapterScope(
+            capabilities=verified("hue"),
+            fields={"brightness": Level.VERIFIED},
+            class_labs=labs_fields("brightness", classes=["hue"]),
+        ),
+    ],
+    ids=["unmaintained", "one-verified-class", "one-documented-class", "class-labs-field"],
 )
-def test_no_other_caveat_nor_the_flag_stands_in(released, gate, scope):
+def test_no_other_caveat_nor_a_mixed_scope_stands_in(released, gate, scope):
     pin(released, "stop", "b")
     assert gate(on=registry(stop=scope))[0] == 1
+
+
+ALL_LABS = [
+    AdapterScope(domains=labs("light")),
+    AdapterScope(capabilities=labs("hue", "ikea")),
+    AdapterScope(domains=verified("light", "switch"), capabilities=labs("hue", "ikea")),
+]
+
+
+@pytest.mark.parametrize("scope", ALL_LABS, ids=["flagged-whole", "every-class-labs", "every-class-labs-two-domains"])
+def test_an_all_labs_action_needs_no_signoff_and_no_caveat(released, gate, scope):
+    change = pin(released, "stop", "b")
+    head = f"fake / stop: calls changed at {change[:7]}"
+    assert gate(on=registry(stop=scope)) == (0, ["Since v0.1.0:", f"{head}; in Labs: no sign-off needed"], [])
+    # Nothing to rerun, and the rig's selection leaves it out.
+    assert gate("--reruns", on=registry(stop=scope))[1] == {}
+    assert gate("--json", on=registry(stop=scope))[1] == []
+
+
+def test_an_all_labs_action_with_a_signoff_still_reports_it(released, gate):
+    pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    assert "signed off by record" in gate(on=registry(stop=ALL_LABS[0]))[1][1]
+
+
+def test_the_notes_still_name_an_all_labs_action(released, tmp_path):
+    notes = tmp_path / "notes.md"
+    pin(released, "stop", "b")
+    assert cr.main(["--signoffs", "--notes", str(notes)], registry(stop=ALL_LABS[0])) == 0
+    assert notes.read_text().startswith("## Help us test\n")
+    assert "\n- Fake\n" in notes.read_text()
+
+
+def test_a_class_in_labs_on_some_domains_alone_makes_a_mixed_action():
+    on_light = AdapterScope(
+        domains=verified("light", "switch"), capabilities=labs("hue", domains=["light"]) | verified("ikea")
+    )
+    assert not cr.runs_only_in_labs(on_light)
+    assert cr.runs_only_in_labs(replace(on_light, capabilities=labs("hue", "ikea")))
 
 
 def test_a_caveat_on_an_unchanged_adapter_does_not(released, gate):
