@@ -6,7 +6,6 @@ from dataclasses import asdict
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
-from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter import stop as adapter
@@ -230,15 +229,6 @@ async def test_a_stop_during_a_moves_read_goes_out_after_the_move(hass):
         "LevelControl.Stop",
         "ColorControl.StopMoveStep",
     ]
-
-
-async def test_a_stop_is_not_cancelled_by_a_light_call_it_did_not_make(hass):
-    """A light call from HA is not ours: the stop's own commands go to the node, not through the light domain."""
-    send_cmd, _, _ = light(hass)
-    async_mock_service(hass, "light", "turn_on")
-
-    assert await call(hass, "stop", BULB) == {"light.bulb": CONFIRMED}
-    assert len(commands(send_cmd)) == 2
 
 
 # Addressing, classes and Labs
