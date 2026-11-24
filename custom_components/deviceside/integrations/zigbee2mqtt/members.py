@@ -35,7 +35,7 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
     member it lists has no device in HA; the group then counts as a Labs item, and the dispatcher refuses it where
     the call harms a class (turn_on_for).
     """
-    if (address := group_address(hass, target)) is None or (cache := bridge_cache.get(hass)) is None:
+    if (address := group_address(hass, target)) is None or (cache := bridge_cache.get(hass, address.base)) is None:
         return None
     gid = address.z2m_id
     if (groups := cache.parsed("groups")) is None or not any(str(g.get("id")) == gid for g in groups):

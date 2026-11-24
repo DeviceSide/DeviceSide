@@ -7,9 +7,11 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache, members
 
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_bridge
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_bridge, add_z2m_group
 
 BASE = "zigbee2mqtt"
 
@@ -443,3 +445,30 @@ def test_an_options_error_is_scrubbed_of_the_id_it_was_asked_about():
         bridge_cache.scrub(f"Device '{IEEE}' does not exist", IEEE, label="device")
         == "Device '<device>' does not exist"
     )
+
+
+async def test_a_group_on_another_instance_does_not_read_the_cached_one(
+    hass, setup_production, online, connection, mqtt_up
+):
+    await start(hass, setup_production)
+    add_z2m_bridge(hass, setup_production, "z2m_up")
+    other = bridge_cache.get(hass, "z2m_up")
+
+    assert bridge_cache.get(hass, BASE) is not None
+    assert other is None
+    # bridge/groups of the cached instance isn't served to the other instance: it reads fresh, and times out here.
+    with pytest.raises(TimeoutError, match="no bridge/groups from Zigbee2MQTT"):
+        await bridge.group_members(hass, "z2m_up", "7")
+    assert await bridge.group_members(hass, BASE, "7") == ["0x01"]
+
+
+async def test_expand_group_of_another_instance_gets_no_members(
+    hass, setup_production, online, connection, mqtt_up, monkeypatch
+):
+    monkeypatch.setattr(members, "bridge_cache", bridge_cache)  # the real cache, not the fixture's stand-in
+    await start(hass, setup_production)
+    entry = hass.config_entries.async_entries("mqtt") or [setup_production]
+    add_z2m_group(hass, entry[0], "light.up_room", group_id=7, name="room", base_topic="z2m_up", bridge_base="z2m_up")
+    registry = get_runtime(hass).registry
+
+    assert members.expand_group(hass, resolve(hass, registry, "light.up_room")) is None

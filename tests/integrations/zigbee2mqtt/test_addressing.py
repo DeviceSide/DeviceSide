@@ -140,7 +140,7 @@ async def test_a_disabled_bridge_entity_still_gives_the_base_topic(hass):
     entities.async_get_or_create(
         "binary_sensor",
         "mqtt",
-        f"bridge_{ieee}_restart_required_home/z2m",
+        f"bridge_{ieee}_coordinator_version_home/z2m",
         config_entry=entry,
         device_id=bridge.id,
         disabled_by=er.RegistryEntryDisabler.INTEGRATION,
@@ -202,3 +202,29 @@ async def test_a_group_whose_encoded_base_is_the_other_instances_is_refused(hass
     assert topic(hass, room, "set") is None
     assert options_address(hass, room) is None
     assert not_addressable(hass, room) == "not_addressable"
+
+
+def _bridge_with(hass, entity_ids: list[str]):
+    """A bridge device holding bridge entities with these object_id and base topic tails."""
+    entry = z2m_entry(hass)
+    bridge = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={("mqtt", "zigbee2mqtt_bridge_0x01")}
+    )
+    for tail in entity_ids:
+        er.async_get(hass).async_get_or_create(
+            "sensor", "mqtt", f"bridge_0x01_{tail}", config_entry=entry, device_id=bridge.id
+        )
+    return bridge
+
+
+async def test_a_base_that_starts_like_an_object_id_is_settled_by_a_second_entity(hass):
+    # `restart` on base "required_x" reads as `restart_required` on base "x" too; `connection_state` settles it.
+    bridge = _bridge_with(hass, ["restart_required_x", "connection_state_required_x"])
+
+    assert bridge_bases(hass)[bridge.id] == "required_x"
+
+
+async def test_a_base_the_bridge_s_entities_leave_ambiguous_is_refused(hass):
+    bridge = _bridge_with(hass, ["restart_required_x"])
+
+    assert bridge.id not in bridge_bases(hass)

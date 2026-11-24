@@ -116,10 +116,10 @@ def broker(hass, monkeypatch):
 
     # The dispatcher lists a group's members from bridge/groups as the running cache would hold it, once the entry is
     # set up; a test's own cache stays, once it holds bridge/groups.
-    def held(hass):
-        if (cache := bridge_cache.get(hass)) is not None and cache.parsed("groups") is not None:
+    def held(hass, base=None):
+        if (cache := bridge_cache.get(hass, base)) is not None and cache.parsed("groups") is not None:
             return cache
-        return HeldGroups(fake) if DATA in hass.data else None
+        return HeldGroups(fake) if DATA in hass.data and base in (None, "zigbee2mqtt") else None
 
     monkeypatch.setattr(members, "bridge_cache", SimpleNamespace(get=held))
     monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=held))

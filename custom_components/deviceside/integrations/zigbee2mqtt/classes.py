@@ -36,7 +36,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from . import bridge_cache, rules
-from .addressing import z2m_address
+from .addressing import device_base, z2m_address
 from .families import FAMILIES, REGISTRY_PLACED, RULES
 from .refusals import REFUSALS
 from .rules import ZIGBEE, definition_fields, zigbee_strings
@@ -85,9 +85,9 @@ def class_scope(action: str) -> dict[str, Any]:
 
 def _listed(hass: HomeAssistant, device: dr.DeviceEntry) -> dict | None:
     """The device's entry in the held bridge/devices; None while none is held, or for a device it doesn't list."""
-    if (ieee := z2m_address(device)) is None or (cache := bridge_cache.get(hass)) is None:
+    if (ieee := z2m_address(device)) is None or (base := device_base(hass, device)) is None:
         return None
-    return cache.device(ieee)
+    return None if (cache := bridge_cache.get(hass, base)) is None else cache.device(ieee)
 
 
 def zigbee_manufacturer(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:

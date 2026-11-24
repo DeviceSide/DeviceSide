@@ -26,12 +26,17 @@ _IEEE_ADDRESS = re.compile(r"^0x[0-9a-fA-F]+$")
 # The bridge's device identifier, `zigbee2mqtt_bridge_<coordinator IEEE>`.
 _BRIDGE_IDENTIFIER = re.compile(r"zigbee2mqtt_bridge_(0x[0-9a-fA-F]+)")
 # A bridge entity's unique_id, `bridge_<coordinator IEEE>_<object_id>_<base topic>`, the base topic verbatim (spaces and
-# `/` included). The object_ids are Z2M's fixed eight; some are disabled by default, so any one counts. Longer first,
-# as `restart` begins `restart_required`.
-_BRIDGE_ENTITY = re.compile(
-    r"bridge_(0x[0-9a-fA-F]+)_"
-    r"(?:restart_required|coordinator_version|connection_state|network_map|permit_join|log_level|restart|version)"
-    r"_(.+)"
+# `/` included). The object_ids are Z2M's fixed eight; some are disabled by default, so any one counts.
+_BRIDGE_ENTITY = re.compile(r"bridge_(0x[0-9a-fA-F]+)_(.+)")
+_BRIDGE_OBJECT_IDS = (
+    "connection_state",
+    "restart_required",
+    "restart",
+    "log_level",
+    "version",
+    "coordinator_version",
+    "network_map",
+    "permit_join",
 )
 
 
@@ -59,10 +64,15 @@ def _bridge_base(hass: HomeAssistant, bridge: dr.DeviceEntry) -> str | None:
     )
     if ieee is None:
         return None
+    # An object_id may end in what a base topic can start with (`restart` and `required_x`), so each entity allows every
+    # base its unique_id splits into; the bridge's base is the one all of them allow, and none if that isn't one.
+    allowed: set[str] | None = None
     for entry in er.async_entries_for_device(er.async_get(hass), bridge.id, include_disabled_entities=True):
-        if entry.platform == "mqtt" and (m := _BRIDGE_ENTITY.fullmatch(entry.unique_id)) and m[1] == ieee:
-            return m[2]
-    return None
+        if entry.platform != "mqtt" or not (m := _BRIDGE_ENTITY.fullmatch(entry.unique_id)) or m[1] != ieee:
+            continue
+        bases = {m[2][len(o) + 1 :] for o in _BRIDGE_OBJECT_IDS if m[2].startswith(f"{o}_") and len(m[2]) > len(o) + 1}
+        allowed = bases if allowed is None else allowed & bases
+    return next(iter(allowed)) if allowed is not None and len(allowed) == 1 else None
 
 
 def bridge_bases(hass: HomeAssistant) -> dict[str, str]:
@@ -72,7 +82,7 @@ def bridge_bases(hass: HomeAssistant) -> dict[str, str]:
     }
 
 
-def _device_base(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
+def device_base(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
     """The base topic of the bridge the device links to (`via_device`)."""
     if device.via_device_id is None or (bridge := dr.async_get(hass).async_get(device.via_device_id)) is None:
         return None
@@ -81,7 +91,7 @@ def _device_base(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
 
 def base_topic(hass: HomeAssistant, target: Target) -> str | None:
     """The base topic of the target's Zigbee2MQTT instance, from its device's bridge; None when it has none known."""
-    return None if target.device is None else _device_base(hass, target.device)
+    return None if target.device is None else device_base(hass, target.device)
 
 
 def known_base(hass: HomeAssistant, target: Target) -> str:
@@ -213,7 +223,7 @@ def not_addressable(hass: HomeAssistant, target: Target, *, reads_state: bool = 
 def state_entity(hass: HomeAssistant, device: dr.DeviceEntry, domain: str) -> er.RegistryEntry | None:
     """The device's unsuffixed state entity in the domain (`state_unique_id`), whether or not it is disabled; None
     when it has none, or its bridge is unknown."""
-    if (address := z2m_address(device)) is None or (base := _device_base(hass, device)) is None:
+    if (address := z2m_address(device)) is None or (base := device_base(hass, device)) is None:
         return None
     wanted = state_unique_id(address, domain, base)
     return next(

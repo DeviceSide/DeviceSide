@@ -61,7 +61,7 @@ async def retained(hass: HomeAssistant, base: str, suffix: str) -> Any:
     """
     if (
         suffix in bridge_cache.HELD
-        and (cache := bridge_cache.get(hass)) is not None
+        and (cache := bridge_cache.get(hass, base)) is not None
         and (held := cache.parsed(suffix)) is not None
     ):
         return held
@@ -107,7 +107,7 @@ async def ensure_options(
     reply doesn't come, or a reply is an error. Awaits `ahead` with each ID and its options before its request goes out.
     """
     section = f"{kind}s"
-    cache = bridge_cache.get(hass)
+    cache = bridge_cache.get(hass, base)
     shared = cache is not None and cache.replies_live
     pending: dict[str, asyncio.Future[dict]] = cache.pending if shared else {}
     transactions: list[str] = []
@@ -191,8 +191,8 @@ def logged_options(hass: HomeAssistant, target: Target) -> dict:
     Known limit: a set whose write timed out is not in the cache, so the stamp shows the prior value (that path logs
     a warning).
     """
-    cache = bridge_cache.get(hass)
     address = options_address(hass, target)
+    cache = bridge_cache.get(hass, address.base) if address is not None else None
     settings = cache.settings(f"{address.kind}s", address.z2m_id) if cache is not None and address is not None else None
     return {OPTION: None if settings is None else bool(settings.get(OPTION))}
 

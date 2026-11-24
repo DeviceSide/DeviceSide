@@ -254,11 +254,14 @@ def reply_router(pending: dict[str, asyncio.Future[dict]]) -> Callable[[mqtt.Rec
     return received
 
 
-def get(hass: HomeAssistant) -> BridgeCache | None:
-    """The running cache, or None before MQTT is up, after unload, or outside an entry (a test, a removal)."""
+def get(hass: HomeAssistant, base: str | None = None) -> BridgeCache | None:
+    """The running cache, or None before MQTT is up, after unload, or outside an entry (a test, a removal). With a
+    base, only a cache of that instance: one instance is cached until step 3 of the any-base-topic plan, so another
+    instance's caller reads fresh."""
     if (runtime := hass.data.get(DATA)) is None:
         return None
-    return runtime.integration_state.get(_KEY)
+    cache = runtime.integration_state.get(_KEY)
+    return cache if cache is not None and (base is None or cache.base == base) else None
 
 
 async def async_setup(
