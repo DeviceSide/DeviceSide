@@ -1,0 +1,975 @@
+[
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 10.0,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 64
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevel",
+       "level": 25,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 8
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 20.0,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevel",
+       "level": 51,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 15
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 50.0,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": "at_limit",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevelWithOnOff",
+       "level": 0,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 25
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevel",
+       "level": 127,
+       "optionsMask": 1,
+       "optionsOverride": 1,
+       "transitionTime": 0
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevelWithOnOff",
+       "level": 0,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 25
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ],
+   [
+    [
+     "service",
+     "light.turn_on",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevelWithOnOff",
+       "level": 0,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 25
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevelWithOnOff",
+       "level": 0,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 25
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevelWithOnOff",
+       "level": 0,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 25
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "light.turn_off",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevelWithOnOff",
+       "level": 0,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 25
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 64
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevelWithOnOff",
+       "level": 0,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "transitionTime": 13
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevel",
+       "level": 64,
+       "optionsMask": 1,
+       "optionsOverride": 1,
+       "transitionTime": 0
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ }
+]

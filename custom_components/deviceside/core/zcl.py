@@ -19,6 +19,14 @@ CURRENT_X = 0x0003
 CURRENT_Y = 0x0004
 COLOR_TEMPERATURE = 0x0007  # ColorTemperatureMireds
 
+# Color Control's MoveMode (ZCL) and MoveModeEnum (Matter), one encoding: Up 1, Down 3 (0 is Stop, 2 reserved).
+MOVE_UP = 0x01
+MOVE_DOWN = 0x03
+
+# Level and Color Control's Options bit 0, ExecuteIfOff (ZCL's Options attribute, Matter's OptionsBitmap): set in a
+# command's options mask and override, the command applies to a light that is off, which stores the value and stays off.
+EXECUTE_IF_OFF = 0x01
+
 # Color capability bits, one layout in ZCL's ColorCapabilities (0x400A) and Matter's Color Control FeatureMap (0xFFFC).
 HUE_SATURATION = 0x01
 ENHANCED_HUE = 0x02
@@ -28,6 +36,13 @@ TEMPERATURE_COLOR = 0x10
 # A ZCL or Matter CurrentX and CurrentY (and ColorX/ColorY in MoveToColor) are the CIE coordinate in 1/65536 steps, 0 to
 # 0xFEFF in use; a coordinate x in 0-1 is sent as round(x * XY_SCALE) and read as value / XY_SCALE.
 XY_SCALE = 65535
+
+# MoveHue's rate is in steps of 1/254 of the hue cycle per second (CurrentHue's 0-254 scale), a uint8 from 1: the
+# longest cycle is one step a second, 254 s.
+HUE_STEPS = 254
+# EnhancedMoveHue's rate is in steps of 1/65536 of the cycle per second (EnhancedCurrentHue is a uint16 in 360/65536
+# degrees, so the cycle is 65536 steps), a uint16 from 1: its largest rate is 65535, and the longest cycle 65535 s.
+ENHANCED_HUE_STEPS = 65535
 
 # OnTime counts down live, so a read-back lands a little under the request: the slack the rig's ZHA timing allows, 3 s.
 READBACK_SLACK_TENTHS = 30

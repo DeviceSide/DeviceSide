@@ -6,8 +6,9 @@ on the [device compatibility page](../../device-compatibility.md); how the calls
 in [internals.md](internals.md).
 
 Plugs and lights on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which
-Matter's timer needs; one without it is refused (`no_lt_feature`). A light can also be set without turning on
-([below](#flash-free-turn-on)); one with no brightness control on that endpoint is refused it (`not_dimmable`).
+Matter's timer needs; one without it is refused (`no_lt_feature`). A light can also be dimmed and faded
+([below](#smooth-dimming)) and set without turning on ([below](#flash-free-turn-on)); one with no brightness control on
+that endpoint is refused these (`not_dimmable`).
 
 ## Turn on with timer
 
@@ -17,6 +18,31 @@ while one runs keeps the longer of the two, so a shorter one is `sent`, not `con
 ([tested](internals.md#tested-behavior)). By the spec, a device turned off mid-timer ignores a new timer for
 the next 0.1 s and stays off (`sent`). If the device restarts while a timer runs, after a power cut say, it can come
 back on with no timer ([internals](internals.md#what-decides-the-call)).
+
+## Smooth dimming
+
+`raise_brightness` and `lower_brightness` read the light's level live, mid-fade included, then send one fade the light
+runs itself; `stop` halts it and reads where it halted. A full-range `sweep_time` runs 0.1 s to about 109 minutes; one
+outside that is clamped (`clamped_to`).
+
+- **Soft off.** Once a fade to 0 % has run, the light's old level is put back while it stays off, so the next plain
+  on comes back there. A brightness move, a `stop` or a light call from Home Assistant before then cancels
+  that, and a `stop` during the fade leaves the light on at the level it halted at. A light turned on elsewhere in the
+  meantime keeps its level. A restart of Home Assistant before the restore loses it, and the light comes back at its
+  lowest level.
+- **`stop`** reads where the light halted: `confirmed` when it held still, `sent` (`still_fading`) when it kept
+  moving. A slow move, such as a long hue cycle, can read `confirmed` while it still moves
+  ([internals](internals.md#stop)). A light that is off is `unchanged` (`off`).
+
+## Smooth color changes
+
+- **Saturation** fades as brightness does, on a light that is on. It doesn't turn on a light that is off
+  (`unchanged`, `off`).
+- **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 65535 s, or 1 to 254 s on a light
+  without enhanced hue; one outside that is clamped (`clamped_to`). A light that is off is `unchanged` (`off`).
+- A light without hue and saturation (its Color Control lacks the HS feature) keeps its color: saturation and hue
+  moves leave it `unchanged` (`fields_dropped`).
+- `stop` halts a color move too, and on a light with hue and saturation its read-back covers them.
 
 ## Flash-free turn-on
 
@@ -61,17 +87,19 @@ feature.
 
 A Matter light takes the same `OnWithTimedOff` command and timer reads as a plug, so it falls in the class its
 vendor and product IDs give it, as a plug does, and inherits that class's features. Its endpoint needs the Lighting
-feature, as [above](#matter). Set without turning on is admitted by research, not a run: certification tests the
-command on a light that is off for brightness and xy color since Matter 1.0, and no Matter light is on the rig yet
-([research](research/2026-11-24-level-color.md), Q1). A device report is how it moves up.
+feature, as [above](#matter). Smooth dimming, smooth color changes and set without turning on are admitted by
+research, not a run, and no Matter light is on the rig yet: certification tests the fade, move and stop commands on a
+light that is on, and, since Matter 1.0, the set-while-off command on a light that is off for brightness and xy color
+([research](research/2026-11-24-level-color.md), Q1). A device report is how they move up.
 
 ### Multi-endpoint devices
 
 A certified device with more than one on/off part, such as a power strip, a two-gang switch or a light with several
 lit parts. Certification tests the timer on one of its parts, and DeviceSide can't tell which, so turn on with timer
-and get attributes aren't built for them yet, even with Labs on. Set without turning on is admitted, as on a
-single-part device: writes earn no certification credit anyway, and each part has its own brightness and color
-server, so the number of parts doesn't change how one part takes the call.
+and get attributes aren't built for them yet, even with Labs on. The light features (smooth dimming, smooth color
+changes, set without turning on) are admitted, as on a single-part device: they earn no certification credit from
+the timer test anyway, and each part has its own brightness and color server, so the number of parts doesn't change
+how one part takes the call.
 
 ### Matter bridges
 

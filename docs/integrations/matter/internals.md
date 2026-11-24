@@ -116,6 +116,11 @@ when a brightness went to a light HA shows off, since it decides only the level 
 `emberAfOnOffClusterLevelControlEffectCallback`, an On goes to OnLevel when it is non-null, else to CurrentLevel
 ([research](research/2026-11-24-level-color.md), Q2). DeviceSide never writes OnLevel: it is the user's device setting.
 
+The call runs in two passes (plan Decision 14): every light's commands, each light in an integration slot (Matter's
+`max_concurrency` is 2); then one `WRITE_FADE_WAIT_S` sleep outside every slot; then each light's read-back in a slot
+of its own. So the wait doesn't hold a slot, and a call to many lights costs one wait, as ZHA's refreshes run outside
+the slots (`zha/set_attributes.py`). A light the first pass rejected or left unchanged keeps that result.
+
 Why it reads back (plan Decision 8): no Matter light has run on the rig, and the quirks below make a write a light
 accepted no proof it kept it. Dropping the read-back per class: `docs/deferred.md`.
 
@@ -140,6 +145,69 @@ Quirks:
   ([`light.py`](https://github.com/home-assistant/core/blob/112e3548608f89297987c46bbfbca9666737e5b1/homeassistant/components/matter/light.py)),
   and its brightness as `MoveToLevelWithOnOff` with none, which is why it can't set a light while off
   ([home-assistant/core#175904](https://github.com/home-assistant/core/issues/175904)).
+
+### `fade`
+
+Brightness and saturation are `core/level_fade.py`'s LevelFade, as on Shelly and Control4 (plan Decision 4): a live
+`read_attribute` of OnOff (`<ep>/6/0`) and CurrentLevel (`<ep>/8/0`) or CurrentSaturation (`<ep>/768/1`), then one
+MoveTo whose `transitionTime` (tenths) covers the distance left at the `sweep_time`'s speed. A full range runs 0.1 s to
+6553.4 s, TransitionTime's uint16 (`core/zcl.py`'s `MAX_TENTHS_S`); a `sweep_time` outside is clamped. Both
+attributes are 0–254, a percent × 254/100. The read is live, not the node cache: the reference server steps CurrentLevel
+through a transition and a read returns where it is, while a subscription reports at most once per max(1 s, T/4), and
+quieter reporting arrived only in Matter 1.4 ([research](research/2026-11-24-level-color.md), Q2–Q3). So nothing
+remembers a position, and `heading_there` is always False.
+
+- `raise_brightness`: `LevelControl.MoveToLevelWithOnOff` with `optionsMask=0`, `optionsOverride=0`, which turns
+  the light on. A light that reads off first gets `MoveToLevel` to 1 with `transitionTime=0`, `optionsMask=1` and
+  `optionsOverride=1` (ExecuteIfOff, as `set_attributes` sends it), so it fades in from the bottom rather than its
+  stored level: ZHA's preset (plan Decision 5). TC-LVL-3.1 certifies MoveToLevel with that override on an off light
+  (research, Q1).
+- `lower_brightness`: `MoveToLevel` to a limit; to 0 %, `MoveToLevelWithOnOff` to 0, the soft off, which leaves
+  CurrentLevel at the light's minimum. `RESTORE_AFTER_S` (1 s, ZHA's `END_REFRESH_S`; no Matter light has measured
+  it) after the fade should end, a job reads OnOff and, on a light that reads off, sends `MoveToLevel` to the start
+  level with ExecuteIfOff and no transition, so the next On comes up there; a light that reads on keeps its level.
+- Saturation: `ColorControl.MoveToSaturation` (`optionsMask=0`) on a lit light with the HS feature (Color Control
+  FeatureMap `<ep>/768/65532` bit 0, read from the node cache). `raises_from_off` is False, so an off light is
+  `unchanged` (`off`) (plan Decision 6), and one without HS `fields_dropped`. It ends the light's hue cycle.
+- Hue (`MatterHueMove`): `EnhancedMoveHue` where the FeatureMap has EHUE (bit 1), else `MoveHue`, with `moveMode`
+  Up (1) or Down (3) and `optionsMask=0`, running until a stop, as on ZHA. The rate is `core/zcl_fade.hue_cycle`'s,
+  in steps of the wheel per second: EnhancedMoveHue's wheel is 65535 steps and its rate a uint16, MoveHue's 254 steps
+  and its rate a uint8, so a cycle runs 1 s to 65535 s or to 254 s (one step a second at the longest); a `sweep_time`
+  outside is clamped, with `clamped_to`. OnOff is read first: an off light is `unchanged` (`off`), one without HS
+  `fields_dropped`. The cycling lights are in `hue_moves`, which a stop and a light call from HA that sets a color
+  or turns the light off clear.
+
+**The restore and its cancels.** The job is scheduled under `matter:restore:<entity_id>` with `must_run`, so an
+unload leaves it to run at its time; a restart loses it. The light's entry in `soft_off_restores` holds a token the
+job checks before and after its OnOff read. A later brightness move replaces the entry (taken before its send, and put
+back if the send fails); `stop` and a light call from HA drop it and cancel the job, the latter through
+`MatterCallResolver`, the `ha_watch` resolver pattern of `zha/fade.py`. A saturation or hue move leaves it, as the
+level fade still ends off (plan Decision 5). Our own commands go to the node, not through the light domain, so they
+pass the watch by.
+
+**The per-light lock.** `light_lock` is held by a brightness or saturation move from its read to its MoveTo
+(`LevelFade.guard`), by a hue move, by `stop` and by the restore job, so a stop that arrives mid-move goes out after
+the move's send rather than ahead of it, and the restore can't interleave with a move.
+
+### `stop`
+
+`LevelControl.Stop` (`optionsMask=0`, `optionsOverride=0`) to each light, plus
+`ColorControl.StopMoveStep` (the same options) on one with a Color Control server, always: no state of ours says what
+a light was told (saturation moves aren't tracked), and with nothing moving neither changes anything (plan Decision 10).
+In the reference server Stop holds CurrentLevel where it is and StopMoveStep holds the color, and TC-LVL-6.1 and
+TC-CC-8.1 check that the value holds after the stop (research, Q1–Q2). The sends go first and the light's OnOff is
+read after them, so a stop doesn't overshoot by a read's round trip. A light that reads off is `unchanged` (`off`):
+without ExecuteIfOff the server drops a Stop to an off light, and nothing fades on one. Its soft-off restore, if one
+is pending (a soft off that finished before the stop), still runs. A light that reads on has its restore cancelled, so
+a halted soft off stays on at the halt level, as on ZHA. Either way the stop drops its hue cycle. It holds the light's
+lock (`fade`).
+
+Then the read-back (plan Decision 8): OnOff and CurrentLevel, plus CurrentSaturation and CurrentHue (`<ep>/768/0`) on
+a light with HS, read live twice, `READ_GAP_S` (0.2 s) apart, each pass in a slot of its own so the gap holds none.
+Equal reads are `confirmed`; unequal ones `sent` (`still_fading`), with both reads logged at DEBUG; a light that
+reads off on the second is `unchanged` (`off`); a read that raises is `sent` (`readback_failed`). The reference
+server steps CurrentLevel every T/|Δ| (research, Q2), so a fade slower than a step per 0.2 s, such as a long hue cycle,
+can read equal while it still moves. Dropping the reads per class: `docs/deferred.md`.
 
 ## Tested behavior
 

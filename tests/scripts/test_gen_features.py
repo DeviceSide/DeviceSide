@@ -271,14 +271,22 @@ def test_repeated_headings_get_githubs_numbered_anchors():
 def test_a_cells_icons_link_to_the_features_section_of_the_integrations_page_or_else_the_page(monkeypatch):
     monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "zigbee2mqtt")})
     text = gf.generate(
-        FakeRegistry(*every_row(domains=verified("light")), *every_row("matter", domains=verified("light")))
+        FakeRegistry(
+            *every_row(domains=verified("light")),
+            *every_row("matter", domains=verified("light")),
+            *(
+                adapter("zigbee2mqtt", action, domains=verified("light"))
+                for action in ("raise_brightness", "lower_brightness", "stop")
+            ),
+        )
     )
     shelly = cells(text, "Get attributes")[2]
     assert shelly.startswith(f'<a href="{DOCS}integrations/shelly/index.md#get-attributes"><img ')
     matter = cells(text, "Get attributes")[4]
     assert f'href="{DOCS}integrations/matter/index.md#get-attributes"' in matter
-    # The Matter page has no smooth dimming section, so its cell links to the page.
-    assert f'href="{DOCS}integrations/matter/index.md"><img ' in cells(text, "Smooth dimming")[4]
+    assert f'href="{DOCS}integrations/matter/index.md#smooth-dimming"' in cells(text, "Smooth dimming")[4]
+    # The Zigbee2MQTT page has no smooth dimming section, so its cell links to the page.
+    assert f'href="{DOCS}integrations/zigbee2mqtt/index.md"><img ' in cells(text, "Smooth dimming")[0]
     blocked = cells(text, "Turn off with timer")[0]
     assert blocked.startswith(f'<a href="{DOCS}integrations.md#what-cant-be-done-and-why"><img ')
     assert "/no.svg" in blocked

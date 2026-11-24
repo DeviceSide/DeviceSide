@@ -421,7 +421,7 @@ def test_each_adapter_takes_its_actions_kind_which_ends_its_warnings():
 def test_call_resolvers_are_keyed_by_ha_domain():
     registry = AdapterRegistry.discover()
 
-    assert set(registry.call_resolvers()) == {"hue", "zha", "mqtt"}
+    assert set(registry.call_resolvers()) == {"hue", "zha", "mqtt", "matter"}
 
 
 def test_two_call_resolvers_for_one_ha_domain_are_refused():

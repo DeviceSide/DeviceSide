@@ -1,0 +1,179 @@
+[
+ {
+  "action": "raise_saturation",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": 80.0,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/768/1",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/768/1": 127
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "ColorControl.MoveToSaturation",
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "saturation": 203,
+       "transitionTime": 15
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/768/1",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/768/1": 127
+    }
+   ]
+  ]
+ }
+]

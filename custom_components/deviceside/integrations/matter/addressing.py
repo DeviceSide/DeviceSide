@@ -21,8 +21,15 @@ from ...core.zcl import (
     ON_TIME,
     READBACK_SLACK_TENTHS,
 )
+from ...core.zcl import EXECUTE_IF_OFF as EXECUTE_IF_OFF_BIT
 
 _MATTER_DOMAIN = "matter"
+
+# The Options override of a Level or Color Control command: optionsMask picks the Options bits this command overrides,
+# optionsOverride their values, and bit 0 is ExecuteIfOff. With it set, a light that is off stores the value and stays
+# off; with neither set, the light's own Options apply (a lit light, or a stop with nothing running).
+EXECUTE_IF_OFF = {"optionsMask": EXECUTE_IF_OFF_BIT, "optionsOverride": EXECUTE_IF_OFF_BIT}
+NO_OVERRIDE = {"optionsMask": 0, "optionsOverride": 0}
 
 # OnOff cluster constants (Matter spec, cluster 0x0006)
 _FEATUREMAP_ATTR_ID = 65532  # 0xFFFC
@@ -118,8 +125,14 @@ def has_level(node, endpoint_id: int) -> bool:
 
 def color_features(node, endpoint_id: int) -> int:
     """The endpoint's Color Control FeatureMap from the node's attribute cache; 0 when unreported or not an int."""
-    feature_map = node.node_data.attributes.get(_attr_path(endpoint_id, COLOR_CLUSTER, _FEATUREMAP_ATTR_ID))
+    feature_map = node.node_data.attributes.get(color_feature_map_path(endpoint_id))
     return feature_map if isinstance(feature_map, int) else 0
+
+
+def has_color(node, endpoint_id: int) -> bool:
+    """True if the endpoint has a Color Control server: its FeatureMap is in the node's attribute cache (global to
+    every cluster, so present exactly when the server is). Sync, no I/O, like has_level."""
+    return color_feature_map_path(endpoint_id) in node.node_data.attributes
 
 
 def node_for(hass: HomeAssistant, target: Target):
@@ -136,13 +149,23 @@ def node_for(hass: HomeAssistant, target: Target):
 
 
 def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
-    """Why this entity can't run an OnOff timer, or None: it needs a reachable node whose endpoint has LT."""
+    """Why DeviceSide can't address this entity's OnOff endpoint, or None: it needs a reachable node whose endpoint has
+    the Lighting (LT) feature."""
     ep_id = onoff_endpoint(target.entry.unique_id)
     if ep_id is None or (node := node_for(hass, target)) is None:
         return Reason.NOT_ADDRESSABLE
     if not lt_feature(node, ep_id):
         return "no_lt_feature"
     return None
+
+
+def light_reason(hass: HomeAssistant, target: Target) -> str | None:
+    """Why a light action can't run on this entity, or None: unsupported_reason's, then not_dimmable for an endpoint
+    with no Level Control server (plan Decision 11: Level and Color Control are on the OnOff entity's endpoint)."""
+    if reason := unsupported_reason(hass, target):
+        return reason
+    # unsupported_reason found the endpoint and the node.
+    return None if has_level(node_for(hass, target), onoff_endpoint(target.entry.unique_id)) else "not_dimmable"
 
 
 def ontime_attr_path(endpoint_id: int) -> str:

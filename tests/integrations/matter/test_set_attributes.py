@@ -1,5 +1,6 @@
 """Matter set_attributes: Level and Color Control MoveTo commands with the ExecuteIfOff override, then a read-back."""
 
+import asyncio
 from dataclasses import asdict
 
 import pytest
@@ -362,3 +363,81 @@ async def test_a_color_only_write_to_an_off_light_ignores_its_on_level(hass):
 
     assert response == {"light.bulb": OTHER}
     assert reads(read_attr) == ["1/768/7"]
+
+
+def four_lights(hass):
+    """Four lit lights on endpoints 1 to 4 of one node, light.bulb_1 to light.bulb_4: more than Matter's two slots."""
+    endpoints = range(1, 5)
+    attributes = {f"{ep}/{path}": value for ep in endpoints for path, value in {"8/0": 100, "6/65532": 1}.items()}
+    entry, send_cmd, read_attr, node = light_device(hass, attributes)
+    for ep in endpoints:
+        add_matter_entity(
+            hass,
+            entry,
+            f"light.bulb_{ep}",
+            endpoint_id=ep,
+            state="on",
+            attributes={"supported_color_modes": ["brightness"]},
+        )
+    return send_cmd, read_attr, node
+
+
+async def test_every_lights_commands_go_out_before_the_first_read(hass):
+    """The wait and the read-back leave the slots (plan Decision 14): with two slots, the third and fourth lights'
+    commands don't wait for the first two lights' read-backs."""
+    send_cmd, read_attr, _ = four_lights(hass)
+    events = []
+    send, read = send_cmd.side_effect, read_attr.side_effect
+
+    def sending(node_id, endpoint_id, command):
+        events.append(("send", endpoint_id))
+        return send(node_id, endpoint_id, command)
+
+    def reading(node_id, attribute_path):
+        events.append(("read", attribute_path))
+        return read(node_id, attribute_path)
+
+    send_cmd.side_effect, read_attr.side_effect = sending, reading
+    lights = [f"light.bulb_{ep}" for ep in range(1, 5)]
+
+    response = await call(hass, "set_attributes", {"entity_id": lights, "brightness": 50})
+
+    assert {entity_id: entry["status"] for entity_id, entry in response.items()} == dict.fromkeys(lights, "confirmed")
+    assert sorted(events[:4]) == [("send", ep) for ep in range(1, 5)]
+    assert sorted(events[4:]) == [("read", f"{ep}/8/0") for ep in range(1, 5)]
+
+
+async def test_one_wait_runs_per_call(hass, monkeypatch):
+    monkeypatch.setattr(adapter, "WRITE_FADE_WAIT_S", 0.0123)
+    four_lights(hass)
+    waits = []
+    real_sleep = asyncio.sleep
+
+    async def sleep(delay, *args, **kwargs):
+        if delay == 0.0123:
+            waits.append(delay)
+        return await real_sleep(delay, *args, **kwargs)
+
+    monkeypatch.setattr(asyncio, "sleep", sleep)
+
+    await call(hass, "set_attributes", {"entity_id": [f"light.bulb_{ep}" for ep in range(1, 5)], "brightness": 50})
+
+    assert waits == [0.0123]
+
+
+async def test_a_light_left_unchanged_keeps_its_result_beside_one_read_back(hass):
+    send_cmd, read_attr, node = four_lights(hass)
+    node.attributes["2/8/0"] = 254  # above the limit: clamped
+
+    response = await call(
+        hass,
+        "set_attributes",
+        {"entity_id": ["light.bulb_1", "light.bulb_2"], "min_brightness": 10, "max_brightness": 90},
+    )
+
+    assert {entity_id: (entry["status"], entry.get("detail")) for entity_id, entry in response.items()} == {
+        "light.bulb_1": ("unchanged", "within_limits"),
+        "light.bulb_2": ("confirmed", None),
+    }
+    assert [args.kwargs["endpoint_id"] for args in send_cmd.await_args_list] == [2]
+    assert reads(read_attr)[-1] == "2/8/0"  # the read-back, of the light that sent something

@@ -7,6 +7,7 @@ set_attributes)."""
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from typing import ClassVar
 
 from homeassistant.components.light import (
@@ -20,16 +21,15 @@ from homeassistant.const import STATE_OFF, Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import (
+    EXECUTE_IF_OFF,
     color_path,
-    has_level,
     level_path,
+    light_reason,
     make_command,
     matter_client,
-    node_for,
     node_id_from_unique_id,
     on_level_path,
     onoff_endpoint,
-    unsupported_reason,
 )
 from .classes import LIGHT_ACTIONS
 from ...actions.set_attributes import LIMITS, SetAttributesRequest
@@ -60,9 +60,8 @@ from ...core.zcl_write import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# The write fade is core/zcl.py's, so a call looks alike on every transport. OptionsMask and OptionsOverride of 1 set
-# the Options bitmap's ExecuteIfOff bit for this command only: a light that is off stores the value and stays off.
-_OPTIONS = {"transitionTime": WRITE_FADE_TENTHS, "optionsMask": 1, "optionsOverride": 1}
+# The write fade is core/zcl.py's, so a call looks alike on every transport; ExecuteIfOff is addressing's.
+_OPTIONS = {"transitionTime": WRITE_FADE_TENTHS, **EXECUTE_IF_OFF}
 # A light reads a value back within one step of the one sent: it rounds to its own resolution.
 _STEP = 1
 
@@ -104,6 +103,18 @@ def _expected(command: Command, ep_id: int) -> list[Expected]:
             ]
 
 
+@dataclass(frozen=True, slots=True)
+class _Sent:
+    """What a light's read-back needs once its commands went out: what to compare, and whether OnLevel is read."""
+
+    client: object
+    node_id: int
+    ep_id: int
+    expected: list[Expected]
+    off_with_level: bool
+    dropped: bool
+
+
 def _kept(read: object, sent: int) -> bool:
     return isinstance(read, int) and not isinstance(read, bool) and abs(read - sent) <= _STEP
 
@@ -114,7 +125,8 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
     The ExecuteIfOff override makes a light that is off store the values and stay off (the research file's
     2026-11-24 Level and Color Control notes: docs/integrations/matter/research/2026-11-24-level-color.md).
     The light is CONFIRMED when CurrentLevel and the color attributes read within one step of what was sent, read
-    WRITE_FADE_WAIT_S after the last command so a mid-fade value isn't read; otherwise SENT with
+    WRITE_FADE_WAIT_S after every light's commands went out so a mid-fade value isn't read (the wait holds no
+    concurrency slot); otherwise SENT with
     attributes_not_reported, or readback_failed when a read raised. An off light whose OnLevel is set is SENT with
     on_level_set whatever it reads: the next On goes to OnLevel, not to the values stored (DeviceSide never writes
     OnLevel, a setting of the device's). A field the light can't take is dropped and the result says so, as on Hue.
@@ -137,15 +149,15 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
     )
 
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
-        if reason := super().supports(hass, request, target) or unsupported_reason(hass, target):
-            return reason
-        # unsupported_reason found the endpoint and the node.
-        node = node_for(hass, target)
-        return None if has_level(node, onoff_endpoint(target.entry.unique_id)) else "not_dimmable"
+        return super().supports(hass, request, target) or light_reason(hass, target)
 
     async def execute(
         self, hass: HomeAssistant, request: SetAttributesRequest, targets: list[Target]
     ) -> list[EntityResult]:
+        # Two passes (plan Decision 14): each light's commands in its slot, then one wait outside every slot, then
+        # each light's read-back in a slot of its own, so a slot isn't held through the wait.
+        sent: dict[str, _Sent] = {}
+
         async def send(target: Target) -> EntityResult:
             node_id = node_id_from_unique_id(target.entry.unique_id)
             ep_id = onoff_endpoint(target.entry.unique_id)
@@ -158,37 +170,52 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
                 path = level_path(ep_id)
                 # Nothing is sent yet, so a read that fails raises and rejects the light, as on ZHA.
                 current_level = (await client.read_attribute(node_id=node_id, attribute_path=path))[path]
-            sent, dropped = commands(request, modes, attrs, current_level)
-            if not sent:
+            commands_sent, dropped = commands(request, modes, attrs, current_level)
+            if not commands_sent:
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped" if dropped else "within_limits")
-            for command in sent:
+            for command in commands_sent:
                 cluster, name, fields = _wire(command)
                 _LOGGER.debug("%s: sending matter %s.%s %s", target.reported_id, cluster, name, fields)
                 await client.send_device_command(
                     node_id=node_id, endpoint_id=ep_id, command=make_command(cluster, name, **fields)
                 )
-            expected = [item for command in sent for item in _expected(command, ep_id)]
             # OnLevel decides only the level the next On comes up at: it matters to a write that sets one.
             off_with_level = (
                 target.state is not None
                 and target.state.state == STATE_OFF
-                and any(isinstance(command, MoveToLevel) for command in sent)
+                and any(isinstance(command, MoveToLevel) for command in commands_sent)
             )
-            await asyncio.sleep(WRITE_FADE_WAIT_S)
+            expected = [item for command in commands_sent for item in _expected(command, ep_id)]
+            sent[target.reported_id] = _Sent(client, node_id, ep_id, expected, off_with_level, dropped)
+            # Replaced by the read-back's result below.
+            return self.result(target, Status.SENT)
 
-            async def read(_: Target) -> dict[str, object]:
-                paths = [path for _, path, _ in expected] + ([on_level_path(ep_id)] if off_with_level else [])
-                return {
-                    path: (await client.read_attribute(node_id=node_id, attribute_path=path)).get(path)
-                    for path in paths
-                }
+        results = await self.gather(hass, targets, send)
+        if not sent:
+            return results
+        await asyncio.sleep(WRITE_FADE_WAIT_S)
+        read_backs = await self.gather(
+            hass,
+            [target for target in targets if target.reported_id in sent],
+            lambda target: self._read_back(target, sent[target.reported_id]),
+        )
+        by_id = {result.entity_id: result for result in read_backs}
+        return [by_id.get(result.entity_id, result) for result in results]
 
-            def judge(values: dict[str, object]) -> EntityResult:
-                return self._judge(target, values, expected, on_level_path(ep_id), dropped)
+    async def _read_back(self, target: Target, light: _Sent) -> EntityResult:
+        on_level = on_level_path(light.ep_id)
 
-            return await read_back(self, target, read, judge)
+        async def read(_: Target) -> dict[str, object]:
+            paths = [path for _, path, _ in light.expected] + ([on_level] if light.off_with_level else [])
+            return {
+                path: (await light.client.read_attribute(node_id=light.node_id, attribute_path=path)).get(path)
+                for path in paths
+            }
 
-        return await self.gather(hass, targets, send)
+        def judge(values: dict[str, object]) -> EntityResult:
+            return self._judge(target, values, light.expected, on_level, light.dropped)
+
+        return await read_back(self, target, read, judge)
 
     def _judge(
         self, target: Target, values: dict[str, object], expected: list[Expected], on_level: str, dropped: bool

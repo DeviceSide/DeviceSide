@@ -1,0 +1,423 @@
+[
+ {
+  "action": "raise_hue",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 0.5,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 1.0,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "ColorControl.EnhancedMoveHue",
+       "moveMode": 1,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "rate": 65535
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 1000.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 254,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "ColorControl.MoveHue",
+       "moveMode": 1,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "rate": 1
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "raise_hue",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "ColorControl.EnhancedMoveHue",
+       "moveMode": 1,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "rate": 13107
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "ColorControl.MoveHue",
+       "moveMode": 1,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "rate": 51
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "ColorControl.EnhancedMoveHue",
+       "moveMode": 1,
+       "optionsMask": 0,
+       "optionsOverride": 0,
+       "rate": 13107
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ }
+]

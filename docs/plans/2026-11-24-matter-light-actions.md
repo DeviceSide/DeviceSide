@@ -14,7 +14,7 @@ Research: [`docs/integrations/matter/research/2026-11-24-level-color.md`](../int
 ## Coordination
 
 Intent: Matter lights get set_attributes (ExecuteIfOff), raise/lower brightness, saturation and hue, and stop, in Labs on certified single- and multi-endpoint nodes.
-Touches: custom_components/deviceside/integrations/matter/**, custom_components/deviceside/core/level_fade.py, custom_components/deviceside/core/zcl.py, custom_components/deviceside/integrations/zha/zcl.py, tests/integrations/matter/**, docs/integrations/matter/**, docs/device-compatibility.md, README.md, docs/deferred.md, docs/plans/2026-11-24-matter-light-actions.md
+Touches: custom_components/deviceside/integrations/matter/**, custom_components/deviceside/core/level_fade.py, custom_components/deviceside/core/zcl.py, custom_components/deviceside/integrations/zha/zcl.py, tests/integrations/matter/**, docs/integrations/matter/**, docs/device-compatibility.md, README.md, docs/deferred.md, docs/plans/2026-11-24-matter-light-actions.md, custom_components/deviceside/integrations/zha/fade.py, custom_components/deviceside/integrations/zigbee2mqtt/fade.py, custom_components/deviceside/integrations/zigbee2mqtt/set_attributes.py, custom_components/deviceside/services.yaml, tests/core/test_level_fade.py, tests/core/test_registry.py, tests/fixtures/matter.py, tests/scripts/test_gen_features.py
 
 ## Decisions
 
@@ -40,8 +40,8 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
 5. **Raise from off** (brightness only): first `MoveToLevel(1)` with ExecuteIfOff, then
    `MoveToLevelWithOnOff(end, T)`, so the light fades in from the bottom (ZHA's preset). **Lower to 0** is
    `MoveToLevelWithOnOff(0, T)`. Once the fade has run, the start level goes back with `MoveToLevel(start)` and
-   ExecuteIfOff, so the light stays off and comes back at its old level, as on Hue and ZHA. A later move, a stop, or
-   a light call from HA cancels that restore, using the same job key and `ha_watch` resolver pattern as
+   ExecuteIfOff, so the light stays off and comes back at its old level, as on Hue and ZHA. A later brightness move, a stop,
+   or a light call from HA cancels that restore (a color move leaves it: the level fade still ends off), using the same job key and `ha_watch` resolver pattern as
    `zha/fade.py`'s `soft_off_restores`.
 6. **Saturation on an off light** is unchanged with `off`. Add `raises_from_off: ClassVar[bool] = True` to LevelFade.
    Matter's saturation adapters set it False. Shelly and Control4 don't change. This is the only core change (it needs a
@@ -50,8 +50,8 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
    TransitionTime `WRITE_FADE_TENTHS`, optionsMask 1 and optionsOverride 1. Brightness is MoveToLevel, never
    WithOnOff. Then wait `WRITE_FADE_WAIT_S` and read back.
 8. **Read-back confirms (your call).** set_attributes is confirmed when CurrentLevel and the color attributes read
-   what was sent (within one step), otherwise sent with a detail. Stop reads CurrentLevel (and saturation/hue when a
-   color move was stopped) twice, 0.2 s apart: equal values are confirmed, unequal ones are sent with `still_fading`,
+   what was sent (within one step), otherwise sent with a detail. Stop reads CurrentLevel (and saturation/hue on a light
+   with the HS feature, as saturation moves aren't tracked) twice, 0.2 s apart: equal values are confirmed, unequal ones are sent with `still_fading`,
    and a light reading off is unchanged with `off`. A failed read is sent with `readback_failed`. **The read-back may be
    dropped per class once a class leaves Labs on a pass:** record this in `docs/deferred.md` (reopens when a class's
    Labs flag lifts).
@@ -60,9 +60,10 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
    writes OnLevel because that's the user's device setting. index.md states it. Separately, the IKEA KAJPLATS honors the
    write but resumes at its old level (PR #174089): name it in internals.md's quirks. That's Labs evidence, not a split
    yet.
-10. **Stop** sends Level `Stop` (mask 0) to each lit light, plus `StopMoveStep` on lights with a Color Control
-    server, always, since it's harmless with nothing moving. It cancels the pending soft-off restore, so a halted soft
-    off stays on at the halt level, as on ZHA.
+10. **Stop** sends Level `Stop` (mask 0) to each light, plus `StopMoveStep` on lights with a Color Control
+    server, always, since it's harmless with nothing moving, and only then reads OnOff, so a stop doesn't overshoot by
+    a round trip (decided after the PR audit's M1). On a light that reads on, it cancels the pending soft-off restore,
+    so a halted soft off stays on at the halt level, as on ZHA; a light that reads off keeps its restore.
 11. **Addressing:** a light's Level Control (cluster 8) and Color Control (cluster 0x0300) are on the same endpoint as
     its OnOff entity (`addressing.onoff_endpoint`). A light with no Level Control server on that endpoint gets
     `not_dimmable` (Shelly's reason). Color features come from Color Control's FeatureMap (`<ep>/768/65532`), read
@@ -72,6 +73,16 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
     `addressing.color_features` serves step 5's hue check. OnLevel is read only when the call sets a brightness, since it
     decides only the level the next On comes up at.
 13. **Groups:** HA's Matter has no group entities. Nothing to do.
+14. **set_attributes leaves the slots before its wait** (decided after PR 1, from its audit Medium; built in step 5).
+    PR 1's `send` holds an integration slot (Matter's `max_concurrency` is 2) through `WRITE_FADE_WAIT_S` and the
+    read-back, so a call to n lights takes about 0.6 s per pair more than it needs. `execute` becomes two passes: a
+    first `self.gather` sends each light's commands in its slot and keeps what its read-back needs (expected values,
+    OnLevel or not, dropped) by `reported_id`; then one `asyncio.sleep(WRITE_FADE_WAIT_S)` outside every slot; then a
+    second `self.gather` over the lights that sent something runs `read_back`, each in a slot of its own, so the
+    deadline still bounds it. A light the first pass rejected or left unchanged keeps that result. ZHA's refreshes run
+    outside the slots for the same reason (`zha/set_attributes.py`). Tests pin, with `max_concurrency` 2 and four
+    lights, that every light's commands go out before the first read, and that one sleep runs per call. The call
+    transcript keeps its commands and reads; only their order across lights may change.
 
 ## Steps
 
@@ -91,12 +102,14 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
    with the quirks. Run `scripts/gen_compat.py` and the README regeneration. Add the read-back entry to deferred.md.
    Then the audit and ready, per the global rules.
 
-**PR 2: raise/lower and stop** (branch `wt/matter-light-fades`, off main after PR 1 merges, `Depends-on` PR 1)
+**PR 2: raise/lower and stop** (branch `wt/matter-light-fades`, off main after PR 1 merged as `fde92568`)
 
 4. Core: `raises_from_off` on LevelFade (Decision 6), with a unit test in core's tests.
 5. `integrations/matter/fade.py`: a MatterFade(LevelFade) for brightness and saturation (Decisions 4–6), and a hue
    adapter on the ZHA hue-move pattern (it tracks the cycling lights for stop). Add the six thin action modules, the
-   way `zha/raise_brightness.py` is, and register them in `ADAPTERS`.
+   way `zha/raise_brightness.py` is, and register them in `ADAPTERS`. Also Decision 14: set_attributes' wait and
+   read-back leave the slots; while there, fix the two PR 1 audit Lows on lines this touches (`color_feature_map_path`
+   unused by `color_features`; `unsupported_reason`'s docstring saying "OnOff timer").
 6. `integrations/matter/stop.py`: Decisions 8 and 10.
 7. Docs, as step 3: index.md sections for smooth dimming and stop, internals.md module sections, regenerate. Then the
    audit and ready.
@@ -105,9 +118,10 @@ Risky step for its own audit range: step 5 (the soft-off restore's job and cance
 
 ## Handoff
 
-- **Done (2026-11-24):** PR 1, steps 1–3, on `wt/matter-set-attributes` (worktree `deviceside-wt-matter-set-attributes`), PR #591, audited CLEAN (0 Critical/High; 1 Medium, 6 Low left in the report) and marked ready. Each step's last commit carries its `Plan review:` note.
-- **Next:** PR 2, steps 4–7, once #591 merges: `wait-pr 591`, then a worktree on `wt/matter-light-fades` off main, `pr-draft` this plan with `Depends-on: #591`. Step 5 gets its own `/audit-code` range.
-- **Carried from PR 1:** Decision 12. The Level/Color IDs, color capability bits (`HUE_SATURATION`, `ENHANCED_HUE`, `XY_COLOR`, `TEMPERATURE_COLOR`) and `XY_SCALE` live in `core/zcl.py`. `addressing.color_features` and `make_command` exist for step 5's hue check and the Move/Stop builders. Audit Lows to keep in mind where step 5 touches the same lines: `color_feature_map_path` is unused by `color_features`; `unsupported_reason`'s docstring still says "OnOff timer"; set_attributes holds an integration slot through its 0.6 s wait (the Medium).
+- **Done:** PR 1, steps 1–3, merged as #591 (`fde92568`). PR 2, steps 4–7, on `wt/matter-light-fades` (#593), each
+  plan-reviewed (its `Plan review:` note is on the step's last commit). Step 5's own audit: no Critical/High/Medium;
+  L1 (the restore overtaking a raise or turn_on during its read) fixed, L2–L6 left in that report.
+- **Next:** the PR audit, then ready. Jason merges (core change, Decision 6).
 - **Open decisions:** none.
 
 ## Verification

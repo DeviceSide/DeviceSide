@@ -17,6 +17,7 @@ from ...core.zcl import CURRENT_SATURATION as CURRENT_SATURATION
 from ...core.zcl import CURRENT_X as CURRENT_X
 from ...core.zcl import CURRENT_Y as CURRENT_Y
 from ...core.zcl import ENHANCED_HUE as ENHANCED_HUE
+from ...core.zcl import EXECUTE_IF_OFF
 from ...core.zcl import HUE_SATURATION as HUE_SATURATION
 from ...core.zcl import LEVEL_CLUSTER as LEVEL_CLUSTER
 from ...core.zcl import ON_OFF as ON_OFF
@@ -59,7 +60,7 @@ DROPS_WHILE_OFF = frozenset({"E11-G13"})
 def execute_if_off(transition_tenths: int) -> dict[str, int]:
     """A MoveTo command's transition and the ExecuteIfOff override, which makes a light that is off store the value
     and stay off. It applies to this command only; the light's Options attribute stays untouched."""
-    return {"transition_time": transition_tenths, "options_mask": 1, "options_override": 1}
+    return {"transition_time": transition_tenths, "options_mask": EXECUTE_IF_OFF, "options_override": EXECUTE_IF_OFF}
 
 
 async def command(

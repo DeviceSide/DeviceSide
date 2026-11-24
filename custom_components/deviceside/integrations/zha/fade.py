@@ -38,22 +38,19 @@ from ...core.transition import (
     hs_color,
     lit,
 )
-from ...core.zcl import XY_SCALE
+from ...core.zcl import ENHANCED_HUE_STEPS, MOVE_DOWN, MOVE_UP, XY_SCALE
 from ...core.zcl_fade import MIN_STEP, brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
 
 # A refresh after a fade or a stop reads the bulb's real value, so a prediction is needed only until then.
 SETTLE_SECONDS = 2.0
-# EnhancedMoveHue's rate is in steps of 1/65536 of the cycle per second, 1 to 65535, so a cycle takes 1 to 65535 s.
-HUE_STEPS = 65535
 # The end refresh and the soft off's restore, after the fade has run: the bulb reads its end within it (probe 13f).
 END_REFRESH_S = 1.0
 # The fit's deadband: how late a bulb may start its ramp, plus one level step. The lab's Hue bulbs start 0.05 to
 # 0.08 s after the send, so every read lands behind schedule and fits a start a few percent off (3 Nov lab rerun);
 # a read within this much of the ramp's own speed of the prediction leaves the prediction alone.
 FIT_LAG_S = 0.15
-_MOVE_UP, _MOVE_DOWN = 0x01, 0x03
 
 type Command = tuple[int, int, dict[str, Any]]  # cluster, command, params in the command's positional order
 
@@ -516,8 +513,8 @@ def hue_move(request: RampRequest, movers: list[Target]) -> HueMove:
     Clamped, not refused: the call's value lies outside what the bulb can do, as an out-of-range duration does. Rounding
     the rate inside the range isn't reported.
     """
-    rate, clamped_to = hue_cycle(request.sweep_time, HUE_STEPS, HUE_STEPS)
-    mode = _MOVE_UP if request.up else _MOVE_DOWN
+    rate, clamped_to = hue_cycle(request.sweep_time, ENHANCED_HUE_STEPS, ENHANCED_HUE_STEPS)
+    mode = MOVE_UP if request.up else MOVE_DOWN
     command = (zcl.COLOR_CLUSTER, zcl.ENHANCED_MOVE_HUE, {"move_mode": mode, "rate": rate})
     return HueMove(command, movers, clamped_to)
 
