@@ -7,7 +7,7 @@ from types import ModuleType
 from homeassistant.const import Platform
 
 from .action import Action
-from .adapter import Adapter
+from .adapter import Adapter, OwnCallsOnly
 from .ha_watch import CallResolver
 from .models import ActionKind
 from .scope import Family, IntegrationInfo, Level
@@ -236,6 +236,11 @@ class AdapterRegistry:
             if cls.action not in self.actions:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
             check_classes(cls, info)
+            if cls.scope.own_calls_only != issubclass(cls, OwnCallsOnly):
+                raise ValueError(
+                    f"{cls.__name__}: a scope that serves only own calls (own_calls_only) and the OwnCallsOnly base "
+                    "come together"
+                )
             action = self.actions[cls.action]
             if cls.scope.not_built and not action.failure_harms:
                 raise ValueError(

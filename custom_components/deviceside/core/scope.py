@@ -223,6 +223,11 @@ class AdapterScope:
     # group's call isn't theirs, so a group with a member of one falls back to its members (Reason.OWN_CALL), and the
     # member gets its own call.
     own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
+    # The adapter serves only its classes' own calls, and has no call of its own (core/adapter.py, OwnCallsOnly, whose
+    # execute nothing reaches): every class it serves is in own_calls, and `refusal` refuses every target whose class
+    # has none, a class not yet known (None or Unplaced) as class_unknown with Labs on or off, any other as not_built.
+    # Why a flag, not entries: a class the integration couldn't name has no entry to match, and would reach execute.
+    own_calls_only: bool = False
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.
     options: frozenset[str] = frozenset()
@@ -242,8 +247,7 @@ class AdapterScope:
         for name, entry in self.not_built.items():
             if entry.domains is not None and not (entry.domains and entry.domains <= self.domains.keys()):
                 raise ValueError(f"not_built {name!r} names no domain, or one the scope doesn't serve")
-        if unserved := sorted(self.own_calls.keys() - (self.capabilities or {}).keys()):
-            raise ValueError(f"own_calls names classes the scope doesn't serve: {unserved}")
+        self._check_own_calls()
         self._check_on_domains()
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
         for name in ("domains", "fields", "capabilities", "no_known_method", "not_built", "own_calls"):
@@ -312,9 +316,10 @@ class AdapterScope:
     ) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), in `domain` when given,
         with the reason the user reads, or None. `failure_harms` is the adapter's action's (Adapter.failure_harms),
-        required so no caller leaves it out. Where the call harms a class (`harms`), first `class_unknown` when one is
-        Unplaced, or None (the integration couldn't name it, or a group's membership is unknown), as it could be the
-        harmed class, with Labs on or off. Then `no_known_method` and its NoKnownMethod.reason when
+        required so no caller leaves it out. Where the call harms a class (`harms`), or the scope serves only own calls
+        (`own_calls_only`), first `class_unknown` when one is Unplaced, or None (the integration couldn't name it, or
+        a group's membership is unknown), as it could be the harmed class, or one with no call of its own, with Labs on
+        or off. Then `no_known_method` and its NoKnownMethod.reason when
         one is listed as having none, else `not_built` when one is named but not served (in `domain`: admits), with
         its NotBuilt.reason when it has an entry. Elsewhere None is no refusal: the gate weighs it as a Labs item, and
         an Unplaced class as the class it names. Last, for a native group whose members are listed (`group`),
@@ -323,7 +328,8 @@ class AdapterScope:
         for it there), judged as in an unknown domain, so an entry on some domains refuses them."""
         if self.capabilities is None:
             return None
-        if self.harms(failure_harms) and any(name is None or isinstance(name, Unplaced) for name in classes):
+        guarded = self.harms(failure_harms) or self.own_calls_only
+        if guarded and any(name is None or isinstance(name, Unplaced) for name in classes):
             return Reason.CLASS_UNKNOWN, None
         if entry := next((self.no_known_method[name] for name in classes if name in self.no_known_method), None):
             return Reason.NO_KNOWN_METHOD, entry.reason
@@ -351,6 +357,14 @@ class AdapterScope:
     def call_limits(self, call: OwnCall | None) -> DurationLimits | None:
         """The duration limits of a run on `call` (own_call): its own, where it has them, else the scope's."""
         return self.duration if call is None or call.limits is None else call.limits
+
+    def _check_own_calls(self) -> None:
+        if unserved := sorted(self.own_calls.keys() - (self.capabilities or {}).keys()):
+            raise ValueError(f"own_calls names classes the scope doesn't serve: {unserved}")
+        if self.own_calls_only and not self.own_calls:
+            raise ValueError("own_calls_only needs own_calls: it would serve nothing")
+        if self.own_calls_only and (callless := sorted((self.capabilities or {}).keys() - self.own_calls.keys())):
+            raise ValueError(f"own_calls_only serves classes with no call of their own: {callless}")
 
     def _check_on_domains(self) -> None:
         for axis in ("domains", "fields"):

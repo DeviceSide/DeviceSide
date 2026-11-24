@@ -5,7 +5,8 @@ Planning. Targets are bucketed by adapter (none: no_adapter). For each, the fiel
 minus AdapterScope.unlisted) and the scope's `drops` are dropped, then supports() checks what is left: domain and
 fields in scope, then the adapter's own reasons. Then the class, a call left nothing to send first: unchanged with
 fields_dropped, never refused. Then AdapterScope.refusal, in order: where the call harms a class (AdapterScope.harms),
-an Unplaced or None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in
+or the adapter serves only own calls (own_calls_only, whose execute nothing reaches), an Unplaced or None class as
+class_unknown; a class in no_known_method as no_known_method, with its reason; one in
 not_built, or in neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the
 Labs gate (below).
 
@@ -356,11 +357,11 @@ class Dispatcher:
 
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
-        where the adapter's call harms a class, one not yet placed (Unplaced, or None) is refused as class_unknown,
-        with Labs on or off; one the scope lists in no_known_method, or the integration names but the
-        scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
-        list them (the module docstring, Native groups), and an empty one is skipped silently. A flagged call, one
-        touching a Labs scope item, is refused while the Labs option is off; a native group
+        where the adapter's call harms a class, or it serves only own calls, one not yet placed (Unplaced, or None) is
+        refused as class_unknown, with Labs on or off; one the scope lists in no_known_method, or the integration names
+        but the scope doesn't serve, is refused; a native group so refused falls back to its members when the
+        integration can list them (the module docstring, Native groups), and an empty one is skipped silently. A
+        flagged call, one touching a Labs scope item, is refused while the Labs option is off; a native group
         flagged by a member's class alone falls back to its members instead, as does one with a member whose class
         takes a call of its own (AdapterScope.own_calls), and a target of such a class runs apart, on that call and its
         duration limits. A named target that can't take the action raises then, before anything is sent. Returns a

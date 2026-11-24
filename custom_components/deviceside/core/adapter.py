@@ -16,6 +16,15 @@ from .scope import AdapterScope, OwnCall
 _LOGGER = logging.getLogger(__name__)
 
 
+class OwnCallsOnly:
+    """A mixin, first among an adapter's bases, for one whose scope serves only its classes' own calls
+    (AdapterScope.own_calls_only): its `execute` is never reached, as the scope refuses every target whose class has
+    no call of its own, so the adapter holds no stub. The registry checks that the mixin and the flag come together."""
+
+    async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
+        raise AssertionError(f"{type(self).__name__} serves only its own calls: the dispatcher never runs execute")
+
+
 class DeadlinePassed(Exception):
     """The run's deadline passed before a slot's work was done, waiting for the slot included."""
 

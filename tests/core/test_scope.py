@@ -396,6 +396,61 @@ def test_an_own_call_is_compared_by_identity():
     assert len({TIMED, OwnCall(_send, OWN), TIMED}) == 2
 
 
+# An adapter that serves only its classes' own calls (AdapterScope.own_calls_only): E takes TIMED, and nothing else is
+# served.
+ONLY_OWN = AdapterScope(capabilities=labs("E"), own_calls={"E": TIMED}, own_calls_only=True)
+
+
+@pytest.mark.parametrize("failure_harms", [False, True])
+@pytest.mark.parametrize(
+    ("classes", "refused"),
+    [
+        pytest.param([None], (Reason.CLASS_UNKNOWN, None), id="none"),
+        pytest.param([Unplaced("E")], (Reason.CLASS_UNKNOWN, None), id="unplaced_own_call_class"),
+        pytest.param([Unplaced("A")], (Reason.CLASS_UNKNOWN, None), id="unplaced_other_class"),
+        pytest.param(["A"], (Reason.NOT_BUILT, None), id="unserved_class"),
+        pytest.param(["E"], None, id="own_call_class"),
+    ],
+)
+def test_a_scope_that_serves_only_own_calls_refuses_every_class_without_one(classes, refused, failure_harms):
+    """Whether or not the action's failure harms: nothing it could reach has an execute to run."""
+    assert ONLY_OWN.refusal(classes, failure_harms=failure_harms) == refused
+
+
+def test_a_group_on_a_scope_that_serves_only_own_calls_falls_back_or_is_refused_by_its_members():
+    assert ONLY_OWN.refusal(["E", "E"], group=True, failure_harms=False) == (Reason.OWN_CALL, None)
+    assert ONLY_OWN.refusal(["E", "A"], group=True, failure_harms=False) == (Reason.NOT_BUILT, None)
+    # Membership unknown: no class to give a call.
+    assert ONLY_OWN.refusal([None], group=True, failure_harms=False) == (Reason.CLASS_UNKNOWN, None)
+
+
+def test_a_scope_with_own_calls_but_not_only_them_keeps_its_refusals():
+    """The flag is off by default: a class not yet known is no refusal where no call harms, and runs execute."""
+    scope = AdapterScope(capabilities=verified("A") | labs("E"), own_calls={"E": TIMED})
+
+    assert scope.own_calls_only is False
+    assert scope.refusal([None], failure_harms=False) is None
+    assert scope.refusal([Unplaced("E")], failure_harms=False) is None
+    assert scope.refusal(["A"], failure_harms=False) is None
+    assert scope.refusal(["C"], failure_harms=False) == (Reason.NOT_BUILT, None)
+
+
+@pytest.mark.parametrize(
+    ("scope", "message"),
+    [
+        (lambda: AdapterScope(capabilities=labs("E"), own_calls_only=True), "own_calls_only needs own_calls"),
+        (lambda: AdapterScope(own_calls_only=True), "own_calls_only needs own_calls"),
+        (
+            lambda: AdapterScope(capabilities=labs("A", "E"), own_calls={"E": TIMED}, own_calls_only=True),
+            r"own_calls_only serves classes with no call of their own: \['A'\]",
+        ),
+    ],
+)
+def test_a_scope_that_serves_only_own_calls_has_one_for_every_class_it_serves(scope, message):
+    with pytest.raises(ValueError, match=message):
+        scope()
+
+
 FAMILIES = (
     Family(
         key="first",
