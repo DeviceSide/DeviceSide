@@ -78,8 +78,8 @@ def placed_class(hass, entity_id: str) -> str | None:
             "tuya_ts011f",
             id="gangs",
         ),
-        # The datapoint countdown, converter B.
-        pytest.param("_TZ3218_pfnjjx6a", {"definition": "ZOT60"}, "tuya_ts011f", id="zot60"),
+        # The datapoint countdown, converter B (datapoint.py).
+        pytest.param("_TZ3218_pfnjjx6a", {"definition": "ZOT60"}, "tuya_datapoint", id="zot60"),
         pytest.param(UNLISTED, {"model_id": "TS0001"}, "tuya_zcl", id="not_a_ts011f"),
         pytest.param(UNLISTED, {"definition": None, "exposes": ()}, "tuya_ts011f", id="no_definition"),
     ],

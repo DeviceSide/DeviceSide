@@ -18,6 +18,7 @@ import re
 from homeassistant.const import Platform
 
 from .countdown import COUNTDOWN
+from .datapoint import DATAPOINT_CLASSES, DATAPOINT_RULES
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, labs, verified
 from .....zigbee.tuya import (
@@ -36,7 +37,8 @@ TUYA_ZCL = "tuya_zcl"
 # model so every firmware inherits the refusal: a TS011F that isn't on Tuya's countdown below.
 TUYA_TS011F = "tuya_ts011f"
 # A TS011F plug Zigbee2MQTT drives by Tuya's countdown (research/2026-11-14-tuya-countdown.md, §1, converter A): its
-# definition exposes `countdown`, and isn't the datapoint ZOT60. turn_on_for sends it that call (countdown.py).
+# definition exposes `countdown`, and isn't the datapoint ZOT60 (datapoint.py). turn_on_for sends it that call
+# (countdown.py).
 TUYA_COUNTDOWN = "tuya_countdown"
 # The maker strings on Tuya's countdown with a record of their own (plan Decision 35: a string is Verified only by its
 # own evidence), each a class of its own, so the coverage check asks each for its record (string_class).
@@ -45,6 +47,8 @@ VERIFIED_STRINGS = ("_TZ3000_0zfrhq4i", "_TZ3000_typdpbpg", "_TZ3000_gznh2xla", 
 # built yet, as Tuya's inching would plausibly serve it (plan Decision 41).
 TUYA_COUNTDOWN_HARMED = "tuya_countdown_harmed"
 # A Tuya datapoint device (TS0601): no Zigbee On/Off cluster, so no raw ZCL read or write reaches it (Decision 12).
+# The single-endpoint definitions on Tuya's datapoint countdown that research names have classes of their own
+# (datapoint.py); this is the rest.
 TUYA_MCU = "tuya_mcu"
 
 
@@ -60,10 +64,10 @@ COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
 # Tuya's TS011F plugs, on its countdown or not.
 _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
 # Every Tuya class, in the order the cards list them (scripts/gen_compat.py reads a scope's classes in its order).
-_ALL = (TUYA_ZCL, *_TS011F, TUYA_MCU)
+_ALL = (TUYA_ZCL, *_TS011F, *DATAPOINT_CLASSES, TUYA_MCU)
 # The classes that can be lights: Tuya's ZCL and datapoint devices include bulbs, dimmers and LED controllers
 # (TS0501B, TS110E, TS0601 dimmers), as well as plugs and switches.
-_LIGHTS = (TUYA_ZCL, TUYA_MCU)
+_LIGHTS = (TUYA_ZCL, *DATAPOINT_CLASSES, TUYA_MCU)
 # Each class's domains (IntegrationInfo.classes): a TS011F is a plug, so a switch, which no action for lights alone
 # reaches. Zigbee2MQTT can be set to show one as a light, on/off alone; it stays a switch here (docs/evidence.md, "A
 # class names its domains"), as none of those actions has anything to do on it but stop.
@@ -76,16 +80,19 @@ CLASSES = {
 _TS011F_MODEL = re.escape(TS011F_MODEL)
 _DATAPOINT_MODEL = re.escape(DATAPOINT_MODEL)
 # Tuya's countdown, converter A, on a TS011F: the definition exposes `countdown` for the whole device (Z2M's own
-# statement that it takes the key; a multi-gang one exposes one per endpoint, `countdown_l1`, so isn't matched) and
-# isn't the ZOT60, whose `countdown` is a datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The
-# expose doesn't tell A from B).
-_COUNTDOWN = {"zigbee_model": _TS011F_MODEL, "exposes": "countdown", "definition_model": "(?!ZOT60$).*"}
+# statement that it takes the key; a multi-gang one exposes one per endpoint, `countdown_l1`, so isn't matched). The
+# ZOT60, a TS011F whose `countdown` is a datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The
+# expose doesn't tell A from B), is the datapoint rules', which run first.
+_COUNTDOWN = {"zigbee_model": _TS011F_MODEL, "exposes": "countdown"}
 
-# The Zigbee strings, from bridge/devices. The models go first: a TS011F's manufacturer (`_TZ3000_…`) matches
-# `tuya_zcl`'s, and a TS0601's model matches `tuya_zcl`'s `TS` and four digits. The TS011F's go in this order: the
-# string reported harmed, then each Verified string's and `tuya_countdown` (both on converter A's definition, read
-# from bridge/devices), then `tuya_ts011f`, which every TS011F matches.
+# The Zigbee strings and the definition, from bridge/devices. The datapoint countdown's definitions go first
+# (datapoint.py): the ZOT60 is a TS011F with converter A's expose, and the rest TS0601s or `_TZE…` strings, which the
+# `tuya_mcu` rules match. Then the models: a TS011F's manufacturer (`_TZ3000_…`) matches `tuya_zcl`'s, and a TS0601's
+# model matches `tuya_zcl`'s `TS` and four digits. The TS011F's go in this order: the string reported harmed, then
+# each Verified string's and `tuya_countdown` (both on converter A's definition, read from bridge/devices), then
+# `tuya_ts011f`, which every TS011F matches.
 ZIGBEE_RULES = (
+    *DATAPOINT_RULES,
     Rule(
         TUYA_COUNTDOWN_HARMED,
         {
