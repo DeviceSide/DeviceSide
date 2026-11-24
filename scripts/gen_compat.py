@@ -1594,7 +1594,7 @@ type FieldNote = tuple[str, str, tuple[str, ...], tuple[str, ...]]
 def field_notes(integration_adapters: list) -> list[FieldNote]:
     """Each field whose level is weaker than its action's (the strongest its domains and classes hold), by feature and
     status, for the footnote under the integration's matrix; then each field in Labs on some classes alone
-    (`class_labs`), by feature and the classes that share its fields, leaving out a class already in Labs throughout."""
+    (`class_labs`), by feature and the classes that share its fields."""
     found: dict[tuple[str, str, tuple[str, ...]], list[str]] = {}
     for adapter in integration_adapters:
         held = items(adapter.scope)
@@ -1605,11 +1605,9 @@ def field_notes(integration_adapters: list) -> list[FieldNote]:
                 names = found.setdefault((FEATURES[adapter.action], TIER[level], ()), [])
                 names += [item] if item not in names else []
     for adapter in integration_adapters:
-        scope = adapter.scope
         by_fields: dict[frozenset[str], list[str]] = {}
-        for cls, names in scope.class_labs.items():
-            if max(scope.level(domain, [cls]) for domain in scope.domains) > Level.LABS:
-                by_fields.setdefault(names, []).append(cls)
+        for cls, names in adapter.scope.class_labs.items():
+            by_fields.setdefault(names, []).append(cls)
         for names, classes in by_fields.items():
             noted = found.setdefault((FEATURES[adapter.action], TIER[Level.LABS], tuple(sorted(classes))), [])
             noted += [name for name in sorted(names) if name not in noted]
