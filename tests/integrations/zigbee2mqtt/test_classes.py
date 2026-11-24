@@ -143,10 +143,11 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
         # The time left can't be read (probe P6); turn_on_for serves it in Labs, on its kin's pass.
         ("tuya_countdown", set(), {"get_attributes"}, {"get_attributes"}),
-        # Tuya's datapoint countdown: no action serves them yet, and none holds an entry for them.
-        ("tuya_datapoint", set(), ALL, set()),
-        ("tuya_datapoint_24h", set(), ALL, set()),
-        ("tuya_datapoint_2h", set(), ALL, set()),
+        # Tuya's datapoint countdown: turn_on_for serves them in Labs, on research, and no action holds an entry for
+        # them.
+        ("tuya_datapoint", set(), ALL - {"turn_on_for"}, set()),
+        ("tuya_datapoint_24h", set(), ALL - {"turn_on_for"}, set()),
+        ("tuya_datapoint_2h", set(), ALL - {"turn_on_for"}, set()),
         ("tuya_mcu", {"turn_on_for"}, ALL, set()),
         ("sengled", set(), ALL, set()),
         ("gledopto", set(), ALL, set()),

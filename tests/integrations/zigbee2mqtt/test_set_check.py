@@ -10,7 +10,7 @@ from homeassistant.helpers import device_registry as dr
 
 from custom_components.deviceside.core.models import Status
 from custom_components.deviceside.core.scope import OwnCall
-from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, set_check, turn_on_for
+from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, light_turn_on, set_check
 from custom_components.deviceside.integrations.zigbee2mqtt.adapter import Z2MAdapter
 from custom_components.deviceside.integrations.zigbee2mqtt.bridge import publish_set
 from custom_components.deviceside.integrations.zigbee2mqtt.stop import Z2MStop
@@ -203,7 +203,7 @@ async def test_a_stops_publishes_go_out_back_to_back(hass, broker, live, clock):
 @pytest.mark.usefixtures("live")
 async def test_turn_on_for_fails_when_its_light_turn_on_fails(hass, broker, monkeypatch):
     # HA publishes light.turn_on as a set, so Z2M logs its failure the same way.
-    monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(light_turn_on, "_STATE_TIMEOUT_S", 0.05)
     entity_id = light(hass, broker)
 
     async def turn_on(service: ServiceCall) -> None:

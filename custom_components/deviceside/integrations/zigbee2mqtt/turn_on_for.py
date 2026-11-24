@@ -1,7 +1,7 @@
-"""Zigbee2MQTT turn_on_for: optional light.turn_on, a publish with on_time, then state read-backs; or, for a Tuya
-countdown plug, its family's own call, one publish with `countdown` (families/tuya/countdown.py)."""
+"""Zigbee2MQTT turn_on_for: optional light.turn_on (light_turn_on.py), a publish with on_time, then state read-backs;
+or, for a Tuya countdown class, its family's own call, one publish with `countdown` (families/tuya/countdown.py and
+datapoint.py)."""
 
-import asyncio
 import logging
 from typing import ClassVar
 
@@ -12,16 +12,17 @@ from homeassistant.components.light import (
     ATTR_TRANSITION,
     ATTR_XY_COLOR,
 )
-from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON, Platform
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .adapter import Z2MAdapter
 from .addressing import not_addressable, topic
-from .bridge import logged_options, publish, publish_set, state_reply
+from .bridge import publish, publish_set
 from .classes import class_scope
 from .families.hue import NEED
+from .light_turn_on import turn_on
 from .native_control import COLOR_FIELDS, native_control, settled
-from .set_check import checked, note
+from .set_check import checked
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.errors import describe
 from ...core.fields import BRIGHTNESS_FIELD
@@ -40,8 +41,6 @@ _ON_READ_S = 1.0
 _END_READ_S = 1.0
 _LATE_END_READ_MIN_S = 5.0
 _LATE_END_READ_FRACTION = 0.02
-# Z2M publishes a light's state once the command has reached it: under a second, or seconds on a busy mesh.
-_STATE_TIMEOUT_S = 5.0
 
 
 class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
@@ -91,7 +90,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
             if request.light.present():
                 need = NEED[self.action] if request.light.present() & COLOR_FIELDS else None
                 async with native_control(hass, target, need):
-                    await self._turn_on(hass, target, request.light.as_turn_on_data())
+                    await turn_on(hass, target, request.light.as_turn_on_data())
 
             # The timer goes out as the user's option has it, after this call's restore or an earlier action's.
             await settled(hass, target)
@@ -103,38 +102,6 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
             return self.result(target, Status.SENT)
 
         return await checked(self, hass, targets, send)
-
-    async def _turn_on(self, hass: HomeAssistant, target: Target, data: dict) -> None:
-        """light.turn_on, returning once Z2M publishes the light's state, so the timer follows the fields.
-
-        HA returns once it has published the command, and Z2M handles two messages for one light at once. The
-        timer's message would then publish the state from before the fields landed, which HA keeps, and contend
-        with them on the mesh, starting the timer late. With no state by the timeout, the timer goes anyway.
-        """
-        service_data = {ATTR_ENTITY_ID: target.entity_id, **data}
-        published, unsubscribe = await state_reply(hass, target)
-        try:
-            if _LOGGER.isEnabledFor(logging.DEBUG):
-                _LOGGER.debug(
-                    "%s: sending ha light.turn_on %s with %s", target.reported_id, data, logged_options(hass, target)
-                )
-            # HA publishes it as a set, whose failure Z2M logs as any other's.
-            await note(hass, target)
-            await hass.services.async_call(Platform.LIGHT, SERVICE_TURN_ON, service_data, blocking=True)
-            if published is None:
-                return
-            try:
-                async with asyncio.timeout(_STATE_TIMEOUT_S):
-                    await published
-            except TimeoutError:
-                _LOGGER.warning(
-                    "No state from Zigbee2MQTT for %s in %s s, "
-                    "so its timer starts late and it stays on that much longer",
-                    target.entity_id,
-                    _STATE_TIMEOUT_S,
-                )
-        finally:
-            unsubscribe()
 
     def _schedule_reads(self, hass: HomeAssistant, target: Target, on_time: float, read_on: bool) -> None:
         get_topic = topic(target, "get")

@@ -1,4 +1,5 @@
-"""Tuya's datapoint countdown on Zigbee2MQTT: the single-endpoint definitions it is admitted on, and their classes.
+"""Tuya's datapoint countdown on Zigbee2MQTT: the single-endpoint definitions it is admitted on, their classes, and
+the call they get.
 
 A Tuya datapoint device (TS0601 and kin) has no Zigbee On/Off cluster; Zigbee2MQTT gives the ones here a `countdown`
 key in seconds, a datapoint its `tz.datapoints` converter sends after the `state` one (converter B,
@@ -6,12 +7,26 @@ research/2026-11-24-tuya-datapoint-call.md). The countdown toggles at zero, so i
 An allowlist, not an expose rule: docs/evidence.md (In Labs) admits only the identities research names, so a definition
 ZHC adds later stays `tuya_mcu` until someone reads it. Each definition takes its own expose's `value_max`, and core
 clamps by class (OwnCall.limits), so there is one class per limit.
+
+The call: one publish, `{"state": "ON", "countdown": N}`, whole seconds, `state` first, as converter B sends a
+message's keys in its order and a failed `state` throws before `countdown` goes out (research/
+2026-11-24-tuya-datapoint-call.md, §1); Z2M logs that set as failed, and set_check.py makes it `rejected`. Light
+fields on a dimmer go first by light.turn_on (light_turn_on.py). No reads: the time left isn't served, so the result
+is `sent`.
 """
 
 import re
 from collections.abc import Mapping
 
+from homeassistant.core import HomeAssistant
+
+from ...bridge import publish_set
+from ...light_turn_on import turn_on
+from .....actions.turn_on_for import TurnOnForRequest
+from .....core.adapter import Adapter
+from .....core.models import EntityResult, Status, Target
 from .....core.rules import Rule
+from .....core.scope import DurationLimits, OwnCall
 
 # The countdown's value_max, in seconds, as each definition's expose gives it
 # (research/2026-11-24-tuya-datapoint-call.md, §3): ZHC's standard `tuya.exposes.countdown()`, 12 hours; a day; and
@@ -86,3 +101,20 @@ def _rule(name: str) -> Rule:
 # Read off the definition in bridge/devices alone: the registry can't show its exposes, so such a device stays
 # Unplaced until bridge/devices lists it.
 DATAPOINT_RULES = tuple(_rule(name) for name in DATAPOINT_CLASSES)
+
+
+async def _countdown(adapter: Adapter, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> EntityResult:
+    # A dimmer's light fields first, so the countdown starts once they have landed. supports() refused the targets it
+    # can't address.
+    if request.light.present():
+        await turn_on(hass, target, request.light.as_turn_on_data())
+    await publish_set(hass, target, {"state": "ON", "countdown": int(request.duration_s)})
+    return adapter.result(target, Status.SENT)
+
+
+# Each class's own call (module docstring): one per limit, as core clamps a run to its call's limits, sharing one send.
+# The dispatcher hands execute_own the call of the class it planned the run on, so a bridge/devices republish in
+# between can't send another class's call.
+DATAPOINT_CALLS: Mapping[str, OwnCall] = {
+    name: OwnCall(_countdown, DurationLimits(min_s=1, max_s=max_s, step_s=1)) for name, max_s in CLASS_MAX_S.items()
+}

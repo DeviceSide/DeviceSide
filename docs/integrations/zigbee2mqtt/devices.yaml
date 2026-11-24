@@ -27,10 +27,14 @@ capabilities:
   tuya_countdown_tz3000_gznh2xla: {phrase: _TZ3000_gznh2xla, section: Tuya TS011F plugs}
   tuya_countdown_tz3000_okaz9tjs: {phrase: _TZ3000_okaz9tjs, section: Tuya TS011F plugs}
   tuya_countdown_harmed: {phrase: _TZ3000_gjnozsaz, section: Tuya TS011F plugs}
+  # Tuya's datapoint countdown, a class per limit (families/tuya/datapoint.py).
+  tuya_datapoint: {phrase: "single-endpoint Tuya datapoint devices with a 12-hour countdown", section: Tuya}
+  tuya_datapoint_24h: {phrase: "single-endpoint Tuya datapoint devices with a 24-hour countdown", section: Tuya}
+  tuya_datapoint_2h: {phrase: "AVATTO ZBS16 (a Tuya datapoint relay)", section: Tuya}
   tuya_mcu:
-    phrase: Tuya datapoint devices
+    phrase: other Tuya datapoint devices
     section: Tuya
-    domains: {light: Tuya datapoint lights, switch: Tuya datapoint switches}
+    domains: {light: other Tuya datapoint lights, switch: other Tuya datapoint switches}
   sengled: {phrase: Sengled bulbs, section: Sengled}
   gledopto: {phrase: Gledopto lights, section: Gledopto}
   other:

@@ -2,8 +2,9 @@
 
 On Zigbee the call and the firmware family decide the result together (research/2026-11-14-timed-on-call-patterns.md),
 and Tuya's departs most: Z2M has no `on_time` converter for it, so turn_on_for's call would leave a Tuya device on.
-The classes split it by the call that would serve each: the countdown plugs get Tuya's countdown (countdown.py), and
-the other classes are refused there until theirs is built (the integration's refusals.py holds those entries, and
+The classes split it by the call that would serve each: the countdown plugs get Tuya's countdown (countdown.py), the
+single-endpoint datapoint devices research names Tuya's datapoint countdown (datapoint.py), and the other classes are
+refused there until theirs is built (the integration's refusals.py holds those entries, and
 why).
 
 Two rule groups, as the integration places them apart (families/__init__.py): ZIGBEE_RULES, on the device's own
@@ -18,7 +19,7 @@ import re
 from homeassistant.const import Platform
 
 from .countdown import COUNTDOWN
-from .datapoint import DATAPOINT_CLASSES, DATAPOINT_RULES
+from .datapoint import DATAPOINT_CALLS, DATAPOINT_CLASSES, DATAPOINT_RULES
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, labs, verified
 from .....zigbee.tuya import (
@@ -124,14 +125,17 @@ REGISTRY_RULES = (
 # turn_on_for, the one action that serves a Tuya class (index.md, Device classes): each countdown maker string with a
 # record of its own, Verified, and the rest of the countdown plugs (`tuya_countdown`), in Labs on their
 # kin's pass of the same call (docs/evidence.md, In Labs). Switches alone, as Z2M shows a plug, sent Tuya's countdown,
-# which a Z2M group's call isn't, so a group with one falls back to its members. The classes off the countdown are
+# which a Z2M group's call isn't, so a group with one falls back to its members. The datapoint countdown's classes, on
+# lights and switches, in Labs on research (plan 2026-11-24-tuya-datapoint-single-endpoint.md, Decision 1), each sent
+# its own call (datapoint.py), so a group with one falls back too. The classes off the countdown are
 # left out, and the integration refuses them there, as today's call would harm them (refusals.py). Every other action
 # leaves every Tuya class out: no pass or research admits Tuya's firmware there, and get_attributes reads only what
 # another action serves (core/registry.py, check_queries; a countdown plug's read is refused, refusals.py).
 _TURN_ON_FOR = FamilyScope(
     capabilities=verified(*VERIFIED_COUNTDOWNS, domains=(Platform.SWITCH,))
-    | labs(TUYA_COUNTDOWN, domains=(Platform.SWITCH,)),
-    own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
+    | labs(TUYA_COUNTDOWN, domains=(Platform.SWITCH,))
+    | labs(*DATAPOINT_CLASSES),
+    own_calls={**dict.fromkeys(COUNTDOWNS, COUNTDOWN), **DATAPOINT_CALLS},
 )
 
 FAMILY = Family(key="tuya", maintainers=(), classes=CLASSES, scopes={"turn_on_for": _TURN_ON_FOR})
