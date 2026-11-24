@@ -32,15 +32,17 @@ class LevelFade(Adapter["RampRequest"]):
     """A read of the device's level, then one set to the limit (or range end) with a time for the distance left.
 
     The level is the device's own, so a move after a stop or mid-fade starts from where the light is, and a change
-    made elsewhere can't leave a prediction stale. Raising turns a light that is off on, fading in from the bottom;
-    lowering passes it by, unchanged with off. A move with less than `min_step` left is unchanged with at_limit. A
-    light already fading to the call's end is unchanged with already_fading. A sweep_time outside what a full-range
-    fade can take on the device (`fade_limits`) is clamped, with clamped_to; a fade shorter than the device's
-    shortest runs at that, unreported.
+    made elsewhere can't leave a prediction stale. Raising turns a light that is off on, fading in from the bottom
+    (unless `raises_from_off` is False); lowering passes it by. Either leaves an unlit light unchanged with off.
+    A move with less than `min_step` left is unchanged with at_limit. A light already fading to the call's end
+    is unchanged with already_fading. A sweep_time outside what a full-range fade can take on the device
+    (`fade_limits`) is clamped, with clamped_to; a fade shorter than the device's shortest runs at that, unreported.
     """
 
     # The device's brightness resolution, in percent: a shorter distance is nothing to send.
     min_step: ClassVar[float] = 1.0
+    # False for an adapter whose device can't be raised from off: a raise on an unlit light is unchanged with off.
+    raises_from_off: ClassVar[bool] = True
 
     @property
     @abstractmethod
@@ -87,7 +89,7 @@ class LevelFade(Adapter["RampRequest"]):
             current = level if lit else 0.0
             if reading.heading_there:
                 return self._skipped(target, "already_fading", lit, level, end)
-            if not request.up and not lit:
+            if not lit and not (request.up and self.raises_from_off):
                 return self._skipped(target, "off", lit, level, end)
             if (end - current if request.up else current - end) < self.min_step:
                 return self._skipped(target, "at_limit", lit, level, end)

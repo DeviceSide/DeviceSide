@@ -140,6 +140,17 @@ async def test_the_guard_is_released_when_nothing_is_sent(caplog):
     assert "lower_brightness on fake: light.lamp reads lit=False level=40.0, end 0.0: nothing sent (off)" in caplog.text
 
 
+async def test_a_raise_from_off_is_unchanged_when_the_adapter_cant_raise_from_off():
+    fade = PlainFade()
+    fade.raises_from_off = False
+    fade.lit = False
+
+    [result] = await fade.execute(None, ramp(), [LAMP])
+
+    assert (result.status, result.detail) == (Status.UNCHANGED, "off")
+    assert not any(step[0] == "set" for step in fade.steps if isinstance(step, tuple))
+
+
 async def test_a_raise_from_unlit_starts_from_zero_whatever_level_is_read():
     """The level of a light that isn't lit is ignored, so the whole range is the distance."""
     fade = PlainFade()
