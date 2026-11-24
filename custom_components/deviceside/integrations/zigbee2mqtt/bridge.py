@@ -18,6 +18,7 @@ from ...core.models import Target
 _LOGGER = logging.getLogger(__name__)
 
 # Retained topics arrive once HA's debounced subscribe reaches the broker; the reply takes one settings write.
+INCHING_COMPOSITE = "inching_control_set"  # Z2M's write-only inching setting, on Sonoff and Tuya devices (families)
 OPTION = "hue_native_control"  # the entity option that changes the Zigbee commands a Hue light gets
 _RETAINED_TIMEOUT_S = 2.0
 _REPLY_TIMEOUT_S = 5.0

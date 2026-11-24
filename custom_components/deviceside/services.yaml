@@ -109,6 +109,8 @@ set_auto_off:
   target:
     entity:
       - domain: [light, switch]
+        integration: mqtt
+      - domain: [light, switch]
         integration: shelly
   fields:
     duration: *duration
@@ -124,6 +126,8 @@ set_auto_on:
 clear_auto_off:
   target:
     entity:
+      - domain: [light, switch]
+        integration: mqtt
       - domain: [light, switch]
         integration: shelly
 

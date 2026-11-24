@@ -21,10 +21,15 @@ from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 FAILURE_HARMS = {action.key: action.failure_harms for action in actions.discover()}
 
 
-def test_turn_on_for_alone_harms():
-    """turn_on_for's failure harms, so the dispatcher refuses a device it can't place too; no other Z2M adapter does."""
-    assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms(FAILURE_HARMS[adapter.action])] == [
-        "turn_on_for"
+def test_only_turn_on_for_and_the_auto_off_actions_harm():
+    """The dispatcher refuses a device it can't place too where the action's failure harms and the scope holds an
+    entry: turn_on_for's, and the auto-off actions', which refuse the S60 plugs. Until bridge/devices lists a device,
+    any device could be an S60 (its class is read from the definition alone), so an unlisted one is refused as
+    class_unknown on both; no other Z2M adapter does."""
+    assert sorted(adapter.action for adapter in ADAPTERS if adapter.scope.harms(FAILURE_HARMS[adapter.action])) == [
+        "clear_auto_off",
+        "set_auto_off",
+        "turn_on_for",
     ]
 
 
