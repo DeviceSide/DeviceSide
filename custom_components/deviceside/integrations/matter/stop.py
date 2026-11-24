@@ -50,7 +50,7 @@ class _Halted:
 
 
 class MatterStop(Adapter[Request]):
-    """Level Stop to each lit light, plus StopMoveStep on one with a Color Control server, always: with nothing moving
+    """Level Stop to each light, plus StopMoveStep on one with a Color Control server, always: with nothing moving
     they change nothing, and no state of ours says what a light was told (a saturation move isn't tracked).
 
     The sends go first, so a stop doesn't overshoot by a read's round trip; then one OnOff read. A light that reads on

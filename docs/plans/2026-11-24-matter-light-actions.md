@@ -60,9 +60,10 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
    writes OnLevel because that's the user's device setting. index.md states it. Separately, the IKEA KAJPLATS honors the
    write but resumes at its old level (PR #174089): name it in internals.md's quirks. That's Labs evidence, not a split
    yet.
-10. **Stop** sends Level `Stop` (mask 0) to each lit light, plus `StopMoveStep` on lights with a Color Control
-    server, always, since it's harmless with nothing moving. It cancels the pending soft-off restore, so a halted soft
-    off stays on at the halt level, as on ZHA.
+10. **Stop** sends Level `Stop` (mask 0) to each light, plus `StopMoveStep` on lights with a Color Control
+    server, always, since it's harmless with nothing moving, and only then reads OnOff, so a stop doesn't overshoot by
+    a round trip (decided after the PR audit's M1). On a light that reads on, it cancels the pending soft-off restore,
+    so a halted soft off stays on at the halt level, as on ZHA; a light that reads off keeps its restore.
 11. **Addressing:** a light's Level Control (cluster 8) and Color Control (cluster 0x0300) are on the same endpoint as
     its OnOff entity (`addressing.onoff_endpoint`). A light with no Level Control server on that endpoint gets
     `not_dimmable` (Shelly's reason). Color features come from Color Control's FeatureMap (`<ep>/768/65532`), read

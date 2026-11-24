@@ -32,7 +32,7 @@ outside that is clamped (`clamped_to`).
   lowest level.
 - **`stop`** reads where the light halted: `confirmed` when it held still, `sent` (`still_fading`) when it kept
   moving. A slow move, such as a long hue cycle, can read `confirmed` while it still moves
-  ([internals](internals.md#stop)). A light that is off gets nothing (`unchanged`, `off`).
+  ([internals](internals.md#stop)). A light that is off is `unchanged` (`off`).
 
 ## Smooth color changes
 
