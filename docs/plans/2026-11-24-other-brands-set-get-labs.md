@@ -46,6 +46,26 @@ Research: [2026-11-24-other-brands-execute-if-off-and-reads.md](../integrations/
 
 ## Handoff
 
-- Done: rig run (all refused, no records), research committed, draft PR #605 open.
-- Next: steps 1–5.
-- Open: whether to add an `aqara` family once records exist (separate PR, Z2M maintainers).
+2026-11-24, second session. Branch `wt/aqara-z2m-run`, worktree `deviceside-wt/aqara-z2m-run`, draft PR #605.
+
+- **Done:** steps 1–3 in 286b0b42 (`_LIGHTS = labs(OTHER, domains=(LIGHT,), only=True)` on get/set_attributes; `read.clusters(target, device_class)` asks `other` for `onOff` alone; tests and docs; generators run; `--transcripts=check` green, 3571 passed).
+  Step 5 ran (Jason approved the restricted run and turned Labs on in the rig HA's DeviceSide options; ha-rig has no Labs switch).
+  Report: `/var/folders/wk/kszxz30j6wd2vmmnd02c5bfc0000gn/T/deviceside-rig/rig-run-2026-11-24-211936.md`. 17 of 37 planned cases passed
+  (brightness fades, stop, set_attributes, most get_attributes). **No records written**: the rig kept the Hue-based
+  records, since lab_aqara skips their group cases. So nothing to commit from the run.
+- **Failures, by cause:**
+  1. **Surprise (Evidence 4): the Aqara bulb is Unplaced.** turn_on_for/turn_off_for raise `class_unknown` (also
+     `reads_a_running_timer` at its turn_on_for step), so `capability` returns Unplaced: bridge/devices lacks
+     `interview_completed` or a Zigbee string for it. Root-cause it (the DEBUG line from `classes.capability` names
+     the reason) before the next run. turn_on_for would refuse `other` as not_built anyway.
+  2. Device fact: `keeps_and_reads_hs_while_off`: given hs while off, the bulb stays in `color_mode: xy`.
+  3. Not built, as expected: hue moves fail at `mark_hue` ("returned no hue"); saturation raises not_built.
+- **Also in the tree, uncommitted until this handoff:** `research/2026-11-24-other-brands-dimming.md` (Jason asked
+  mid-session: is dimming on `other` safe like set/get). Verdict: safe in Labs as is, no guard. The stated reason
+  (Zigbee 3.0 certification) is thinner than the evidence (same call as Hue, model-level departures only: Müller
+  Licht tint older firmware, AwoX/Eglo soft-off). It suggests rewording `docs/internals.md` Shared. Not acted on.
+- **Next:** step 4's audit: `audit-gate brief pr` → spawn → `audit-gate record` → `audit-gate status`, then
+  `owner-findings`, fix Critical/High, then `gh pr ready` with the PR summary (Labs-flag surface: Opus auditor).
+  Report items 1–2 and the research verdict to Jason.
+- **Open (Jason):** reword the Shared dimming reason per the research (separate PR, shared doc, repo maintainer);
+  an `aqara` family once records exist (Z2M maintainers).
