@@ -102,7 +102,7 @@ jobs:
       - name: Check the README feature table is current
         run: .venv/bin/python scripts/gen_features.py --check
 
-      - name: Check CODEOWNERS is current
+      - name: Check CODEOWNERS and the device report dropdown are current
         run: .venv/bin/python scripts/gen_codeowners.py --check
 
       - name: Check services.yaml targets are current
