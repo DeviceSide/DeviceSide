@@ -108,7 +108,8 @@ raises or the entity is skipped.
   answers for nothing: it is skipped and logged, named by its device, a stand-in unless a target on its device ran.
   The group is refused, raised if named, only when none of its members runs: with the refusal its members' classes
   gave it, or `labs_off`; one that fell back because a member's class takes a call of its own (`own_call`),
-  with its most useful skipped member's reason. The rules: `core/dispatcher.py`'s module docstring, Native groups. A
+  with its most useful skipped member's reason. A group core expands for an adapter that can't address it
+  is refused the same way, with its most useful member's reason. The rules: `core/dispatcher.py`'s module docstring, Native groups. A
   named target whose class has no known method, or is not built yet and is harmed by today's call, raises with the
   reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the

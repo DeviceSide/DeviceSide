@@ -34,13 +34,15 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   option is off. It can't fall back, so it is refused whole. For an adapter without native_groups it is refused as
   group_not_supported, as with no expand_group.
 - For an adapter without native_groups, core plans a group whose members are listed as the fallback does (stand-ins
-  skipped, the unavailable left out, each indirect, a member also named kept as the caller's target).
+  skipped, the unavailable left out, each indirect, a member also named kept as the caller's target). Such a group is
+  refused like a fallen one when none of its members runs, with its members' ranked reason (below), and with no result
+  when each was unavailable.
 - Refusal priority. A group that falls back gets no result of its own: its planned members answer for it, one already a
   target included, so naming a member beside it changes nothing. Only when none of its members is planned or left
   nothing to do (each refused, gated or unavailable) is the group itself refused, raised if named, else skipped and
   logged: with the refusal its members' classes gave it, or labs_off; for own_call, a skipped member's, ranked labs_off,
   then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none was skipped (each
-  unavailable).
+  unavailable). A group core expands is refused the same way, by that ranking, with nothing when none was skipped.
 
 Labs gating, the one place the option gates anything (docs/evidence.md, The Labs flag). After supports() passes and
 fields are dropped, a call's level is the weakest of its domain, its class in that domain (a native group's: its weakest
@@ -177,8 +179,9 @@ def _targeted(member: Target, by_device: ByDevice) -> set[str]:
 
 
 def _rank(reason: str) -> int:
-    """Which member's skip a group refused for own_call takes (_unanswered): labs_off, which says how to let
-    the call through; then a class's refusal, which says why it can't; then any other; not_addressable last."""
+    """Which member's skip a group refused for own_call, or expanded by core, takes (_unanswered): labs_off, which
+    says how to let the call through; then a class's refusal, which says why it can't; then any other;
+    not_addressable last."""
     if reason == LABS_OFF:
         return 0
     if reason in (Reason.NO_KNOWN_METHOD, Reason.NOT_BUILT, Reason.CLASS_UNKNOWN):
@@ -206,7 +209,7 @@ def _skip(
 
 def _unanswered(
     adapter: Adapter,
-    fallen: list[tuple[Target, list[Target], str, str | None]],
+    fallen: list[tuple[Target, list[Target], str | None, str | None]],
     answered: set[str],
     by_device: ByDevice,
     title: str,
@@ -216,7 +219,8 @@ def _unanswered(
     named, else skipped. A group a member answers for gets no result of its own, nor one a target on a stand-in's
     device answers for (`by_device`). One that fell back only because a member takes a call of its own (own_call) is
     refused with its members' reason, ranked by _rank (`skipped`: the skips so far); own_call only when none was
-    skipped (each unavailable)."""
+    skipped (each unavailable). A group core expanded (reason None) is refused the same way, with no result when none
+    was skipped."""
     results: list[EntityResult] = []
     for group, members, reason, why in fallen:
         # A member left unaddressable answers for nothing, even when its entity ran as a target of its own; a
@@ -226,7 +230,7 @@ def _unanswered(
             for member in members
         ):
             continue
-        if reason == Reason.OWN_CALL:
+        if reason is None or reason == Reason.OWN_CALL:
             # An unaddressable member's skip names its device (_device_of), so match that form too; a stand-in's
             # reported_id is the group's own, so only that form names it, or its device's own target.
             ids: set[str] = set()
@@ -236,16 +240,18 @@ def _unanswered(
                     ids.add(member.reported_id)
             details = [r.detail for r in skipped if r.entity_id in ids and r.status is Status.UNSUPPORTED and r.detail]
             reason = min(details, key=_rank, default=reason)
+            if reason is None:
+                continue
         results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
     return results
 
 
 def _members_planned(members: list[Target], seen: set[str], by_device: ByDevice) -> list[Target]:
     """The members a native group is planned as, each indirect (named=False; a stand-in, the group's own entity,
-    too): none raises, and only _unanswered refuses a group that fell back. An available one not already a target
-    (`seen`), which a target already answers for; and each stand-in (Target.stand_in), which _plan skips, so the
-    device the group's call would have reached gets an entry saying it didn't, unless a target on its device
-    (`by_device`) answers for it. A stand-in has no state to judge it unavailable by; any other member known
+    too): none raises, and only _unanswered refuses a group that fell back or was expanded. An available one not
+    already a target (`seen`), which a target already answers for; and each stand-in (Target.stand_in), which _plan
+    skips, so the device the group's call would have reached gets an entry saying it didn't, unless a target on its
+    device (`by_device`) answers for it. A stand-in has no state to judge it unavailable by; any other member known
     unavailable, unaddressable or not, is left out quietly, as core skips one in an area."""
     return [
         replace(member, named=False)
@@ -381,7 +387,8 @@ class Dispatcher:
         runs: list[Run] = []
         labs_on = get_runtime(self.hass).labs
         for adapter, bucket in buckets.values():
-            runs += self._plan(adapter, request, self._expand_native_groups(adapter, bucket, results), results, labs_on)
+            expanded, groups = self._expand_native_groups(adapter, bucket, results)
+            runs += self._plan(adapter, request, expanded, results, labs_on, groups)
 
         for adapter_results in await asyncio.gather(*(self._run_adapter(*run) for run in runs)):
             results.extend(adapter_results)
@@ -394,19 +401,23 @@ class Dispatcher:
         targets: list[Target],
         results: list[EntityResult],
         labs_on: bool,
+        expanded: list[tuple[Target, list[Target]]],
     ) -> list[Run]:
         """One adapter's runs, one per set of dropped fields and own call so every target in a run gets the same
         request and call; each target skipped or left nothing to do goes in results instead.
 
         A native group that falls back to its members gets no result of its own: they answer for it. Only when none
         of its members was planned or left nothing to do (each refused, gated or unavailable) is the group itself
-        refused, with its reason, raised if named, once every target is judged."""
+        refused, with its reason, raised if named, once every target is judged. So is a group core expanded for an
+        adapter that can't address it (`expanded`), with its members' reason."""
         by_run: dict[tuple[frozenset[str], OwnCall | None], list[Target]] = {}
         reached: dict[str, Reached] = {}
         pending = deque(targets)
         seen = {target.reported_id for target in pending}
         # Each group that fell back, its members and the reason it would be refused with; the targets that answer.
-        fallen: list[tuple[Target, list[Target], str, str | None]] = []
+        fallen: list[tuple[Target, list[Target], str | None, str | None]] = [
+            (group, members, None, None) for group, members in expanded
+        ]
         answered: set[str] = set()
         by_device = _by_device(targets)
         # The integration's title, which a class_unknown message names.
@@ -588,10 +599,12 @@ class Dispatcher:
 
     def _expand_native_groups(
         self, adapter: Adapter, bucket: list[Target], results: list[EntityResult]
-    ) -> list[Target]:
+    ) -> tuple[list[Target], list[tuple[Target, list[Target]]]]:
+        """The targets with each group replaced by its members, and the groups expanded with their members."""
         if adapter.scope.native_groups or not any(target.is_group for target in bucket):
-            return bucket
+            return bucket, []
         expanded: list[Target] = []
+        groups: list[tuple[Target, list[Target]]] = []
         by_device = _by_device(bucket)
         for target in bucket:
             if not target.is_group:
@@ -600,6 +613,7 @@ class Dispatcher:
                 # No expand_group, or one that answered None or raised (logged): membership is unknowable here.
                 results += _skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
             else:
+                groups.append((target, members))
                 expanded += _members_planned(members, set(), by_device)
         # One copy per entity, each stand-in apart, as its reported_id is its group's. A member the caller also named
         # is the caller's own target, whichever copy came first, so it raises rather than skips, as _plan keeps it.
@@ -612,7 +626,7 @@ class Dispatcher:
                 by_id[target.reported_id] = target
             else:
                 by_id.setdefault(target.reported_id, target)
-        return list(by_id.values()) + stand_ins
+        return list(by_id.values()) + stand_ins, groups
 
     async def _run_adapter(
         self,

@@ -1,7 +1,8 @@
 """A Zigbee2MQTT group of switches is a switch entity (internals.md, Addressing), and falls back to its members."""
 
 import pytest
-from homeassistant.exceptions import HomeAssistantError
+
+from custom_components.deviceside.core.errors import TargetNotSupported
 
 from .conftest import DEVICES, GROUPS, call, commands, light
 from .families.sonoff.test_inching import relay
@@ -82,15 +83,15 @@ async def test_a_switch_group_of_countdown_plugs_gets_a_countdown_per_plug(hass,
     ]
 
 
-async def test_a_mixed_groups_light_entity_sends_no_auto_off_to_its_switches(hass, setup_production, broker, caplog):
+async def test_a_mixed_groups_light_entity_sends_no_auto_off_to_its_switches(hass, setup_production, broker):
     inching_switches(hass, broker)
     light(hass, broker, "light.bulb", "0x03")
     entity_id = switch_group(hass, broker, "light.room", ("0x01", "0x02", "0x03"))
     allow_labs(hass)
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(TargetNotSupported) as raised:
         await call(hass, "set_auto_off", {"entity_id": entity_id, "duration": 5})
     assert commands(broker) == []
-    assert "(not_addressable)" in caplog.text
+    assert raised.value.reason == "not_built"
 
 
 async def test_a_mixed_groups_switch_entity_arms_its_switches_and_skips_the_bulb(

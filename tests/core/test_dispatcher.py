@@ -1411,6 +1411,61 @@ async def test_native_group_expands_when_adapter_cannot_address_it_and_an_empty_
     assert reset_script.calls[0][3] == ["light.a", "light.b"]
 
 
+# An adapter that can't address a group: core expands it, and a group none of whose members runs is refused with its
+# members' reason, as one that fell back is.
+EXPANDED = replace(CLASSED, native_groups=False)
+
+
+@pytest.mark.usefixtures("classed", "harmless")
+@pytest.mark.parametrize(("member", "reason"), [("light.c", "not_built"), ("light.b", "labs_off")])
+async def test_a_named_group_core_expands_raises_its_members_reason(hass, fake, reset_script, member, reason):
+    add_fake_entity(hass, fake, "light.down", state="unavailable")
+    native_group(hass, fake, "light.fake_group", [member, "light.down"])
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", EXPANDED):
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5}) == reason
+
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed", "harmless")
+async def test_a_group_core_expands_that_has_a_member_run_raises_nothing(hass, fake, reset_script, caplog):
+    native_group(hass, fake, "light.fake_group", ["light.a", "light.c"])
+
+    with patch.object(FakeTurnOnFor, "scope", EXPANDED):
+        response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
+
+    assert response == {"light.a": SENT | {"capability": "A"}}
+    assert "skipped targets that can't take it: light.c (not_built)" in caplog.text
+    assert reset_script.calls[0][3] == ["light.a"]
+
+
+@pytest.mark.usefixtures("classed", "harmless")
+async def test_an_unnamed_group_core_expands_is_skipped_with_its_members_reason(hass, fake, reset_script, caplog):
+    native_group(hass, fake, "light.fake_group", ["light.c"])
+    area_id = in_area(hass, "Den", "light.fake_group")
+
+    with patch.object(FakeTurnOnFor, "scope", EXPANDED):
+        await call(hass, "turn_on_for", {"area_id": area_id, "duration": 5}, return_response=False)
+
+    assert "light.fake_group (not_built)" in caplog.text
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_core_expands_whose_members_are_all_unavailable_matches_nothing(hass, fake, reset_script):
+    native_group(hass, fake, "light.fake_group", ["light.a", "light.b"])
+    for member in ("light.a", "light.b"):
+        hass.states.async_set(member, "unavailable")
+
+    with patch.object(FakeTurnOnFor, "scope", EXPANDED), pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
+
+    assert raised.value.translation_key == "no_entities_matched"
+    assert reset_script.calls == []
+
+
 async def test_native_group_members_are_indirect(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.dim", attributes={"supported_color_modes": [ColorMode.BRIGHTNESS]})
