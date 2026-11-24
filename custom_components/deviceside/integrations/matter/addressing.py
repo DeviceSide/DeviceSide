@@ -118,7 +118,7 @@ def has_level(node, endpoint_id: int) -> bool:
 
 def color_features(node, endpoint_id: int) -> int:
     """The endpoint's Color Control FeatureMap from the node's attribute cache; 0 when unreported or not an int."""
-    feature_map = node.node_data.attributes.get(_attr_path(endpoint_id, COLOR_CLUSTER, _FEATUREMAP_ATTR_ID))
+    feature_map = node.node_data.attributes.get(color_feature_map_path(endpoint_id))
     return feature_map if isinstance(feature_map, int) else 0
 
 
@@ -136,13 +136,23 @@ def node_for(hass: HomeAssistant, target: Target):
 
 
 def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
-    """Why this entity can't run an OnOff timer, or None: it needs a reachable node whose endpoint has LT."""
+    """Why DeviceSide can't address this entity's OnOff endpoint, or None: it needs a reachable node whose endpoint has
+    the Lighting (LT) feature."""
     ep_id = onoff_endpoint(target.entry.unique_id)
     if ep_id is None or (node := node_for(hass, target)) is None:
         return Reason.NOT_ADDRESSABLE
     if not lt_feature(node, ep_id):
         return "no_lt_feature"
     return None
+
+
+def light_reason(hass: HomeAssistant, target: Target) -> str | None:
+    """Why a light action can't run on this entity, or None: unsupported_reason's, then not_dimmable for an endpoint
+    with no Level Control server (plan Decision 11: Level and Color Control are on the OnOff entity's endpoint)."""
+    if reason := unsupported_reason(hass, target):
+        return reason
+    # unsupported_reason found the endpoint and the node.
+    return None if has_level(node_for(hass, target), onoff_endpoint(target.entry.unique_id)) else "not_dimmable"
 
 
 def ontime_attr_path(endpoint_id: int) -> str:
