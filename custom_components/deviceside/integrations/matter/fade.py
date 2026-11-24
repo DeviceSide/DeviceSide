@@ -13,6 +13,8 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import (
+    EXECUTE_IF_OFF,
+    NO_OVERRIDE,
     color_features,
     color_path,
     level_path,
@@ -35,7 +37,15 @@ from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, DurationLimits, labs
 from ...core.transition import SATURATION
-from ...core.zcl import CURRENT_LEVEL, CURRENT_SATURATION, ENHANCED_HUE, HUE_SATURATION, MAX_TENTHS_S
+from ...core.zcl import (
+    CURRENT_LEVEL,
+    CURRENT_SATURATION,
+    ENHANCED_HUE,
+    HUE_SATURATION,
+    MAX_TENTHS_S,
+    MOVE_DOWN,
+    MOVE_UP,
+)
 from ...core.zcl_fade import MIN_STEP, hue_cycle
 from ...core.zcl_write import level
 
@@ -52,12 +62,6 @@ _STEPS_PER_PERCENT = 254 / 100
 # The longest cycle is one step a second.
 _HUE_STEPS = 254
 _ENHANCED_HUE_STEPS = 65535
-# Color Control's MoveModeEnum (chip Objects.py): Up 1, Down 3.
-_MOVE_UP, _MOVE_DOWN = 0x01, 0x03
-# The ExecuteIfOff override, for this command only: an off light stores the level and stays off.
-_EXECUTE_IF_OFF = {"optionsMask": 1, "optionsOverride": 1}
-# No override, for a light that is lit: the light's own Options apply.
-_NO_OVERRIDE = {"optionsMask": 0, "optionsOverride": 0}
 
 
 def soft_off_restores(hass: HomeAssistant) -> dict[str, object]:
@@ -213,7 +217,7 @@ class MatterFade(LevelFade):
         if self.attribute != BRIGHTNESS_FIELD:
             saturation = round(end * _STEPS_PER_PERCENT)
             await light.send(
-                target, "ColorControl", "MoveToSaturation", saturation=saturation, transitionTime=tenths, **_NO_OVERRIDE
+                target, "ColorControl", "MoveToSaturation", saturation=saturation, transitionTime=tenths, **NO_OVERRIDE
             )
             hue_moves(hass).discard(target.entity_id)  # a color move ends the light's hue cycle
             return
@@ -225,24 +229,22 @@ class MatterFade(LevelFade):
         try:
             if end > reading.level or not reading.lit:
                 if not reading.lit:
-                    await light.send(
-                        target, "LevelControl", "MoveToLevel", level=1, transitionTime=0, **_EXECUTE_IF_OFF
-                    )
+                    await light.send(target, "LevelControl", "MoveToLevel", level=1, transitionTime=0, **EXECUTE_IF_OFF)
                 await light.send(
                     target,
                     "LevelControl",
                     "MoveToLevelWithOnOff",
                     level=level(end),
                     transitionTime=tenths,
-                    **_NO_OVERRIDE,
+                    **NO_OVERRIDE,
                 )
             elif soft_off:
                 await light.send(
-                    target, "LevelControl", "MoveToLevelWithOnOff", level=0, transitionTime=tenths, **_NO_OVERRIDE
+                    target, "LevelControl", "MoveToLevelWithOnOff", level=0, transitionTime=tenths, **NO_OVERRIDE
                 )
             else:
                 await light.send(
-                    target, "LevelControl", "MoveToLevel", level=level(end), transitionTime=tenths, **_NO_OVERRIDE
+                    target, "LevelControl", "MoveToLevel", level=level(end), transitionTime=tenths, **NO_OVERRIDE
                 )
         except BaseException:
             # Nothing replaced the earlier restore, unless a light call from HA took the entry meanwhile.
@@ -285,7 +287,7 @@ def _restore_job(hass: HomeAssistant, target: Target, start: float, token: objec
                 if off:
                     _LOGGER.debug("Restoring %s to %.1f %% after a soft off", target.entity_id, start)
                     await light.send(
-                        target, "LevelControl", "MoveToLevel", level=level(start), transitionTime=0, **_EXECUTE_IF_OFF
+                        target, "LevelControl", "MoveToLevel", level=level(start), transitionTime=0, **EXECUTE_IF_OFF
                     )
             except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
                 if restores.get(target.entity_id) is token:
@@ -324,8 +326,8 @@ class MatterHueMove(Adapter[RampRequest]):
                 ("EnhancedMoveHue", _ENHANCED_HUE_STEPS) if features & ENHANCED_HUE else ("MoveHue", _HUE_STEPS)
             )
             rate, clamped_to = hue_cycle(request.sweep_time, steps, steps)
-            mode = _MOVE_UP if request.up else _MOVE_DOWN
-            await light.send(target, "ColorControl", command, moveMode=mode, rate=rate, **_NO_OVERRIDE)
+            mode = MOVE_UP if request.up else MOVE_DOWN
+            await light.send(target, "ColorControl", command, moveMode=mode, rate=rate, **NO_OVERRIDE)
             hue_moves(hass).add(target.entity_id)
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 

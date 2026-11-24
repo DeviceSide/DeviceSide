@@ -21,6 +21,7 @@ from homeassistant.const import STATE_OFF, Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import (
+    EXECUTE_IF_OFF,
     color_path,
     level_path,
     light_reason,
@@ -59,9 +60,8 @@ from ...core.zcl_write import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# The write fade is core/zcl.py's, so a call looks alike on every transport. OptionsMask and OptionsOverride of 1 set
-# the Options bitmap's ExecuteIfOff bit for this command only: a light that is off stores the value and stays off.
-_OPTIONS = {"transitionTime": WRITE_FADE_TENTHS, "optionsMask": 1, "optionsOverride": 1}
+# The write fade is core/zcl.py's, so a call looks alike on every transport; ExecuteIfOff is addressing's.
+_OPTIONS = {"transitionTime": WRITE_FADE_TENTHS, **EXECUTE_IF_OFF}
 # A light reads a value back within one step of the one sent: it rounds to its own resolution.
 _STEP = 1
 

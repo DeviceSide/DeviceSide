@@ -38,7 +38,7 @@ from ...core.transition import (
     hs_color,
     lit,
 )
-from ...core.zcl import XY_SCALE
+from ...core.zcl import MOVE_DOWN, MOVE_UP, XY_SCALE
 from ...core.zcl_fade import MIN_STEP, brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,7 +53,6 @@ END_REFRESH_S = 1.0
 # 0.08 s after the send, so every read lands behind schedule and fits a start a few percent off (3 Nov lab rerun);
 # a read within this much of the ramp's own speed of the prediction leaves the prediction alone.
 FIT_LAG_S = 0.15
-_MOVE_UP, _MOVE_DOWN = 0x01, 0x03
 
 type Command = tuple[int, int, dict[str, Any]]  # cluster, command, params in the command's positional order
 
@@ -517,7 +516,7 @@ def hue_move(request: RampRequest, movers: list[Target]) -> HueMove:
     the rate inside the range isn't reported.
     """
     rate, clamped_to = hue_cycle(request.sweep_time, HUE_STEPS, HUE_STEPS)
-    mode = _MOVE_UP if request.up else _MOVE_DOWN
+    mode = MOVE_UP if request.up else MOVE_DOWN
     command = (zcl.COLOR_CLUSTER, zcl.ENHANCED_MOVE_HUE, {"move_mode": mode, "rate": rate})
     return HueMove(command, movers, clamped_to)
 

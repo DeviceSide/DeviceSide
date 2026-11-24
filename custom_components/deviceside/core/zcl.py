@@ -19,6 +19,10 @@ CURRENT_X = 0x0003
 CURRENT_Y = 0x0004
 COLOR_TEMPERATURE = 0x0007  # ColorTemperatureMireds
 
+# Color Control's MoveMode (ZCL) and MoveModeEnum (Matter), one encoding: Up 1, Down 3 (0 is Stop, 2 reserved).
+MOVE_UP = 0x01
+MOVE_DOWN = 0x03
+
 # Color capability bits, one layout in ZCL's ColorCapabilities (0x400A) and Matter's Color Control FeatureMap (0xFFFC).
 HUE_SATURATION = 0x01
 ENHANCED_HUE = 0x02

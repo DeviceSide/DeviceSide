@@ -24,6 +24,12 @@ from ...core.zcl import (
 
 _MATTER_DOMAIN = "matter"
 
+# The Options override of a Level or Color Control command: optionsMask picks the Options bits this command overrides,
+# optionsOverride their values, and bit 0 is ExecuteIfOff. With it set, a light that is off stores the value and stays
+# off; with neither set, the light's own Options apply (a lit light, or a stop with nothing running).
+EXECUTE_IF_OFF = {"optionsMask": 1, "optionsOverride": 1}
+NO_OVERRIDE = {"optionsMask": 0, "optionsOverride": 0}
+
 # OnOff cluster constants (Matter spec, cluster 0x0006)
 _FEATUREMAP_ATTR_ID = 65532  # 0xFFFC
 _LT_FEATURE_BIT = 0x0001  # Lighting (LT) is bit 0; bit 1 (0x2) is DeadFrontBehavior

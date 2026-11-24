@@ -10,6 +10,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import (
+    NO_OVERRIDE,
     color_features,
     color_path,
     has_color,
@@ -37,7 +38,6 @@ _LOGGER = logging.getLogger(__name__)
 # while still moving (internals.md, stop). 0.2 s is two of a transition's 0.1 s units (core/zcl.py).
 READ_GAP_S = 0.2
 # Neither command moves anything with nothing running, so no override is needed: the light's own Options apply.
-_STOP = {"optionsMask": 0, "optionsOverride": 0}
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,9 +109,9 @@ class MatterStop(Adapter[Request]):
         return [by_id.get(result.entity_id, result) for result in results]
 
     async def _send(self, client: object, target: Target, node_id: int, ep_id: int, cluster: str, command: str) -> None:
-        _LOGGER.debug("%s: sending matter %s.%s %s", target.reported_id, cluster, command, _STOP)
+        _LOGGER.debug("%s: sending matter %s.%s %s", target.reported_id, cluster, command, NO_OVERRIDE)
         await client.send_device_command(
-            node_id=node_id, endpoint_id=ep_id, command=make_command(cluster, command, **_STOP)
+            node_id=node_id, endpoint_id=ep_id, command=make_command(cluster, command, **NO_OVERRIDE)
         )
 
     async def _read(self, hass: HomeAssistant, target: Target, light: _Halted) -> dict[str, object]:
