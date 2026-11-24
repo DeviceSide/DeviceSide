@@ -79,7 +79,7 @@ def test_an_action_without_a_target_is_an_error(reg):
         )
 
 
-def test_actions_that_differ_from_the_registrys_are_an_error(reg, monkeypatch):
+def test_actions_that_differ_from_the_registrys_are_an_error(reg):
     with pytest.raises(SystemExit, match="differ from the registry"):
         gs.generate(SOURCE, registry({"zha": {"light"}}, actions=("turn_on", "turn_off")))
 

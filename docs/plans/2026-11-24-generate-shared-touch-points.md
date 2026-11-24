@@ -82,7 +82,7 @@ New script, modeled on `scripts/gen_codeowners.py` (`sys.path` insert, `AdapterR
 - Self-check in `generate`: `yaml.safe_load` of the result with every `target` popped equals the input's, and each
   `target.entity` equals `targets()`. Fails loudly on a bad splice.
 - `authored(text) -> str`: the text with each target block removed, for step 4.
-- Regenerate `services.yaml`. Expected diff: the three target anchors and six aliases expand, entries re-sort;
+- Regenerate `services.yaml`. Expected diff: the three target anchors and four aliases expand, entries re-sort;
   `yaml.safe_load` before and after are equal apart from entry order.
 - `tests/scripts/test_gen_services.py`: block shapes (scalar, flow list, order), alias and anchor targets replaced,
   hand-written field anchors untouched, missing-target and key-mismatch errors, `--check` stale then clean, and
