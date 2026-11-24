@@ -111,8 +111,8 @@ def follow_bases(
     Each start runs as the entry's background task (eagerly, so a start that never suspends is done before this
     returns). A base that goes while its start runs cancels it, so `start` must undo what it did on CancelledError.
     HA's mqtt.async_subscribe never suspends today, so no start does either; the cancel path keeps a start correct if
-    one ever does. A start that raises is started again only once its base goes and comes back, or the entry
-    reloads; `start` should recover instead (the bridge cache warns and returns a no-op stop).
+    one ever does. A start that raises is started again at the next bridge entity change, of any base; one that
+    returns a stop, even a no-op one, is not (the bridge cache warns on a failed subscribe and returns a no-op stop).
     """
     return _Follower(hass, entry, start, name).stop_all
 
