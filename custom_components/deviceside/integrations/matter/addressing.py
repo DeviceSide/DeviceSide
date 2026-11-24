@@ -3,21 +3,36 @@
 No imports from homeassistant.components.matter or chip.clusters at module level: those packages
 require matter_server and chip to be installed, but the adapter must import cleanly in test
 environments where only the core homeassistant package is present.  All matter-specific operations
-are accessed either through hass.config_entries or via deferred imports confined to a single
-helper function (make_on_with_timed_off).
+are accessed either through hass.config_entries or via deferred imports confined to two
+helper functions (make_on_with_timed_off, and make_command for Level and Color Control).
 """
 
 from homeassistant.core import HomeAssistant
 
 from ...core.errors import Reason
 from ...core.models import Target
-from ...core.zcl import ON_OFF, ON_OFF_CLUSTER, ON_TIME, READBACK_SLACK_TENTHS
+from ...core.zcl import (
+    COLOR_CLUSTER,
+    CURRENT_LEVEL,
+    LEVEL_CLUSTER,
+    ON_LEVEL,
+    ON_OFF,
+    ON_OFF_CLUSTER,
+    ON_TIME,
+    READBACK_SLACK_TENTHS,
+)
 
 _MATTER_DOMAIN = "matter"
 
 # OnOff cluster constants (Matter spec, cluster 0x0006)
 _FEATUREMAP_ATTR_ID = 65532  # 0xFFFC
 _LT_FEATURE_BIT = 0x0001  # Lighting (LT) is bit 0; bit 1 (0x2) is DeadFrontBehavior
+
+# Color Control FeatureMap bits (Matter spec, cluster 0x0300).
+COLOR_FEATURE_HS = 0x01  # HueAndSaturation
+COLOR_FEATURE_EHUE = 0x02  # EnhancedHue
+COLOR_FEATURE_XY = 0x08  # XY
+COLOR_FEATURE_CT = 0x10  # ColorTemperature
 
 
 def node_id_from_unique_id(unique_id: str) -> int | None:
@@ -79,9 +94,13 @@ def matter_client(hass: HomeAssistant, config_entry_id: str | None = None):
     return entries[0].runtime_data.adapter.matter_client
 
 
+def _attr_path(endpoint_id: int, cluster_id: int, attr_id: int) -> str:
+    """An attribute's path as python-matter-server keys it: "{endpoint}/{cluster}/{attribute}"."""
+    return f"{endpoint_id}/{cluster_id}/{attr_id}"
+
+
 def _onoff_attr_path(endpoint_id: int, attr_id: int) -> str:
-    """An OnOff attribute's path as python-matter-server keys it: "{endpoint}/{cluster}/{attribute}"."""
-    return f"{endpoint_id}/{ON_OFF_CLUSTER}/{attr_id}"
+    return _attr_path(endpoint_id, ON_OFF_CLUSTER, attr_id)
 
 
 def lt_feature(node, endpoint_id: int) -> bool:
@@ -92,6 +111,21 @@ def lt_feature(node, endpoint_id: int) -> bool:
     """
     feature_map = node.node_data.attributes.get(_onoff_attr_path(endpoint_id, _FEATUREMAP_ATTR_ID))
     return isinstance(feature_map, int) and bool(feature_map & _LT_FEATURE_BIT)
+
+
+def has_level(node, endpoint_id: int) -> bool:
+    """True if the endpoint has a Level Control server: its CurrentLevel is in the node's attribute cache.
+
+    CurrentLevel is mandatory on the cluster, and the server reports every attribute it holds, so the key is present
+    exactly when the server is. Sync, no I/O, like lt_feature.
+    """
+    return _attr_path(endpoint_id, LEVEL_CLUSTER, CURRENT_LEVEL) in node.node_data.attributes
+
+
+def color_features(node, endpoint_id: int) -> int:
+    """The endpoint's Color Control FeatureMap from the node's attribute cache; 0 when unreported or not an int."""
+    feature_map = node.node_data.attributes.get(_attr_path(endpoint_id, COLOR_CLUSTER, _FEATUREMAP_ATTR_ID))
+    return feature_map if isinstance(feature_map, int) else 0
 
 
 def node_for(hass: HomeAssistant, target: Target):
@@ -127,6 +161,25 @@ def onoff_attr_path(endpoint_id: int) -> str:
     return _onoff_attr_path(endpoint_id, ON_OFF)
 
 
+def level_path(endpoint_id: int, attr_id: int = CURRENT_LEVEL) -> str:
+    """Attribute path for a Level Control attribute (CurrentLevel by default)."""
+    return _attr_path(endpoint_id, LEVEL_CLUSTER, attr_id)
+
+
+def on_level_path(endpoint_id: int) -> str:
+    return level_path(endpoint_id, ON_LEVEL)
+
+
+def color_path(endpoint_id: int, attr_id: int) -> str:
+    """Attribute path for a Color Control attribute: CURRENT_HUE, CURRENT_SATURATION, CURRENT_X, CURRENT_Y,
+    COLOR_TEMPERATURE, or the FeatureMap."""
+    return _attr_path(endpoint_id, COLOR_CLUSTER, attr_id)
+
+
+def color_feature_map_path(endpoint_id: int) -> str:
+    return color_path(endpoint_id, _FEATUREMAP_ATTR_ID)
+
+
 async def read_timer(client, node_id: int, endpoint_id: int) -> tuple[object, object]:
     """OnTime (tenths of a second) and OnOff, read live, one path per read; a value the device leaves out is None.
 
@@ -149,6 +202,19 @@ def timer_matches(read_on_time: object, on_off: object, on_time: int) -> bool:
     READBACK_SLACK_TENTHS under it. A device keeps the longer of a running timer and a new one (the spec's
     max(OnTime, onTime)), so a shorter call during a longer timer reads above it and isn't confirmed."""
     return timer_running(read_on_time, on_off) and on_time - READBACK_SLACK_TENTHS <= read_on_time <= on_time
+
+
+def make_command(cluster: str, command: str, **fields):
+    """Create a chip.clusters.Objects.<cluster>.Commands.<command> object from its field names, for example
+    make_command("LevelControl", "MoveToLevel", level=1, transitionTime=0, optionsMask=1, optionsOverride=1).
+
+    Lazy import, as in make_on_with_timed_off. Used for LevelControl (MoveToLevel, MoveToLevelWithOnOff, Stop) and
+    ColorControl (MoveToHueAndSaturation, MoveToColor, MoveToColorTemperature, MoveHue, EnhancedMoveHue,
+    MoveSaturation, StopMoveStep).
+    """
+    from chip.clusters import Objects as clusters  # noqa: PLC0415
+
+    return getattr(getattr(clusters, cluster).Commands, command)(**fields)
 
 
 def make_on_with_timed_off(on_off_control: int, on_time: int, off_wait_time: int):

@@ -8,6 +8,17 @@ ON_OFF_CLUSTER = 0x0006
 ON_OFF = 0x0000
 ON_TIME = 0x4001
 
+# Level Control (0x0008) and Color Control (0x0300) clusters and the attributes Matter and ZHA both read, same IDs.
+LEVEL_CLUSTER = 0x0008
+CURRENT_LEVEL = 0x0000
+ON_LEVEL = 0x0011
+COLOR_CLUSTER = 0x0300
+CURRENT_HUE = 0x0000
+CURRENT_SATURATION = 0x0001
+CURRENT_X = 0x0003
+CURRENT_Y = 0x0004
+COLOR_TEMPERATURE = 0x0007  # ColorTemperatureMireds
+
 # OnTime counts down live, so a read-back lands a little under the request: the slack the rig's ZHA timing allows, 3 s.
 READBACK_SLACK_TENTHS = 30
 
