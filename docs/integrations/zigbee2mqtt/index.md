@@ -15,16 +15,20 @@ DeviceSide tells them apart by the manufacturer and model Zigbee2MQTT registers 
 devices and Tuya devices sold under other brands, by the device's own Zigbee manufacturer and model, which Zigbee2MQTT
 publishes as it connects.
 
-- A **group** gets only what all its lights get. One with a light a feature refuses, or, with Labs
+- A **group** gets only what all its devices get. Zigbee2MQTT shows a group as one entity per kind of member: a group of
+  lights is a light, a group of switches is a switch, and a group holding both gets two entities, a light and a switch,
+  each reaching only its own domain's members on a fallback. So target `switch.<group>` for auto-off, and `light.<group>`
+  for the lights. A group with a light a feature refuses, or, with Labs
   off, one in Labs, falls back to its lights, each on its own; with Labs on, it runs as one group. A member
   Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya plug in a
   group makes it fall back too. A TS011F plug makes it fall back on smooth dimming, smooth color changes and set without
   turning on even with Labs on, as those serve lights alone, and a TS011F is a plug even where
   Zigbee2MQTT shows it as a light. So does a TS011F plug on Tuya's countdown for turn on with timer, as the group's
   timer isn't the plug's: each light gets its own, and so does a plug Zigbee2MQTT shows as a light. One it shows as a
-  switch is skipped (`not_addressable`), with a warning, as no light reaches it: target its switch beside the group, and
-  it gets its countdown, with no warning. A Tuya datapoint device with one countdown makes a group fall back on turn on
-  with timer the same way, and turn off with timer always runs a group as its devices, each on its own: a Zigbee group
+  switch is skipped (`not_addressable`), with a warning, as no light reaches it: target its switch beside the group (or the group's switch), and
+  it gets its countdown, with no warning. Set auto-off and clear auto-off work the same way: a group of switches, or the
+  group's switch entity, falls back to its members. A Tuya datapoint device with one countdown makes a group fall back on turn on
+  with timer the same way, and turn off with timer, set auto-off and clear auto-off always run a group as its devices, each on its own: a Zigbee group
   has no call for it ([integrations](../../integrations.md#what-cant-be-done-and-why)). Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes its
   groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group is in
   Labs, and turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on. If DeviceSide

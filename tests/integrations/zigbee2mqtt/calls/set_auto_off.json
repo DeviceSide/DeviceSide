@@ -423,6 +423,56 @@
     "send": "<function>"
    },
    "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.sonoff",
+     "switch.sonoff",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.sonoff",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x02/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 5.0, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
     "duration_s": 7200.0
    },
    "targets": [
@@ -706,6 +756,56 @@
     ],
     null
    ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control_1\": \"ENABLE\", \"inching_time_1\": 5}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 65535,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.whd",
+     "switch.whd",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "tuya_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.whd",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
    [
     [
      "mqtt.async_publish",
