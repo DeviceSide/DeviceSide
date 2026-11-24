@@ -8,7 +8,8 @@ An allowlist, not an expose rule: docs/evidence.md (In Labs) admits only the ide
 ZHC adds later stays `tuya_mcu` until someone reads it. Each definition takes its own expose's `value_max`, and core
 clamps by class (OwnCall.limits), so there is one class per limit.
 
-The call: one publish, `{"state": "ON", "countdown": N}`, whole seconds, `state` first, as converter B sends a
+The call: one publish, `{"state": "ON", "countdown": N}` for turn_on_for and `{"state": "OFF", "countdown": N}` for
+turn_off_for, whole seconds, `state` first, as converter B sends a
 message's keys in its order and a failed `state` throws before `countdown` goes out (research/
 2026-11-24-tuya-datapoint-call.md, §1); Z2M logs that set as failed, and set_check.py makes it `rejected`. Light
 fields on a dimmer go first by light.turn_on (light_turn_on.py). No reads: the time left isn't served, so the result
@@ -24,7 +25,7 @@ from ...bridge import publish_set
 from ...light_turn_on import turn_on
 from .....actions.turn_on_for import TurnOnForRequest
 from .....core.adapter import Adapter
-from .....core.models import EntityResult, Status, Target
+from .....core.models import EntityResult, Status, Target, TimedRequest
 from .....core.rules import Rule
 from .....core.scope import DurationLimits, OwnCall
 
@@ -103,12 +104,17 @@ def _rule(name: str) -> Rule:
 DATAPOINT_RULES = tuple(_rule(name) for name in DATAPOINT_CLASSES)
 
 
-async def _countdown(adapter: Adapter, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> EntityResult:
-    # A dimmer's light fields first, so the countdown starts once they have landed. supports() refused the targets it
-    # can't address.
-    if request.light.present():
+# The state each action's publish sets: the countdown toggles it back at zero.
+_STATE = {"turn_on_for": "ON", "turn_off_for": "OFF"}
+
+
+async def _countdown(adapter: Adapter, hass: HomeAssistant, request: TimedRequest, target: Target) -> EntityResult:
+    # A dimmer's light fields first (turn_on_for alone carries them), so the countdown starts once they have landed.
+    # No native_control or settled(), as turn_on_for's on_time path has: native control is Hue's alone, which a Tuya
+    # device never gets. supports() refused the targets it can't address.
+    if isinstance(request, TurnOnForRequest) and request.light.present():
         await turn_on(hass, target, request.light.as_turn_on_data())
-    await publish_set(hass, target, {"state": "ON", "countdown": int(request.duration_s)})
+    await publish_set(hass, target, {"state": _STATE[adapter.action], "countdown": int(request.duration_s)})
     return adapter.result(target, Status.SENT)
 
 

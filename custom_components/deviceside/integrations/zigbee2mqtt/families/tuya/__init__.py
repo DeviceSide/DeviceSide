@@ -122,15 +122,15 @@ REGISTRY_RULES = (
     Rule(TUYA_ZCL, {"model_id": "TS.*"}),
 )
 
-# turn_on_for, the one action that serves a Tuya class (index.md, Device classes): each countdown maker string with a
-# record of its own, Verified, and the rest of the countdown plugs (`tuya_countdown`), in Labs on their
-# kin's pass of the same call (docs/evidence.md, In Labs). Switches alone, as Z2M shows a plug, sent Tuya's countdown,
-# which a Z2M group's call isn't, so a group with one falls back to its members. The datapoint countdown's classes, on
-# lights and switches, in Labs on research (plan 2026-11-24-tuya-datapoint-single-endpoint.md, Decision 1), each sent
-# its own call (datapoint.py), so a group with one falls back too. The classes off the countdown are
-# left out, and the integration refuses them there, as today's call would harm them (refusals.py). Every other action
-# leaves every Tuya class out: no pass or research admits Tuya's firmware there, and get_attributes reads only what
-# another action serves (core/registry.py, check_queries; a countdown plug's read is refused, refusals.py).
+# turn_on_for, which serves every Tuya class an action serves (index.md, Device classes): each countdown maker string
+# with a record of its own, Verified, and the rest of the countdown plugs (`tuya_countdown`), in Labs on their kin's
+# pass of the same call (docs/evidence.md, In Labs). Switches alone, as Z2M shows a plug, sent Tuya's countdown, which a
+# Z2M group's call isn't, so a group with one falls back to its members. The datapoint countdown's classes, on lights
+# and switches, in Labs on research (plan 2026-11-24-tuya-datapoint-single-endpoint.md, Decision 1), each sent its own
+# call (datapoint.py), so a group with one falls back too. The classes off the countdown are left out, and the
+# integration refuses them there, as today's call would harm them (refusals.py). Every other action but turn_off_for
+# (below) leaves every Tuya class out: no pass or research admits Tuya's firmware there, and get_attributes reads only
+# what another action serves (core/registry.py, check_queries; a countdown plug's read is refused, refusals.py).
 _TURN_ON_FOR = FamilyScope(
     capabilities=verified(*VERIFIED_COUNTDOWNS, domains=(Platform.SWITCH,))
     | labs(TUYA_COUNTDOWN, domains=(Platform.SWITCH,))
@@ -138,4 +138,13 @@ _TURN_ON_FOR = FamilyScope(
     own_calls={**dict.fromkeys(COUNTDOWNS, COUNTDOWN), **DATAPOINT_CALLS},
 )
 
-FAMILY = Family(key="tuya", maintainers=(), classes=CLASSES, scopes={"turn_on_for": _TURN_ON_FOR})
+# turn_off_for: the datapoint countdown's classes alone, on lights and switches, in Labs on research (as turn_on_for),
+# each sent its own call (datapoint.py), the one call any Zigbee device has for it.
+_TURN_OFF_FOR = FamilyScope(capabilities=labs(*DATAPOINT_CLASSES), own_calls=DATAPOINT_CALLS)
+
+FAMILY = Family(
+    key="tuya",
+    maintainers=(),
+    classes=CLASSES,
+    scopes={"turn_on_for": _TURN_ON_FOR, "turn_off_for": _TURN_OFF_FOR},
+)

@@ -1,15 +1,18 @@
-"""Zigbee2MQTT turn_on_for on Tuya's datapoint countdown (docs/plans/2026-11-24-tuya-datapoint-single-endpoint.md, step
-3): the one publish each class gets, its limit, a dimmer's light fields first, and a set Z2M logs as failed. Which
-definitions take each class is test_classes.py's."""
+"""Zigbee2MQTT turn_on_for and turn_off_for on Tuya's datapoint countdown
+(docs/plans/2026-11-24-tuya-datapoint-single-endpoint.md, step 3): the one publish each class gets, its limit, a
+dimmer's light fields first, a set Z2M logs as failed, and turn_off_for refusing every other class. Which definitions
+take each class is test_classes.py's."""
 
 import asyncio
 
 import pytest
 from homeassistant.core import ServiceCall
 
-from custom_components.deviceside.core.scope import Level
-from custom_components.deviceside.integrations.zigbee2mqtt import light_turn_on
+from custom_components.deviceside.core.errors import Reason
+from custom_components.deviceside.core.scope import Level, Unplaced
+from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, light_turn_on
 from custom_components.deviceside.integrations.zigbee2mqtt.families.tuya import datapoint
+from custom_components.deviceside.integrations.zigbee2mqtt.turn_off_for import Z2MTurnOffFor
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
 from ...conftest import DEVICES, SET, TUYA_MCU, answer, call, commands, failure, group, light
@@ -161,3 +164,128 @@ async def test_a_group_with_a_datapoint_device_falls_back_so_each_gets_its_own_c
         (SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0}),
         (SET.replace(IEEE, "0x02"), {"state": "ON", "countdown": 5}),
     ]
+
+
+# turn_off_for: the same call with `"state": "OFF"`, which the countdown toggles back on at zero.
+
+
+def test_turn_off_for_serves_only_the_datapoint_classes_own_calls_in_labs():
+    scope = Z2MTurnOffFor.scope
+    assert scope.own_calls_only
+    assert dict(scope.own_calls) == dict(datapoint.DATAPOINT_CALLS)
+    assert set(scope.capabilities) == set(datapoint.CLASS_MAX_S)
+    for name in datapoint.CLASS_MAX_S:
+        assert scope.class_level(name, "light") is Level.LABS
+        assert scope.class_level(name, "switch") is Level.LABS
+    assert not scope.native_groups
+
+
+@pytest.mark.parametrize(
+    ("definition", "entity_id"),
+    [
+        pytest.param(DIMMER, "light.lamp", id="dimmer"),
+        pytest.param(DAY, "light.lamp", id="day"),
+        pytest.param(RELAY, "switch.relay", id="relay_as_a_switch"),
+    ],
+)
+async def test_turn_off_for_sends_one_publish_with_state_off_then_countdown(
+    hass, setup_production, broker, definition, entity_id
+):
+    entity_id = datapoint_light(hass, broker, definition, entity_id)
+    allow_labs(hass)
+
+    response = await call(hass, "turn_off_for", {"entity_id": entity_id, "duration": 30})
+
+    assert response == {entity_id: SENT}
+    assert commands(broker) == [(SET, {"state": "OFF", "countdown": 30})]
+    assert list(commands(broker)[0][1]) == ["state", "countdown"]
+
+
+@pytest.mark.parametrize(
+    ("definition", "countdown", "clamped_to"),
+    [
+        pytest.param(DIMMER, 43200, 43200, id="a_day_clamped_to_twelve_hours"),
+        pytest.param(DAY, 86400, None, id="a_day_on_the_day_class"),
+        pytest.param(RELAY, 7210, 7210, id="a_day_on_zbs16"),
+    ],
+)
+async def test_turn_off_for_clamps_to_the_class_s_limit(
+    hass, setup_production, broker, definition, countdown, clamped_to
+):
+    entity_id = datapoint_light(hass, broker, definition)
+    allow_labs(hass)
+
+    response = await call(hass, "turn_off_for", {"entity_id": entity_id, "duration": {"hours": 24}})
+
+    assert response == {entity_id: SENT if clamped_to is None else SENT | {"clamped_to": clamped_to}}
+    assert commands(broker) == [(SET, {"state": "OFF", "countdown": countdown})]
+
+
+async def test_turn_off_for_on_a_datapoint_device_is_refused_with_labs_off(hass, setup_production, broker):
+    entity_id = datapoint_light(hass, broker)
+    allow_labs(hass, False)
+
+    assert await refusal(hass, "turn_off_for", {"entity_id": entity_id, "duration": 5}) == "labs_off"
+    assert commands(broker) == []
+
+
+@pytest.mark.usefixtures("live")
+async def test_a_turn_off_for_set_z2m_logs_failed_is_rejected(hass, setup_production, broker):
+    entity_id = datapoint_light(hass, broker)
+    allow_labs(hass)
+    answer(broker, SET, line=STATE_UNDELIVERED)
+
+    assert await failure(hass, "turn_off_for", {"entity_id": entity_id, "duration": 5}) == f"{entity_id}: send_failed"
+
+
+@pytest.mark.parametrize("name", sorted(INTEGRATION.classes.keys() - datapoint.CLASS_MAX_S.keys()))
+def test_turn_off_for_refuses_every_other_class_as_not_built(name):
+    """No other Zigbee device has a call for it (the adapter serves only own calls), on every domain it can be."""
+    for domain in INTEGRATION.classes[name]:
+        assert Z2MTurnOffFor.scope.refusal([name], domain=domain, failure_harms=True) == (Reason.NOT_BUILT, None)
+    # Not yet placed, whatever the class it names: it could be one with no call.
+    assert Z2MTurnOffFor.scope.refusal([Unplaced(name)], failure_harms=True) == (Reason.CLASS_UNKNOWN, None)
+
+
+@pytest.mark.parametrize(
+    ("make", "reason"),
+    [
+        pytest.param(lambda hass, broker: light(hass, broker), "not_built", id="hue_bulb"),
+        pytest.param(lambda hass, broker: light(hass, broker, manufacturer="Acme"), "not_built", id="other_brand"),
+        pytest.param(
+            lambda hass, broker: light(
+                hass, broker, manufacturer="Tuya", model_id="TS0601", zigbee=(TUYA_MCU, "TS0601")
+            ),
+            "not_built",
+            id="tuya_mcu",
+        ),
+        pytest.param(
+            lambda hass, broker: (datapoint_light(hass, broker), broker.retained.pop(DEVICES))[0],
+            "class_unknown",
+            id="datapoint_before_bridge_devices",
+        ),
+    ],
+)
+async def test_turn_off_for_refuses_any_other_device_and_sends_nothing(hass, setup_production, broker, make, reason):
+    entity_id = make(hass, broker)
+    allow_labs(hass)
+
+    assert await refusal(hass, "turn_off_for", {"entity_id": entity_id, "duration": 5}) == reason
+    assert commands(broker) == []
+
+
+async def test_turn_off_for_on_a_group_falls_back_so_only_the_datapoint_member_gets_its_call(
+    hass, setup_production, broker, caplog
+):
+    """A Z2M group has no countdown, so the group falls back: the dimmer gets its own call, the Hue bulb, which has
+    none, is skipped as not built."""
+    entity_id = group(hass, broker, one={}, two={"manufacturer": "Tuya", "zigbee": (TUYA_MCU, "TS0601")})
+    entry = next(device for device in broker.retained[DEVICES] if device["ieee_address"] == "0x02")
+    entry["definition"] = {"model": DIMMER, "exposes": [STATE, COUNTDOWN]}
+    allow_labs(hass)
+
+    response = await call(hass, "turn_off_for", {"entity_id": entity_id, "duration": 5})
+
+    assert set(response) == {"light.two"}
+    assert commands(broker) == [(SET.replace(IEEE, "0x02"), {"state": "OFF", "countdown": 5})]
+    assert "light.one (not_built)" in caplog.text

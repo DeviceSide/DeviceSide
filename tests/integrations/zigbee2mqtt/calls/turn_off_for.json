@@ -1,0 +1,412 @@
+[
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 43200,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 30.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "tuya_datapoint",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"OFF\", \"countdown\": 30}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 43200,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "send_failed",
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/lamp"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"OFF\", \"countdown\": 5}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 43200,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "tuya_datapoint",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x02/set",
+      "{\"state\": \"OFF\", \"countdown\": 5}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 43200,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 86400.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 43200,
+    "classes": "tuya_datapoint",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"OFF\", \"countdown\": 43200}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 7210,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 30.0
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "tuya_datapoint_2h",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"OFF\", \"countdown\": 30}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 7210,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 86400.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 7210,
+    "classes": "tuya_datapoint_2h",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"OFF\", \"countdown\": 7210}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 86400,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 30.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "tuya_datapoint_24h",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"OFF\", \"countdown\": 30}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 86400,
+     "min_s": 1,
+     "step_s": 1
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 86400.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "tuya_datapoint_24h",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"OFF\", \"countdown\": 86400}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ }
+]
