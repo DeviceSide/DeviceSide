@@ -191,14 +191,16 @@ the move's send rather than ahead of it, and the restore can't interleave with a
 
 ### `stop`
 
-`LevelControl.Stop` (`optionsMask=0`, `optionsOverride=0`) to each light that reads on, plus
+`LevelControl.Stop` (`optionsMask=0`, `optionsOverride=0`) to each light, plus
 `ColorControl.StopMoveStep` (the same options) on one with a Color Control server, always: no state of ours says what
 a light was told (saturation moves aren't tracked), and with nothing moving neither changes anything (plan Decision 10).
 In the reference server Stop holds CurrentLevel where it is and StopMoveStep holds the color, and TC-LVL-6.1 and
-TC-CC-8.1 check that the value holds after the stop (research, Q1–Q2). A light that reads off gets nothing
-(`unchanged`, `off`): without ExecuteIfOff the server drops a Stop to an off light, and nothing fades on one. The stop
-cancels the light's soft-off restore, so a halted soft off stays on at the halt level, as on ZHA, and drops its hue
-cycle. It holds the light's lock (`fade`).
+TC-CC-8.1 check that the value holds after the stop (research, Q1–Q2). The sends go first and the light's OnOff is
+read after them, so a stop doesn't overshoot by a read's round trip. A light that reads off is `unchanged` (`off`):
+without ExecuteIfOff the server drops a Stop to an off light, and nothing fades on one. Its soft-off restore, if one
+is pending (a soft off that finished before the stop), still runs. A light that reads on has its restore cancelled, so
+a halted soft off stays on at the halt level, as on ZHA. Either way the stop drops its hue cycle. It holds the light's
+lock (`fade`).
 
 Then the read-back (plan Decision 8): OnOff and CurrentLevel, plus CurrentSaturation and CurrentHue (`<ep>/768/0`) on
 a light with HS, read live twice, `READ_GAP_S` (0.2 s) apart, each pass in a slot of its own so the gap holds none.

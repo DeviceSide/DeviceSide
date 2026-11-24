@@ -29,62 +29,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": false
-    }
-   ]
-  ]
- },
- {
-  "action": "stop",
-  "integration": "matter",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {},
-   "targets": [
-    [
-     "light.bulb",
-     "light.bulb",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "other",
-    "data": null,
-    "detail": "off",
-    "entity_id": "light.bulb",
-    "integration": "matter",
-    "member_classes": null,
-    "status": "unchanged"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -126,97 +70,6 @@
     ],
     {
      "1/6/0": false
-    }
-   ],
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/8/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/8/0": 127
-    }
-   ],
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/768/1",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/768/1": 127
-    }
-   ],
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/768/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/768/0": 10
-    }
-   ],
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": false
-    }
-   ],
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/8/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/8/0": 127
-    }
-   ],
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/768/1",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/768/1": 127
-    }
-   ],
-   [
-    [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/768/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/768/0": 10
     }
    ]
   ]
@@ -251,19 +104,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -293,6 +133,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -352,19 +205,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -394,6 +234,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -531,19 +384,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -573,6 +413,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -710,19 +563,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -752,6 +592,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -889,19 +742,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -915,6 +755,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -1000,19 +853,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -1042,6 +882,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -1127,19 +980,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -1169,6 +1009,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -1306,19 +1159,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -1348,6 +1188,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [
@@ -1547,19 +1400,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -1608,19 +1448,6 @@
   "wire": [
    [
     [
-     "matter.MatterClient.read_attribute",
-     [],
-     {
-      "attribute_path": "1/6/0",
-      "node_id": 2
-     }
-    ],
-    {
-     "1/6/0": true
-    }
-   ],
-   [
-    [
      "matter.MatterClient.send_device_command",
      [],
      {
@@ -1634,6 +1461,19 @@
      }
     ],
     null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
    ],
    [
     [

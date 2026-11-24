@@ -60,7 +60,7 @@ async def test_a_lit_light_with_no_color_server_gets_level_stop_alone(hass):
     assert await call(hass, "stop", BULB) == {"light.bulb": CONFIRMED}
 
     assert commands(send_cmd) == [LEVEL_STOP]
-    # OnOff before the stop, then two reads of OnOff and CurrentLevel.
+    # OnOff after the stop, then two reads of OnOff and CurrentLevel.
     assert reads(read_attr) == ["1/6/0", "1/6/0", "1/8/0", "1/6/0", "1/8/0"]
     kwargs = send_cmd.call_args.kwargs
     assert kwargs["endpoint_id"] == 1
@@ -84,13 +84,45 @@ async def test_a_light_without_the_hs_feature_gets_stop_move_step_but_reads_the_
     assert set(reads(read_attr)) == {"1/6/0", "1/8/0"}
 
 
-async def test_an_off_light_is_unchanged_with_nothing_sent(hass):
-    send_cmd, _, _ = light(hass, on=False)
+async def test_an_off_light_is_unchanged_with_off_and_read_once(hass):
+    send_cmd, read_attr, _ = light(hass, on=False)
 
     response = await call(hass, "stop", BULB)
 
     assert response == {"light.bulb": result("matter", "unchanged", capability="other", detail="off")}
-    send_cmd.assert_not_awaited()
+    assert commands(send_cmd) == [LEVEL_STOP, COLOR_STOP]
+    assert reads(read_attr) == ["1/6/0"]
+
+
+async def test_the_stop_goes_out_before_the_onoff_read(hass):
+    send_cmd, read_attr, _ = light(hass)
+    read = read_attr.side_effect
+    sent_before_reads = []
+
+    def note_the_sends(node_id, attribute_path):
+        sent_before_reads.append(send_cmd.await_count)
+        return read(node_id, attribute_path)
+
+    read_attr.side_effect = note_the_sends
+
+    await call(hass, "stop", BULB)
+
+    assert sent_before_reads[0] == 2
+
+
+async def test_a_soft_off_that_finished_before_the_stop_still_restores(hass):
+    send_cmd, _, node = light(hass)
+    start = wall_clock_now()
+    await call(hass, "lower_brightness", BULB)
+    node.attributes["1/6/0"] = False  # the fade reached 0: the light is off, its restore pending
+    node.attributes["1/8/0"] = 1
+
+    response = await call(hass, "stop", BULB)
+    await advance(hass, start, 3.6)
+
+    assert response == {"light.bulb": result("matter", "unchanged", capability="other", detail="off")}
+    assert [command["command"] for command in commands(send_cmd)][-1] == "LevelControl.MoveToLevel"
+    assert soft_off_restores(hass) == {}
 
 
 async def test_a_light_that_reads_off_after_the_stop_is_unchanged_with_off(hass):
@@ -201,6 +233,17 @@ async def test_a_halted_soft_off_stays_on_and_its_restore_is_cancelled(hass):
 async def test_a_stop_ends_the_hue_cycle(hass):
     light(hass)
     await call(hass, "raise_hue", BULB)
+    assert hue_moves(hass) == {"light.bulb"}
+
+    await call(hass, "stop", BULB)
+
+    assert hue_moves(hass) == set()
+
+
+async def test_a_stop_that_finds_the_light_off_still_ends_the_hue_cycle(hass):
+    _, _, node = light(hass)
+    await call(hass, "raise_hue", BULB)
+    node.attributes["1/6/0"] = False  # turned off from outside HA
     assert hue_moves(hass) == {"light.bulb"}
 
     await call(hass, "stop", BULB)
