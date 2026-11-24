@@ -224,7 +224,22 @@ async def test_a_base_that_starts_like_an_object_id_is_settled_by_a_second_entit
     assert bridge_bases(hass)[bridge.id] == "required_x"
 
 
-async def test_a_base_the_bridge_s_entities_leave_ambiguous_is_refused(hass):
+async def test_a_base_the_bridge_s_entities_leave_ambiguous_is_refused(hass, caplog):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
     bridge = _bridge_with(hass, ["restart_required_x"])
 
     assert bridge.id not in bridge_bases(hass)
+    assert (
+        "A Zigbee2MQTT bridge's entities don't name one base topic (each could be one of several), so its devices and "
+        "groups aren't addressable until the stale ones are removed" in caplog.text
+    )
+
+
+async def test_bridge_entities_left_on_two_bases_by_a_rename_are_refused_and_say_so(hass, caplog):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    bridge = _bridge_with(hass, ["version_zigbee2mqtt", "connection_state_z2m_up"])
+
+    assert bridge.id not in bridge_bases(hass)
+    assert "A Zigbee2MQTT bridge's entities don't name one base topic (they name different ones)" in caplog.text
+    ours = [r.getMessage() for r in caplog.records if r.name.startswith("custom_components.deviceside")]
+    assert not any("0x01" in line or "z2m_up" in line for line in ours)

@@ -75,7 +75,18 @@ def _bridge_base(hass: HomeAssistant, bridge: dr.DeviceEntry) -> str | None:
             continue
         bases = {m[2][len(o) + 1 :] for o in _BRIDGE_OBJECT_IDS if m[2].startswith(f"{o}_") and len(m[2]) > len(o) + 1}
         allowed = bases if allowed is None else allowed & bases
-    return next(iter(allowed)) if allowed is not None and len(allowed) == 1 else None
+    if allowed is None:
+        return None
+    if len(allowed) != 1:
+        # The first report of "every light of my second Zigbee2MQTT was refused" holds why: a stale bridge entity left
+        # by a base topic rename makes them disagree.
+        _LOGGER.debug(
+            "A Zigbee2MQTT bridge's entities don't name one base topic (%s), so its devices and groups aren't "
+            "addressable until the stale ones are removed",
+            "they name different ones" if not allowed else "each could be one of several",
+        )
+        return None
+    return next(iter(allowed))
 
 
 def bridge_bases(hass: HomeAssistant) -> dict[str, str]:
@@ -96,8 +107,10 @@ def follow_bases(
     removed, and call the stop it returns once that base goes; the returned callable stops everything.
 
     Each start runs as the entry's background task (eagerly, so a start that never suspends is done before this
-    returns). A base that goes while its start runs cancels it, so `start` must undo what it did on CancelledError,
-    and should raise nothing else: a start that raises is retried at the next bridge change.
+    returns). A base that goes while its start runs cancels it, so `start` must undo what it did on CancelledError.
+    HA's mqtt.async_subscribe never suspends today, so no start does either; the cancel path keeps a start correct if
+    one ever does. A start that raises is started again only once its base goes and comes back, or the entry
+    reloads; `start` should recover instead (the bridge cache warns and returns a no-op stop).
     """
     return _Follower(hass, entry, start, name).stop_all
 

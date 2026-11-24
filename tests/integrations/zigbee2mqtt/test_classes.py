@@ -925,7 +925,7 @@ async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_
 
 async def test_a_hue_device_runs_with_no_bridge_cache(hass, setup_production, broker, monkeypatch):
     lamp = light(hass, broker, manufacturer="Philips")
-    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass, base=None: None))
+    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass, base: None))
 
     assert await call(hass, "turn_on_for", {"entity_id": lamp, "duration": 5}) == {lamp: SENT}
 
@@ -934,7 +934,7 @@ async def test_a_tuya_device_is_refused_with_no_bridge_cache(hass, setup_product
     """Without the cache (its subscribe failed) no device but a Hue one is ever placed, so a Tuya plug stays refused,
     and the debug log says what it waits for."""
     plug = light(hass, broker, "light.plug", manufacturer=PLUG[0], model_id=PLUG[1])
-    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass, base=None: None))
+    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass, base: None))
     allow_labs(hass)
     caplog.set_level(logging.DEBUG, logger=classes.__name__)
 

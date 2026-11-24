@@ -37,7 +37,8 @@ the group's). A `read` key is Reader's, which reports its own failure, so it is 
 
 Known limits: a state publish for another reason (a device's report) can end a settle early; a failure line from
 another caller's set to the same entity inside the window counts; an earlier message of a sequence could, in theory,
-fail after a later one's state publish has ended the settle.
+fail after a later one's state publish has ended the settle; a bridge cache stopped and restarted mid-call (its
+bridge entities removed and back) leaves the watch on the old one, so a failure line in that window answers `sent`.
 """
 
 import asyncio

@@ -708,7 +708,7 @@ async def test_another_bridge_entity_mid_subscribe_starts_nothing_more(
     assert all(len(two.subscribers.get(topic, [])) == 1 for topic in UP_HELD_TOPICS)
 
 
-async def test_a_failed_start_is_retried_at_the_next_bridge_change(
+async def test_a_failed_subscribe_is_retried_only_once_its_bridge_goes_and_comes_back(
     hass, setup_production, two, connection, mqtt_up, monkeypatch
 ):
     subscribe = bridge.mqtt.async_subscribe
