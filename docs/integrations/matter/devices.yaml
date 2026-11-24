@@ -8,7 +8,7 @@ capabilities:
   wiz_plug: {phrase: WiZ Smart Plug, section: WiZ Smart Plug}
   multi_endpoint:
     phrase: multi-outlet Matter devices
-    section: Multi-outlet devices
+    section: Multi-endpoint devices
     domains: {light: multi-endpoint Matter lights, switch: multi-outlet Matter devices}
   other:
     phrase: certified Matter devices

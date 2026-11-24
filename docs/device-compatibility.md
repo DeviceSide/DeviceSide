@@ -178,7 +178,7 @@ Fields proven less than their feature:
 | [WiZ Smart Plug](#wiz-smart-plug) ✔ | 🟢 [record](integrations/matter/test-records/turn_on_for.json) | | 🟢 [record](integrations/matter/test-records/get_attributes.json) |
 | [certified Matter lights](integrations/matter/index.md#certified-devices) | ⚪ [why](integrations/matter/index.md#certified-devices) | ⚪ [why](integrations/matter/index.md#certified-devices) | 🟡 [why](integrations/matter/index.md#certified-devices) |
 | [certified Matter plugs and switches](integrations/matter/index.md#certified-devices) | ⚪ [why](integrations/matter/index.md#certified-devices) | | 🟡 [why](integrations/matter/index.md#certified-devices) |
-| [multi-endpoint Matter lights](integrations/matter/index.md#multi-outlet-devices) | | ⚪ [why](integrations/matter/index.md#multi-outlet-devices) | |
+| [multi-endpoint Matter lights](integrations/matter/index.md#multi-endpoint-devices) | | ⚪ [why](integrations/matter/index.md#multi-endpoint-devices) | |
 
 ### Control4
 

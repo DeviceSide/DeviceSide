@@ -1,5 +1,9 @@
 """Matter set_attributes: Level and Color Control MoveTo commands with the ExecuteIfOff override, so a light that is
-off stores the values and stays off, then a read of the attributes that confirms what the light kept."""
+off stores the values and stays off, then a read of the attributes that confirms what the light kept.
+
+It reads back because a light answers SUCCESS to a command the ExecuteIfOff gate blocked, and some ignore the stored
+level on the next On; an OnLevel the user set wins over it by the spec (docs/integrations/matter/internals.md,
+set_attributes)."""
 
 import asyncio
 import logging
