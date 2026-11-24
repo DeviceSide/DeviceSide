@@ -116,8 +116,8 @@ when a brightness went to a light HA shows off, since it decides only the level 
 `emberAfOnOffClusterLevelControlEffectCallback`, an On goes to OnLevel when it is non-null, else to CurrentLevel
 ([research](research/2026-11-24-level-color.md), Q2). DeviceSide never writes OnLevel: it is the user's device setting.
 
-The call runs in two passes (plan Decision 14): every light's commands, each light in an integration slot (Matter's
-`max_concurrency` is 2); then one `WRITE_FADE_WAIT_S` sleep outside every slot; then each light's read-back in a slot
+The call runs in two passes (plan Decision 14): every light's commands, each light in an integration slot (Matter takes the default
+`max_concurrency`, 4: no evidence a lower one is needed); then one `WRITE_FADE_WAIT_S` sleep outside every slot; then each light's read-back in a slot
 of its own. So the wait doesn't hold a slot, and a call to many lights costs one wait, as ZHA's refreshes run outside
 the slots (`zha/set_attributes.py`). A light the first pass rejected or left unchanged keeps that result.
 
@@ -180,13 +180,14 @@ remembers a position, and `heading_there` is always False.
 **The restore and its cancels.** The job is scheduled under `matter:restore:<entity_id>` with `must_run`, so an
 unload leaves it to run at its time; a restart loses it. The light's entry in `soft_off_restores` holds a token the
 job checks before and after its OnOff read. A later brightness move replaces the entry (taken before its send, and put
-back if the send fails); `stop` and a light call from HA drop it and cancel the job, the latter through
+back if the send fails); `stop`, `set_attributes` when it sends a brightness (any `MoveToLevel`, not a color alone, which the restore doesn't
+touch) and a light call from HA drop it and cancel the job, the last through
 `MatterCallResolver`, the `ha_watch` resolver pattern of `zha/fade.py`. A saturation or hue move leaves it, as the
 level fade still ends off (plan Decision 5). Our own commands go to the node, not through the light domain, so they
 pass the watch by.
 
 **The per-light lock.** `light_lock` is held by a brightness or saturation move from its read to its MoveTo
-(`LevelFade.guard`), by a hue move, by `stop` and by the restore job, so a stop that arrives mid-move goes out after
+(`LevelFade.guard`), by a hue move, by `stop`'s sends, by `set_attributes`' sends and by the restore job, so a stop that arrives mid-move goes out after
 the move's send rather than ahead of it, and the restore can't interleave with a move.
 
 ### `stop`
@@ -195,15 +196,16 @@ the move's send rather than ahead of it, and the restore can't interleave with a
 `ColorControl.StopMoveStep` (the same options) on one with a Color Control server, always: no state of ours says what
 a light was told (saturation moves aren't tracked), and with nothing moving neither changes anything (plan Decision 10).
 In the reference server Stop holds CurrentLevel where it is and StopMoveStep holds the color, and TC-LVL-6.1 and
-TC-CC-8.1 check that the value holds after the stop (research, Q1–Q2). The sends go first and the light's OnOff is
-read after them, so a stop doesn't overshoot by a read's round trip. A light that reads off is `unchanged` (`off`):
-without ExecuteIfOff the server drops a Stop to an off light, and nothing fades on one. Its soft-off restore, if one
-is pending (a soft off that finished before the stop), still runs. A light that reads on has its restore cancelled, so
-a halted soft off stays on at the halt level, as on ZHA. Either way the stop drops its hue cycle. It holds the light's
-lock (`fade`).
+TC-CC-8.1 check that the value holds after the stop (research, Q1–Q2). The two sends go out together and first, so a
+stop doesn't overshoot by a read's round trip, and the stop drops the light's hue cycle. They hold the light's lock
+(`fade`).
 
-Then the read-back (plan Decision 8): OnOff and CurrentLevel, plus CurrentSaturation and CurrentHue (`<ep>/768/0`) on
-a light with HS, read live twice, `READ_GAP_S` (0.2 s) apart, each pass in a slot of its own so the gap holds none.
+Then the read-back (plan Decision 8), which also decides what the stop did. A light that reads off on the first read is
+`unchanged` (`off`) and read no more: without ExecuteIfOff the server drops a Stop to an off light, and nothing fades on
+one. Its soft-off restore, if one is pending (a soft off that finished before the stop), still runs. A light that reads
+on has its restore cancelled, so a halted soft off stays on at the halt level, as on ZHA. The reads are OnOff and
+CurrentLevel, plus CurrentSaturation and CurrentHue (`<ep>/768/0`) on
+a light with HS, read live (the attributes of a pass together) twice, `READ_GAP_S` (0.2 s) apart, each pass in a slot of its own so the gap holds none.
 Equal reads are `confirmed`; unequal ones `sent` (`still_fading`), with both reads logged at DEBUG; a light that
 reads off on the second is `unchanged` (`off`); a read that raises is `sent` (`readback_failed`). The reference
 server steps CurrentLevel every T/|Δ| (research, Q2), so a fade slower than a step per 0.2 s, such as a long hue cycle,

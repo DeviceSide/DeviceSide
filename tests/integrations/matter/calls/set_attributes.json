@@ -81,6 +81,79 @@
    "dropped": [],
    "own": null,
    "request": {
+    "brightness": 20.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.send_device_command",
+     [],
+     {
+      "command": {
+       "command": "LevelControl.MoveToLevel",
+       "level": 51,
+       "optionsMask": 1,
+       "optionsOverride": 1,
+       "transitionTime": 4
+      },
+      "endpoint_id": 1,
+      "node_id": 2
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/0": 51
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
     "brightness": 50.0,
     "light": {
      "brightness": null,
@@ -974,6 +1047,19 @@
     ],
     {
      "raises": "ConnectionError"
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/8/17",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/8/17": null
     }
    ]
   ]

@@ -26,8 +26,8 @@ runs itself; `stop` halts it and reads where it halted. A full-range `sweep_time
 outside that is clamped (`clamped_to`).
 
 - **Soft off.** Once a fade to 0 % has run, the light's old level is put back while it stays off, so the next plain
-  on comes back there. A brightness move, a `stop` or a light call from Home Assistant before then cancels
-  that, and a `stop` during the fade leaves the light on at the level it halted at. A light turned on elsewhere in the
+  on comes back there. A brightness move, a `stop`, a `set_attributes` that sets brightness or a light call from Home Assistant before
+  then cancels that, and a `stop` during the fade leaves the light on at the level it halted at. A light turned on elsewhere in the
   meantime keeps its level. A restart of Home Assistant before the restore loses it, and the light comes back at its
   lowest level.
 - **`stop`** reads where the light halted: `confirmed` when it held still, `sent` (`still_fading`) when it kept

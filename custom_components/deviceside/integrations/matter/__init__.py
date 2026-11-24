@@ -22,7 +22,6 @@ INTEGRATION = IntegrationInfo(
     capability=capability,
     classes=CLASSES,
     default_class=OTHER,
-    max_concurrency=2,
     call_resolver=MatterCallResolver(),
 )
 

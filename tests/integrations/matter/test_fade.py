@@ -145,6 +145,20 @@ async def test_a_lower_to_0_is_a_soft_off_whose_start_level_goes_back_once_it_ha
     assert soft_off_restores(hass) == {}
 
 
+async def test_a_set_attributes_brightness_inside_the_restore_window_is_not_overwritten(hass):
+    send_cmd, _, node = light(hass)
+    start = wall_clock_now()
+    await call(hass, "lower_brightness", BULB)
+
+    response = await call(hass, "set_attributes", {**BULB, "brightness": 20})
+    await advance(hass, start, 3.6)
+
+    assert response["light.bulb"]["status"] == "confirmed"
+    assert len(commands(send_cmd)) == 2  # the soft off, then the write: the restore sends nothing
+    assert node.attributes["1/8/0"] == 51
+    assert soft_off_restores(hass) == {}
+
+
 async def test_a_light_turned_on_elsewhere_before_the_restore_keeps_its_level(hass):
     send_cmd, _, node = light(hass)
     start = wall_clock_now()

@@ -6,6 +6,7 @@ from dataclasses import asdict
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter import set_attributes as adapter
 from custom_components.deviceside.integrations.matter.set_attributes import MatterSetAttributes
@@ -366,7 +367,7 @@ async def test_a_color_only_write_to_an_off_light_ignores_its_on_level(hass):
 
 
 def four_lights(hass):
-    """Four lit lights on endpoints 1 to 4 of one node, light.bulb_1 to light.bulb_4: more than Matter's two slots."""
+    """Four lit lights on endpoints 1 to 4 of one node, light.bulb_1 to light.bulb_4."""
     endpoints = range(1, 5)
     attributes = {f"{ep}/{path}": value for ep in endpoints for path, value in {"8/0": 100, "6/65532": 1}.items()}
     entry, send_cmd, read_attr, node = light_device(hass, attributes)
@@ -385,6 +386,7 @@ def four_lights(hass):
 async def test_every_lights_commands_go_out_before_the_first_read(hass):
     """The wait and the read-back leave the slots (plan Decision 14): with two slots, the third and fourth lights'
     commands don't wait for the first two lights' read-backs."""
+    get_runtime(hass).semaphore("integration:matter", 2)  # created first, so it sets the cap
     send_cmd, read_attr, _ = four_lights(hass)
     events = []
     send, read = send_cmd.side_effect, read_attr.side_effect
