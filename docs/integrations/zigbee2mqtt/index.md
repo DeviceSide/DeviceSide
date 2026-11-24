@@ -213,6 +213,16 @@ other features aren't built yet.
 On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
 ([evidence](../hue/internals.md#device-classes)).
 
+### Aqara
+
+Aqara's lights, placed by the Zigbee manufacturer string `Aqara`, which Zigbee2MQTT publishes as it connects (until
+then an Aqara light counts as another brand's). Lights that report `LUMI` stay with [other brands](#other-brands). The
+class starts from one bulb, the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights
+get, in Labs: smooth dimming and stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light
+must take, and get and set attributes. A rig run on 2026-11-24 passed brightness raise and lower, stop and every set
+attributes case on the bulb, and most get attributes cases ([handoff](../../plans/2026-11-24-aqara-verified-handoff.md)).
+Its other features aren't built yet, and DeviceSide refuses them, even with Labs on.
+
 ### Other brands
 
 Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable
