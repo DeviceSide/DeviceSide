@@ -3,6 +3,156 @@
   "action": "set_attributes",
   "integration": "shelly",
   "request": {
+   "dropped": [
+    "color_temp_kelvin"
+   ],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.other",
+     "light.other",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "CCT",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.other",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.Set",
+      {
+       "brightness": 40,
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "id": 0,
+     "output": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [
+    "rgb_color"
+   ],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.other",
+     "light.other",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGB",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.other",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.Set",
+      {
+       "brightness": 40,
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "id": 0,
+     "output": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
    "dropped": [],
    "own": null,
    "request": {
@@ -166,8 +316,8 @@
    },
    "targets": [
     [
-     "light.other",
-     "light.other",
+     "light.strip",
+     "light.strip",
      false
     ]
    ]
@@ -177,8 +327,8 @@
     "clamped_to": null,
     "classes": "CCT",
     "data": null,
-    "detail": "fields_dropped",
-    "entity_id": "light.other",
+    "detail": null,
+    "entity_id": "light.strip",
     "integration": "shelly",
     "member_classes": null,
     "status": "confirmed"
@@ -192,6 +342,7 @@
       "CCT.Set",
       {
        "brightness": 40,
+       "ct": 3000,
        "id": 0
       }
      ],
@@ -212,83 +363,7 @@
     ],
     {
      "brightness": 40,
-     "id": 0,
-     "output": false
-    }
-   ]
-  ]
- },
- {
-  "action": "set_attributes",
-  "integration": "shelly",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "brightness": 40.0,
-    "light": {
-     "brightness": null,
-     "color_temp_kelvin": null,
-     "hs_color": null,
-     "rgb_color": [
-      255,
-      0,
-      0
-     ],
-     "transition": null,
-     "xy_color": null
-    },
-    "max_brightness": null,
-    "min_brightness": null
-   },
-   "targets": [
-    [
-     "light.other",
-     "light.other",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "RGB",
-    "data": null,
-    "detail": "fields_dropped",
-    "entity_id": "light.other",
-    "integration": "shelly",
-    "member_classes": null,
-    "status": "confirmed"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "shelly.RpcDevice.call_rpc",
-     [
-      "RGB.Set",
-      {
-       "brightness": 40,
-       "id": 0
-      }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "shelly.RpcDevice.call_rpc",
-     [
-      "RGB.GetStatus",
-      {
-       "id": 0
-      }
-     ],
-     {}
-    ],
-    {
-     "brightness": 40,
+     "ct": 3000,
      "id": 0,
      "output": false
     }
@@ -885,6 +960,95 @@
    "dropped": [],
    "own": null,
    "request": {
+    "brightness": 60.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      10
+     ],
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBW",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.Set",
+      {
+       "brightness": 60,
+       "id": 0,
+       "rgb": [
+        255,
+        0,
+        10
+       ],
+       "white": 0
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 60,
+     "id": 0,
+     "output": false,
+     "rgb": [
+      255,
+      0,
+      10
+     ],
+     "white": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
     "brightness": null,
     "light": {
      "brightness": null,
@@ -1140,8 +1304,8 @@
    },
    "targets": [
     [
-     "light.other",
-     "light.other",
+     "light.strip",
+     "light.strip",
      false
     ]
    ]
@@ -1149,16 +1313,212 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "CCT",
+    "classes": "RGB",
     "data": null,
-    "detail": "fields_dropped",
-    "entity_id": "light.other",
+    "detail": null,
+    "entity_id": "light.strip",
     "integration": "shelly",
     "member_classes": null,
-    "status": "unchanged"
+    "status": "confirmed"
    }
   ],
-  "wire": []
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.Set",
+      {
+       "id": 0,
+       "rgb": [
+        255,
+        177,
+        110
+       ]
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      255,
+      177,
+      110
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 3000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBW",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.Set",
+      {
+       "id": 0,
+       "rgb": [
+        255,
+        118,
+        0
+       ],
+       "white": 193
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      255,
+      118,
+      0
+     ],
+     "white": 193
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 3000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "not_stored",
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.Set",
+      {
+       "ct": 3000,
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "ct": 3100,
+     "id": 0,
+     "output": false
+    }
+   ]
+  ]
  },
  {
   "action": "set_attributes",
@@ -1332,6 +1692,90 @@
     "light": {
      "brightness": null,
      "color_temp_kelvin": null,
+     "hs_color": [
+      120.0,
+      100.0
+     ],
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGB",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.Set",
+      {
+       "id": 0,
+       "rgb": [
+        0,
+        255,
+        0
+       ]
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      0,
+      255,
+      0
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
      "hs_color": null,
      "rgb_color": [
       1,
@@ -1420,6 +1864,437 @@
      "brightness": null,
      "color_temp_kelvin": null,
      "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      10
+     ],
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "id": 0,
+       "mode": "rgb",
+       "rgb": [
+        255,
+        0,
+        10
+       ]
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "mode": "rgb",
+     "output": false,
+     "rgb": [
+      250,
+      0,
+      10
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      10
+     ],
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGB",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.Set",
+      {
+       "id": 0,
+       "rgb": [
+        255,
+        0,
+        10
+       ]
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      255,
+      0,
+      10
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      10
+     ],
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "not_stored",
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.Set",
+      {
+       "id": 0,
+       "rgb": [
+        255,
+        0,
+        10
+       ]
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      250,
+      0,
+      10
+     ]
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      10
+     ],
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "not_stored",
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.Set",
+      {
+       "id": 0,
+       "rgb": [
+        255,
+        0,
+        10
+       ],
+       "white": 0
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      255,
+      0,
+      10
+     ],
+     "white": 5
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      10
+     ],
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "not_stored",
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.Set",
+      {
+       "id": 0,
+       "rgb": [
+        255,
+        0,
+        10
+       ],
+       "white": 0
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      255,
+      0,
+      12
+     ],
+     "white": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
      "rgb_color": null,
      "transition": null,
      "xy_color": [
@@ -1490,6 +2365,92 @@
       53,
       255
      ]
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.15,
+      0.06
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBW",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.Set",
+      {
+       "id": 0,
+       "rgb": [
+        5,
+        0,
+        255
+       ],
+       "white": 67
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "rgb": [
+      5,
+      0,
+      255
+     ],
+     "white": 67
     }
    ]
   ]

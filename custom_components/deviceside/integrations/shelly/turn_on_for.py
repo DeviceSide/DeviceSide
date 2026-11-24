@@ -11,7 +11,7 @@ from homeassistant.components.light import (
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .addressing import CAPABILITIES, COMPONENT_FIELDS, address, unsupported_reason
+from .addressing import CAPABILITIES, COLOR_LABS, COMPONENT_FIELDS, address, unsupported_reason
 from .rpc import TIMER_LIMITS, light_params, set_with_timer
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
@@ -33,6 +33,7 @@ class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
         ),
         # A relay shown as a light sends the same Switch.Set.
         capabilities=CAPABILITIES,
+        class_labs=COLOR_LABS,
         confirmable=True,
     )
 

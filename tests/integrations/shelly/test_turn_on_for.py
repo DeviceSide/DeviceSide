@@ -8,12 +8,12 @@ from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.core.models import LightFields
 from custom_components.deviceside.core.scope import Level, verified
-from custom_components.deviceside.integrations.shelly.addressing import COMPONENTS
+from custom_components.deviceside.integrations.shelly.addressing import COLOR_LABS, COMPONENTS
 from custom_components.deviceside.integrations.shelly.rpc import light_params
 from custom_components.deviceside.integrations.shelly.turn_on_for import ShellyTurnOnFor
 
 from .conftest import call
-from ...conftest import refusal
+from ...conftest import allow_labs, refusal
 from ...fixtures.fake import add_switch_as_x
 from ...fixtures.shelly import add_shelly_entity, shelly_device
 
@@ -107,19 +107,13 @@ async def test_switch_as_x_light_sends_the_switch_call(hass, setup_production):
     [
         ("light.relay", "switch:0", {"brightness": 10}),  # relay shown as a light is on/off
         ("light.dimmer", "light:0", {"color_temp_kelvin": 3000}),
-        # CCT.Set {ct} differs from the bulb's RGBCCT.Set {mode, ct}: no record covers it yet.
-        ("light.cct", "cct:0", {"color_temp_kelvin": 3000}),
+        # A CCT takes ct alone: the device's word.
         ("light.cct", "cct:0", {"rgb_color": [1, 2, 3]}),
         ("light.cct", "cct:0", {"hs_color": [30, 50]}),
-        # Core converts color differently for RGB and RGBW, so their color is dropped until that is ported.
-        ("light.strip", "rgb:0", {"rgb_color": [1, 2, 3]}),
-        ("light.strip", "rgb:0", {"color_temp_kelvin": 3000}),
-        ("light.strip", "rgbw:0", {"hs_color": [30, 50]}),
-        ("light.strip", "rgbw:0", {"xy_color": [0.3, 0.3]}),
     ],
 )
 async def test_component_fields_not_in_component_are_dropped(hass, setup_production, entity_id, key, data):
-    # A field the component can't take, or one not yet ported or recorded for it, is dropped; the timer still runs.
+    # A field the component can't take is dropped; the timer still runs.
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, entity_id, key)
 
@@ -130,11 +124,89 @@ async def test_component_fields_not_in_component_are_dropped(hass, setup_product
     assert call_rpc.await_args_list[0] == rpc_call(f"{component}.Set", {"id": 0, "on": True, "toggle_after": 5.0})
 
 
+@pytest.mark.parametrize(
+    ("key", "data"),
+    [
+        ("cct:0", {"color_temp_kelvin": 3000}),
+        ("rgb:0", {"rgb_color": [1, 2, 3]}),
+        ("rgb:0", {"color_temp_kelvin": 3000}),
+        ("rgbw:0", {"hs_color": [30, 50]}),
+        ("rgbw:0", {"xy_color": [0.3, 0.3]}),
+    ],
+)
+async def test_color_in_labs_on_cct_rgb_and_rgbw_is_dropped_while_labs_is_off(hass, setup_production, key, data):
+    entry, call_rpc = shelly_device(hass)
+    add_shelly_entity(hass, entry, "light.strip", key)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.strip", "duration": 5, **data})
+
+    assert response["light.strip"] == {**CONFIRMED, "detail": "fields_dropped"}
+    component = COMPONENTS[key.split(":")[0]]
+    assert call_rpc.await_args_list[0] == rpc_call(f"{component}.Set", {"id": 0, "on": True, "toggle_after": 5.0})
+
+
+@pytest.mark.parametrize(
+    ("key", "data", "expected"),
+    [
+        ("cct:0", {"color_temp_kelvin": 3000}, {"ct": 3000}),  # no mode: CCT.Set {ct}
+        ("cct:0", {"color_temp_kelvin": 9000}, {"ct": 6500}),  # clamped to the entity's range
+        ("rgb:0", {"rgb_color": [255, 0, 10]}, {"rgb": [255, 0, 10]}),
+        ("rgb:0", {"hs_color": [120, 100]}, {"rgb": [0, 255, 0]}),
+        ("rgb:0", {"xy_color": [0.15, 0.06]}, {"rgb": [57, 53, 255]}),
+        ("rgb:0", {"color_temp_kelvin": 3000}, {"rgb": [255, 177, 110]}),
+        ("rgbw:0", {"rgb_color": [255, 0, 10]}, {"rgb": [255, 0, 10], "white": 0}),
+        ("rgbw:0", {"hs_color": [30, 50]}, {"rgb": [253, 126, 0], "white": 255}),
+        ("rgbw:0", {"xy_color": [0.15, 0.06]}, {"rgb": [5, 0, 255], "white": 67}),
+        ("rgbw:0", {"color_temp_kelvin": 3000}, {"rgb": [255, 118, 0], "white": 193}),
+    ],
+)
+async def test_color_in_labs_is_sent_when_labs_is_on(hass, setup_production, key, data, expected):
+    allow_labs(hass)
+    entry, call_rpc = shelly_device(hass)
+    kelvin_range = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
+    add_shelly_entity(hass, entry, "light.strip", key, attributes=kelvin_range)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.strip", "duration": 5, **data})
+
+    assert response == {"light.strip": CONFIRMED}
+    component = COMPONENTS[key.split(":")[0]]
+    assert call_rpc.await_args_list[0] == rpc_call(
+        f"{component}.Set", {"id": 0, "on": True, "toggle_after": 5.0, **expected}
+    )
+
+
+@pytest.mark.parametrize(
+    ("component", "light", "expected"),
+    [
+        ("RGB", {"rgb_color": (255, 0, 10)}, {"rgb": [255, 0, 10]}),
+        ("RGB", {"color_temp_kelvin": 6500}, {"rgb": [255, 254, 250]}),
+        ("RGB", {"color_temp_kelvin": 1500}, {"rgb": [255, 108, 0]}),  # unclamped, as core
+        ("RGBW", {"rgb_color": (1, 2, 3)}, {"rgb": [0, 2, 3], "white": 2}),
+        ("RGBW", {"rgb_color": (255, 255, 255)}, {"rgb": [0, 0, 0], "white": 255}),
+        ("RGBW", {"color_temp_kelvin": 6500}, {"rgb": [5, 4, 0], "white": 255}),
+        ("CCT", {"color_temp_kelvin": 3000}, {"ct": 3000}),
+        ("RGBCCT", {"color_temp_kelvin": 3000}, {"ct": 3000, "mode": "cct"}),
+        ("RGBCCT", {"rgb_color": (1, 2, 3)}, {"rgb": [1, 2, 3], "mode": "rgb"}),
+    ],
+)
+def test_light_params_convert_color_per_component(component, light, expected):
+    assert light_params(LightFields(**light), component, None) == expected
+
+
+def test_color_labs_names_the_classes_and_fields():
+    assert {name: sorted(fields) for name, fields in COLOR_LABS.items()} == {
+        "RGB": ["color_temp_kelvin", "hs_color", "rgb_color", "xy_color"],
+        "RGBW": ["color_temp_kelvin", "hs_color", "rgb_color", "xy_color"],
+        "CCT": ["color_temp_kelvin"],
+    }
+    assert ShellyTurnOnFor.scope.class_labs == COLOR_LABS
+
+
 async def test_capability_out_of_scope_is_refused(hass, setup_production, monkeypatch):
     monkeypatch.setattr(
         ShellyTurnOnFor,
         "scope",
-        dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch")),
+        dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch"), class_labs={}),
     )
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")
@@ -211,6 +283,14 @@ async def test_duration_under_50ms_is_floored_and_reported(hass, setup_productio
 )
 def test_component_levels(component, level):
     assert ShellyTurnOnFor.scope.level("light", (component,)) is level
+
+
+def test_color_makes_an_led_controller_call_labs_and_leaves_rgbcct_verified():
+    scope = ShellyTurnOnFor.scope
+    assert scope.level("light", ("RGBW",), ("rgb_color",)) is Level.LABS
+    assert scope.level("light", ("CCT",), ("color_temp_kelvin",)) is Level.LABS
+    assert scope.level("light", ("RGBW",), ("brightness",)) is Level.DOCUMENTED
+    assert scope.level("light", ("RGBCCT",), ("rgb_color",)) is Level.VERIFIED
 
 
 @pytest.mark.parametrize(("transition", "sent"), [(0.2, 0.5), (3, 3), (20000, 10800)])

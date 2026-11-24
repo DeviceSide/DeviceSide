@@ -17,7 +17,7 @@ OTHER_LIGHT_COMPONENTS = [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB
 
 
 # The light values a Set stores, which GetStatus reports back.
-LIGHT_KEYS = ("brightness", "ct", "mode", "rgb")
+LIGHT_KEYS = ("brightness", "ct", "mode", "rgb", "white")
 
 # When a fixture timer starts, on the device's clock: 2026-10-27T12:00:00Z.
 TIMER_STARTED_AT = 1793102400.0

@@ -21,8 +21,13 @@ One section per adapter module, named after it.
 
 One `<Component>.Set` with `on` and `toggle_after` (device range: over 0 s to 604800 s, 0.01 s
 resolution). Light fields ride in the same call, translated as the core Shelly light does: brightness to percent,
-`transition` to `transition_duration`, and on `RGBCCT` the mode switched to `cct` or `rgb` to match. `CCT`, `RGB`
-and `RGBW` drop color and color temperature until their calls are ported and recorded.
+`transition` to `transition_duration`, and on `RGBCCT` the mode switched to `cct` or `rgb` to match. `CCT.Set` takes `{ct}` with no mode. `RGB.Set`
+takes `{rgb}` and `RGBW.Set` `{rgb, white}`, converted with `homeassistant.util.color` as core's Shelly light does
+(`light/helper.py` `process_turn_on_params`): `rgb` as given, `hs` and `xy` by `color_hs_to_RGB` and
+`color_xy_to_RGB`, a kelvin by `color_hs_to_RGB(*color_temperature_to_hs(k))` (unclamped), and on RGBW the white
+split by `color_rgb_to_rgbw`. No record covers these three calls, so they are in Labs for those classes alone
+(`addressing.COLOR_LABS`; #585): the dispatcher drops them
+while Labs is off.
 
 The read-back is `<Component>.GetStatus`; `confirmed` when the output matches and `timer_duration` equals the
 `toggle_after` sent, to 0.01 s. `timer_duration` is the timer's full duration, not the time left, so another
@@ -44,7 +49,8 @@ A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`; if it fai
 
 `RGBCCT.Set` with the `light_params` translation and no `on`: the bulb keeps its output and
 stores brightness, `ct`, `rgb` and `mode` (probe, 8 Nov, Multicolor Bulb Gen3). The reply is null, so a
-`GetStatus` follows; `brightness`, `ct` and `mode` must match what was sent (`not_stored`, rejected), `rgb` is not
+`GetStatus` follows; `brightness`, `ct` and `mode` must match what was sent (`not_stored`, rejected), and on
+`RGB` and `RGBW` so must `rgb` and `white`, with the values sent and read logged at DEBUG. `RGBCCT`'s `rgb` is not
 compared until a probe has shown the device returns it unrounded. A failed read-back reports `sent`.
 `min_brightness`/`max_brightness` first read `GetStatus` `brightness` (kept while off), clamp it to whole percent,
 and send nothing when it is already within them; an explicit `brightness` wins.

@@ -157,6 +157,12 @@ Each mark links its proof: 🟢 its records, 🟡 and ⚪ the class's section on
 | [relays and plugs](integrations/shelly/index.md#relays-and-plugs) ([1 Mini Gen3](#shelly-1-mini-gen3) ✔, [1 Mini Gen4](#shelly-1-mini-gen4) ✔) | 🟢 [record](integrations/shelly/test-records/turn_on_for.json) | 🟢 [record](integrations/shelly/test-records/turn_off_for.json) | 🟢 [set auto off](integrations/shelly/test-records/set_auto_off.json) [set auto on](integrations/shelly/test-records/set_auto_on.json) [clear auto off](integrations/shelly/test-records/clear_auto_off.json) [clear auto on](integrations/shelly/test-records/clear_auto_on.json) | | | 🟢 [record](integrations/shelly/test-records/get_attributes.json) | |
 | [dimmers](integrations/shelly/index.md#dimmers), [LED controllers (CCT, RGB, RGBW)](integrations/shelly/index.md#led-controllers) | 🟡 [why](integrations/shelly/index.md#dimmers) | 🟡 [why](integrations/shelly/index.md#dimmers) | 🟡 [why](integrations/shelly/index.md#dimmers) | ⚪ [why](integrations/shelly/index.md#dimmers) | 🟡 [why](integrations/shelly/index.md#dimmers) | 🟡 [why](integrations/shelly/index.md#dimmers) | ⚪ [why](integrations/shelly/index.md#dimmers) |
 
+Fields proven less than their feature:
+- set without turning on: ⚪ `color_temp_kelvin`, `hs_color`, `rgb_color`, `xy_color` on [LED controllers (RGB, RGBW)](integrations/shelly/index.md#led-controllers)
+- set without turning on: ⚪ `color_temp_kelvin` on [CCT LED controllers](integrations/shelly/index.md#led-controllers)
+- turn on with timer: ⚪ `color_temp_kelvin`, `hs_color`, `rgb_color`, `xy_color` on [LED controllers (RGB, RGBW)](integrations/shelly/index.md#led-controllers)
+- turn on with timer: ⚪ `color_temp_kelvin` on [CCT LED controllers](integrations/shelly/index.md#led-controllers)
+
 ### Hue
 
 | Class | smooth dimming | smooth saturation | set without turning on | set scene | get attributes | stop |
