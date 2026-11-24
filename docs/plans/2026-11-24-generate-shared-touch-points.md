@@ -53,6 +53,10 @@ Mine, from the code (say so at approval if you want them otherwise):
 8. **Merge check:** the three files join `owners.GENERATED`; `check_maintainer_merge.py` refuses a change outside
    their generated parts, as it does for README.
 
+9. **Owner lookup (step 4 review, Jason's call):** `owners.py` names no owner for `services.yaml` and
+   `docs/integrations.md`, as for README; the docstring says so. The merge gate refuses hand edits outside the
+   generated parts. Add an owner lookup for the hand-written parts only if such edits slip past in practice.
+
 ## Steps
 
 ### 0. Set up
