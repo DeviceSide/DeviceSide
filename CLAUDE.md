@@ -1,7 +1,7 @@
 # DeviceSide
 
-Design: `docs/design.md`; use its glossary's terms in code and docs. Progress to v0.1.0: `TODO.md`; tick items off
-in the PR that finishes them.
+Design: `docs/design.md`; use its glossary's terms in code and docs. Work decided against for now, and what reopens it:
+`docs/deferred.md`; an issue is committed work.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
@@ -10,11 +10,6 @@ README: it records what ships, so its "not X" means not yet. Reword such a line 
 after the work lands.
 
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
-
-**Until v0.1.0 ships, fix the architecture now:** this window is the cheap time for hard architectural choices,
-which get much harder with dozens of package contributors and thousands of users. Given the choice between touching
-less code and fewer binding surfaces, or the right long-term fix, take the long-term fix. (Removed once v0.1.0 ships:
-`TODO.md`, v0.1.0.)
 
 **No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
 
@@ -42,6 +37,7 @@ shared home named in parentheses.
 | Run evidence | `<x>/test-records/*.json`, in the shape `docs/test-records.schema.json` gives |
 | Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |
 | Rule evidence | the PR body |
+| Work decided against for now, and what reopens it | `docs/deferred.md` |
 | Repo settings and repo-maintainer steps | `docs/repo-maintainers.md` |
 
 `index.md` holds only what changes what a user does or expects, in the shape of Hue's page: a `###` per class under

@@ -9,6 +9,8 @@ soaked while `main` moves on. The cut workflows enforce the tag rules, green CI,
 sign-offs must land); see their headers. The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
+   Then review `docs/deferred.md`: list the entries whose Revisit when condition has been met, and delete, by PR,
+   those nobody defends.
 2. Dispatch `cut-release` from `main` with `vX.Y.Z`.
 3. Set `manifest.json` on `main` to the next version.
 
