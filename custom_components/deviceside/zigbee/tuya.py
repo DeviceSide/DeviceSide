@@ -4,7 +4,8 @@ Zigbee2MQTT alone for now: ZHA has no inching call (deferred).
 
 Two kinds of constant, told apart by name. A `*_PATTERN` is a regex the string must fully match, used as it is. Every
 other is a literal string, the device's own: a rule that tests it wraps it in `re.escape`, so a character with a regex
-meaning in it matches only itself."""
+meaning in it matches only itself. A `*_REASON` is neither: a refusal reason both stacks' entries give, as the user
+reads it."""
 
 # Tuya's Zigbee manufacturer strings (docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md, §4):
 # `_TZE…` for datapoint devices, `_TZ3000_…`, `_TZ3210_…` and `_TYZB01_…` for ZCL ones. Only the TS011F's are measured;
@@ -25,6 +26,11 @@ TS011F_MODEL = "TS011F"
 # (https://github.com/Koenkk/zigbee2mqtt/issues/30493). ZCL_MANUFACTURER_PATTERN matches it.
 COUNTDOWN_HARMED_MANUFACTURER = "_TZ3000_gjnozsaz"
 COUNTDOWN_HARMED_MODEL = TS011F_MODEL
+# Why turn_on_for refuses it on both Zigbee stacks, as the user reads it.
+COUNTDOWN_HARMED_REASON = (
+    "Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when asked, and the "
+    "timer that would serve it isn't built"
+)
 
 # The Tuya maker strings whose Zigbee2MQTT definition enables inching, the persistent auto-off, and for which a time was
 # measured on the device (docs/integrations/zigbee2mqtt/research/tuya/2026-11-24-inching.md, §1: ZHC#13879, ZHC#13118).

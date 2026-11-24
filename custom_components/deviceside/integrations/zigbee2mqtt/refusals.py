@@ -20,6 +20,7 @@ from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_INCHING, TUYA
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 from ...zigbee.ikea import TIMER_HARMED_REASON
 from ...zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
+from ...zigbee.tuya import COUNTDOWN_HARMED_REASON
 
 # What the user reads after core's "can't take this action yet" (errors.py, the not_built key).
 _STAYS_ON = "Zigbee2MQTT would turn it on with no timer, so it would stay on"
@@ -76,8 +77,7 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         ),
         # Reported failing the countdown with harm (plan Decisions 35 and 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(
-            reason="Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when "
-            "asked, and the timer that would serve it isn't built",
+            reason=COUNTDOWN_HARMED_REASON,
             source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         ),
     },

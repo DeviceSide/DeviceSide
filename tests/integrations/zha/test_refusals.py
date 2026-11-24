@@ -10,6 +10,7 @@ from custom_components.deviceside.integrations.zha import ADAPTERS
 from custom_components.deviceside.integrations.zha.refusals import REFUSALS
 from custom_components.deviceside.zigbee.ikea import TIMER_HARMED_REASON
 from custom_components.deviceside.zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
+from custom_components.deviceside.zigbee.tuya import COUNTDOWN_HARMED_REASON
 
 FAILURE_HARMS = {action.key: action.failure_harms for action in actions.discover()}
 
@@ -69,6 +70,10 @@ def test_turn_on_for_serves_no_switch_and_no_other_brand():
 
 def test_the_ikea_bulb_the_timer_harms_has_the_catalog_s_reason():
     assert REFUSALS["turn_on_for"]["ikea_timer_harmed"].reason == TIMER_HARMED_REASON
+
+
+def test_the_tuya_string_the_countdown_harms_has_the_catalog_s_reason():
+    assert REFUSALS["turn_on_for"]["tuya_countdown_harmed"].reason == COUNTDOWN_HARMED_REASON
 
 
 def test_get_attributes_reads_no_switch():
