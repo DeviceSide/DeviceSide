@@ -7,8 +7,8 @@ in [internals.md](internals.md).
 
 Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, RGBCCT
 bulbs, and the other Shelly lights (dimmers, CCT, RGB and RGBW devices: the Light, CCT, RGB and RGBW components),
-which take the same calls. CCT, RGB and RGBW devices take brightness, and also send color or color temperature
-([below](#led-controllers)). Gen1 isn't built: it has Shelly's older
+which take the same calls. CCT, RGB and RGBW devices take brightness, and DeviceSide can also send them color or
+color temperature ([below](#led-controllers)). Gen1 isn't built: it has Shelly's older
 [HTTP API](https://shelly-api-docs.shelly.cloud/gen1/), not the [Gen2+ RPC calls](https://shelly-api-docs.shelly.cloud/gen2/)
 the adapters send, so it is refused (`gen1_unsupported`).
 
@@ -102,7 +102,7 @@ A bulb's color is not compared, only the mode it switches to; an RGB controller'
 `rgb` and `white`, must read as written. `min_brightness` and `max_brightness` clamp the brightness the
 bulb has stored, read first, so they work while it is off; a bulb already within them is `unchanged`. On dimmers and
 CCT, RGB and RGBW LED controllers it sends the same `<Component>.Set` with brightness, which Shelly documents
-identically, and also send their color or color temperature ([LED controllers](#led-controllers)).
+identically; the LED controllers can also be sent their color or color temperature ([LED controllers](#led-controllers)).
 
 ## Get attributes
 

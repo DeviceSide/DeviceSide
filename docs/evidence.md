@@ -83,7 +83,8 @@ the call on the `hue` class, not on every Zigbee light.
 ## Levels
 
 A scope item (an entity domain, class or field of an adapter) is Verified, Documented or in Labs; an item in Labs
-is refused unless the Labs option is on. To flag a whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
+is refused unless the Labs option is on, but a field in Labs on some classes alone is dropped there (below). To flag a
+whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
@@ -176,8 +177,9 @@ firmware family, and differ only in whose evidence they hold.
 - **One fact, one home, in code.** Classes, levels, and no known method (`no_known_method`) and not built yet
   (`not_built`) entries live in the integration's package, and the cards are generated from them; where each
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
-- **Groups.** A native group takes the weakest level among its members' classes. When a member's class is refused,
-  takes a call of its own, or is in Labs while the Labs option is off, the group falls back to its members:
+- **Groups.** A native group takes the weakest level among its members' classes. When a member's class is refused or
+  takes a call of its own, or, while the Labs option is off, is in Labs or holds in Labs a field the call carries
+  (`class_labs`), the group falls back to its members:
   it gets no entry of its own, its members answer for it, each judged on its own, and it is refused only when none of
   them ran. One whose members the integration can't list can't fall back: it counts as a Labs item, and is refused
   whole while the Labs option is off, and with it on where a call is known to harm
@@ -296,7 +298,8 @@ Labs is the lowest [level](#levels), and the Labs flag is that level: the item i
 In code it is the per-axis marker `labs(...)`, beside `verified(...)` and `documented(...)`, and `labs_fields(...)` for a
 field in Labs on some classes alone ([Levels](#levels)). A call takes the weakest
 level among the items it touches, its domain always among them, so an adapter whose domains are all `labs(...)` is
-flagged whole. A flagged item is refused unless the user turns on the Labs option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
+flagged whole. A flagged item is refused unless the user turns on the Labs option; a field in Labs on some classes alone is
+dropped there instead. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
 other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
