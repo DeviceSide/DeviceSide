@@ -16,10 +16,6 @@ EP = 1
 OTHER = {"status": "confirmed", "integration": "matter", "capability": "other"}
 # The ExecuteIfOff override, for this command only, and the write fade: 4 tenths of a second.
 OPTIONS = {"transitionTime": 4, "optionsMask": 1, "optionsOverride": 1}
-# Color Control's FeatureMap (0xFFFC): HS 0x01, XY 0x08, CT 0x10.
-HS_XY_CT = 0x19
-COLOR = {"1/768/65532": HS_XY_CT}
-
 pytestmark = pytest.mark.usefixtures("mock_chip", "setup_production")
 
 
@@ -147,7 +143,7 @@ async def test_on_level_set_wins_over_a_value_that_did_not_read_back(hass):
 async def test_each_color_is_its_own_move_to_command_read_back_from_its_attributes(
     hass, modes, field, command, fields, paths
 ):
-    send_cmd, read_attr, _ = light(hass, modes=modes, attributes=COLOR)
+    send_cmd, read_attr, _ = light(hass, modes=modes)
 
     response = await set_attrs(hass, **field)
 
@@ -157,7 +153,7 @@ async def test_each_color_is_its_own_move_to_command_read_back_from_its_attribut
 
 
 async def test_brightness_goes_before_the_color_and_both_are_read_back(hass):
-    send_cmd, read_attr, _ = light(hass, modes=("color_temp",), attributes=COLOR)
+    send_cmd, read_attr, _ = light(hass, modes=("color_temp",))
 
     response = await set_attrs(hass, brightness=50, color_temp_kelvin=4000)
 
@@ -186,7 +182,7 @@ async def test_the_level_is_confirmed_within_one_step_of_what_was_sent(hass, rea
 
 async def test_a_color_the_light_did_not_keep_is_sent(hass):
     """The level reads as sent, the color temperature doesn't: one attribute off is enough."""
-    _, _, node = light(hass, modes=("color_temp",), attributes=COLOR)
+    _, _, node = light(hass, modes=("color_temp",))
     apply = node.apply
 
     def keep_level_only(endpoint_id, command):
@@ -284,7 +280,7 @@ async def test_a_send_that_fails_rejects_the_light(hass):
 
 
 async def test_each_command_is_logged_without_the_node(hass, wire):
-    light(hass, modes=("color_temp",), attributes=COLOR)
+    light(hass, modes=("color_temp",))
 
     await set_attrs(hass, brightness=50, color_temp_kelvin=4000)
 
@@ -344,3 +340,25 @@ def test_the_light_domain_and_the_two_classes_are_labs():
     assert scope.capabilities == {"other": Level.LABS, "multi_endpoint": Level.LABS}
     assert scope.level("light", ["other"]) is Level.LABS
     assert not scope.not_built
+
+
+async def test_a_failed_read_of_the_level_before_a_clamp_rejects_the_light_with_nothing_sent(hass):
+    """Nothing was sent, so this is no readback_failed (the device accepted nothing): it raises, as on ZHA."""
+    send_cmd, _, node = light(hass)
+    node.refused.add("1/8/0")
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await set_attrs(hass, max_brightness=50)
+
+    assert raised.value.translation_key == "targets_failed"
+    send_cmd.assert_not_awaited()
+
+
+async def test_a_color_only_write_to_an_off_light_ignores_its_on_level(hass):
+    """OnLevel decides only the level the next On comes up at, so a color write isn't marked on_level_set."""
+    _, read_attr, _ = light(hass, state="off", modes=("color_temp",), attributes={"1/8/17": 20})
+
+    response = await set_attrs(hass, color_temp_kelvin=4000)
+
+    assert response == {"light.bulb": OTHER}
+    assert reads(read_attr) == ["1/768/7"]

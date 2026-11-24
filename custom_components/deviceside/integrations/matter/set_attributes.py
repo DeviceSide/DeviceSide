@@ -42,6 +42,7 @@ from ...core.zcl import (
     CURRENT_Y,
     WRITE_FADE_TENTHS,
     WRITE_FADE_WAIT_S,
+    XY_SCALE,
 )
 from ...core.zcl_write import (
     Command,
@@ -60,8 +61,6 @@ _LOGGER = logging.getLogger(__name__)
 _OPTIONS = {"transitionTime": WRITE_FADE_TENTHS, "optionsMask": 1, "optionsOverride": 1}
 # A light reads a value back within one step of the one sent: it rounds to its own resolution.
 _STEP = 1
-# ColorControl's CurrentX and CurrentY are the CIE coordinate times 65536 (spec 3.2.7.5).
-_XY_SCALE = 65535
 
 Wire = tuple[str, str, dict[str, int]]
 # What read-back compares: (attribute name for the log, path, value sent).
@@ -76,7 +75,7 @@ def _wire(command: Command) -> Wire:
         case MoveToColorTemp(mireds):
             return "ColorControl", "MoveToColorTemperature", {"colorTemperatureMireds": mireds, **_OPTIONS}
         case MoveToColor(x, y):
-            fields = {"colorX": round(x * _XY_SCALE), "colorY": round(y * _XY_SCALE)}
+            fields = {"colorX": round(x * XY_SCALE), "colorY": round(y * XY_SCALE)}
             return "ColorControl", "MoveToColor", {**fields, **_OPTIONS}
         case MoveToHueAndSaturation(hue, saturation):
             return "ColorControl", "MoveToHueAndSaturation", {"hue": hue, "saturation": saturation, **_OPTIONS}
@@ -91,8 +90,8 @@ def _expected(command: Command, ep_id: int) -> list[Expected]:
             return [("ColorTemperatureMireds", color_path(ep_id, COLOR_TEMPERATURE), mireds)]
         case MoveToColor(x, y):
             return [
-                ("CurrentX", color_path(ep_id, CURRENT_X), round(x * _XY_SCALE)),
-                ("CurrentY", color_path(ep_id, CURRENT_Y), round(y * _XY_SCALE)),
+                ("CurrentX", color_path(ep_id, CURRENT_X), round(x * XY_SCALE)),
+                ("CurrentY", color_path(ep_id, CURRENT_Y), round(y * XY_SCALE)),
             ]
         case MoveToHueAndSaturation(hue, saturation):
             return [
@@ -153,9 +152,8 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
             current_level = None
             if wants_level(request, modes):
                 path = level_path(ep_id)
-                current_level = (await client.read_attribute(node_id=node_id, attribute_path=path)).get(path)
-                if not isinstance(current_level, int):
-                    return self.result(target, Status.SENT, detail="readback_failed")
+                # Nothing is sent yet, so a read that fails raises and rejects the light, as on ZHA.
+                current_level = (await client.read_attribute(node_id=node_id, attribute_path=path))[path]
             sent, dropped = commands(request, modes, attrs, current_level)
             if not sent:
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped" if dropped else "within_limits")
@@ -166,11 +164,16 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
                     node_id=node_id, endpoint_id=ep_id, command=make_command(cluster, name, **fields)
                 )
             expected = [item for command in sent for item in _expected(command, ep_id)]
-            off = target.state is not None and target.state.state == STATE_OFF
+            # OnLevel decides only the level the next On comes up at: it matters to a write that sets one.
+            off_with_level = (
+                target.state is not None
+                and target.state.state == STATE_OFF
+                and any(isinstance(command, MoveToLevel) for command in sent)
+            )
             await asyncio.sleep(WRITE_FADE_WAIT_S)
 
             async def read(_: Target) -> dict[str, object]:
-                paths = [path for _, path, _ in expected] + ([on_level_path(ep_id)] if off else [])
+                paths = [path for _, path, _ in expected] + ([on_level_path(ep_id)] if off_with_level else [])
                 return {
                     path: (await client.read_attribute(node_id=node_id, attribute_path=path)).get(path)
                     for path in paths
