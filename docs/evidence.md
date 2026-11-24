@@ -230,8 +230,9 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The whole
   class drops a level only when no rule can tell the departing devices apart. Split off the exception only once a pass,
-  on the class or its kin, shows the rest of the class works; a failure in a class with neither is the class's result,
-  not an exception.
+  on the class or its kin, shows the rest of the class works, or, in a class admitted to Labs on a source, when it is an
+  identity reported harmed ([in Labs](#no-known-method-not-built-yet-in-labs)); any other failure in a class with
+  neither is the class's result, not an exception.
 - **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
   device's identity.
 - **When today's call harms a class.** A failure harms when it is deferred and unattended: the device ends in an
@@ -318,7 +319,7 @@ flagged whole. A flagged item is refused unless the user turns on the Labs optio
 dropped there instead. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
 other item behaves.
 
-An item is in Labs until a real device has passed it. The pass is the author's own test or a user's working report,
+An item is in Labs until a real device has passed it, unless it qualifies as Documented ([Levels](#levels)). The pass is the author's own test or a user's working report,
 on record; a maintainer judges whether it is enough. So an item tested before it merges ships unflagged, and one
 nobody can test yet ships in Labs, untested, until someone with the device reports. The default class is the exception:
 no pass lifts it ([Unknown is flagged, never Verified](#device-classes)).

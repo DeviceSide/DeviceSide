@@ -22,7 +22,8 @@ commands work on the wire, and what was measured on real bulbs, is in [internals
   reason, such as `not_built`.
 - **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and
   Control4 light groups get one command, so their lights move together. `set_attributes` writes a ZHA group's or
-  Hue room's lights one by one.
+  Hue room's lights one by one, and Zigbee2MQTT's turn off with timer, `set_auto_off` and `clear_auto_off` send each
+  of a group's lights its own call, as a group takes neither the countdown nor the auto-off call.
   Any other group, such as a light group helper, is expanded and each light gets its own command.
 - **Switches shown as lights.** A light made from a supported switch with Home Assistant's "Change device type of a
   switch" helper is treated as that switch: light fields are dropped and the timer still runs. An inverted one is

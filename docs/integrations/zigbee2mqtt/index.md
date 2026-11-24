@@ -248,7 +248,7 @@ DeviceSide sets three Zigbee2MQTT options:
 ## Failed sends
 
 When Zigbee2MQTT logs that it couldn't send a command (a busy coordinator refusing a group command, say), raise,
-lower, stop, turn on with timer, turn off with timer and set attributes report that light or group failed, with the reason Zigbee2MQTT
+lower, stop, turn on with timer, turn off with timer, set attributes, `set_auto_off` and `clear_auto_off` report that light or group failed, with the reason Zigbee2MQTT
 gave (`busy`). These actions answer up to 2 s later than before while DeviceSide listens for that line; a command
 Zigbee2MQTT answers with the light's state ends the wait at once.
 
