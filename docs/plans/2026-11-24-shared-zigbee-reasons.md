@@ -4,7 +4,7 @@
 
 Intent: one home for the three `turn_on_for` refusal reasons ZHA and Zigbee2MQTT copy, so a reason fixed on one
 can't differ on the other. Closes #532.
-Touches: custom_components/deviceside/zigbee/, custom_components/deviceside/integrations/zha/refusals.py, custom_components/deviceside/integrations/zigbee2mqtt/refusals.py, tests/zigbee/, CLAUDE.md, scripts/gen_codeowners.py, scripts/owners.py, .github/CODEOWNERS
+Touches: custom_components/deviceside/zigbee/, custom_components/deviceside/integrations/zha/refusals.py, custom_components/deviceside/integrations/zigbee2mqtt/refusals.py, tests/zigbee/, CLAUDE.md, CONTRIBUTING.md, scripts/gen_codeowners.py, scripts/owners.py, .github/CODEOWNERS
 
 ## Why
 
@@ -36,7 +36,8 @@ prevented: the same device explained two ways, depending on the integration it i
    reading the new path.
 3. Rules: `CLAUDE.md`, "Where facts go", a row: "A refusal reason two Zigbee integrations share | `zigbee/<family>.py`
    for a family's, `zigbee/reasons.py` otherwise; each integration's `refusals.py` builds its own entry from it". And
-   the Maintainers section: one sentence giving `zigbee/reasons.py`'s owners (Decision 3). Rule text in `CLAUDE.md`
+   the Maintainers section: one sentence giving `zigbee/reasons.py`'s owners (Decision 3). `CONTRIBUTING.md`'s merge
+   line ("the family's maintainers when every file is the family's or the catalog's") excepts it (step 2's review). Rule text in `CLAUDE.md`
    is binding-rule surface: Opus auditor.
 4. Tests (Decision 5).
 
