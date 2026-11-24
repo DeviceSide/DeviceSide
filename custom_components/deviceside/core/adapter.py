@@ -53,9 +53,11 @@ class Adapter[RequestT: Request](ABC):
     def supports(self, hass: HomeAssistant, request: RequestT, target: Target) -> str | None:
         """None if this adapter can serve the target, else a reason key. Sync and cheap: no I/O.
 
-        The request is the one the target will get, its lacked fields and scope.drops already dropped. The default
-        checks the domains and fields in scope: a field left that nobody has tested is refused, never dropped. The
-        dispatcher checks the target's class after this, so an adapter's own reason wins.
+        The request is the one the target will get, its lacked fields and scope.drops already dropped, but a field in
+        Labs on the target's class (AdapterScope.class_labs) is still in it: the class is known only after this, and
+        with the option off the dispatcher drops it then. The default checks the domains and fields in scope: a field
+        left that nobody has tested is refused, never dropped. The dispatcher checks the target's class after this, so
+        an adapter's own reason wins.
         """
         if target.domain not in self.scope.domains:
             return "domain_not_tested"

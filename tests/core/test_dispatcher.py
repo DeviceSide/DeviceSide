@@ -939,7 +939,37 @@ async def test_a_field_in_labs_on_a_class_is_dropped_there_while_labs_is_off(has
 
     assert response == {"light.c": SENT | {"capability": "C", "detail": "fields_dropped"}}
     assert sent_fields(reset_script) == [(["light.c"], frozenset({"brightness"}))]
-    assert "turn_on_for on fake: light.c drops ['transition'], in Labs on class ('C',)" in caplog.text
+    assert "turn_on_for on fake: light.c drops ['transition'], in Labs on class C" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_field_in_labs_on_a_class_not_yet_placed_is_dropped_as_on_the_class_it_names(
+    hass, fake, reset_script, caplog
+):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    add_fake_entity(hass, fake, "light.pending_c", attributes=FULL)
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", FADE_LABS_ON_C):
+        response = await call(hass, "turn_on_for", {"entity_id": "light.pending_c", **FADE})
+
+    assert response == {"light.pending_c": SENT | {"detail": "fields_dropped"}}
+    assert sent_fields(reset_script) == [(["light.pending_c"], frozenset({"brightness"}))]
+    assert "light.pending_c drops ['transition'], in Labs on class C" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_field_in_labs_on_a_class_is_kept_when_the_classifier_raised_so_the_gate_refuses(
+    hass, fake, reset_script
+):
+    add_fake_entity(hass, fake, "light.c", attributes=FULL)
+    fake_info(hass, capability=_raise)
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", FADE_LABS_ON_C):
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.c", **FADE}) == "labs_off"
+
+    assert reset_script.calls == []
 
 
 @pytest.mark.usefixtures("classed")

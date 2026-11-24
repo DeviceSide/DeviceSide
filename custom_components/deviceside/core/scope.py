@@ -399,6 +399,12 @@ class AdapterScope:
             raise ValueError("class_labs needs capabilities: it names classes")
         if unserved := sorted(self.class_labs.keys() - self.capabilities.keys()):
             raise ValueError(f"class_labs names classes the scope doesn't serve: {unserved}")
+        if labs := sorted(
+            name
+            for name in self.class_labs
+            if all(self.class_level(name, domain) is Level.LABS for domain in self.domains)
+        ):
+            raise ValueError(f"class_labs names classes already in Labs on every domain, so their fields are: {labs}")
         for name, names in self.class_labs.items():
             if not names or names - LACKABLE:
                 raise ValueError(f"class_labs {name!r} names no field, or one a light's state never lacks")

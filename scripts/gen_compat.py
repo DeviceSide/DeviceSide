@@ -1611,7 +1611,7 @@ def field_notes(integration_adapters: list) -> list[FieldNote]:
             if max(scope.level(domain, [cls]) for domain in scope.domains) > Level.LABS:
                 by_fields.setdefault(names, []).append(cls)
         for names, classes in by_fields.items():
-            noted = found.setdefault((FEATURES[adapter.action], TIER[Level.LABS], tuple(classes)), [])
+            noted = found.setdefault((FEATURES[adapter.action], TIER[Level.LABS], tuple(sorted(classes))), [])
             noted += [name for name in sorted(names) if name not in noted]
     return [(feature, status, tuple(names), classes) for (feature, status, classes), names in found.items()]
 

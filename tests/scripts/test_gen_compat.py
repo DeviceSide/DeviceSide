@@ -1623,12 +1623,11 @@ def test_a_field_proven_less_than_its_feature_is_a_footnote_under_the_matrix(roo
 def test_a_field_in_labs_on_some_classes_is_a_footnote_naming_them(root):
     scope = AdapterScope(
         fields=verified("brightness", "transition"),
-        capabilities=verified("Light", "CCT") | labs("Switch"),
-        class_labs=labs_fields("transition", classes=("CCT", "Switch"))
+        capabilities=verified("Light", "CCT"),
+        class_labs=labs_fields("transition", classes=("CCT",))
         | labs_fields("brightness", "transition", classes=("Light",)),
     )
     block, *_ = page_of(adapter("zha", "lower_brightness", scope))
-    # Switch is in Labs throughout, so its field is proven no less than its feature there.
     assert (
         "\nFields proven less than their feature:\n"
         "- smooth dimming: ⚪ `transition` on [CCT controllers](integrations/zha/index.md#dimmers)\n"

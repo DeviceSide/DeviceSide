@@ -501,7 +501,7 @@ class Dispatcher:
                 adapter.integration,
                 target.reported_id,
                 sorted(gated),
-                classes,
+                ", ".join(map(str, classes)),
             )
         return gated
 

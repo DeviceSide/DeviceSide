@@ -625,6 +625,9 @@ def test_class_labs_fields_is_the_union_of_the_classes_entries_and_none_has_none
         pytest.param({"fields": verified("brightness")}, "outside the scope's fields", id="not_in_fields"),
         pytest.param({"drops": frozenset({"transition"})}, "the scope drops", id="dropped"),
         pytest.param({"fields": labs("transition")}, "already in Labs on every class", id="labs_everywhere"),
+        pytest.param(
+            {"capabilities": verified("A") | labs("C")}, "classes already in Labs on every domain", id="labs_class"
+        ),
     ],
 )
 def test_class_labs_names_served_classes_and_lackable_fields_in_scope_not_dropped_or_already_labs(changes, message):
