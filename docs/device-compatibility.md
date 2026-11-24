@@ -87,7 +87,7 @@ Relay. Model IDs: `S3SW-001X8EU`.
 
 | Integration | Features tested | Firmware | How |
 |---|---|---|---|
-| [Shelly](#shelly) | [turn on with timer](integrations/shelly/test-records/turn_on_for.json)<br>[turn off with timer](integrations/shelly/test-records/turn_off_for.json)<br>auto-off/on: [set auto off](integrations/shelly/test-records/set_auto_off.json) [set auto on](integrations/shelly/test-records/set_auto_on.json) [clear auto off](integrations/shelly/test-records/clear_auto_off.json) [clear auto on](integrations/shelly/test-records/clear_auto_on.json)<br>[get attributes](integrations/shelly/test-records/get_attributes.json) | `20261109-150253/2.2.0-g7968dca`<br>`20261026-122213/2.0.3-g4601943` | ✔ rig |
+| [Shelly](#shelly) | [turn on with timer](integrations/shelly/test-records/turn_on_for.json)<br>[turn off with timer](integrations/shelly/test-records/turn_off_for.json)<br>auto-off/on: [set auto off](integrations/shelly/test-records/set_auto_off.json) [set auto on](integrations/shelly/test-records/set_auto_on.json) [clear auto off](integrations/shelly/test-records/clear_auto_off.json) [clear auto on](integrations/shelly/test-records/clear_auto_on.json)<br>[get attributes](integrations/shelly/test-records/get_attributes.json) | `20261109-150253/2.2.0-g7968dca` | ✔ rig |
 
 ### Shelly 1 Mini Gen4
 

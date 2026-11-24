@@ -3,12 +3,12 @@
   "integration": "shelly",
   "action": "turn_on_for",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-24",
   "source": {
     "kind": "rig",
-    "commit": "323e24d5"
+    "commit": "17059936"
   },
-  "calls": "d488a72dd1a2b9857bbef55b668ca1d4b095f48b",
+  "calls": "f0fc5765ac8a32e9358a491b3b9d5b657e55eda8",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -48,7 +48,7 @@
         {
           "model": "S3SW-001X8EU",
           "manufacturer": "Shelly",
-          "firmware": "20261026-122213/2.0.3-g4601943",
+          "firmware": "20261109-150253/2.2.0-g7968dca",
           "class": "Switch"
         }
       ]
@@ -62,7 +62,7 @@
         {
           "model": "S3BL-C010007AEU",
           "manufacturer": "Shelly",
-          "firmware": "20261026-122229/2.0.3-g4601943",
+          "firmware": "20261113-111623/2.2.1-gffa2ea1",
           "class": "RGBCCT"
         }
       ]
@@ -76,7 +76,7 @@
         {
           "model": "S3BL-C010007AEU",
           "manufacturer": "Shelly",
-          "firmware": "20261026-122229/2.0.3-g4601943",
+          "firmware": "20261113-111623/2.2.1-gffa2ea1",
           "class": "RGBCCT"
         }
       ]
@@ -90,7 +90,7 @@
         {
           "model": "S3BL-C010007AEU",
           "manufacturer": "Shelly",
-          "firmware": "20261026-122229/2.0.3-g4601943",
+          "firmware": "20261113-111623/2.2.1-gffa2ea1",
           "class": "RGBCCT"
         }
       ]
@@ -104,7 +104,7 @@
         {
           "model": "S3BL-C010007AEU",
           "manufacturer": "Shelly",
-          "firmware": "20261026-122229/2.0.3-g4601943",
+          "firmware": "20261113-111623/2.2.1-gffa2ea1",
           "class": "RGBCCT"
         }
       ]
@@ -118,7 +118,7 @@
         {
           "model": "S3BL-C010007AEU",
           "manufacturer": "Shelly",
-          "firmware": "20261026-122229/2.0.3-g4601943",
+          "firmware": "20261113-111623/2.2.1-gffa2ea1",
           "class": "RGBCCT"
         }
       ]
@@ -132,7 +132,7 @@
         {
           "model": "S3BL-C010007AEU",
           "manufacturer": "Shelly",
-          "firmware": "20261026-122229/2.0.3-g4601943",
+          "firmware": "20261113-111623/2.2.1-gffa2ea1",
           "class": "RGBCCT"
         }
       ]
