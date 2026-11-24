@@ -51,6 +51,13 @@ mostly dimmers (`TS0601_dimmer_1_gang_1` alone has 30 maker strings). The countd
    cleared when the on/off state changes (local button, app, timer)
    ([developer.tuya.com, General Countdown](https://developer.tuya.com/en/miniapp/solution-ai/ability/lamp-solution/lamp/module-set/common-countdown.md)).
    A light turned off by hand mid-timer shouldn't come back on; `index.md` says it is Tuya's spec, not measured here.
+7. **An own-calls-only scope in core** (Jason, 2026-11-24, after step 3 found the gap): core had no shape for an
+   adapter that serves only own calls (`execute` abstract; a None class passed `AdapterScope.refusal`, as `harms()`
+   needs a refusal entry, and reached `execute`). `AdapterScope` gains a way to say it serves only its own calls: the
+   dispatcher refuses every target whose class has none (None or Unplaced as `class_unknown`, any other class as
+   `not_built`), and core gives such an adapter a default `execute`, so it holds no stub. `Z2MTurnOffFor` uses it.
+   Chosen over making `harms()` entry-free (changes every harming adapter) and a Z2M NotBuilt entry (protection
+   hanging on an unrelated entry). Core change: Opus implements, and its range gets an `/audit-code`.
 
 ## The classes
 
