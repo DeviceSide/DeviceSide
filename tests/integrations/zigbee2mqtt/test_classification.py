@@ -28,6 +28,9 @@ GLEDOPTO_TUYA = ("Gledopto", "GL-SPI-206P")  # Gledopto's definition, Tuya datap
 # The exposes of a single-endpoint Tuya datapoint dimmer on Tuya's datapoint countdown.
 DATAPOINT = frozenset({"state", "brightness", "countdown"})
 PLUG = ("Tuya", "TS011F_plug_1")
+SONOFF_ZBMINIR2 = ("SONOFF", "ZBMINIR2")
+SONOFF_STRINGS = ("SONOFF", "ZBMINIR2")
+INCHING = frozenset({"state", "inching_control_set"})
 MOES = ("Moes", "ZM-105")  # a vendor and definition no registry rule reads
 
 
@@ -74,6 +77,17 @@ DEVICES = {
         listed(("IKEA", "LED2005R5/LED2106R3"), ("IKEA of Sweden", "TRADFRI bulb GU10 WS 345lm")),
         "ikea_timer_harmed",
     ),
+    # Sonoff's inching: by the definition's model and its device-wide composite, in bridge/devices alone.
+    "sonoff_inching_before": (device(SONOFF_ZBMINIR2), "other"),
+    "sonoff_inching": (device(SONOFF_ZBMINIR2, SONOFF_STRINGS, "ZBMINIR2", INCHING), "sonoff_inching"),
+    "sonoff_inching_dimmer": (
+        device(("SONOFF", "MINI-ZBDIM"), SONOFF_STRINGS, "MINI-ZBDIM", INCHING),
+        "sonoff_inching",
+    ),
+    "sonoff_s60": (device(("SONOFF", "S60ZBTPF"), ("SONOFF", "S60ZBTPF"), "S60ZBTPF", INCHING), "sonoff_s60"),
+    # The 2-gang's composite is per endpoint, so the device has none; and a model off the list, whatever it exposes.
+    "sonoff_two_gang": (device(("SONOFF", "MINI-ZB2GS"), SONOFF_STRINGS, "MINI-ZB2GS", NO_COUNTDOWN), "other"),
+    "sonoff_unlisted_model": (device(("SONOFF", "NEW-MODEL"), SONOFF_STRINGS, "NEW-MODEL", INCHING), "other"),
     "nothing_known": (device((None, None)), "other"),
     # A Tuya device under another vendor's definition: that vendor's class, or `other`, until its strings arrive, then
     # its Tuya class.

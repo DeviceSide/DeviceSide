@@ -41,6 +41,12 @@ capabilities:
     phrase: other Tuya datapoint devices
     section: Tuya
     domains: {light: other Tuya datapoint lights, switch: other Tuya datapoint switches}
+  # Sonoff's inching (families/sonoff): the single-channel relays and dimmer, and the two plugs it is not built for.
+  sonoff_inching:
+    phrase: Sonoff single-channel relays and dimmer (ZBMINIR2, ZBMicro, MINI-ZB1GS, MINI-ZB1GSP, BASIC-ZB1GSP, S61SZBTPB, MINI-ZBDIM)
+    section: Sonoff
+    domains: {light: Sonoff MINI-ZBDIM, switch: Sonoff single-channel relays}
+  sonoff_s60: {phrase: Sonoff S60ZBTPF and S60ZBTPG, section: Sonoff}
   sengled: {phrase: Sengled bulbs, section: Sengled}
   gledopto: {phrase: Gledopto lights, section: Gledopto}
   other:

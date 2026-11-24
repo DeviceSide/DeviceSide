@@ -1,0 +1,462 @@
+[
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 0.1
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 0.5,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 0.5, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 0.5
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 0.5, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 1.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 1.0, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 1.0
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 1.0, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 1.0
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 1.0, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 2.5
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 2.5, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 3599.5
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 3599.5, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "send_failed",
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/relay"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 5.0, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_auto_off",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": {
+    "limits": {
+     "max_s": 3599.5,
+     "min_s": 0.5,
+     "step_s": 0.5
+    },
+    "send": "<function>"
+   },
+   "request": {
+    "duration_s": 7200.0
+   },
+   "targets": [
+    [
+     "switch.relay",
+     "switch.relay",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 3599.5,
+    "classes": "sonoff_inching",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.relay",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"inching_control_set\": {\"inching_control\": \"ENABLE\", \"inching_time\": 3599.5, \"inching_mode\": \"OFF\"}}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ }
+]

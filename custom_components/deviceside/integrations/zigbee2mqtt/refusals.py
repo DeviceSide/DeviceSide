@@ -15,6 +15,7 @@ from homeassistant.const import Platform
 from .docs import RESEARCH
 from .families.hue import HUE
 from .families.ikea import IKEA, IKEA_TIMER_HARMED
+from .families.sonoff import SONOFF_INCHING, SONOFF_S60
 from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 from ...zigbee.ikea import TIMER_HARMED_REASON
@@ -22,6 +23,12 @@ from ...zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
 
 # What the user reads after core's "can't take this action yet" (errors.py, the not_built key).
 _STAYS_ON = "Zigbee2MQTT would turn it on with no timer, so it would stay on"
+
+_S60_NOT_BUILT = NotBuilt(
+    reason="Its inching can't be turned off: Zigbee2MQTT's DISABLE is reported to have no effect on it, so it would "
+    "keep turning itself off",
+    source=RESEARCH + "sonoff/2026-11-24-inching.md",
+)
 
 REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # turn_on_for. Tuya's classes off its countdown are not built yet, and harmed by today's call (plan Decisions 20,
@@ -58,6 +65,12 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         # plain On (timed-on call patterns); the call that would serve most is the datapoint countdown (its research
         # note), addressed per endpoint.
         TUYA_MCU: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
+        # Sonoff's classes, which left `other` for inching: the same entry, as no pass or research says Sonoff's
+        # firmware takes the timer (families/sonoff).
+        **dict.fromkeys(
+            (SONOFF_INCHING, SONOFF_S60),
+            NotBuilt(reason=OTHER_TIMER_REASON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
+        ),
         # Reported failing the countdown with harm (plan Decisions 35 and 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(
             reason="Tuya's own timer is reported to restart at random on its maker string, so it may not turn off when "
@@ -65,6 +78,11 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
             source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         ),
     },
+    # set_auto_off and clear_auto_off, on the S60 plugs, whose inching DISABLE is reported to have no effect (Z2M
+    # #31799, closed as a duplicate of #31604), so clear_auto_off would leave the plug pulsing; set_auto_off is left
+    # out with it, as an auto-off nothing can clear isn't offered.
+    "set_auto_off": {SONOFF_S60: _S60_NOT_BUILT},
+    "clear_auto_off": {SONOFF_S60: _S60_NOT_BUILT},
     # get_attributes. On a countdown plug the only thing the read adds is the timer, and its time left can't be read:
     # `/get` and the plug's reports carry the countdown last set (internals.md, Tuya's countdown, P6). A read, whose
     # failure doesn't harm (Action.failure_harms; docs/evidence.md, When today's call harms a class). The TS011Fs off

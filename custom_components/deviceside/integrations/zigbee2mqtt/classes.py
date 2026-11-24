@@ -76,6 +76,9 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "turn_on_for": _NOT_BUILT,
     # turn_off_for: no call for any brand's device but Tuya's datapoint countdown, which its own classes take.
     "turn_off_for": _NOT_BUILT,
+    # Persistent auto-off: inching, which only the families that name it take (families/sonoff).
+    "set_auto_off": _NOT_BUILT,
+    "clear_auto_off": _NOT_BUILT,
 }
 
 
