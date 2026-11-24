@@ -58,6 +58,11 @@ CLASSES: ClassDomains = {OTHER: frozenset({Platform.LIGHT, Platform.SWITCH})} | 
 # Brightness fades and stop: Level Control's Move, MoveToLevel and Stop, which a Zigbee 3.0 dimmable light must take
 # (docs/internals.md, Shared); native_control.py turns Philips' own off for a brightness fade.
 _CERTIFIED = labs(OTHER)
+# Raw ZCL reads and writes, on lights alone: no departure is reported among other brands' lights, a failed write
+# harms nothing, and a bulb that rejects the override fields raises
+# (research/2026-11-24-other-brands-execute-if-off-and-reads.md). The read leaves out onTime, which no timer action
+# serves here (read.py). Plugs and switches stay out: their harm is in the load.
+_LIGHTS = labs(OTHER, domains=(Platform.LIGHT,), only=True)
 _NOT_BUILT: Mapping[str, ClassLevel] = {}
 OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "raise_brightness": _CERTIFIED,
@@ -68,10 +73,8 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "lower_hue": _NOT_BUILT,
     "raise_saturation": _NOT_BUILT,
     "lower_saturation": _NOT_BUILT,
-    # Raw ZCL reads and writes: other brands depart (a bulb without `onTime` can fail the read, and some come on, or at
-    # full, when written while off).
-    "get_attributes": _NOT_BUILT,
-    "set_attributes": _NOT_BUILT,
+    "get_attributes": _LIGHTS,
+    "set_attributes": _LIGHTS,
     # turn_on_for: its call harms some lights and most plugs, so the integration refuses `other` there (refusals.py).
     "turn_on_for": _NOT_BUILT,
     # turn_off_for: no call for any brand's device but Tuya's datapoint countdown, which its own classes take.

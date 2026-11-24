@@ -22,7 +22,9 @@ from homeassistant.core import HomeAssistant, callback
 from .addressing import bridge_topic, known_base, state_topic, topic, z2m_address
 from .bridge import ensure_options, first_retained, publish, wait
 from .bridge_cache import cause, log_error
+from .classes import capability
 from ...core.models import Target
+from ...core.scope import OTHER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,14 +40,16 @@ class DeliveryFailed(RuntimeError):
     """Z2M logged a read as undelivered: routine radio noise on a busy mesh, so a read is tried once more."""
 
 
-def clusters(target: Target) -> dict[str, list[str]]:
-    """The clusters and attributes to read for a light, by its supported color modes.
+def clusters(target: Target, device_class: str | None) -> dict[str, list[str]]:
+    """The clusters and attributes to read for a light, by its class and supported color modes.
 
     One unsupported attribute fails a cluster's whole read, so only the color mode's own are asked for: a color
-    temperature bulb has no hue or saturation, and some have no EnhancedColorMode.
+    temperature bulb has no hue or saturation, and some have no EnhancedColorMode. Another brand's light (`other`) is
+    asked no OnTime, which ZCL doesn't require and no timer action serves there, so its row has no timer
+    (internals.md, get_attributes).
     """
     modes = set((target.state and target.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES)) or ())
-    wanted = {"genOnOff": ["onOff", "onTime"]}
+    wanted = {"genOnOff": ["onOff"] if device_class == OTHER else ["onOff", "onTime"]}
     if brightness_supported(modes):
         wanted["genLevelCtrl"] = ["currentLevel"]
     color = []
@@ -100,7 +104,7 @@ class Reader:
         attributes: dict = {}
         state: dict = {}
         async with self._subscribed(target):
-            for cluster, names in clusters(target).items():
+            for cluster, names in clusters(target, capability(self.hass, target)).items():
                 if cluster == "genLevelCtrl":
                     if (level := await self._level(target, attributes["onOff"], state)) is not None:
                         attributes["currentLevel"] = level

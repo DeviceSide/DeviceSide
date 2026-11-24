@@ -319,14 +319,18 @@ Z2M publishes no state after a raw command, so each written cluster is read back
 updates Z2M's and Home Assistant's state. Level and color temperature are compared (`not_stored` if they differ);
 color isn't, as the bulb clamps it to its gamut. A group is one groupcast per field, then every member is read.
 `min_brightness`/`max_brightness` alone clamp each member from its own level, so each gets its own commands; an off
-light is clamped from the brightness Z2M holds.
+light is clamped from the brightness Z2M holds. On another brand's light (`other`, Labs) the call is the same: no
+departure is reported among its vendors, and a bulb older than ZCL rev 7 rejects the override fields
+(MALFORMED_COMMAND), which raises ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
 
 ### `get_attributes`
 
 Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "deviceside_read"}}`, one cluster at a
 time, answered on the state topic:
 
-- `genOnOff` (`onOff`, `onTime` in tenths): the timer.
+- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) is asked `onOff` alone: ZCL
+  doesn't require `onTime`, one unsupported attribute fails the whole cluster read (herdsman `Endpoint.read`), and no
+  timer action serves `other` ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
 - `genLevelCtrl` (`currentLevel`), only when the light is on. An off light's brightness is Z2M's, from the state the
   `genOnOff` answer carries: after an off with a transition the bulb holds 0.4 % while Z2M keeps the level it
   restores, a Hue bulb's own fade dims it for about a second after a plain off, and reading it would overwrite

@@ -141,7 +141,7 @@ Each mark links its proof: 🟢 its records, 🟡 and ⚪ the class's section on
 | &emsp;[other makers with a countdown setting](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs) | | | | | | | 🔴 [why](#tuya-ts011f-plugs) | |
 | [Tuya datapoint devices with one countdown](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) | | | | | | | |
 | [Tuya WHD02 (_TZ3000_skueekg3, model TS0001) and Mowe MW781Z (_TZ300A_rncj86af)](integrations/zigbee2mqtt/index.md#tuya-inching-switches) | | | ⚪ [why](integrations/zigbee2mqtt/index.md#tuya-inching-switches) | | | | | | |
-| [other brands' lights](integrations/zigbee2mqtt/index.md#other-brands) | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) | | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) |
+| [other brands' lights](integrations/zigbee2mqtt/index.md#other-brands) | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) | | | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) | ⚪ [why](integrations/zigbee2mqtt/index.md#other-brands) |
 
 ### ZHA
 

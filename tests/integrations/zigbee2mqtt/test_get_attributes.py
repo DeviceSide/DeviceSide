@@ -50,14 +50,22 @@ def timer(remaining_s: float) -> dict:
 
 
 def bulb(
-    hass, broker, entity_id: str = "light.lamp", ieee: str = IEEE, modes: list | None = None, **clusters: dict
+    hass,
+    broker,
+    entity_id: str = "light.lamp",
+    ieee: str = IEEE,
+    modes: list | None = None,
+    manufacturer: str = "Philips",
+    **clusters: dict,
 ) -> str:
     """A Z2M light whose device answers reads with BULB, each cluster updated by `clusters`."""
     name = entity_id.split(".")[1]
     entries = hass.config_entries.async_entries("mqtt")
     entry = entries[0] if entries else z2m_entry(hass)
     attributes = {"supported_color_modes": CT_AND_XY if modes is None else modes}
-    add_z2m_entity(hass, entry, entity_id, ieee=ieee, state="on", attributes=attributes, name=name)
+    add_z2m_entity(
+        hass, entry, entity_id, ieee=ieee, state="on", attributes=attributes, name=name, manufacturer=manufacturer
+    )
     answers = {cluster: {**values, **clusters.get(cluster, {})} for cluster, values in BULB.items()}
     broker.devices[ieee] = (name, answers)
     broker.retained[INFO]["config"]["devices"].setdefault(ieee, {})
@@ -123,6 +131,20 @@ async def test_reads_only_the_attributes_its_color_modes_have(hass, broker, mode
     await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 
     assert {read["cluster"]: read["attributes"] for _, read in broker.reads()} == reads
+
+
+async def test_another_brands_light_is_read_in_labs_without_on_time(hass, broker):
+    """OnTime isn't required and one unsupported attribute fails the whole cluster read, so `other` is asked onOff
+    alone, and its row has no timer (research/2026-11-24-other-brands-execute-if-off-and-reads.md)."""
+    bulb(hass, broker, manufacturer="Innr", genOnOff={"onTime": 270})
+    del broker.devices[IEEE][1]["genOnOff"]["onTime"]
+    assert await refusal(hass, "get_attributes", {"entity_id": "light.lamp"}) == "labs_off"
+    allow_labs(hass)
+
+    response = await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert response == {"light.lamp": ROW}
+    assert broker.reads()[0] == (SET, {"cluster": "genOnOff", "attributes": ["onOff"], "state_property": KEY})
 
 
 async def test_xy_mode_reports_the_color(hass, broker):

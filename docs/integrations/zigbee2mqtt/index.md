@@ -217,9 +217,13 @@ On IKEA lights, lower brightness to off may stop at the lowest level instead of 
 
 Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable
 light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they get
-exactly as a Hue bulb does, so they take smooth dimming and stop. Their other features aren't built yet: nothing
-predicts how other brands take color moves, reads and writes, and on turn on with timer some lights turn on and never
-off, and most plugs ignore the timer. If you try dimming, please report it whether it works or not: Integrations >
+exactly as a Hue bulb does, so they take smooth dimming and stop. Their lights also take Get attributes and Set
+attributes in Labs: no other brand's light is reported to come on when written while off, an older bulb that rejects
+the write fails it with an error, and a light that can't read one of its color attributes fails the read
+([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)). Their plugs and switches don't, and their
+other features aren't built yet: nothing predicts how other brands take color moves, and on turn on with timer some
+lights turn on and never off, and most plugs ignore the timer. If you try them, please report it whether it works or
+not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug.
 
@@ -298,8 +302,8 @@ cancels the timer (untested).
 ## Get attributes
 
 `get_attributes` reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can be stale.
-A group returns one entry, averaged over the lights that are on, as Hue averages a room. It reads only Hue's lights
-yet: other brands' reads aren't built, Tuya's datapoint devices' included. Tuya's countdown plugs, which Turn on with timer runs on, are refused: their
+A group returns one entry, averaged over the lights that are on, as Hue averages a room. Other brands' lights are read
+in Labs, without a timer ([other brands](#other-brands)); Tuya's datapoint devices' reads aren't built. Tuya's countdown plugs, which Turn on with timer runs on, are refused: their
 time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 
 ## Sharp edges

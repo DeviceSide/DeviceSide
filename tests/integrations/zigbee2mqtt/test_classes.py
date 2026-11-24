@@ -18,7 +18,7 @@ from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import Unplaced
+from custom_components.deviceside.core.scope import Level, OnDomains, Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, INTEGRATION, bridge_cache, classes, members
 from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 
@@ -136,8 +136,9 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
     [
         # Not built yet on turn_on_for, with an entry: today's call would leave them on (Decision 70). Not built on
         # every other action either, as no pass or research admits Tuya's firmware (docs/evidence.md, In Labs).
-        # Another brand's lights and plugs: no pass, and a plug that never turns off would take on_time.
-        ("other", {"turn_on_for"}, ALL - CERTIFIED, set()),
+        # Another brand's lights and plugs: no pass, and a plug that never turns off would take on_time. Raw reads and
+        # writes serve its lights alone (test_another_brands_reads_and_writes_are_in_labs_on_lights_alone).
+        ("other", {"turn_on_for"}, ALL - CERTIFIED - {"get_attributes", "set_attributes"}, set()),
         # Hue's plug, on the switch domain alone; its bulbs keep their own level.
         ("hue", {"turn_on_for"}, {"turn_off_for"} | AUTO_OFF, set()),
         ("tuya_zcl", {"turn_on_for"}, ALL, set()),
@@ -755,6 +756,16 @@ async def test_a_brightness_fade_and_stop_run_on_another_brand_in_labs(hass, set
     broker.published.clear()
     assert await call_service(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT | {"capability": "other"}}
     assert commands(broker) == [(SET, {"brightness_move": "stop"})]
+
+
+@pytest.mark.parametrize("action", ["get_attributes", "set_attributes"])
+def test_another_brands_reads_and_writes_are_in_labs_on_lights_alone(action):
+    """No departure is reported among other brands' lights, and a failed write harms nothing; a plug's harm is in its
+    load, so a switch is refused (research/2026-11-24-other-brands-execute-if-off-and-reads.md)."""
+    scope = _scopes()[action]
+    assert scope.capabilities["other"] == OnDomains(Level.LABS, frozenset({"light"}), only=True)
+    assert scope.admits("other", "light")
+    assert not scope.admits("other", "switch")
 
 
 async def test_a_hue_fade_is_not_built_on_another_brand(hass, setup_production, broker):
