@@ -19,6 +19,10 @@ capabilities:
     phrase: other Tuya devices
     section: Tuya
     domains: {light: other Tuya lights, switch: other Tuya plugs and switches}
+  # Tuya's inching (families/tuya/inching.py): the two single-endpoint switches research measured it on.
+  tuya_inching:
+    phrase: Tuya WHD02 (_TZ3000_skueekg3, model TS0001) and Mowe MW781Z (_TZ300A_rncj86af)
+    section: Tuya inching switches
   # The TS011F's classes are its variants (`sections` below), each named by what its Zigbee2MQTT page shows.
   tuya_ts011f: {phrase: no countdown setting, section: Tuya TS011F plugs}
   tuya_countdown: {phrase: other makers with a countdown setting, section: Tuya TS011F plugs}
@@ -41,6 +45,12 @@ capabilities:
     phrase: other Tuya datapoint devices
     section: Tuya
     domains: {light: other Tuya datapoint lights, switch: other Tuya datapoint switches}
+  # Sonoff's inching (families/sonoff): the single-channel relays and dimmer, and the two plugs it is not built for.
+  sonoff_inching:
+    phrase: Sonoff single-channel relays and dimmer (ZBMINIR2 and its white label MINI-ZBD, ZBMicro, MINI-ZB1GS, MINI-ZB1GSP, BASIC-ZB1GSP, S61SZBTPB, MINI-ZBDIM)
+    section: Sonoff inching relays
+    domains: {light: Sonoff MINI-ZBDIM, switch: Sonoff single-channel relays}
+  sonoff_s60: {phrase: Sonoff S60ZBTPF and S60ZBTPG, section: Sonoff S60 plugs}
   sengled: {phrase: Sengled bulbs, section: Sengled}
   gledopto: {phrase: Gledopto lights, section: Gledopto}
   other:

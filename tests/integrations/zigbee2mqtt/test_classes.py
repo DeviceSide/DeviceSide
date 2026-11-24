@@ -124,7 +124,10 @@ ALL = {
     "set_attributes",
     "turn_on_for",
     "turn_off_for",
+    "set_auto_off",
+    "clear_auto_off",
 }
+AUTO_OFF = {"set_auto_off", "clear_auto_off"}
 CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
 
 
@@ -136,14 +139,17 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         # Another brand's lights and plugs: no pass, and a plug that never turns off would take on_time.
         ("other", {"turn_on_for"}, ALL - CERTIFIED, set()),
         # Hue's plug, on the switch domain alone; its bulbs keep their own level.
-        ("hue", {"turn_on_for"}, {"turn_off_for"}, set()),
+        ("hue", {"turn_on_for"}, {"turn_off_for"} | AUTO_OFF, set()),
         ("tuya_zcl", {"turn_on_for"}, ALL, set()),
+        # Tuya's inching: set_auto_off and clear_auto_off serve it in Labs, and it keeps `tuya_zcl`'s refusal on
+        # turn_on_for and its place in no other scope.
+        ("tuya_inching", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"}, set()),
         # Nor a TS011F off the countdown, so get_attributes doesn't read it.
-        ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"}, set()),
+        ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"} | AUTO_OFF, set()),
         # Reported failing Tuya's countdown with harm (Decision 41).
-        ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"}, set()),
+        ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for", "turn_off_for", "get_attributes"} | AUTO_OFF, set()),
         # The time left can't be read (probe P6); turn_on_for serves it in Labs, on its kin's pass.
-        ("tuya_countdown", set(), {"turn_off_for", "get_attributes"}, {"get_attributes"}),
+        ("tuya_countdown", set(), {"turn_off_for", "get_attributes"} | AUTO_OFF, {"get_attributes"}),
         # Tuya's datapoint countdown: turn_on_for and turn_off_for serve them in Labs, on research, and no action holds
         # an entry for them.
         ("tuya_datapoint", set(), ALL - {"turn_on_for", "turn_off_for"}, set()),
@@ -156,6 +162,12 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         ("ikea", {"turn_on_for"}, ALL - CERTIFIED - {"turn_on_for"}, set()),
         # Reported to stay on with the timer (Zigbee2MQTT #29158).
         ("ikea_timer_harmed", {"turn_on_for"}, ALL - CERTIFIED, set()),
+        # Sonoff's inching: set_auto_off and clear_auto_off serve it in Labs, on research, and it keeps `other`'s level
+        # elsewhere, refused on turn_on_for with the same entry.
+        ("sonoff_inching", {"turn_on_for"}, ALL - CERTIFIED - AUTO_OFF, set()),
+        # The S60 plugs: refused on both auto-off actions, as DISABLE is reported to have no effect on them, and on
+        # turn_on_for; a plug has no brightness fades or stop.
+        ("sonoff_s60", {"turn_on_for"} | AUTO_OFF, {"turn_on_for", "turn_off_for", "get_attributes"} | AUTO_OFF, set()),
     ],
 )
 def test_where_each_class_is_refused(capability, harmed, not_built, no_method):
@@ -171,7 +183,14 @@ def test_where_each_class_is_refused(capability, harmed, not_built, no_method):
     assert {action for action, scope in scopes.items() if capability not in scope.capabilities} == not_built
 
 
-SWITCH_ONLY = {"tuya_ts011f", "tuya_countdown", *tuya.VERIFIED_COUNTDOWNS, "tuya_countdown_harmed"}
+SWITCH_ONLY = {
+    "tuya_ts011f",
+    "tuya_countdown",
+    *tuya.VERIFIED_COUNTDOWNS,
+    "tuya_countdown_harmed",
+    "sonoff_s60",
+    "tuya_inching",
+}
 
 
 def test_actions_for_lights_alone_never_hold_a_switch_only_class():

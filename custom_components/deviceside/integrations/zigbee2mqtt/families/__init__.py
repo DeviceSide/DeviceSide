@@ -10,12 +10,19 @@ tests/integrations/zigbee2mqtt/test_classification.py pins the devices each cons
 
 from collections.abc import Collection, Sequence
 
-from . import gledopto, hue, ikea, sengled, tuya
+from . import gledopto, hue, ikea, sengled, sonoff, tuya
 from ..rules import FIELDS, REGISTRY
 from ....core.rules import Rule, compose
 from ....core.scope import Family
 
-FAMILIES: tuple[Family, ...] = (hue.FAMILY, ikea.FAMILY, tuya.FAMILY, sengled.FAMILY, gledopto.FAMILY)
+FAMILIES: tuple[Family, ...] = (
+    hue.FAMILY,
+    ikea.FAMILY,
+    tuya.FAMILY,
+    sonoff.FAMILY,
+    sengled.FAMILY,
+    gledopto.FAMILY,
+)
 
 RULES: tuple[Rule, ...] = compose(
     FIELDS,
@@ -27,6 +34,8 @@ RULES: tuple[Rule, ...] = compose(
     (tuya.FAMILY, tuya.ZIGBEE_RULES),
     # On IKEA's own Zigbee manufacturer string, which no Tuya device carries.
     (ikea.FAMILY, ikea.RULES),
+    # Read from the definition alone, and no Tuya device has these definition models, so after Tuya's rules.
+    (sonoff.FAMILY, sonoff.RULES),
     (sengled.FAMILY, sengled.RULES),
     (gledopto.FAMILY, gledopto.RULES),
     # Last, as they only stand in for Tuya's rules on the Zigbee strings.

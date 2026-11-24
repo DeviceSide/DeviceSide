@@ -57,6 +57,11 @@ some devices can't do is not marked there.
 
 ## Zigbee plugs and switches
 
+`set_auto_off` and `clear_auto_off` on Zigbee are built on Zigbee2MQTT alone, for Sonoff's single-channel relays and two
+Tuya switches ([Sonoff](integrations/zigbee2mqtt/index.md#sonoff-inching-relays),
+[Tuya](integrations/zigbee2mqtt/index.md#tuya-inching-switches)). The setting can't be read back, so the result is
+`sent`; ZHA has no call to send yet.
+
 `turn_on_for` on Zigbee2MQTT and ZHA plugs and switches isn't built, but for the Zigbee2MQTT Tuya countdown plugs
 and Tuya datapoint devices with one countdown, which DeviceSide drives by Tuya's own countdown
 ([Zigbee2MQTT](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs),

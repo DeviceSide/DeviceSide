@@ -122,7 +122,9 @@ read its suffixed state keys back. Today every light or switch of a device with 
 
 The same addressing would serve the multi-gang Tuya datapoint devices (TS0601 and kin), and every definition whose
 countdown is named per endpoint (`countdown_l1`), with the datapoint countdown: `turn_on_for` and `turn_off_for` by
-suffixed `state` and `countdown` keys. #582 serves the single-endpoint ones; the rest stay `tuya_mcu`, refused as
+suffixed `state` and `countdown` keys. It would serve inching on the multi-gang devices too (MINI-ZB2GS, NFZB-2, MW783Z, a 3-gang with a backlight): suffixed
+fields in one `inching_control_set`, once the gang 4 encoding and the whole-table write are settled
+([internals](integrations/zigbee2mqtt/internals.md#set_auto_off-and-clear_auto_off)). #582 serves the single-endpoint ones; the rest stay `tuya_mcu`, refused as
 not built (`integrations/zigbee2mqtt/refusals.py`; the multi-gang payload rules are in
 [the research](integrations/zigbee2mqtt/research/2026-11-14-tuya-datapoint-countdown.md)).
 
@@ -131,7 +133,8 @@ actions on a multi-gang Tuya one.
 
 **Revisit when:**
 - a device report or request names a multi-light Zigbee2MQTT device refused as `not_addressable`;
-- a device report or request asks for `turn_on_for` or `turn_off_for` on a multi-gang Tuya datapoint device.
+- a device report or request asks for `turn_on_for` or `turn_off_for` on a multi-gang Tuya datapoint device;
+- a device report or request asks for `set_auto_off` on a multi-gang inching device.
 
 **Plan:** the multi-gang payloads: [`docs/plans/2026-11-15-tuya-datapoint-countdown.md`](plans/2026-11-15-tuya-datapoint-countdown.md),
 Design 3.
@@ -150,11 +153,73 @@ answers SUCCESS, so the read-back is the only signal a device report has.
 
 **Plan:** [`docs/plans/2026-11-24-matter-light-actions.md`](plans/2026-11-24-matter-light-actions.md), Decision 8
 
+## Inching readback on Zigbee2MQTT
+
+Read the persisted inching setting back, so `set_auto_off` and `clear_auto_off` could be `confirmed` and
+`get_attributes` could report it. Z2M's state for the composite is the last write's echo
+([internals](integrations/zigbee2mqtt/internals.md#set_auto_off-and-clear_auto_off)).
+
+**Why not now:** no read path is evidenced: ZHC has no `convertGet`, and a Sonoff report is a candidate on newer
+firmware only.
+
+**Revisit when:**
+- a Tuya device is shown to answer a read of 0xD003 with a record that decodes (a run or a report);
+- a Sonoff device is shown to report its inching setting (a 0x17 report on firmware 1.1.0 or later).
+
+**Plan:** none.
+
+## Inching on ZHA
+
+`set_auto_off` and `clear_auto_off` on ZHA for Sonoff and Tuya inching. A ZHA call can't be sent: the Sonoff 0xFC11
+quirk declares no `protocolData` command, and Tuya's `TuyaZBE000Cluster` has no attributes or commands.
+
+**Why not now:** nothing to send through.
+
+**Revisit when:**
+- a zha-device-handlers quirk that declares the command is released (the Sonoff PRs #5135 and #5317 are open).
+
+**Plan:** none.
+
+## Auto-on (inching mode ON) on Zigbee2MQTT
+
+`set_auto_on` and `clear_auto_on` for Sonoff relays: inching mode ON turns the relay off when triggered, then back on
+after the time. Mode is one setting shared with auto-off, so the two can't both be held.
+
+**Why not now:** one slot serves both, and no request for auto-on on Sonoff has come in.
+
+**Revisit when:**
+- a request asks for auto-on on a Sonoff relay.
+
+**Plan:** none.
+
+## More Tuya inching strings on Zigbee2MQTT
+
+Admit further single-endpoint Tuya strings that Z2M enables inching for. Only two have a measured time; several
+others are reported to have no effect ([research](integrations/zigbee2mqtt/research/tuya/2026-11-24-inching.md), §4).
+
+**Why not now:** a string is admitted on evidence, and the rest have none or a negative.
+
+**Revisit when:**
+- a pass, or a report with a measured time, names another single-endpoint string.
+
+**Plan:** none.
+
+## Sonoff S60 inching on Zigbee2MQTT
+
+`set_auto_off` and `clear_auto_off` on the S60ZBTPF and S60ZBTPG, which are refused as not built.
+
+**Why not now:** `DISABLE` is reported to have no effect, so `clear_auto_off` would leave the plug pulsing.
+
+**Revisit when:**
+- a report or run shows `DISABLE` stopping the pulse on an S60.
+
+**Plan:** none.
+
 ## Split this register into a file per entry
 
 One file per entry, in place of this page, once one file costs more than it saves.
 
-**Why not now:** nine entries.
+**Why not now:** fourteen entries.
 
 **Revisit when:**
 - it holds more than 30 entries;

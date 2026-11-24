@@ -3,6 +3,7 @@
 from . import lifecycle
 from .addressing import is_z2m_group
 from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
+from .clear_auto_off import Z2MClearAutoOff
 from .detect import detect
 from .fade import Z2MCallResolver
 from .families import FAMILIES
@@ -15,6 +16,7 @@ from .raise_brightness import Z2MRaiseBrightness
 from .raise_hue import Z2MRaiseHue
 from .raise_saturation import Z2MRaiseSaturation
 from .set_attributes import Z2MSetAttributes
+from .set_auto_off import Z2MSetAutoOff
 from .stop import Z2MStop
 from .turn_off_for import Z2MTurnOffFor
 from .turn_on_for import Z2MTurnOnFor
@@ -40,6 +42,7 @@ INTEGRATION = IntegrationInfo(
 )
 
 ADAPTERS = [
+    Z2MClearAutoOff,
     Z2MGetAttributes,
     Z2MLowerBrightness,
     Z2MLowerHue,
@@ -48,6 +51,7 @@ ADAPTERS = [
     Z2MRaiseHue,
     Z2MRaiseSaturation,
     Z2MSetAttributes,
+    Z2MSetAutoOff,
     Z2MStop,
     Z2MTurnOffFor,
     Z2MTurnOnFor,

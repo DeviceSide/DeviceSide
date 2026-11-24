@@ -28,6 +28,12 @@ GLEDOPTO_TUYA = ("Gledopto", "GL-SPI-206P")  # Gledopto's definition, Tuya datap
 # The exposes of a single-endpoint Tuya datapoint dimmer on Tuya's datapoint countdown.
 DATAPOINT = frozenset({"state", "brightness", "countdown"})
 PLUG = ("Tuya", "TS011F_plug_1")
+SONOFF_ZBMINIR2 = ("SONOFF", "ZBMINIR2")
+SONOFF_STRINGS = ("SONOFF", "ZBMINIR2")
+INCHING = frozenset({"state", "inching_control_set"})
+TUYA_WHD02 = ("_TZ3000_skueekg3", "TS0001")  # the WHD02, whose inching is measured
+TUYA_MW781Z = ("_TZ300A_rncj86af", "TS0726")  # the Mowe MW781Z, whose inching is measured
+TUYA_NO_EFFECT = ("_TZ3000_mzcp0of6", "TS0003")  # inching enabled in ZHC, reported having no effect
 MOES = ("Moes", "ZM-105")  # a vendor and definition no registry rule reads
 
 
@@ -74,6 +80,32 @@ DEVICES = {
         listed(("IKEA", "LED2005R5/LED2106R3"), ("IKEA of Sweden", "TRADFRI bulb GU10 WS 345lm")),
         "ikea_timer_harmed",
     ),
+    # Sonoff's inching: by the definition's model and its device-wide composite, in bridge/devices alone.
+    "sonoff_inching_before": (device(SONOFF_ZBMINIR2), "other"),
+    "sonoff_inching": (device(SONOFF_ZBMINIR2, SONOFF_STRINGS, "ZBMINIR2", INCHING), "sonoff_inching"),
+    "sonoff_inching_dimmer": (
+        device(("SONOFF", "MINI-ZBDIM"), SONOFF_STRINGS, "MINI-ZBDIM", INCHING),
+        "sonoff_inching",
+    ),
+    "sonoff_s60": (device(("SONOFF", "S60ZBTPF"), ("SONOFF", "S60ZBTPF"), "S60ZBTPF", INCHING), "sonoff_s60"),
+    # The 2-gang's composite is per endpoint, so the device has none; and a model off the list, whatever it exposes.
+    "sonoff_two_gang": (device(("SONOFF", "MINI-ZB2GS"), SONOFF_STRINGS, "MINI-ZB2GS", NO_COUNTDOWN), "other"),
+    "sonoff_unlisted_model": (device(("SONOFF", "NEW-MODEL"), SONOFF_STRINGS, "NEW-MODEL", INCHING), "other"),
+    # Tuya's inching: the two measured strings that expose the composite, ahead of the `tuya_zcl` rules that class them
+    # otherwise (the WHD02's `_TZ3000_` string by manufacturer, the MW781Z's `TS0726` by model). Its TS000F variant (no
+    # composite) and the string reported having no effect (composite exposed) stay `tuya_zcl`.
+    "tuya_inching_whd02": (device(MOES, TUYA_WHD02, "WHD02", INCHING), "tuya_inching"),
+    "tuya_inching_mw781z": (device(MOES, TUYA_MW781Z, "TS0726_1_gang_scene_switch", INCHING), "tuya_inching"),
+    "tuya_inching_whd02_without_the_composite": (device(MOES, TUYA_WHD02, "WHD02", NO_COUNTDOWN), "tuya_zcl"),
+    "tuya_inching_whd02_ts000f": (
+        device(MOES, ("_TZ3000_skueekg3", "TS000F"), "TS000F_switch_module_1", NO_COUNTDOWN),
+        "tuya_zcl",
+    ),
+    "tuya_inching_reported_no_effect": (
+        device(MOES, TUYA_NO_EFFECT, "TS0003_switch_module_2", INCHING),
+        "tuya_zcl",
+    ),
+    "tuya_inching_before": (device(("Tuya", "WHD02")), "tuya_zcl"),
     "nothing_known": (device((None, None)), "other"),
     # A Tuya device under another vendor's definition: that vendor's class, or `other`, until its strings arrive, then
     # its Tuya class.
