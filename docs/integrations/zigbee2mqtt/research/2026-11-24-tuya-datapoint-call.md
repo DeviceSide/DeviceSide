@@ -91,10 +91,21 @@ order prevents"). The reading below shows converter B gives the same guarantee, 
 What it does with `{"state": "ON", "countdown": N}` on a single-endpoint device's base topic:
 
 - **One converter call for the whole payload.** `tuyaBase({dp: true})` adds `tz.datapoints` with no `key`
-  ([ZHC/src/lib/tuya.ts#L4728-L4731](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/lib/tuya.ts#L4728-L4731)), so Z2M matches it on the payload's first key,
-  `state`, and skips it for `countdown`: "Use a converter for set only once"
+  ([ZHC/src/lib/tuya.ts#L4728-L4731](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/lib/tuya.ts#L4728-L4731)), and Z2M takes the first converter in the
+  list whose `key` holds the payload key, or that has none
+  ([Z2M/lib/extension/publish.ts#L196-L199](https://github.com/Koenkk/zigbee2mqtt/blob/3c841fdfd66c92239921ef84fde8f039c64e1662/lib/extension/publish.ts#L196-L199)). ZHC puts a definition's own
+  `toZigbee` before its extends' ([ZHC/src/index.ts#L292-L305](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/index.ts#L292-L305)), after generic
+  converters keyed on other names (`read`, `write`, `command`, scenes; [#L423-L437](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/index.ts#L423-L437)).
+  So where `tuyaBase` gives the only converters, Z2M matches `tz.datapoints` on the payload's first key, `state`,
+  and skips it for `countdown`: "Use a converter for set only once"
   ([Z2M/lib/extension/publish.ts#L194-L205](https://github.com/Koenkk/zigbee2mqtt/blob/3c841fdfd66c92239921ef84fde8f039c64e1662/lib/extension/publish.ts#L194-L205)). `meta.message` is the whole
   payload ([#L219-L234](https://github.com/Koenkk/zigbee2mqtt/blob/3c841fdfd66c92239921ef84fde8f039c64e1662/lib/extension/publish.ts#L219-L234)).
+- **Which admitted definitions that holds for.** Every one but GL-SPI-206P has no `toZigbee` of its own and one
+  extend, `tuyaBase({dp: true, …})`, at `v26.125.0` (and, for D1Z and SFD02-Z_2, at `v26.136.0`): ZDMS16-1, ZOT60,
+  FK_V02, SFD02-Z, SFD02-Z_2, QADZ1LR, `TS0601_dimmer_1_gang_1`, `_1_gang_2`, `TS0601_dimmer_5`, MG-ZG01W,
+  `_TZE28C1000000_jlbsptkl`, ZMS-206US-1, TO-DM-W/B, `TS0601_multifunction_switch`, D1Z, D5Z, ZBS16. GL-SPI-206P
+  lists `glspi206p_light` (key `state`, among others) and two music converters ahead of `tuyaBase`
+  ([ZHC/src/devices/gledopto.ts#L1262-L1263](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/devices/gledopto.ts#L1262-L1263)): below.
 - **Payload order.** It loops `Object.entries(meta.message)` (3244), which for these string keys is the order they
   arrived in, so the `state` datapoint goes out before `countdown`. On a base topic `meta.endpoint_name` is unset, so
   each key is looked up as written (3245–3247). A key with no datapoint throws (3248–3250).
@@ -144,9 +155,11 @@ Per-definition notes on the same path:
   `state` nor `countdown`; `endpoint_name` stays unset and the keys pass unchanged. Its exposes carry no endpoint.
 - **GL-SPI-206P** lists its own `glspi206p_light` converter for `state`
   ([ZHC/src/devices/gledopto.ts#L291-L305](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/devices/gledopto.ts#L291-L305)). It awaits its own
-  `sendDataPoints`, and `tz.datapoints` then sends DP 1 again before the countdown (datapoint note, §5). If the first
-  send fails, Z2M logs the set as failed, and the second pass still sends DP 1 before the countdown, so the same
-  guarantee holds.
+  `sendDataPoints`, and `tz.datapoints` then sends DP 1 again before the countdown (datapoint note, §5). So `state`
+  goes to `glspi206p_light` and `countdown` to `tz.datapoints`, which sends DP 1 before the countdown: a lost DP 1
+  there still stops the countdown. One case differs: if the first DP 1 fails and the second succeeds, the countdown is
+  armed while Z2M has already logged `Publish 'set' 'state' … failed`
+  ([publish.ts#L283](https://github.com/Koenkk/zigbee2mqtt/blob/3c841fdfd66c92239921ef84fde8f039c64e1662/lib/extension/publish.ts#L283)), so `set_check` answers `rejected` with the timer running.
 - **D5Z**'s state converter publishes `countdown: 0` whenever the reported state changes, with the comment "setting/
   changing the state resets the countdown, but device doesn't report it"
   ([ZHC/src/lib/tuya.ts#L1831-L1841](https://github.com/Koenkk/zigbee-herdsman-converters/blob/c18c32d94c77f683fa768618d1fd32b348fdd7b9/src/lib/tuya.ts#L1831-L1841)). The publish sends the state before the
