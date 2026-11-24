@@ -171,7 +171,7 @@ quirk declares no `protocolData` command, and Tuya's `TuyaZBE000Cluster` has no 
 `set_auto_on` and `clear_auto_on` for Sonoff relays: inching mode ON turns the relay off when triggered, then back on
 after the time. Mode is one setting shared with auto-off, so the two can't both be held.
 
-**Why not now:** one slot serves both, and no demand has been seen for auto-on.
+**Why not now:** one slot serves both, and no request for auto-on on Sonoff has come in.
 
 **Revisit when:**
 - a request asks for auto-on on a Sonoff relay.

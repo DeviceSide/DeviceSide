@@ -273,7 +273,8 @@ back to its members. `confirmable=False`: the result is `sent`, or `rejected` by
   32,767.5 s would truncate through ZHC. `DurationLimits` is 0.5 s to 3,599.5 s step 0.5 s on every model, so one class
   holds them all (inferred from the source, not tested on a device).
 - **Mode OFF is relay-neutral.** Arming mode OFF changes no state; the relay pulses on its next turn-on
-  ([ZHC #13383](https://github.com/Koenkk/zigbee-herdsman-converters/issues/13383)). `clear_auto_off` leaves the output as it is.
+  ([ZHC #13383](https://github.com/Koenkk/zigbee-herdsman-converters/issues/13383)). That `clear_auto_off` leaves the
+  output as it is follows from DISABLE being the same write with bit 7 clear (inferred, not reported).
 - **S60ZBTPF, S60ZBTPG.** Not built: users report `DISABLE` having no effect on firmware 1.0.2
   ([Zigbee2MQTT #31799](https://github.com/Koenkk/zigbee2mqtt/issues/31799)), so a clear would leave the plug pulsing.
 - **MINI-ZB2GS.** Its composite is per endpoint (suffixed fields), so it waits on per-endpoint addressing.

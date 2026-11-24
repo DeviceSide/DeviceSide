@@ -163,8 +163,10 @@ Labs on.
 ### Sonoff
 
 Sonoff's relays and dimmers keep a persistent auto-off, "inching", which set auto-off and clear auto-off write
-([research](research/sonoff/2026-11-24-inching.md)). Their other features aren't built yet. A two-gang MINI-ZB2GS
-waits on [per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt).
+([research](research/sonoff/2026-11-24-inching.md)). The MINI-ZBDIM dimmer also takes smooth dimming and stop,
+which rest on the standard commands every Zigbee 3.0 certified dimmable light must take, as for
+[other brands](#other-brands). Sonoff's other features aren't built yet: nothing predicts how its devices take color
+moves, reads and writes, or the Zigbee timer. A two-gang MINI-ZB2GS waits on [per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt).
 
 #### Sonoff inching relays
 
