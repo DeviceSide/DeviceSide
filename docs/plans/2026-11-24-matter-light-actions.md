@@ -14,7 +14,7 @@ Research: [`docs/integrations/matter/research/2026-11-24-level-color.md`](../int
 ## Coordination
 
 Intent: Matter lights get set_attributes (ExecuteIfOff), raise/lower brightness, saturation and hue, and stop, in Labs on certified single- and multi-endpoint nodes.
-Touches: custom_components/deviceside/integrations/matter/**, custom_components/deviceside/core/level_fade.py, custom_components/deviceside/core/zcl.py, custom_components/deviceside/integrations/zha/zcl.py, tests/integrations/matter/**, docs/integrations/matter/**, docs/device-compatibility.md, README.md, docs/deferred.md, docs/plans/2026-11-24-matter-light-actions.md
+Touches: custom_components/deviceside/integrations/matter/**, custom_components/deviceside/core/level_fade.py, custom_components/deviceside/core/zcl.py, custom_components/deviceside/integrations/zha/zcl.py, tests/integrations/matter/**, docs/integrations/matter/**, docs/device-compatibility.md, README.md, docs/deferred.md, docs/plans/2026-11-24-matter-light-actions.md, custom_components/deviceside/integrations/zha/fade.py, custom_components/deviceside/integrations/zigbee2mqtt/fade.py, custom_components/deviceside/integrations/zigbee2mqtt/set_attributes.py, custom_components/deviceside/services.yaml, tests/core/test_level_fade.py, tests/core/test_registry.py, tests/fixtures/matter.py, tests/scripts/test_gen_features.py
 
 ## Decisions
 
