@@ -179,14 +179,6 @@ def test_the_shared_catalog_files_go_to_the_reading_integrations_never_a_family(
     )
 
 
-def test_a_family_keyed_for_a_shared_catalog_file_is_an_error(stacks):
-    (stacks / "custom_components/deviceside/integrations/hue/families/reasons").mkdir()
-    with pytest.raises(
-        SystemExit, match="hue: family reasons would hold the shared custom_components/deviceside/zigbee/reasons.py"
-    ):
-        gco.generate(registry(hue=info("jasonmx", families=(family("reasons"),))), stacks)
-
-
 def test_a_family_without_a_package_is_an_error(stacks):
     with pytest.raises(SystemExit, match="hue: no package for family sengled"):
         gco.generate(registry(hue=info("jasonmx", families=(family("sengled"),))), stacks)

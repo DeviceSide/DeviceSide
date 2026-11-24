@@ -11,9 +11,9 @@ A family (`IntegrationInfo.families`) with maintainers of its own gets its paths
 its tests and its research folder, to its maintainers, then the integration's, then the repo's. A catalog file, which
 the stacks' families of one key share, goes to those families' maintainers and their integrations'. The catalog's
 shared files go to the maintainers of every integration that reads the catalog (has a family of a key with a catalog
-file), never a family's: they word what every such family's devices are told. No family may take a shared file's name
-as its key. Each of these lines is written only when it names an owner the line enclosing it doesn't, so a family with
-`maintainers=()` adds none.
+file), never a family's: they word what every such family's devices are told. Their lines
+follow the catalog's, so they win over a family keyed for one. Each of these lines is written only when it names an
+owner the line enclosing it doesn't, so a family with `maintainers=()` adds none.
 
 `REPO_MAINTAINERS` also has to match `manifest.json`'s `codeowners`, which HA shows as the integration's owners; the
 script checks that, in both modes, and leaves the manifest for a hand edit.
@@ -101,10 +101,6 @@ def generate(registry: AdapterRegistry, repo: Path = REPO) -> str:
         for family in sorted(info.families, key=lambda family: family.key):
             if not (repo / (package := FAMILY_PATHS[0].format(key=key, family=family.key))).is_dir():
                 raise SystemExit(f"{key}: no package for family {family.key} at {package}")
-            if taken := [path for path in CATALOG_PATHS if path.format(family=family.key) in SHARED_CATALOG_PATHS]:
-                raise SystemExit(
-                    f"{key}: family {family.key} would hold the shared {taken[0].format(family=family.key)}"
-                )
             if (repo / CATALOG_PATHS[0].format(family=family.key)).exists():
                 readers.extend(info.maintainers)
             handles = [*family.maintainers, *info.maintainers]
