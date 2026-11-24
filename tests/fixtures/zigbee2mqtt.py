@@ -216,7 +216,7 @@ class Broker:
                 self.on_set(topic, payload)
         elif self.on_set is not None and topic.endswith("/set"):
             self.on_set(topic, payload)
-        elif topic.startswith("zigbee2mqtt/bridge/request/") and self.reply is not None:
+        elif "/bridge/request/" in topic and self.reply is not None:
             response = topic.replace("/request/", "/response/")
             self.deliver(response, json.dumps({"transaction": "someone else's", "status": "error"}))
             if isinstance(self.reply, str):

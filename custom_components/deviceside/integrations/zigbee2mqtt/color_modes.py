@@ -15,13 +15,14 @@ own; any other value is the user's and is left alone.
 
 import logging
 from collections.abc import Callable
+from functools import partial
 
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.debounce import Debouncer
 
-from .addressing import Address, bridge_bases, bridge_topic, entity_name
+from .addressing import Address, bridge_bases, bridge_topic, entity_name, follow_bases
 from .bridge import ensure_options, retained
 from ...core.errors import describe
 
@@ -183,7 +184,12 @@ def _entities(devices: list[dict], groups: list[dict]) -> list[tuple[str, str, l
 
 
 async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], None]:
-    """Run the enabled pass now and whenever Z2M announces a device or group change; returns the unsubscribe.
+    """Watch each instance HA knows a bridge of, as bridges come and go (follow_bases); returns the stop."""
+    return follow_bases(hass, entry, partial(_watch, hass, entry), "color modes")
+
+
+async def _watch(hass: HomeAssistant, entry: ConfigEntry, base: str) -> Callable[[], None]:
+    """Run the instance's enabled pass now and whenever it announces a device or group change; returns the stop.
 
     The retained messages each subscription gets at once start the first pass. Each pass is the entry's background
     task, so unloading cancels one in flight: turning the option off reloads the entry, and a pass finishing after
@@ -191,7 +197,7 @@ async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], N
     """
 
     async def run_pass() -> None:
-        await entry.async_create_background_task(hass, ensure_color_modes(hass, True), "z2m color modes pass")
+        await entry.async_create_background_task(hass, _ensure_base(hass, base, True), "z2m color modes pass")
 
     debouncer = Debouncer(
         hass,
@@ -206,11 +212,7 @@ async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], N
     def announced(_msg: mqtt.ReceiveMessage) -> None:
         debouncer.async_schedule_call()
 
-    unsubscribes = [
-        await mqtt.async_subscribe(hass, bridge_topic(base, suffix), announced)
-        for base in sorted(set(bridge_bases(hass).values()))
-        for suffix in _WATCHED
-    ]
+    unsubscribes: list[Callable[[], None]] = []
 
     @callback
     def stop() -> None:
@@ -218,6 +220,12 @@ async def async_watch(hass: HomeAssistant, entry: ConfigEntry) -> Callable[[], N
             unsubscribe()
         debouncer.async_shutdown()
 
+    try:
+        for suffix in _WATCHED:
+            unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(base, suffix), announced))
+    except BaseException:
+        stop()
+        raise
     return stop
 
 

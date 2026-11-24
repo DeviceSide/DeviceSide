@@ -4,6 +4,8 @@ import asyncio
 import json
 
 import pytest
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
@@ -11,7 +13,15 @@ from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache, members
 
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_bridge, add_z2m_group
+from ...fixtures.zigbee2mqtt import (
+    GROUPS,
+    IEEE,
+    INFO,
+    add_z2m_bridge,
+    add_z2m_entity,
+    add_z2m_group,
+    bridge_ieee,
+)
 
 BASE = "zigbee2mqtt"
 
@@ -67,7 +77,7 @@ async def start(hass, entry) -> bridge_cache.BridgeCache:
     add_z2m_bridge(hass, entry)
     await bridge_cache.async_setup(hass, entry)
     await settle()  # the retained messages
-    cache = bridge_cache.get(hass)
+    cache = bridge_cache.get(hass, BASE)
     assert cache is not None
     return cache
 
@@ -136,7 +146,7 @@ async def test_an_empty_cache_reads_fresh(hass, setup_production, broker, connec
 async def test_without_a_cache_everything_reads_fresh(hass, broker):
     broker.retained[GROUPS] = ROOM
 
-    assert bridge_cache.get(hass) is None
+    assert bridge_cache.get(hass, BASE) is None
     assert await bridge.group_members(hass, BASE, "7") == ["0x01"]
     assert broker.topics == [GROUPS]
 
@@ -278,7 +288,7 @@ async def test_unload_unsubscribes_everything(hass, setup_production, online, co
 
     assert await hass.config_entries.async_unload(setup_production.entry_id)
 
-    assert bridge_cache.get(hass) is None
+    assert bridge_cache.get(hass, BASE) is None
     assert not any(online.listening(topic) for topic in HELD_TOPICS)
     assert connection.callbacks == []
 
@@ -291,14 +301,14 @@ async def test_without_mqtt_nothing_is_held(hass, setup_production, broker, monk
 
     await bridge_cache.async_setup(hass, setup_production)
 
-    assert bridge_cache.get(hass) is None
+    assert bridge_cache.get(hass, BASE) is None
     assert broker.topics == []
 
 
 async def test_without_a_known_bridge_nothing_is_held(hass, setup_production, broker, mqtt_up):
     await bridge_cache.async_setup(hass, setup_production)
 
-    assert bridge_cache.get(hass) is None
+    assert bridge_cache.get(hass, BASE) is None
     assert broker.topics == []
 
 
@@ -318,7 +328,7 @@ async def test_a_failed_subscribe_warns_and_holds_nothing(
     await bridge_cache.async_setup(hass, setup_production)
     await settle()
 
-    assert bridge_cache.get(hass) is None
+    assert bridge_cache.get(hass, BASE) is None
     assert not any(broker.listening(topic) for topic in HELD_TOPICS)
     assert (
         "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh, Zigbee2MQTT groups run only "
@@ -333,7 +343,7 @@ async def test_setup_entry_starts_it_once_mqtt_is_up(hass, broker, connection, m
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert bridge_cache.get(hass) is not None
+    assert bridge_cache.get(hass, BASE) is not None
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -361,7 +371,7 @@ async def test_each_online_calls_on_online(hass, setup_production, broker, conne
     broker.deliver(STATE, payload)
 
     assert len(seen) == calls
-    assert bridge_cache.get(hass).replies_live
+    assert bridge_cache.get(hass, BASE).replies_live
 
 
 async def test_a_malformed_payload_counts_as_none(hass, setup_production, online, connection, mqtt_up):
@@ -447,21 +457,6 @@ def test_an_options_error_is_scrubbed_of_the_id_it_was_asked_about():
     )
 
 
-async def test_a_group_on_another_instance_does_not_read_the_cached_one(
-    hass, setup_production, online, connection, mqtt_up
-):
-    await start(hass, setup_production)
-    add_z2m_bridge(hass, setup_production, "z2m_up")
-    other = bridge_cache.get(hass, "z2m_up")
-
-    assert bridge_cache.get(hass, BASE) is not None
-    assert other is None
-    # bridge/groups of the cached instance isn't served to the other instance: it reads fresh, and times out here.
-    with pytest.raises(TimeoutError, match="no bridge/groups from Zigbee2MQTT"):
-        await bridge.group_members(hass, "z2m_up", "7")
-    assert await bridge.group_members(hass, BASE, "7") == ["0x01"]
-
-
 async def test_expand_group_of_another_instance_gets_no_members(
     hass, setup_production, online, connection, mqtt_up, monkeypatch
 ):
@@ -472,3 +467,267 @@ async def test_expand_group_of_another_instance_gets_no_members(
     registry = get_runtime(hass).registry
 
     assert members.expand_group(hass, resolve(hass, registry, "light.up_room")) is None
+
+
+# Several instances: a cache per base topic, following HA's registry
+
+
+UP = "z2m_up"  # a second instance's base topic
+
+
+def up(suffix: str) -> str:
+    return f"{UP}/bridge/{suffix}"
+
+
+UP_HELD_TOPICS = [up(t.split("/bridge/")[1]) for t in HELD_TOPICS]
+
+
+@pytest.fixture
+def two(online):
+    """A second instance on the broker, its group 7 holding another member and its own options."""
+    online.retained[INFO] = {"config": {"devices": {}, "groups": {"7": {"name": "first"}}}}
+    online.retained[up("state")] = {"state": "online"}
+    online.retained[up("groups")] = [{"id": 7, "members": [{"ieee_address": "0x02"}]}]
+    online.retained[up("devices")] = [{"ieee_address": "0x02"}]
+    online.retained[up("info")] = {"config": {"devices": {}, "groups": {"7": {"name": "second"}}}}
+    return online
+
+
+def bridge_entity(hass, base: str) -> str:
+    return er.async_get(hass).async_get_entity_id("sensor", "mqtt", f"bridge_{bridge_ieee(base)}_version_{base}")
+
+
+async def start_two(hass, entry, seen: list[str] | None = None) -> None:
+    add_z2m_bridge(hass, entry)
+    add_z2m_bridge(hass, entry, UP)
+    await bridge_cache.async_setup(hass, entry, (seen if seen is not None else []).append)
+    await settle()
+
+
+async def test_each_instance_has_its_own_cache(hass, setup_production, two, connection, mqtt_up):
+    seen: list[str] = []
+    await start_two(hass, setup_production, seen)
+
+    first, second = bridge_cache.get(hass, BASE), bridge_cache.get(hass, UP)
+    assert first is not None and second is not None and first is not second
+    assert first.replies_live and second.replies_live
+    assert two.topics == UP_HELD_TOPICS + HELD_TOPICS  # by base topic, each in its own order, the barrier last
+    assert sorted(seen) == [UP, BASE]  # each instance's online, with its base
+    assert len(connection.callbacks) == 2  # each cache clears on its own disconnect
+
+
+async def test_each_instances_group_lists_its_own_members(
+    hass, setup_production, two, connection, mqtt_up, monkeypatch
+):
+    monkeypatch.setattr(members, "bridge_cache", bridge_cache)  # the real cache, not the fixture's stand-in
+    entry = (hass.config_entries.async_entries("mqtt") or [setup_production])[0]
+    add_z2m_entity(hass, entry, "light.one", ieee="0x01", name="one")
+    add_z2m_entity(hass, entry, "light.two", ieee="0x02", name="two", base_topic=UP, bridge_base=UP)
+    add_z2m_group(hass, entry, "light.room", group_id=7, name="room")
+    add_z2m_group(hass, entry, "light.up_room", group_id=7, name="up room", base_topic=UP, bridge_base=UP)
+    await start_two(hass, entry)
+    registry = get_runtime(hass).registry
+
+    listed = {
+        group: [m.entity_id for m in members.expand_group(hass, resolve(hass, registry, group))]
+        for group in ("light.room", "light.up_room")
+    }
+
+    assert listed == {"light.room": ["light.one"], "light.up_room": ["light.two"]}
+    assert await bridge.group_members(hass, UP, "7") == ["0x02"]
+    assert await bridge.group_members(hass, BASE, "7") == ["0x01"]
+
+
+async def test_each_instances_options_come_from_and_go_to_its_own(hass, setup_production, two, connection, mqtt_up):
+    await start_two(hass, setup_production)
+    first, second = bridge_cache.get(hass, BASE), bridge_cache.get(hass, UP)
+    assert first.settings("groups", "7") == {"name": "first"}
+    assert second.settings("groups", "7") == {"name": "second"}
+    two.topics.clear()
+    confirmed: list[str] = []
+
+    await bridge.ensure_options(hass, UP, "group", ["7"], wanted_on, confirmed.append)
+
+    assert confirmed == ["7"]
+    assert [p["topic"] for p in two.published] == [up("request/group/options")]
+    assert two.topics == []  # the reply reached the second cache's own response topic
+    assert second.settings("groups", "7") == {"name": "second", "x": True}
+    assert first.settings("groups", "7") == {"name": "first"}  # group 7 of the other instance is another group
+
+
+async def test_a_bridge_added_after_setup_gets_a_cache_and_one_removed_stops(
+    hass, setup_production, two, connection, mqtt_up
+):
+    await bridge_cache.async_setup(hass, setup_production)
+    assert bridge_cache.get(hass, UP) is None
+    assert two.topics == []
+
+    add_z2m_bridge(hass, setup_production, UP)
+    await settle()
+
+    assert bridge_cache.get(hass, UP).replies_live
+    assert two.topics == UP_HELD_TOPICS
+    assert bridge_cache.get(hass, BASE) is None
+
+    er.async_get(hass).async_remove(bridge_entity(hass, UP))
+
+    assert bridge_cache.get(hass, UP) is None
+    assert not any(two.listening(topic) for topic in UP_HELD_TOPICS)
+    assert connection.callbacks == []
+
+
+async def test_removing_the_bridge_device_stops_its_cache(hass, setup_production, two, connection, mqtt_up):
+    await start_two(hass, setup_production)
+    bridge_device = add_z2m_bridge(hass, setup_production, UP)  # the one registered, as it is idempotent
+
+    dr.async_get(hass).async_remove_device(bridge_device.id)
+    await settle()
+
+    assert bridge_cache.get(hass, UP) is None
+    assert not any(two.listening(topic) for topic in UP_HELD_TOPICS)
+    assert bridge_cache.get(hass, BASE) is not None
+
+
+async def test_a_renamed_bridge_entity_keeps_its_cache(hass, setup_production, two, connection, mqtt_up):
+    await start_two(hass, setup_production)
+    cache = bridge_cache.get(hass, UP)
+
+    er.async_get(hass).async_update_entity(bridge_entity(hass, UP), new_entity_id="sensor.upstairs_bridge_version")
+
+    assert bridge_cache.get(hass, UP) is cache
+    er.async_get(hass).async_remove("sensor.upstairs_bridge_version")  # tracked under its new id
+    assert bridge_cache.get(hass, UP) is None
+
+
+async def test_a_changed_base_topic_moves_the_cache(hass, setup_production, two, connection, mqtt_up):
+    """Renaming the base topic: Z2M announces the bridge's entities under the new one, and the old ones are removed."""
+    await start_two(hass, setup_production)
+    bridge_device = add_z2m_bridge(hass, setup_production, UP)  # the one registered, as it is idempotent
+    old = bridge_entity(hass, UP)
+    two.retained[up("state").replace(UP, "z2m_new")] = {"state": "online"}
+
+    er.async_get(hass).async_get_or_create(
+        "sensor",
+        "mqtt",
+        f"bridge_{bridge_ieee(UP)}_version_z2m_new",
+        config_entry=setup_production,
+        device_id=bridge_device.id,
+    )
+    # Its entities disagree until the old one goes: no base is known, so no cache.
+    assert bridge_cache.get(hass, UP) is None and bridge_cache.get(hass, "z2m_new") is None
+    assert not any(two.listening(topic) for topic in UP_HELD_TOPICS)
+
+    er.async_get(hass).async_remove(old)
+    await settle()
+
+    assert bridge_cache.get(hass, "z2m_new").replies_live
+    assert bridge_cache.get(hass, BASE) is not None
+
+
+@pytest.fixture
+def held_at_logging(monkeypatch):
+    """Each subscribe to the second instance's bridge/logging waits until the returned event is set, as if HA's
+    subscribe suspended there, after the response topics."""
+    gate = asyncio.Event()
+    subscribe = bridge.mqtt.async_subscribe
+
+    async def gated(hass, topic, *args, **kwargs):
+        if topic == up(LOG):
+            await gate.wait()
+        return await subscribe(hass, topic, *args, **kwargs)
+
+    monkeypatch.setattr(bridge.mqtt, "async_subscribe", gated)
+    return gate
+
+
+LOG = "logging"
+
+
+async def test_a_bridge_removed_mid_subscribe_leaves_nothing_subscribed(
+    hass, setup_production, two, connection, mqtt_up, held_at_logging
+):
+    await start_two(hass, setup_production)
+    assert two.listening(up("response/group/options")) and bridge_cache.get(hass, UP) is None
+
+    er.async_get(hass).async_remove(bridge_entity(hass, UP))
+    held_at_logging.set()
+    await settle()
+
+    assert bridge_cache.get(hass, UP) is None
+    assert not any(two.listening(topic) for topic in UP_HELD_TOPICS)
+    assert len(connection.callbacks) == 1  # the first instance's
+    assert bridge_cache.get(hass, BASE).replies_live
+
+
+async def test_unload_mid_subscribe_leaves_nothing_subscribed(
+    hass, setup_production, two, connection, mqtt_up, held_at_logging
+):
+    await start_two(hass, setup_production)
+
+    assert await hass.config_entries.async_unload(setup_production.entry_id)
+    held_at_logging.set()
+    await settle()
+
+    assert bridge_cache.get(hass, UP) is None and bridge_cache.get(hass, BASE) is None
+    assert not any(two.listening(topic) for topic in HELD_TOPICS + UP_HELD_TOPICS)
+    assert connection.callbacks == []
+
+
+async def test_a_bridge_back_mid_subscribe_gets_one_cache(
+    hass, setup_production, two, connection, mqtt_up, held_at_logging
+):
+    await start_two(hass, setup_production)
+    er.async_get(hass).async_remove(bridge_entity(hass, UP))
+    add_z2m_bridge(hass, setup_production, UP)  # back before the first subscribe is done
+
+    held_at_logging.set()
+    await settle()
+
+    assert bridge_cache.get(hass, UP).replies_live
+    assert all(len(two.subscribers.get(topic, [])) == 1 for topic in UP_HELD_TOPICS)
+    assert len(connection.callbacks) == 2
+
+
+async def test_another_bridge_entity_mid_subscribe_starts_nothing_more(
+    hass, setup_production, two, connection, mqtt_up, held_at_logging
+):
+    await start_two(hass, setup_production)
+    bridge_device = add_z2m_bridge(hass, setup_production, UP)
+    er.async_get(hass).async_get_or_create(
+        "binary_sensor",
+        "mqtt",
+        f"bridge_{bridge_ieee(UP)}_connection_state_{UP}",
+        config_entry=setup_production,
+        device_id=bridge_device.id,
+    )
+
+    held_at_logging.set()
+    await settle()
+
+    assert bridge_cache.get(hass, UP).replies_live
+    assert all(len(two.subscribers.get(topic, [])) == 1 for topic in UP_HELD_TOPICS)
+
+
+async def test_a_failed_start_is_retried_at_the_next_bridge_change(
+    hass, setup_production, two, connection, mqtt_up, monkeypatch
+):
+    subscribe = bridge.mqtt.async_subscribe
+    refusing = True
+
+    async def refuse_once(hass, topic, *args, **kwargs):
+        if refusing and topic == up("state"):
+            raise RuntimeError("MQTT is not connected")
+        return await subscribe(hass, topic, *args, **kwargs)
+
+    monkeypatch.setattr(bridge.mqtt, "async_subscribe", refuse_once)
+    await start_two(hass, setup_production)
+    assert bridge_cache.get(hass, UP) is None
+    refusing = False
+
+    # Still the same bridge: nothing retries a failed subscribe until it goes and comes back.
+    er.async_get(hass).async_remove(bridge_entity(hass, UP))
+    add_z2m_bridge(hass, setup_production, UP)
+    await settle()
+
+    assert bridge_cache.get(hass, UP).replies_live
+    assert all(len(two.subscribers.get(topic, [])) == 1 for topic in UP_HELD_TOPICS)

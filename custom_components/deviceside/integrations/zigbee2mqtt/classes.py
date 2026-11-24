@@ -108,9 +108,9 @@ def placed(found: str, entry: Mapping | None, zigbee: Mapping[str, str]) -> bool
     return entry is not None and entry.get("interview_completed") is True and zigbee.keys() == ZIGBEE.keys()
 
 
-def _why_unplaced(hass: HomeAssistant, entry: Mapping | None, zigbee: Mapping[str, str]) -> str:
+def _why_unplaced(hass: HomeAssistant, device: dr.DeviceEntry, entry: Mapping | None, zigbee: Mapping[str, str]) -> str:
     """Why `placed` said no, for the DEBUG line: what DeviceSide is still waiting for."""
-    if (cache := bridge_cache.get(hass)) is None:
+    if (base := device_base(hass, device)) is None or (cache := bridge_cache.get(hass, base)) is None:
         return "no bridge cache"
     if entry is None:
         return "no bridge/devices yet" if cache.parsed("devices") is None else "bridge/devices doesn't list it"
@@ -140,6 +140,6 @@ def capability(hass: HomeAssistant, target: Target) -> str | None:
             "%s: class %s is provisional until Zigbee2MQTT reports the device (%s)",
             target.entity_id,
             found,
-            _why_unplaced(hass, entry, zigbee),
+            _why_unplaced(hass, target.device, entry, zigbee),
         )
     return Unplaced(found)

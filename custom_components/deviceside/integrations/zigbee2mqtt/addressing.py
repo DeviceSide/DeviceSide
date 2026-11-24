@@ -5,12 +5,15 @@ topic in each bridge entity's unique_id (docs/integrations/zigbee2mqtt/research/
 topic is assumed here, so a target whose device has no such bridge is not addressable.
 """
 
+import asyncio
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from typing import Literal, NamedTuple
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
@@ -80,6 +83,88 @@ def bridge_bases(hass: HomeAssistant) -> dict[str, str]:
     return {
         device.id: base for device in dr.async_get(hass).devices if (base := _bridge_base(hass, device)) is not None
     }
+
+
+def _is_bridge_entity(entry: er.RegistryEntry) -> bool:
+    return entry.platform == "mqtt" and _BRIDGE_ENTITY.fullmatch(entry.unique_id) is not None
+
+
+def follow_bases(
+    hass: HomeAssistant, entry: ConfigEntry, start: Callable[[str], Awaitable[Callable[[], None]]], name: str
+) -> Callable[[], None]:
+    """Run `start(base)` for each base topic in bridge_bases, now and whenever a bridge entity is created, changed or
+    removed, and call the stop it returns once that base goes; the returned callable stops everything.
+
+    Each start runs as the entry's background task (eagerly, so a start that never suspends is done before this
+    returns). A base that goes while its start runs cancels it, so `start` must undo what it did on CancelledError,
+    and should raise nothing else: a start that raises is retried at the next bridge change.
+    """
+    return _Follower(hass, entry, start, name).stop_all
+
+
+class _Follower:
+    """follow_bases' state: what runs and what is starting, by base topic."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        start: Callable[[str], Awaitable[Callable[[], None]]],
+        name: str,
+    ) -> None:
+        self.hass, self.entry, self.start, self.name = hass, entry, start, name
+        self.entities = er.async_get(hass)
+        self.stops: dict[str, Callable[[], None]] = {}
+        self.starting: dict[str, asyncio.Task[None]] = {}
+        # The bridge entities at the last sync: a removed one is gone from the registry, so its id alone shows it was.
+        self.tracked: set[str] = set()
+        self.stop_listening = hass.bus.async_listen(
+            er.EVENT_ENTITY_REGISTRY_UPDATED, self.updated, event_filter=self.bridge_changed
+        )
+        self.sync()
+
+    async def run(self, base: str) -> None:
+        me = asyncio.current_task()
+        try:
+            stop = await self.start(base)
+        finally:
+            # A base that went while this ran popped and cancelled it; one that came back since started another.
+            if self.starting.get(base) is me:
+                del self.starting[base]
+        self.stops[base] = stop
+
+    @callback
+    def sync(self) -> None:
+        self.tracked = {e.entity_id for e in self.entities.entities.values() if _is_bridge_entity(e)}
+        wanted = set(bridge_bases(self.hass).values())
+        for base in [b for b in self.starting if b not in wanted]:
+            self.starting.pop(base).cancel()
+        for base in [b for b in self.stops if b not in wanted]:
+            self.stops.pop(base)()
+        for base in sorted(wanted - self.stops.keys() - self.starting.keys()):
+            task = self.entry.async_create_background_task(self.hass, self.run(base), f"z2m {self.name}")
+            if not task.done():
+                self.starting[base] = task
+
+    @callback
+    def bridge_changed(self, data: er.EventEntityRegistryUpdatedData) -> bool:
+        if data["entity_id"] in self.tracked or data.get("old_entity_id") in self.tracked:
+            return True
+        return (registered := self.entities.async_get(data["entity_id"])) is not None and _is_bridge_entity(registered)
+
+    @callback
+    def updated(self, _event: Event[er.EventEntityRegistryUpdatedData]) -> None:
+        self.sync()
+
+    @callback
+    def stop_all(self) -> None:
+        self.stop_listening()
+        for task in self.starting.values():
+            task.cancel()
+        self.starting.clear()
+        for stop in self.stops.values():
+            stop()
+        self.stops.clear()
 
 
 def device_base(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
