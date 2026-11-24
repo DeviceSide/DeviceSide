@@ -2,7 +2,9 @@
 
 A target's base topic is its bridge's: Z2M links every device and group to its bridge (`via_device`) and puts the base
 topic in each bridge entity's unique_id (docs/integrations/zigbee2mqtt/research/2026-11-24-base-topics.md). No base
-topic is assumed here, so a target whose device has no such bridge is not addressable.
+topic is assumed here, so a target whose device has no such bridge is not addressable. That is what lets any base topic,
+and several instances on one broker, work: a guessed default would reach nothing silently. Why and what was probed:
+docs/integrations/zigbee2mqtt/internals.md#addressing.
 """
 
 import asyncio

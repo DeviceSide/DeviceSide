@@ -21,9 +21,22 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   on every settings change and on start; Tested behavior), and read fresh only while nothing has arrived since the
   last connect. Options DeviceSide sets are written through to the held settings once Z2M confirms them, until its
   next `bridge/info`.
-- **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
-  doesn't, but its entities' unique_ids end in it (`<ieee>_<domain>_<base topic>`), so a device target on another is
-  refused by the state-entity rule below.
+- **The base topic is per bridge, read from HA's registries, so any base topic and several instances on one broker
+  work** ([research](research/2026-11-24-base-topics.md)). Z2M links each device and group to its bridge (`via_device`)
+  and gives every bridge entity the unique_id `bridge_<coordinator ieee>_<object_id>_<base topic>`, the base topic
+  verbatim (spaces and `/` included; #575's was `'    zigbee2mqtt'`). A target's base is that suffix on its device's
+  `via_device_id` bridge, disabled bridge entities included (three of the eight object_ids are disabled by default).
+  Its topics, bridge cache, restore journal and `Address` all carry it, as two instances can both have group 7. A
+  group's encoded base must match its bridge's, else it is refused. A target with no bridge or no bridge entity is
+  `not_addressable` (a DEBUG line says so); no default base topic is guessed, as a wrong one reaches nothing silently.
+  Verified live on one instance with the default base; a custom base and several instances rest on upstream source
+  (2.14.3) and unit tests, unprobed live.
+- **A renamed base topic.** HA keeps the old bridge entities, with the old base in their unique_ids, until they are
+  removed, so the bridge then names two bases. DeviceSide can't tell which is live, so that instance is
+  `not_addressable` until the stale entities are removed; a DEBUG line (`addressing.py`) names it. Unprobed: from
+  Z2M's source, not seen on a rename.
+- **Restore journal on a rename.** An owed restore on a base that is then renamed stays owed and unpaid; rare, so
+  nothing prunes it.
 - **Multi-endpoint devices.** DeviceSide's set and get topics name the device alone, with unsuffixed keys
   (`state`), so Z2M sends the call to the device's default endpoint: the definition's `default`, else its first
   (`endpoint()` in Z2M's [`lib/model/device.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/model/device.ts),

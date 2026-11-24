@@ -1,5 +1,7 @@
 """Zigbee2MQTT's bridge topics, subscribed for the entry's life rather than per call: one cache per instance (base
 topic), as each has its own bridge topics, and its group IDs and friendly names mean nothing on another's.
+The caches follow HA's registry (addressing.follow_bases), so an instance added or removed while HA runs gets or loses
+its own (docs/integrations/zigbee2mqtt/internals.md#addressing).
 
 Each fresh subscription costs a call HA's subscribe cooldown (0.1 s) plus a broker round trip, and a group action
 read bridge/groups two or three times in series. Held here instead:
