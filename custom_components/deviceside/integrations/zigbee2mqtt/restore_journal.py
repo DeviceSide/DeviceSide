@@ -8,6 +8,8 @@ offline comes back.
 
 Each entry is keyed by its full Address, base topic included, as two instances can both have group 7. Store version 1
 keyed by kind and ID alone, when only the default base topic was addressable, so its entries move under that base.
+Known limit: an entry owed on a base topic that is renamed for good stays owed and unpaid, as only its own base's
+online pays it; rare (a restore owed across a rename), so nothing prunes it.
 """
 
 import asyncio
