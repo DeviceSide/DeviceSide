@@ -99,7 +99,7 @@ Every other Z2M class is refused as not built by `own_calls_only`; no refusal en
   Sonoff time; Tuya's base64 payload and the gang-4 encoding defect (why multi-gang waits); the off arrives as an
   On/Off report (ZHC#13118, ZHC#13383).
 - `devices.yaml`: the classes' card phrases and sections, naming the models.
-- `docs/integrations.md`: Z2M's value in the shared set_auto_off rows (regenerated parts by their script).
+- `docs/integrations.md`: no shared set_auto_off rows exist, so one short paragraph under Zigbee plugs and switches (built on Z2M only, results `sent`, no ZHA call).
 
 ## Steps
 
