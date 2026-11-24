@@ -278,7 +278,7 @@ def runs_only_in_labs(scope: AdapterScope) -> bool:
 def tested_domains(integration: str, action: str) -> set[str]:
     """The domains the action's passing records tested: each passing test's, in a passing record. A `_manual.json`
     row names none (`manual_rows`); the caller counts it as covering each."""
-    return {domain for _, _, domain in credited(integration, action) if domain is not None} | {
+    return {
         test["domain"]
         for path in passing(integration, action)
         for test in load(path)["tests"]
