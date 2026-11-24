@@ -13,7 +13,7 @@ No read: the converter has none, and the state Z2M holds is the last write's ech
 
 from homeassistant.core import HomeAssistant
 
-from ...bridge import publish_set
+from ...bridge import INCHING_COMPOSITE, publish_set
 from .....core.adapter import Adapter
 from .....core.models import EntityResult, Request, Status, Target, TimedRequest
 from .....core.scope import DurationLimits, OwnCall
@@ -26,13 +26,13 @@ INCHING_LIMITS = DurationLimits(min_s=_MIN_S, max_s=3599.5, step_s=0.5)
 async def _set(adapter: Adapter, hass: HomeAssistant, request: TimedRequest, target: Target) -> EntityResult:
     # supports() refused the targets it can't address.
     inching = {"inching_control": "ENABLE", "inching_time": request.duration_s, "inching_mode": "OFF"}
-    await publish_set(hass, target, {"inching_control_set": inching})
+    await publish_set(hass, target, {INCHING_COMPOSITE: inching})
     return adapter.result(target, Status.SENT)
 
 
 async def _clear(adapter: Adapter, hass: HomeAssistant, request: Request, target: Target) -> EntityResult:
     inching = {"inching_control": "DISABLE", "inching_time": _MIN_S, "inching_mode": "OFF"}
-    await publish_set(hass, target, {"inching_control_set": inching})
+    await publish_set(hass, target, {INCHING_COMPOSITE: inching})
     return adapter.result(target, Status.SENT)
 
 

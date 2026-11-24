@@ -22,6 +22,7 @@ from collections.abc import Mapping
 from homeassistant.const import Platform
 
 from .inching import CLEAR_AUTO_OFF, SET_AUTO_OFF
+from ...bridge import INCHING_COMPOSITE
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, labs
 
@@ -46,11 +47,9 @@ SONOFF_INCHING = "sonoff_inching"
 # The S60 plugs: the composite, but DISABLE reported not to work, so the auto-off actions are not built (refusals.py).
 SONOFF_S60 = "sonoff_s60"
 
-_COMPOSITE = "inching_control_set"
-
 
 def _rule(name: str, models: tuple[str, ...]) -> Rule:
-    return Rule(name, {"definition_model": "|".join(map(re.escape, models)), "exposes": re.escape(_COMPOSITE)})
+    return Rule(name, {"definition_model": "|".join(map(re.escape, models)), "exposes": re.escape(INCHING_COMPOSITE)})
 
 
 # Read off the definition in bridge/devices alone.

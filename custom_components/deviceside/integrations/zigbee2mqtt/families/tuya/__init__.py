@@ -21,6 +21,7 @@ from homeassistant.const import Platform
 from .countdown import COUNTDOWN
 from .datapoint import DATAPOINT_CALLS, DATAPOINT_CLASSES, DATAPOINT_RULES
 from .inching import CLEAR_AUTO_OFF, SET_AUTO_OFF
+from ...bridge import INCHING_COMPOSITE
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, labs, verified
 from .....zigbee.tuya import (
@@ -96,7 +97,7 @@ _COUNTDOWN = {"zigbee_model": _TS011F_MODEL, "exposes": "countdown"}
 # WHD02's on its `TS0001` model alone, so its `TS000F` variant exposes none and stays `tuya_zcl`).
 _INCHING = {
     "zigbee_manufacturer": "|".join(map(re.escape, (INCHING_WHD02_MANUFACTURER, INCHING_MW781Z_MANUFACTURER))),
-    "exposes": "inching_control_set",
+    "exposes": re.escape(INCHING_COMPOSITE),
 }
 
 # The Zigbee strings and the definition, from bridge/devices. The datapoint countdown's definitions go first

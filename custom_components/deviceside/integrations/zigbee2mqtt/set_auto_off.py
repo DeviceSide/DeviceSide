@@ -1,7 +1,7 @@
-"""Zigbee2MQTT set_auto_off: a persistent auto-off by inching, which only some Zigbee firmware has (Sonoff's relays,
-families/sonoff). It is a setting the device keeps, written by one publish of Z2M's `inching_control_set`. No other
-Zigbee device has a call for it, so the adapter serves only its classes' own calls (AdapterScope.own_calls_only) and
-refuses every other class as not built."""
+"""Zigbee2MQTT set_auto_off: a persistent auto-off by inching, which only some Zigbee firmware has (Sonoff's relays and
+two Tuya switches, families/sonoff and families/tuya). It is a setting the device keeps, written by one publish of
+Z2M's `inching_control_set`. No other Zigbee device has a call for it, so the adapter serves only its classes' own
+calls (AdapterScope.own_calls_only) and refuses every other class as not built."""
 
 from typing import ClassVar
 
