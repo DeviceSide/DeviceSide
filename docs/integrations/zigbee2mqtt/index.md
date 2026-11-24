@@ -18,7 +18,7 @@ publishes as it connects.
 - A **group** gets only what all its devices get. Zigbee2MQTT shows a group as one entity per kind of member: a group of
   lights is a light, a group of switches is a switch, and a group holding both gets two entities, a light and a switch,
   each reaching only its own domain's members on a fallback. So target `switch.<group>` for auto-off, and `light.<group>`
-  for the lights. One with a light a feature refuses, or, with Labs
+  for the lights. A group with a light a feature refuses, or, with Labs
   off, one in Labs, falls back to its lights, each on its own; with Labs on, it runs as one group. A member
   Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya plug in a
   group makes it fall back too. A TS011F plug makes it fall back on smooth dimming, smooth color changes and set without
