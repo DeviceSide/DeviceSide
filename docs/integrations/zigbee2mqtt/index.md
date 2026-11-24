@@ -147,8 +147,8 @@ Labs on.
 ### Sonoff
 
 Sonoff's single-channel relays and dimmer (ZBMINIR2 and its white label MINI-ZBD, ZBMicro, MINI-ZB1GS, MINI-ZB1GSP,
-BASIC-ZB1GSP, S61SZBTPB, MINI-ZBDIM) keep a persistent auto-off, "inching", which Zigbee2MQTT writes in one publish, so
-set auto-off and clear auto-off are in Labs on them ([research](research/sonoff/2026-11-24-inching.md)). The setting
+BASIC-ZB1GSP, S61SZBTPB, MINI-ZBDIM) keep a persistent auto-off, "inching", which Zigbee2MQTT writes in one publish, which
+set auto-off and clear auto-off send ([research](research/sonoff/2026-11-24-inching.md)). The setting
 can't be read back, so the result is `sent`. The S60ZBTPF and S60ZBTPG plugs are not built: Zigbee2MQTT's disable is
 reported to have no effect on them, so clear auto-off would leave the plug pulsing. The 2-gang MINI-ZB2GS waits on
 per-endpoint addressing.

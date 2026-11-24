@@ -7,7 +7,7 @@ import pytest
 
 from custom_components.deviceside.core.rules import match
 from custom_components.deviceside.core.scope import Level
-from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS
+from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, rules
 from custom_components.deviceside.integrations.zigbee2mqtt.families import sonoff
 from custom_components.deviceside.integrations.zigbee2mqtt.families.sonoff import inching
 
@@ -160,6 +160,24 @@ async def test_the_s60_plugs_are_refused_as_not_built_on_both_actions(hass, setu
 
     assert await refusal(hass, service, request(service, entity_id)) == "not_built"
     assert commands(broker) == []
+
+
+def test_a_two_gang_with_a_per_endpoint_composite_is_other():
+    """ZHC's exposeEndpoints gives MINI-ZB2GS one composite per endpoint, so no endpoint-less property reaches the
+    rule (rules.definition_fields)."""
+    entry = {
+        "definition": {
+            "model": "MINI-ZB2GS",
+            "exposes": [
+                {**COMPOSITE, "endpoint": "l1", "property": "inching_control_set_l1"},
+                {**COMPOSITE, "endpoint": "l2", "property": "inching_control_set_l2"},
+            ],
+        }
+    }
+    fields = rules.definition_fields(entry)
+
+    assert fields["exposes"] == frozenset()
+    assert match(sonoff.RULES, fields) is None
 
 
 @pytest.mark.parametrize("service", ["set_auto_off", "clear_auto_off"])
