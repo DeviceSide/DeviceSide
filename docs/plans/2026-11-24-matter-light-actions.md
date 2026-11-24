@@ -103,6 +103,13 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
 
 Risky step for its own audit range: step 5 (the soft-off restore's job and cancel).
 
+## Handoff
+
+- **Done (2026-11-24):** PR 1, steps 1–3, on `wt/matter-set-attributes` (worktree `deviceside-wt-matter-set-attributes`), PR #591, audited CLEAN (0 Critical/High; 1 Medium, 6 Low left in the report) and marked ready. Each step's last commit carries its `Plan review:` note.
+- **Next:** PR 2, steps 4–7, once #591 merges: `wait-pr 591`, then a worktree on `wt/matter-light-fades` off main, `pr-draft` this plan with `Depends-on: #591`. Step 5 gets its own `/audit-code` range.
+- **Carried from PR 1:** Decision 12. The Level/Color IDs, color capability bits (`HUE_SATURATION`, `ENHANCED_HUE`, `XY_COLOR`, `TEMPERATURE_COLOR`) and `XY_SCALE` live in `core/zcl.py`. `addressing.color_features` and `make_command` exist for step 5's hue check and the Move/Stop builders. Audit Lows to keep in mind where step 5 touches the same lines: `color_feature_map_path` is unused by `color_features`; `unsupported_reason`'s docstring still says "OnOff timer"; set_attributes holds an integration slot through its 0.6 s wait (the Medium).
+- **Open decisions:** none.
+
 ## Verification
 
 - Each push: `.venv/bin/pytest -n auto --transcripts=check`. The new transcripts are generated on purpose:
