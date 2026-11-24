@@ -33,6 +33,13 @@ TEMPERATURE_COLOR = 0x10
 # 0xFEFF in use; a coordinate x in 0-1 is sent as round(x * XY_SCALE) and read as value / XY_SCALE.
 XY_SCALE = 65535
 
+# MoveHue's rate is in steps of 1/254 of the hue cycle per second (CurrentHue's 0-254 scale), a uint8 from 1: the
+# longest cycle is one step a second, 254 s.
+HUE_STEPS = 254
+# EnhancedMoveHue's rate is in steps of 1/65536 of the cycle per second (EnhancedCurrentHue is a uint16 in 360/65536
+# degrees, so the cycle is 65536 steps), a uint16 from 1: its largest rate is 65535, and the longest cycle 65535 s.
+ENHANCED_HUE_STEPS = 65535
+
 # OnTime counts down live, so a read-back lands a little under the request: the slack the rig's ZHA timing allows, 3 s.
 READBACK_SLACK_TENTHS = 30
 

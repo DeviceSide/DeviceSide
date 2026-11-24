@@ -41,7 +41,9 @@ from ...core.zcl import (
     CURRENT_LEVEL,
     CURRENT_SATURATION,
     ENHANCED_HUE,
+    ENHANCED_HUE_STEPS,
     HUE_SATURATION,
+    HUE_STEPS,
     MAX_TENTHS_S,
     MOVE_DOWN,
     MOVE_UP,
@@ -58,10 +60,6 @@ FADE_LIMITS = DurationLimits(min_s=0.1, max_s=MAX_TENTHS_S)
 RESTORE_AFTER_S = 1.0
 # CurrentLevel and CurrentSaturation, 0-254 (Level and Color Control), per percent.
 _STEPS_PER_PERCENT = 254 / 100
-# MoveHue's rate is in steps of 1/254 of the cycle per second, a uint8 from 1; EnhancedMoveHue's in 1/65535, a uint16.
-# The longest cycle is one step a second.
-_HUE_STEPS = 254
-_ENHANCED_HUE_STEPS = 65535
 
 
 def soft_off_restores(hass: HomeAssistant) -> dict[str, object]:
@@ -323,7 +321,7 @@ class MatterHueMove(Adapter[RampRequest]):
             if await light.read(onoff_attr_path(light.ep_id)) is not True:
                 return self.result(target, Status.UNCHANGED, detail="off")
             command, steps = (
-                ("EnhancedMoveHue", _ENHANCED_HUE_STEPS) if features & ENHANCED_HUE else ("MoveHue", _HUE_STEPS)
+                ("EnhancedMoveHue", ENHANCED_HUE_STEPS) if features & ENHANCED_HUE else ("MoveHue", HUE_STEPS)
             )
             rate, clamped_to = hue_cycle(request.sweep_time, steps, steps)
             mode = MOVE_UP if request.up else MOVE_DOWN

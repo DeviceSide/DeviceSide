@@ -37,7 +37,6 @@ _LOGGER = logging.getLogger(__name__)
 # halted reads the same. A fade slower than a step per 0.2 s (a long hue cycle) can read the same and is confirmed
 # while still moving (internals.md, stop). 0.2 s is two of a transition's 0.1 s units (core/zcl.py).
 READ_GAP_S = 0.2
-# Neither command moves anything with nothing running, so no override is needed: the light's own Options apply.
 
 
 @dataclass(frozen=True, slots=True)

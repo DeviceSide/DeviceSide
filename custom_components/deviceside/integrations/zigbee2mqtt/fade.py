@@ -41,14 +41,13 @@ from ...core.transition import (
     hs_color,
     lit,
 )
+from ...core.zcl import HUE_STEPS
 from ...core.zcl_fade import brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
 
 # Z2M reads a light back within 0.7 s of a stop, and once a fade has run its published end value is right.
 SETTLE_SECONDS = 2.0
-# A hue move's rate is in steps of 1/254 of the cycle per second, 1 to 254, so a cycle takes 1 to 254 s.
-HUE_STEPS = 254
 # The end read-back, after the fade has run: a live read mid-fade may have overwritten Z2M's published end value.
 END_READ_S = 1.0
 COLOR_HS = "color_hs"  # the Z2M feature a hue or saturation move needs
