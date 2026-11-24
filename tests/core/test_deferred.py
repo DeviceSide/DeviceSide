@@ -26,7 +26,7 @@ def imported(path: Path) -> set[str]:
 
 
 def reads_catalog(path: Path) -> bool:
-    return any(name.startswith(f"{CATALOG}.") for name in imported(path))
+    return any(name == CATALOG or name.startswith(f"{CATALOG}.") for name in imported(path))
 
 
 def test_only_zha_and_zigbee2mqtt_families_read_the_zigbee_catalog():

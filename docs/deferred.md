@@ -52,8 +52,7 @@ ZCL command without a converter (ZHA can, through `zha.issue_zigbee_cluster_comm
 **Why not now:** on the datapoint path it depends on the Tuya datapoint countdown (#437) and its cancel path.
 
 **Revisit when:**
-- #437 has landed and a device report leaves a timed device's units unsettled. *(Condition proposed; a repo
-  maintainer confirms it in review of #584.)*
+- #437 has landed and a device report leaves it unclear whether a timed device reads its timer in tenths or seconds.
 
 **Plan:** [`docs/plans/2026-11-14-units-probe.md`](plans/2026-11-14-units-probe.md)
 
