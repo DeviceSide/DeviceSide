@@ -181,6 +181,10 @@ async def test_color_in_labs_is_sent_when_labs_is_on(hass, setup_production, key
         ("RGB", {"rgb_color": (255, 0, 10)}, {"rgb": [255, 0, 10]}),
         ("RGB", {"color_temp_kelvin": 6500}, {"rgb": [255, 254, 250]}),
         ("RGB", {"color_temp_kelvin": 1500}, {"rgb": [255, 108, 0]}),  # unclamped, as core
+        ("RGB", {"hs_color": (120, 100)}, {"rgb": [0, 255, 0]}),
+        ("RGB", {"xy_color": (0.15, 0.06)}, {"rgb": [57, 53, 255]}),
+        ("RGBW", {"hs_color": (30, 50)}, {"rgb": [253, 126, 0], "white": 255}),
+        ("RGBW", {"xy_color": (0.15, 0.06)}, {"rgb": [5, 0, 255], "white": 67}),
         ("RGBW", {"rgb_color": (1, 2, 3)}, {"rgb": [0, 2, 3], "white": 2}),
         ("RGBW", {"rgb_color": (255, 255, 255)}, {"rgb": [0, 0, 0], "white": 255}),
         ("RGBW", {"color_temp_kelvin": 6500}, {"rgb": [5, 4, 0], "white": 255}),

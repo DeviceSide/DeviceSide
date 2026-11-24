@@ -7,7 +7,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.core.scope import Level
-from custom_components.deviceside.integrations.shelly.addressing import COLOR_LABS, COMPONENTS
+from custom_components.deviceside.integrations.shelly.addressing import COMPONENTS
 from custom_components.deviceside.integrations.shelly.set_attributes import ShellySetAttributes
 
 from .conftest import call
@@ -262,7 +262,12 @@ async def test_the_rgb_an_rgbcct_reads_back_is_still_not_compared(hass, setup_pr
 
 
 def test_color_labs_is_set_on_the_scope():
-    assert ShellySetAttributes.scope.class_labs == COLOR_LABS
+    colors = frozenset({"color_temp_kelvin", "hs_color", "rgb_color", "xy_color"})
+    assert ShellySetAttributes.scope.class_labs == {
+        "RGB": colors,
+        "RGBW": colors,
+        "CCT": frozenset({"color_temp_kelvin"}),
+    }
 
 
 def test_rgbcct_is_verified_and_the_other_light_components_documented():

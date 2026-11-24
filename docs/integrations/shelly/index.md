@@ -7,8 +7,8 @@ in [internals.md](internals.md).
 
 Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, RGBCCT
 bulbs, and the other Shelly lights (dimmers, CCT, RGB and RGBW devices: the Light, CCT, RGB and RGBW components),
-which take the same calls. CCT, RGB and RGBW devices take brightness; their color and color temperature are in Labs
-([below](#led-controllers)): with Labs off, either is left out of the call, which reports `fields_dropped`. Gen1 isn't built: it has Shelly's older
+which take the same calls. CCT, RGB and RGBW devices take brightness, and also send color or color temperature
+([below](#led-controllers)). Gen1 isn't built: it has Shelly's older
 [HTTP API](https://shelly-api-docs.shelly.cloud/gen1/), not the [Gen2+ RPC calls](https://shelly-api-docs.shelly.cloud/gen2/)
 the adapters send, so it is refused (`gen1_unsupported`).
 
@@ -48,11 +48,10 @@ result or bug. One report per component settles it.
 
 CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components). Shelly documents their calls as the
 dimmer's, field for field ([research](research/2026-11-17-set-on-sibling-components.md)), so they take the dimmer's
-calls with brightness. Their color is in Labs: an RGB controller takes `rgb`, an RGBW controller `rgb` and `white`
-(Home Assistant's own color conversions, as core's Shelly light sends them, with any other color or a color
-temperature converted to those), and a CCT controller takes color temperature. Nobody has yet run these calls on a
-device, so with Labs off they are left out and the call reports `fields_dropped`. If you have one and turn Labs on,
-please report whether the color or color temperature lands: Integrations >
+calls with brightness. An RGB controller is sent `rgb`, an RGBW controller `rgb` and `white` (Home Assistant's own
+color conversions, as core's Shelly light sends them, with any other color or a color temperature converted to
+those), and a CCT controller is sent its color temperature. Nobody has yet run these calls on a device. If you have
+one, please report whether the color or color temperature lands: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug. Smooth dimming and stop are as on [dimmers](#dimmers).
 
@@ -60,8 +59,8 @@ result or bug. Smooth dimming and stop are as on [dimmers](#dimmers).
 
 The device runs the timer and confirms it. A transition is at least 0.5 s. A color temperature outside the bulb's
 range is clamped. `hs_color` and `xy_color` are sent as the RGB color Home Assistant would send for them, whatever
-mode the bulb is in. On an RGB or RGBW controller (Labs) a color temperature is sent as that color instead, unclamped,
-as core does.
+mode the bulb is in. On an RGB or RGBW controller a color temperature is sent as that color instead,
+unclamped, as core does.
 
 ## Turn off with timer
 
@@ -99,10 +98,11 @@ calls on their own component.
 On a Multicolor Bulb (RGBCCT) `set_attributes` sends one `RGBCCT.Set` without `on`, so a bulb that is off stores the
 values and stays off, and the next plain on comes up with them. The device answers a `Set` with nothing, so DeviceSide
 reads the status back: brightness, color temperature and mode must read as written, or the call fails (`not_stored`).
-A bulb's color is not compared, only the mode it switches to; an RGB or RGBW controller's `rgb` and `white` must read as written (Labs). `min_brightness` and `max_brightness` clamp the brightness the
+A bulb's color is not compared, only the mode it switches to; an RGB controller's `rgb`, and an RGBW controller's
+`rgb` and `white`, must read as written. `min_brightness` and `max_brightness` clamp the brightness the
 bulb has stored, read first, so they work while it is off; a bulb already within them is `unchanged`. On dimmers and
 CCT, RGB and RGBW LED controllers it sends the same `<Component>.Set` with brightness, which Shelly documents
-identically; their color and color temperature are in Labs ([LED controllers](#led-controllers)).
+identically, and also send their color or color temperature ([LED controllers](#led-controllers)).
 
 ## Get attributes
 
