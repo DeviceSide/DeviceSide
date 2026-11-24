@@ -53,16 +53,15 @@ class MatterStop(Adapter[Request]):
     """Level Stop to each light, plus StopMoveStep on one with a Color Control server, always: with nothing moving
     they change nothing, and no state of ours says what a light was told (a saturation move isn't tracked).
 
-    The sends go first, so a stop doesn't overshoot by a read's round trip; then one OnOff read. A light that reads on
-    has its pending soft-off restore cancelled, so a halted soft off stays on at the halt level. A light that reads off
-    is UNCHANGED with off, and its restore, if any, still runs (a soft off that finished before the stop). Either way
-    the stop ends its hue cycle. It holds the light's lock (fade.light_lock) so it can't slip between a move's read and
-    its send.
+    The two sends go out together, first, so a stop doesn't overshoot by a read's round trip, and end the light's hue
+    cycle. They hold the light's lock (fade.light_lock) so they can't slip between a move's read and its send.
 
-    The read-back reads CurrentLevel, and CurrentSaturation and CurrentHue on a light with the HS feature, twice
-    READ_GAP_S apart, outside every slot but the reads'. Equal reads are CONFIRMED; unequal ones are SENT with
-    still_fading, as the light kept moving; a light that reads off is UNCHANGED with off; a read that failed is SENT
-    with readback_failed.
+    The read-back reads OnOff, CurrentLevel, and CurrentSaturation and CurrentHue on a light with the HS feature,
+    together, twice READ_GAP_S apart, outside every slot but the reads'. A light that reads off on the first is
+    UNCHANGED with off, its pending soft-off restore, if any, still running (a soft off that finished before the stop).
+    One that reads on has the restore cancelled, so a halted soft off stays on at the halt level. Equal reads are
+    CONFIRMED; unequal ones are SENT with still_fading, as the light kept moving; a light that reads off on the second
+    is UNCHANGED with off; a read that failed is SENT with readback_failed.
     """
 
     action: ClassVar[str] = "stop"
@@ -82,24 +81,20 @@ class MatterStop(Adapter[Request]):
             ep_id = onoff_endpoint(target.entry.unique_id)
             client = matter_client(hass, target.entry.config_entry_id)  # supports() refused the targets without one
             node = node_for(hass, target)
-            await self._send(client, target, node_id, ep_id, "LevelControl", "Stop")
+            sends = [self._send(client, target, node_id, ep_id, "LevelControl", "Stop")]
             paths = [level_path(ep_id, CURRENT_LEVEL)]
             if has_color(node, ep_id):
-                await self._send(client, target, node_id, ep_id, "ColorControl", "StopMoveStep")
+                sends.append(self._send(client, target, node_id, ep_id, "ColorControl", "StopMoveStep"))
                 if color_features(node, ep_id) & HUE_SATURATION:
                     paths += [color_path(ep_id, CURRENT_SATURATION), color_path(ep_id, CURRENT_HUE)]
+            await asyncio.gather(*sends)
             hue_moves(hass).discard(target.entity_id)
-            if (await client.read_attribute(node_id=node_id, attribute_path=onoff_attr_path(ep_id))).get(
-                onoff_attr_path(ep_id)
-            ) is not True:
-                return self.result(target, Status.UNCHANGED, detail="off")  # its soft-off restore, if any, still runs
-            cancel_restore(hass, target.entity_id)
             halted[target.reported_id] = _Halted(client, node_id, ep_id, paths)
-            return self.result(target, Status.SENT)
+            return self.result(target, Status.SENT)  # replaced by the read-back's result below
 
         results = await self.gather(hass, targets, halt, hold=lambda target: light_lock(hass, target))
         if not halted:
-            return results
+            return results  # every light's send failed
         confirmed = await asyncio.gather(
             *(
                 self._read_back(hass, target, halted[target.reported_id])
@@ -120,14 +115,17 @@ class MatterStop(Adapter[Request]):
         """OnOff and the halted attributes, in a slot of their own, so the gap between two reads holds none."""
         paths = [onoff_attr_path(light.ep_id), *light.paths]
         async with self.slot(hass):
-            return {
-                path: (await light.client.read_attribute(node_id=light.node_id, attribute_path=path)).get(path)
-                for path in paths
-            }
+            values = await asyncio.gather(
+                *(light.client.read_attribute(node_id=light.node_id, attribute_path=path) for path in paths)
+            )
+            return {path: value.get(path) for path, value in zip(paths, values, strict=True)}
 
     async def _read_back(self, hass: HomeAssistant, target: Target, light: _Halted) -> EntityResult:
         async def read_twice(_: Target) -> tuple[dict[str, object], dict[str, object]]:
             first = await self._read(hass, target, light)
+            if first[onoff_attr_path(light.ep_id)] is not True:
+                return first, first  # off: its soft-off restore, if any, still runs
+            cancel_restore(hass, target.entity_id)
             await asyncio.sleep(READ_GAP_S)
             return first, await self._read(hass, target, light)
 

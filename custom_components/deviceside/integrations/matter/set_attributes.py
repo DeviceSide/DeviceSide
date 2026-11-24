@@ -32,6 +32,7 @@ from .addressing import (
     onoff_endpoint,
 )
 from .classes import LIGHT_ACTIONS
+from .fade import cancel_restore, light_lock
 from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.fields import BRIGHTNESS_FIELD
@@ -173,6 +174,9 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
             commands_sent, dropped = commands(request, modes, attrs, current_level)
             if not commands_sent:
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped" if dropped else "within_limits")
+            if any(isinstance(command, MoveToLevel) for command in commands_sent):
+                # A level of ours supersedes a soft off's pending restore, which would put the start level back over it.
+                cancel_restore(hass, target.entity_id)
             for command in commands_sent:
                 cluster, name, fields = _wire(command)
                 _LOGGER.debug("%s: sending matter %s.%s %s", target.reported_id, cluster, name, fields)
@@ -190,7 +194,8 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
             # Replaced by the read-back's result below.
             return self.result(target, Status.SENT)
 
-        results = await self.gather(hass, targets, send)
+        # Under the light's lock, so a soft off's restore job can't run between the cancel and the send.
+        results = await self.gather(hass, targets, send, hold=lambda target: light_lock(hass, target))
         if not sent:
             return results
         await asyncio.sleep(WRITE_FADE_WAIT_S)
@@ -207,10 +212,10 @@ class MatterSetAttributes(Adapter[SetAttributesRequest]):
 
         async def read(_: Target) -> dict[str, object]:
             paths = [path for _, path, _ in light.expected] + ([on_level] if light.off_with_level else [])
-            return {
-                path: (await light.client.read_attribute(node_id=light.node_id, attribute_path=path)).get(path)
-                for path in paths
-            }
+            values = await asyncio.gather(
+                *(light.client.read_attribute(node_id=light.node_id, attribute_path=path) for path in paths)
+            )
+            return {path: value.get(path) for path, value in zip(paths, values, strict=True)}
 
         def judge(values: dict[str, object]) -> EntityResult:
             return self._judge(target, values, light.expected, on_level, light.dropped)

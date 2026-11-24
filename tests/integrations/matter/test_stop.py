@@ -60,8 +60,8 @@ async def test_a_lit_light_with_no_color_server_gets_level_stop_alone(hass):
     assert await call(hass, "stop", BULB) == {"light.bulb": CONFIRMED}
 
     assert commands(send_cmd) == [LEVEL_STOP]
-    # OnOff after the stop, then two reads of OnOff and CurrentLevel.
-    assert reads(read_attr) == ["1/6/0", "1/6/0", "1/8/0", "1/6/0", "1/8/0"]
+    # Two reads of OnOff and CurrentLevel, after the stop.
+    assert reads(read_attr) == ["1/6/0", "1/8/0", "1/6/0", "1/8/0"]
     kwargs = send_cmd.call_args.kwargs
     assert kwargs["endpoint_id"] == 1
 
@@ -72,7 +72,7 @@ async def test_a_light_with_a_color_server_also_gets_stop_move_step_and_reads_sa
     assert await call(hass, "stop", BULB) == {"light.bulb": CONFIRMED}
 
     assert commands(send_cmd) == [LEVEL_STOP, COLOR_STOP]
-    assert reads(read_attr)[1:5] == ["1/6/0", "1/8/0", "1/768/1", "1/768/0"]
+    assert reads(read_attr)[:4] == ["1/6/0", "1/8/0", "1/768/1", "1/768/0"]
 
 
 async def test_a_light_without_the_hs_feature_gets_stop_move_step_but_reads_the_level_alone(hass):
@@ -84,14 +84,14 @@ async def test_a_light_without_the_hs_feature_gets_stop_move_step_but_reads_the_
     assert set(reads(read_attr)) == {"1/6/0", "1/8/0"}
 
 
-async def test_an_off_light_is_unchanged_with_off_and_read_once(hass):
+async def test_an_off_light_is_unchanged_with_off_and_read_in_one_pass(hass):
     send_cmd, read_attr, _ = light(hass, on=False)
 
     response = await call(hass, "stop", BULB)
 
     assert response == {"light.bulb": result("matter", "unchanged", capability="other", detail="off")}
     assert commands(send_cmd) == [LEVEL_STOP, COLOR_STOP]
-    assert reads(read_attr) == ["1/6/0"]
+    assert reads(read_attr) == ["1/6/0", "1/8/0", "1/768/1", "1/768/0"]
 
 
 async def test_the_stop_goes_out_before_the_onoff_read(hass):

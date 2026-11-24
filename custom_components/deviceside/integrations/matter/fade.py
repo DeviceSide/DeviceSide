@@ -198,13 +198,13 @@ class MatterFade(LevelFade):
 
     async def read(self, hass: HomeAssistant, target: Target, end: float) -> Reading:
         light = _Light(hass, target)
-        on_off = await light.read(onoff_attr_path(light.ep_id))
         path = (
             level_path(light.ep_id, CURRENT_LEVEL)
             if self.attribute == BRIGHTNESS_FIELD
             else color_path(light.ep_id, CURRENT_SATURATION)
         )
-        reading = Reading(on_off is True, _percent(await light.read(path)))
+        on_off, value = await asyncio.gather(light.read(onoff_attr_path(light.ep_id)), light.read(path))
+        reading = Reading(on_off is True, _percent(value))
         self._readings[target.entity_id] = reading
         return reading
 
