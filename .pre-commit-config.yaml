@@ -95,7 +95,7 @@ repos:
   # Household details (terms from gitignored files; a no-op without them)
   # -------------------------
   - repo: https://github.com/jasonmx/pre-commit-hooks
-    rev: v1.0.0
+    rev: 808c1457fd419bf24e7f8a7edda9834aa468519d  # frozen: v1.0.0
     hooks:
       - id: check-private
 
