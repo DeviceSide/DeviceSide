@@ -117,12 +117,10 @@ Risky step for its own audit range: step 5 (the soft-off restore's job and cance
 
 ## Handoff
 
-- **Done:** PR 1, steps 1–3, merged as #591 (`fde92568`). Decision 14 (the audit Medium) added after it, for step 5.
-- **Next:** PR 2, steps 4–7, on `wt/matter-light-fades` (worktree `deviceside-wt-matter-light-fades`), draft PR
-  opened with this plan. Start at step 4. Step 5 gets its own `/audit-code` range.
-- **Carried from PR 1:** Decision 12. The Level/Color IDs, color capability bits (`HUE_SATURATION`, `ENHANCED_HUE`,
-  `XY_COLOR`, `TEMPERATURE_COLOR`) and `XY_SCALE` live in `core/zcl.py`. `addressing.color_features` and
-  `make_command` exist for step 5's hue check and the Move/Stop builders.
+- **Done:** PR 1, steps 1–3, merged as #591 (`fde92568`). PR 2, steps 4–7, on `wt/matter-light-fades` (#593), each
+  plan-reviewed (its `Plan review:` note is on the step's last commit). Step 5's own audit: no Critical/High/Medium;
+  L1 (the restore overtaking a raise or turn_on during its read) fixed, L2–L6 left in that report.
+- **Next:** the PR audit, then ready. Jason merges (core change, Decision 6).
 - **Open decisions:** none.
 
 ## Verification
