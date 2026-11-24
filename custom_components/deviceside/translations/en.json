@@ -96,6 +96,12 @@
       "message": "Nothing to set. Give a brightness, a color temperature, a color, or a brightness limit."
     }
   },
+  "issues": {
+    "migrate_hue_dimmer": {
+      "title": "Hue Smooth Dimming can be replaced by DeviceSide",
+      "description": "DeviceSide's actions are drop-in replacements for Hue Smooth Dimming's. In your automations and scripts, change:\n\n- `hue_dimmer.raise` to `deviceside.raise_brightness`\n- `hue_dimmer.lower` to `deviceside.lower_brightness`\n- every other `hue_dimmer.` to `deviceside.`\n\nThe fields and responses are the same. Both can run side by side while you switch, and Ignore hides this notice for good. Once no automation or script calls `hue_dimmer.`, remove the Hue Smooth Dimming integration."
+    }
+  },
   "services": {
     "clear_auto_off": {
       "name": "Clear auto-off",
