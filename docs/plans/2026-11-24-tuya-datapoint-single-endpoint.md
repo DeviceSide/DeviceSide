@@ -135,7 +135,8 @@ One implementer (opus: it admits devices whose failure harms, and may hit a core
   - one device per limit class;
   - ZOT60 placed in `tuya_datapoint`, not `tuya_ts011f`;
   - GL-SPI-206P placed in `tuya_datapoint`, not `gledopto`;
-  - LYAI-14, ZBN-DJ-63, FK-BV05, and a multi-gang ZMS-206EU-2 all staying `tuya_mcu`;
+  - LYAI-14 staying `tuya_zcl` (a TS0049 switched over ZCL, with a ZCL manufacturer string), and ZBN-DJ-63, FK-BV05
+    and a multi-gang ZMS-206EU-2 staying `tuya_mcu`;
   - a datapoint device before `bridge/devices` arrives staying Unplaced.
 - Call tests (`tests/integrations/zigbee2mqtt/families/tuya/test_datapoint.py`, modeled on `test_countdown.py`):
   - the payloads for both actions;

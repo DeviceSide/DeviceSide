@@ -147,6 +147,14 @@ async def test_a_multi_gang_datapoint_device_stays_tuya_mcu(hass, setup_producti
     assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_mcu"
 
 
+async def test_an_admitted_definition_whose_countdown_is_per_endpoint_stays_tuya_mcu(hass, setup_production, broker):
+    """The expose guard on the real path: rules.definition_fields drops a per-endpoint copy, so an allowlisted
+    definition exposing only `countdown_l1` has no countdown for the device."""
+    entity_id = datapoint_light(hass, broker, "TS0601_dimmer_1_gang_1", [STATE, countdown("l1")])
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_mcu"
+
+
 async def test_until_bridge_devices_lists_it_a_datapoint_device_waits(hass, setup_production, broker):
     """The registry can't show its exposes, so it stays an Unplaced tuya_mcu until bridge/devices lists it."""
     entity_id = datapoint_light(hass, broker, "TS0601_dimmer_1_gang_1", [STATE, countdown()])
