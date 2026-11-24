@@ -29,8 +29,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    ([device classes](#device-classes)). Any code that sends the same call to the same class inherits it, and unit tests
    pin the call. So does a no known method entry: it may cover every action that sends that call to that class or
    identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same frame.
-   Deriving a level from another integration's evidence for the same call is deferred:
-   [device facts across integrations](deferred.md#device-facts-across-integrations).
+   Deriving such a level automatically across integrations is deferred
+   ([device facts across integrations](deferred.md#device-facts-across-integrations)); until then a PR argues it by hand.
 6. **Simplify relentlessly.** Prefer fewer calls, fewer round trips and less machinery. A new guardrail needs
    evidence that its failure happens (a probe, record or report), and names the user-visible failure it prevents and
    what it replaces; until then, log so the first report would show the failure. An existing guardrail stays until

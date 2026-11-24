@@ -43,7 +43,7 @@ def test_only_zha_and_zigbee2mqtt_families_read_the_zigbee_catalog():
         )
     }
     assert readers == {"zha", "zigbee2mqtt"}, (
-        f"integrations whose families read a zigbee/ catalog module are now {sorted(readers)}: this meets a Revisit "
-        "when condition of docs/deferred.md's 'Device facts across integrations' entry. Reopen it, and update this "
-        "set with a repo maintainer."
+        f"integrations whose families read a zigbee/ catalog module are now {sorted(readers)}. A new reader meets a "
+        "Revisit when condition of docs/deferred.md's 'Device facts across integrations' entry: reopen it. Either way, "
+        "update this set with a repo maintainer."
     )

@@ -114,11 +114,24 @@ the other's classification.
 
 **Plan:** none.
 
+## Per-endpoint addressing on Zigbee2MQTT
+
+Address each endpoint of a multi-light device by its topic, with the endpoint names Zigbee2MQTT 2.6.0+ publishes, and
+read its suffixed state keys back. Today every light or switch of a device with several in its domain is refused as
+`not_addressable` ([internals](integrations/zigbee2mqtt/internals.md#addressing)).
+
+**Why not now:** the refusal is safe and predictable, and no user has reported such a device.
+
+**Revisit when:**
+- a device report or request names a multi-light Zigbee2MQTT device refused as `not_addressable`.
+
+**Plan:** none.
+
 ## Split this register into a file per entry
 
 One file per entry, in place of this page, once one file costs more than it saves.
 
-**Why not now:** six entries.
+**Why not now:** eight entries.
 
 **Revisit when:**
 - it holds more than 30 entries;
