@@ -2,25 +2,26 @@
 (is_group, expand_group, AdapterScope.native_groups) is docs/design.md, Groups; how the dispatcher applies it is here.
 
 Planning. Targets are bucketed by adapter (none: no_adapter). For each, the fields it lacks (fields.lacking: a light's,
-minus AdapterScope.unlisted) and the scope's `drops` are dropped, then supports() checks what is left: domain and
-fields in scope, then the adapter's own reasons. Then the class, a call left nothing to send first: unchanged with
-fields_dropped, never refused. Then AdapterScope.refusal, in order: where the call harms a class (AdapterScope.harms),
-or the adapter serves only own calls (own_calls_only, whose execute nothing reaches), an Unplaced or None class as
-class_unknown; a class in no_known_method as no_known_method, with its reason; one in
-not_built, or in neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the
-Labs gate (below).
+minus AdapterScope.unlisted) and the scope's `drops` are dropped, then supports() checks what is left: domain and fields
+in scope, then the adapter's own reasons. Then the class. While Labs is off, the fields in Labs on it
+(AdapterScope.class_labs) are dropped too, but not on a native group. A call left nothing to send comes first: unchanged
+with fields_dropped, never refused. Then AdapterScope.refusal, in order: where the call harms a class
+(AdapterScope.harms), or the adapter serves only own calls (own_calls_only, whose execute nothing reaches), an Unplaced
+or None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in not_built, or in
+neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the Labs gate (below).
 
 Native groups. One an adapter addresses as one takes its members' classes, from expand_group, and its weakest member's
 level for the gate; on an integration that names no classes it runs whole. An empty one (expand_group lists no members)
 is skipped silently, named or not, as core skips an empty group; so is one an adapter finds empty (Reason.EMPTY_GROUP).
 - Fallback. When a member's class has no known method, is not built yet, or isn't placed where a call harms, or takes a
-  call of its own (own_calls: a branch in execute the group's call isn't), or, while Labs is off, is in Labs (its
-  domain and fields not flagged), the group falls back to its members: each available one not already a target is
-  planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged; a member also
-  named raises, as its own target. A classifier that raised (logged) leaves the group's class unknown, so where a call
-  harms, or while Labs is off and its domain and fields aren't flagged, it falls back too, and each member is classed
-  again. With Labs on, a group whose weakest member is in Labs, or whose class is unknown where no call harms, runs
-  whole, as one command; a member named beside it then gets its own command as well as the group's.
+  call of its own (own_calls: a branch in execute the group's call isn't), or, while Labs is off, is in Labs or holds a
+  field the call carries in Labs (class_labs; its domain and fields not flagged), the group falls back to its members:
+  each available one not already a target is planned on its own, indirect, so the good ones run and a refused or flagged
+  one is skipped and logged; a member also named raises, as its own target. A classifier that raised (logged) leaves the
+  group's class unknown, so where a call harms, or while Labs is off and its domain and fields aren't flagged, it falls
+  back too, and each member is classed again. With Labs on, a group whose weakest member is in Labs, or whose class is
+  unknown where no call harms, runs whole, as one command; a member named beside it then gets its own command as well as
+  the group's.
 - Stand-ins and members it can't address. A member expand_group lists for its class that the integration can't address
   on its own (Target.addressable false: a Z2M device with several lights) is skipped with its class's refusal if it has
   one, else not_addressable, named by its device, and answers for nothing. So is a stand-in (Target.stand_in: a member
@@ -41,12 +42,13 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none was skipped (each
   unavailable).
 
-Labs gating, the one place the option gates anything (docs/evidence.md, The Labs flag). After supports()
-passes and fields are dropped, a call's level is the weakest of its domain, its class in that domain (a native group's:
-its weakest member's; one the integration can't name, or whose entry holds other domains alone, counts as a Labs item)
-and the fields it still carries; an adapter flagged whole has every domain in Labs. A Labs call is refused as labs_off
-while the option is off, a named target raising its own message. A call left nothing to
-send is unchanged, not refused.
+Labs gating, the one place the option gates anything (docs/evidence.md, The Labs flag). After supports() passes and
+fields are dropped, a call's level is the weakest of its domain, its class in that domain (a native group's: its weakest
+member's; one the integration can't name, or whose entry holds other domains alone, counts as a Labs item) and the
+fields it still carries, one in Labs on its class (class_labs) as a Labs item; an adapter flagged whole has every domain
+in Labs. While the option is off such a field is dropped before the gate (Planning), but on a native group. A Labs call
+is refused as labs_off while the option is off, a named target raising its own message. A call left nothing to send is
+unchanged, not refused.
 
 Running. A run's durations are clamped to AdapterScope.duration, or its class's own call's limits (own_calls), rounded
 to their step_s (core/duration.py). Each adapter runs once per distinct request (its dropped fields and own call),
@@ -440,6 +442,8 @@ class Dispatcher:
                 continue
             reached[target.reported_id] = here = self._reached(adapter, target, members)
             found = here.classes
+            dropped |= self._labs_off_drops(adapter, reduced, target, found, labs_on)
+            reduced = request.without(dropped)
             if reduced.nothing_to_do():
                 answered.add(target.reported_id)
                 results.append(
@@ -480,6 +484,26 @@ class Dispatcher:
             (adapter, request.without(dropped), ready, dropped, reached, own)
             for (dropped, own), ready in by_run.items()
         ]
+
+    @staticmethod
+    def _labs_off_drops(
+        adapter: Adapter, request: Request, target: Target, classes: Classes, labs_on: bool
+    ) -> frozenset[str]:
+        """The fields the call carries that are in Labs on the target's class (AdapterScope.class_labs), which, with the
+        option off, are dropped as a lacked field is, so the call runs without them. None on a native group, which
+        keeps them: the gate falls back to its members, each judged alone; and none with the option on."""
+        if labs_on or target.is_group:
+            return frozenset()
+        if gated := adapter.scope.class_labs_fields(classes) & request.fields_present():
+            _LOGGER.debug(
+                "%s on %s: %s drops %s, in Labs on class %s",
+                adapter.action,
+                adapter.integration,
+                target.reported_id,
+                sorted(gated),
+                ", ".join(map(str, classes)),
+            )
+        return gated
 
     def _labs(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
         """Whether the call is in Labs: a Labs item it touches, its domain (an adapter flagged

@@ -38,15 +38,16 @@ alphabetically, and a line's names sort the same way (`ordered`), a variant's pl
 - Variants: a section with `variants` (a model whose classes its page tells apart) is a parent line, "Tuya TS011F
   plugs: check Manufacturer …", with a child line per feature set of its classes, named by their phrases ("a, b, or
   c") and ending ✔ for a rig-tested model, which the parent names. Children never merge with another section's classes.
-- Tested models follow the line of the class and domain a test reached them on (else of their class; else, from a
-  format 1 record or a manual row naming none, a line of their own with the features tested), and native groups get
-  a line, with the features a test reached them on; rig-tested ones end ✔. A pass on a flagged item never credits a
-  model: an adapter flagged whole, or on any field, credits none. One flagged on a domain or class credits, from a
-  format 2 record, each model a passing test reached on an unflagged domain and, with a class flagged, an unflagged
-  class (a null one is none), and native groups when every member's class is unflagged; from a format 1 record, which
-  doesn't say which test reached which model, the run's models only when every passing test targets an unflagged
-  domain and, with a class flagged, names unflagged classes only; and, unless a domain is flagged (a manual row names
-  none), each `_manual.json` model whose class is unflagged.
+- Tested models follow the line of the class and domain a test reached them on (else of their class; else, from a format
+  1 record or a manual row naming none, a line of their own with the features tested), and native groups get a line,
+  with the features a test reached them on; rig-tested ones end ✔. A pass on a flagged item never credits a model: an
+  adapter flagged whole, or on any field, credits none, nor does a class with fields in Labs on it alone (`class_labs`),
+  as a record doesn't say which fields a test sent. One flagged on a domain or class credits, from a format 2 record,
+  each model a passing test reached on an unflagged domain and, with a class flagged, an unflagged class (a null one is
+  none), and native groups when every member's class is unflagged; from a format 1 record, which doesn't say which test
+  reached which model, the run's models only when every passing test targets an unflagged domain and, with a class
+  flagged, names unflagged classes only; and, unless a domain is flagged (a manual row names none), each `_manual.json`
+  model whose class is unflagged.
 - devices.yaml's and models.yaml's `no_known_method` entries, which name no class, each get a 🔴 line; models.yaml's
   `not_built` ones are on no card. The page's Not supported table lists both, and the scopes' `not_built` entries,
   with why and the source.
@@ -81,9 +82,10 @@ page together, and `--check` proves both.
   unfolded card line (native groups first, a variants parent's children indented under it), a column per feature in the
   README's order (`stop` last), a cell holding the status and its proof. 🟢 links its records (the line's tested
   models'; where none tested the action on the line, the integration's, as a scene is classed by its lights), 🟡 and ⚪
-  the class's section on its integration's page, 🔴 its row under Not supported; a split feature shows its parts
-  ("🟢 down · ⚪ up"). Under the matrix, a footnote lists each field proven less than its feature (a field whose
-  level is weaker than the strongest its action's domains and classes hold).
+  the class's section on its integration's page, 🔴 its row under Not supported; a split feature shows its parts ("🟢
+  down · ⚪ up"). Under the matrix, a footnote lists each field proven less than its feature (a field whose level is
+  weaker than the strongest its action's domains and classes hold), then each field in Labs on some classes alone
+  (`class_labs`), naming them by their devices.yaml phrases.
 - *Not supported*: every integration's `no_known_method` and harmful `not_built` entries in one table (Devices,
   Integrations, Features, Why, Source), one row per (what, reason, source) with its integrations and actions joined; a
   no known method row has an anchor id, the heading anchor of its `section`, which a matrix cell and a card's blocker
@@ -627,10 +629,12 @@ def card_evidence(adapter) -> Evidence:
     For one flagged on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class
     is flagged anywhere (an entry held on some domains alone is flagged on the rest), reach only classes unflagged in
     the test's domain; and, unless a domain is flagged (a manual row names none), the manual devices whose class is
-    unflagged in some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a
+    unflagged in some domain the adapter serves, as the coverage check lets a manual row cover any. A class with fields
+    in Labs on it (`class_labs`) counts as flagged, as a record doesn't say which fields a test sent. Flagged or not, a
     null-class device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
     flagged = {noun for level, _, noun, domains in items(scope) if level is Level.LABS or domains is not None}
+    flagged |= {"classes"} if scope.class_labs else set()
     if scope.all_labs or "fields" in flagged:
         return Evidence([], [])
     if not flagged:
@@ -639,7 +643,10 @@ def card_evidence(adapter) -> Evidence:
 
     def unflagged(cls: str | None, domain: str) -> bool:
         return (
-            cls is not None and cls in (scope.capabilities or {}) and scope.class_level(cls, domain) is not Level.LABS
+            cls is not None
+            and cls in (scope.capabilities or {})
+            and cls not in scope.class_labs
+            and scope.class_level(cls, domain) is not Level.LABS
         )
 
     def clean(domain: str | None, reached: set[str | None]) -> bool:
@@ -846,11 +853,24 @@ def matrix(card: Card, data: Data, ids: dict) -> list[str]:
     parts += [local(row) for row in table(["Class", *names], matrix_rows(card, names, data, ids, icons))]
     if card.field_notes:
         parts += ["", "Fields proven less than their feature:"]
-        parts += [
-            f"- {feature}: {icons[status]} {', '.join(f'`{name}`' for name in fields)}"
-            for feature, status, fields in card.field_notes
-        ]
+        for feature, status, fields, classes in card.field_notes:
+            names = ", ".join(f"`{name}`" for name in fields)
+            parts.append(local(f"- {feature}: {icons[status]} {names}{on_classes(card, data, classes)}"))
     return [*parts, ""]
+
+
+def on_classes(card: Card, data: Data, classes: tuple[str, ...]) -> str:
+    """Where a footnote's fields are in Labs alone: " on " and the classes' devices.yaml phrases, by section, as a
+    card line names them (`merged`); nothing for a field at its level on every class."""
+    if not classes:
+        return ""
+    sections: dict[str, list[str]] = {}
+    for cls in classes:
+        if (entry := data.capabilities.get(card.key, {}).get(cls)) is None:
+            fail(f"capabilities: no entry for {card.key} {cls}, which the page's footnote names")
+        phrases = sections.setdefault(entry["section"], [])
+        phrases += [entry["phrase"]] if entry["phrase"] not in phrases else []
+    return " on " + ", ".join(merged(phrases, data.url(card.key, section)) for section, phrases in sections.items())
 
 
 def tested_features(held: Reached) -> str:
@@ -1505,7 +1525,7 @@ class Card:
     # Each class a scope refuses (no_known_method), by its (what, reason, source): the page's Not supported row.
     broken: dict[str, tuple[str, str, str]] = field(default_factory=dict)
     # Fields proven less than their feature: (feature, status, field names), for the page's footnote.
-    field_notes: list[tuple[str, str, tuple[str, ...]]] = field(default_factory=list)
+    field_notes: list[FieldNote] = field(default_factory=list)
     reached: dict[str, Reached] = field(default_factory=dict)
     groups: Reached | None = None
     # Every model and group a record row names, credited or not (`Evidence.of`, `listed`): the page's Tested devices.
@@ -1567,19 +1587,31 @@ def mark_entries(integration_adapters: list) -> list[Caveat]:
     return entries
 
 
-def field_notes(integration_adapters: list) -> list[tuple[str, str, tuple[str, ...]]]:
+# A footnote entry: (feature, status, field names, classes), the classes () for a field at its level on every class.
+type FieldNote = tuple[str, str, tuple[str, ...], tuple[str, ...]]
+
+
+def field_notes(integration_adapters: list) -> list[FieldNote]:
     """Each field whose level is weaker than its action's (the strongest its domains and classes hold), by feature and
-    status, for the footnote under the integration's matrix."""
-    found: dict[tuple[str, str], list[str]] = {}
+    status, for the footnote under the integration's matrix; then each field in Labs on some classes alone
+    (`class_labs`), by feature and the classes that share its fields."""
+    found: dict[tuple[str, str, tuple[str, ...]], list[str]] = {}
     for adapter in integration_adapters:
         held = items(adapter.scope)
         if not (levels := [level for level, _, noun, _ in held if noun != "fields"]):
             continue
         for level, item, noun, _ in held:
             if noun == "fields" and level < max(levels):
-                names = found.setdefault((FEATURES[adapter.action], TIER[level]), [])
+                names = found.setdefault((FEATURES[adapter.action], TIER[level], ()), [])
                 names += [item] if item not in names else []
-    return [(feature, status, tuple(names)) for (feature, status), names in found.items()]
+    for adapter in integration_adapters:
+        by_fields: dict[frozenset[str], list[str]] = {}
+        for cls, names in adapter.scope.class_labs.items():
+            by_fields.setdefault(names, []).append(cls)
+        for names, classes in by_fields.items():
+            noted = found.setdefault((FEATURES[adapter.action], TIER[Level.LABS], tuple(sorted(classes))), [])
+            noted += [name for name in sorted(names) if name not in noted]
+    return [(feature, status, tuple(names), classes) for (feature, status, classes), names in found.items()]
 
 
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:

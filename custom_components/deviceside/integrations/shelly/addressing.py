@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from ...core.errors import Reason
 from ...core.fields import BRIGHTNESS_FIELD, COLOR_TEMP, COLORS, TRANSITION
 from ...core.models import Target
-from ...core.scope import documented, labs, verified
+from ...core.scope import documented, labs, labs_fields, verified
 
 # Relays and lights carry unique_id "{mac}-{key}" (shelly/switch.py RpcRelaySwitch, shelly/light.py
 # RpcShellyLightBase). Every other Shelly switch (virtual booleans, scripts, circuit breakers) has another suffix
@@ -30,20 +30,24 @@ CLASSES = {
 }
 
 _DIMMABLE = frozenset({BRIGHTNESS_FIELD}) | TRANSITION
-_COLOR = COLORS
 
-# light.turn_on fields each component takes, as shelly/light.py translates them. A Switch shown as a light is on/off.
-# RGB and RGBW take color too, but core converts it differently for them (rgb to rgbw with a white split, kelvin to
-# color), so their color is dropped until those conversions are ported. CCT takes ct, but as CCT.Set {ct} without the
-# bulb's mode switch: a call no record covers, and fields are never Documented, so it is dropped until one does.
+# light.turn_on fields each component takes, as shelly/light.py translates them: the device's word alone. A Switch
+# shown as a light is on/off. Whether a field is offered is a level's call (COLOR_LABS), never this table's.
 COMPONENT_FIELDS = {
     "Switch": frozenset(),
     "Light": _DIMMABLE,
-    "CCT": _DIMMABLE,
-    "RGB": _DIMMABLE,
-    "RGBW": _DIMMABLE,
-    "RGBCCT": _DIMMABLE | _COLOR | COLOR_TEMP,
+    "CCT": _DIMMABLE | COLOR_TEMP,
+    "RGB": _DIMMABLE | COLORS | COLOR_TEMP,
+    "RGBW": _DIMMABLE | COLORS | COLOR_TEMP,
+    "RGBCCT": _DIMMABLE | COLORS | COLOR_TEMP,
 }
+
+# Color on RGB and RGBW, and ct on CCT, are in Labs for those classes alone (docs/evidence.md, Levels). Their calls
+# (RGB.Set {rgb}, RGBW.Set {rgb, white}, CCT.Set {ct}) are converted as core's Shelly light converts them, but no
+# record covers them and nobody with the devices has run them (#585), and a field is never Documented. Labs off, the
+# dispatcher drops them (fields_dropped); Labs on, owners try them and their reports can lift the flag, by removing
+# the entry. RGBCCT's Verified color and ct are untouched.
+COLOR_LABS = labs_fields(*COLORS, *COLOR_TEMP, classes=("RGB", "RGBW")) | labs_fields(*COLOR_TEMP, classes=("CCT",))
 
 # The components every Shelly adapter addresses. Light, CCT, RGB and RGBW take the same <Component>.Set, SetConfig
 # and GetStatus calls as the Verified RGBCCT (whose Set carries brightness as theirs do, Switch.Set doesn't),

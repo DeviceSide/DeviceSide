@@ -1,16 +1,18 @@
 """Shelly set_attributes: one RGBCCT.Set without `on`, GetStatus read-back."""
 
+import logging
 from unittest.mock import call as rpc_call
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.shelly.addressing import COMPONENTS
 from custom_components.deviceside.integrations.shelly.set_attributes import ShellySetAttributes
 
 from .conftest import call
-from ...conftest import refusal, result
-from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
+from ...conftest import allow_labs, refusal, result
+from ...fixtures.shelly import MAC, add_shelly_entity, failing, shelly_device
 
 KELVIN_RANGE = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
 BULB = {"entity_id": "light.bulb"}
@@ -134,7 +136,9 @@ async def test_other_light_components_are_documented(hass, setup_production, key
         ("cct:0", {"color_temp_kelvin": 3000}, None, UNCHANGED_DROPPED),
     ],
 )
-async def test_a_sibling_drops_the_color_and_ct_not_ported(hass, setup_production, key, data, sent, expected):
+async def test_color_and_ct_in_labs_are_dropped_on_cct_rgb_and_rgbw_while_labs_is_off(
+    hass, setup_production, key, data, sent, expected
+):
     entry, call_rpc = shelly_device(hass, status={"output": False, "brightness": 40})
     add_shelly_entity(hass, entry, "light.other", key, attributes={"supported_color_modes": ["color_temp", "rgb"]})
 
@@ -182,6 +186,88 @@ async def test_limits_with_a_color_still_send_the_color(hass, setup_production):
     await call(hass, "set_attributes", {**BULB, "min_brightness": 30, "color_temp_kelvin": 3000})
 
     assert rpc_call("RGBCCT.Set", {"id": 0, "ct": 3000, "mode": "cct"}) in call_rpc.await_args_list
+
+
+@pytest.mark.parametrize(
+    ("key", "data", "sent"),
+    [
+        ("cct:0", {"color_temp_kelvin": 3000, "brightness": 40}, {"brightness": 40, "ct": 3000}),
+        ("rgb:0", {"rgb_color": [255, 0, 10]}, {"rgb": [255, 0, 10]}),
+        ("rgb:0", {"hs_color": [120, 100]}, {"rgb": [0, 255, 0]}),
+        ("rgb:0", {"color_temp_kelvin": 3000}, {"rgb": [255, 177, 110]}),
+        ("rgbw:0", {"rgb_color": [255, 0, 10], "brightness": 60}, {"brightness": 60, "rgb": [255, 0, 10], "white": 0}),
+        ("rgbw:0", {"xy_color": [0.15, 0.06]}, {"rgb": [5, 0, 255], "white": 67}),
+        ("rgbw:0", {"color_temp_kelvin": 3000}, {"rgb": [255, 118, 0], "white": 193}),
+    ],
+)
+async def test_color_and_ct_in_labs_are_sent_and_read_back_when_labs_is_on(hass, setup_production, key, data, sent):
+    allow_labs(hass)
+    entry, call_rpc = shelly_device(hass, status={"output": False})
+    add_shelly_entity(hass, entry, "light.strip", key, attributes=KELVIN_RANGE)
+    component = COMPONENTS[key.split(":")[0]]
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.strip", **data})
+
+    assert response == {"light.strip": CONFIRMED}
+    assert call_rpc.await_args_list == [
+        rpc_call(f"{component}.Set", {"id": 0, **sent}),
+        rpc_call(f"{component}.GetStatus", {"id": 0}),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("key", "data", "kept"),
+    [
+        ("rgb:0", {"rgb_color": [255, 0, 10]}, {"rgb": [250, 0, 10]}),
+        ("rgbw:0", {"rgb_color": [255, 0, 10]}, {"rgb": [255, 0, 10], "white": 5}),
+        ("rgbw:0", {"rgb_color": [255, 0, 10]}, {"rgb": [255, 0, 12], "white": 0}),
+        ("cct:0", {"color_temp_kelvin": 3000}, {"ct": 3100}),
+    ],
+)
+async def test_a_color_or_ct_the_device_kept_differently_is_rejected_and_logged(
+    hass, setup_production, caplog, key, data, kept
+):
+    allow_labs(hass)
+    entry, call_rpc = shelly_device(hass)
+    add_shelly_entity(hass, entry, "light.strip", key, attributes=KELVIN_RANGE)
+    respond = call_rpc.side_effect
+
+    async def keeping_other(method, params):
+        return respond(method, {**params, **kept} if method.endswith(".Set") else params)
+
+    call_rpc.side_effect = keeping_other
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(HomeAssistantError, match="light.strip: not_stored"):
+        await call(hass, "set_attributes", {"entity_id": "light.strip", **data})
+
+    line = next(r.getMessage() for r in caplog.records if "not stored" in r.getMessage())
+    assert line.startswith("light.strip: not stored: sent ")
+    assert str(next(iter(kept.values()))) in line
+    assert MAC not in caplog.text
+
+
+async def test_the_rgb_an_rgbcct_reads_back_is_still_not_compared(hass, setup_production):
+    call_rpc = await bulb(hass)
+    respond = call_rpc.side_effect
+
+    async def rounding(method, params):
+        return respond(method, {**params, "rgb": [250, 0, 10]} if method == "RGBCCT.Set" else params)
+
+    call_rpc.side_effect = rounding
+
+    response = await call(hass, "set_attributes", {**BULB, "rgb_color": [255, 0, 10]})
+
+    assert response == {"light.bulb": CONFIRMED}
+
+
+def test_color_labs_is_set_on_the_scope():
+    colors = frozenset({"color_temp_kelvin", "hs_color", "rgb_color", "xy_color"})
+    assert ShellySetAttributes.scope.class_labs == {
+        "RGB": colors,
+        "RGBW": colors,
+        "CCT": frozenset({"color_temp_kelvin"}),
+    }
 
 
 def test_rgbcct_is_verified_and_the_other_light_components_documented():

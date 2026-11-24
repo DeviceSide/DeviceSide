@@ -118,7 +118,7 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
   `docs/evidence.md`, Release gate.
 - Audits: as the global `## Code audits` rule says, then `owner-findings` (Maintainers, Changing someone else's
   code). The binding-rule surface that puts an Opus auditor on the PR
-  audit is `docs/evidence.md`, the Labs flag (`labs(...)`) and `AdapterScope`, `Level.DOCUMENTED`,
+  audit is `docs/evidence.md`, the Labs flag (`labs(...)`, `labs_fields(...)`) and `AdapterScope`, `Level.DOCUMENTED`,
   `scripts/check_release.py`, `docs/test-records.schema.json`, `docs/integrations/*/test-records/`, and rule text in
   `CLAUDE.md` or `docs/design.md`.
 

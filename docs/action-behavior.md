@@ -44,7 +44,8 @@ the integration can't address. A field the adapter has never been tested with is
 field** comes from the target's state, read as `filter_turn_on_params` reads it (a color is lacked only without any
 color mode, color temperature only without that or a color mode, since core converts between them first), and from the
 adapter where only it knows (`AdapterScope.drops`, a color gamut, a component's fields). A field tested on one kind
-of component but not yet ported or recorded for another is dropped there, not refused. A `switch`, or a `switch_as_x`
+of component but not yet ported or recorded for another is dropped there, not refused. So is a field in Labs on the
+target's class while the Labs option is off (`AdapterScope.class_labs`, [evidence.md](evidence.md#levels)). A `switch`, or a `switch_as_x`
 light, lacks every light field, so a timed call still runs its timer. A
 call left nothing to do by dropping is `unchanged` with `fields_dropped`. An empty group is skipped silently, as core's
 group expansion yields nothing for one.

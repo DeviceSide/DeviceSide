@@ -29,6 +29,7 @@ from custom_components.deviceside.core.scope import (
     documented,
     family_scope,
     labs,
+    labs_fields,
     verified,
 )
 
@@ -569,6 +570,71 @@ def test_unlisted_names_only_lackable_fields_in_scope_and_not_dropped(scope, mes
         AdapterScope(**scope, unlisted=unlisted)
 
 
+# A fade in Labs on class C alone (AdapterScope.class_labs).
+FADE_LABS_ON_C = AdapterScope(
+    fields=verified("brightness", "transition"),
+    capabilities=verified("A", "C"),
+    class_labs=labs_fields("transition", classes=("C",)),
+)
+
+
+def test_labs_fields_maps_each_class_to_its_fields():
+    assert labs_fields("hs_color", "rgb_color", classes=("RGB", "RGBW")) == {
+        "RGB": frozenset({"hs_color", "rgb_color"}),
+        "RGBW": frozenset({"hs_color", "rgb_color"}),
+    }
+
+
+@pytest.mark.parametrize(
+    ("classes", "fields", "level"),
+    [
+        (("C",), ("brightness", "transition"), Level.LABS),
+        (("C",), ("brightness",), Level.VERIFIED),  # the call doesn't carry it
+        (("A",), ("brightness", "transition"), Level.VERIFIED),  # another class
+        (("A", "C"), ("transition",), Level.LABS),  # a native group with a member of the class
+        ((Unplaced("C"),), ("transition",), Level.LABS),  # read as the class it names
+        ((), ("transition",), Level.VERIFIED),  # no classes given: the cards, and a group's fallback check
+        ((None,), (), Level.LABS),  # a class the integration couldn't name fails safe, as before
+    ],
+)
+def test_a_field_in_labs_on_a_class_is_a_labs_item_on_that_class_alone(classes, fields, level):
+    assert FADE_LABS_ON_C.level("light", classes, fields) is level
+
+
+def test_class_labs_fields_is_the_union_of_the_classes_entries_and_none_has_none():
+    scope = replace(
+        FADE_LABS_ON_C, class_labs=labs_fields("transition", classes=("C",)) | labs_fields("brightness", classes=("A",))
+    )
+
+    assert scope.class_labs_fields(("A", "C", None)) == frozenset({"brightness", "transition"})
+    assert scope.class_labs_fields((None,)) == frozenset()
+    assert scope.class_labs_fields((Unplaced("C"),)) == frozenset({"transition"})
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        pytest.param({"capabilities": None}, "needs capabilities", id="no_capabilities"),
+        pytest.param({"class_labs": labs_fields("transition", classes=("B",))}, "doesn't serve", id="unserved"),
+        pytest.param({"class_labs": labs_fields(classes=("C",))}, "names no field", id="empty"),
+        pytest.param(
+            {"fields": verified("transition", "duration"), "class_labs": labs_fields("duration", classes=("C",))},
+            "never lacks",
+            id="not_lackable",
+        ),
+        pytest.param({"fields": verified("brightness")}, "outside the scope's fields", id="not_in_fields"),
+        pytest.param({"drops": frozenset({"transition"})}, "the scope drops", id="dropped"),
+        pytest.param({"fields": labs("transition")}, "already in Labs on every class", id="labs_everywhere"),
+        pytest.param(
+            {"capabilities": verified("A") | labs("C")}, "classes already in Labs on every domain", id="labs_class"
+        ),
+    ],
+)
+def test_class_labs_names_served_classes_and_lackable_fields_in_scope_not_dropped_or_already_labs(changes, message):
+    with pytest.raises(ValueError, match=message):
+        replace(FADE_LABS_ON_C, **changes)
+
+
 def test_mappings_are_read_only_copies_and_the_scope_hashes():
     shared = verified("Switch")
     scope = AdapterScope(capabilities=shared)
@@ -578,6 +644,8 @@ def test_mappings_are_read_only_copies_and_the_scope_hashes():
     with pytest.raises(TypeError):
         scope.domains["switch"] = Level.VERIFIED
     assert hash(scope) == hash(scope)
+    with pytest.raises(TypeError):
+        FADE_LABS_ON_C.class_labs["A"] = frozenset({"brightness"})
 
 
 def _adapters() -> list[Adapter]:

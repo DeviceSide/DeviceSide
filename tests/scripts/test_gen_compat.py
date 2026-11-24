@@ -19,6 +19,7 @@ from custom_components.deviceside.core.scope import (
     NotBuilt,
     documented,
     labs,
+    labs_fields,
     verified,
 )
 from scripts import check_release as cr
@@ -951,6 +952,24 @@ def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagg
     assert classed_card(adapter("zha", "stop", flagged_domain)).tested == []  # a row names no domain
 
 
+def test_a_class_with_fields_in_labs_on_it_credits_no_model_and_the_others_still_do(root):
+    # A record doesn't say which fields a test sent, so a pass on a class_labs class may have carried the Labs field.
+    record2(
+        root,
+        "zha",
+        "turn_on_for",
+        ran("light", device("LTA009", "1", "Light")),
+        ran("light", device("P1", "1", "CCT")),
+    )
+    manual_file(root, rows=[signoff(signed_by="jasonmx", devices=(("P1", "CCT"),), calls=bound("turn_on_for"))])
+    scope = AdapterScope(
+        fields=verified("transition"),
+        capabilities=verified("Light", "CCT"),
+        class_labs=labs_fields("transition", classes=("CCT",)),
+    )
+    assert classed_card(adapter("zha", "turn_on_for", scope)).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
+
+
 def test_a_class_an_adapter_serves_in_neither_axis_shows_nothing_for_it(root):
     broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     card = classed_card(
@@ -1599,6 +1618,21 @@ def test_a_field_proven_less_than_its_feature_is_a_footnote_under_the_matrix(roo
     assert "\nFields proven less than their feature:\n- smooth dimming: ⚪ `transition`\n" in block
     whole = AdapterScope(domains=labs("light"), fields=labs("transition"))
     assert "Fields proven" not in page_of(adapter("zha", "lower_brightness", whole))[0]
+
+
+def test_a_field_in_labs_on_some_classes_is_a_footnote_naming_them(root):
+    scope = AdapterScope(
+        fields=verified("brightness", "transition"),
+        capabilities=verified("Light", "CCT"),
+        class_labs=labs_fields("transition", classes=("CCT",))
+        | labs_fields("brightness", "transition", classes=("Light",)),
+    )
+    block, *_ = page_of(adapter("zha", "lower_brightness", scope))
+    assert (
+        "\nFields proven less than their feature:\n"
+        "- smooth dimming: ⚪ `transition` on [CCT controllers](integrations/zha/index.md#dimmers)\n"
+        "- smooth dimming: ⚪ `brightness`, `transition` on [dimmers](integrations/zha/index.md#dimmers)\n"
+    ) in block
 
 
 def test_a_caveat_is_under_its_integrations_heading(root):

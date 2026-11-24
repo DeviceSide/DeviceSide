@@ -7,7 +7,12 @@ from typing import Any, Literal
 
 from homeassistant.components.light import ATTR_MAX_COLOR_TEMP_KELVIN, ATTR_MIN_COLOR_TEMP_KELVIN
 from homeassistant.core import HomeAssistant, State
-from homeassistant.util.color import color_hs_to_RGB, color_xy_to_RGB
+from homeassistant.util.color import (
+    color_hs_to_RGB,
+    color_rgb_to_rgbw,
+    color_temperature_to_hs,
+    color_xy_to_RGB,
+)
 
 from .addressing import address, rpc_device
 from ...core.adapter import Adapter
@@ -38,33 +43,58 @@ def whole_percent(percent: float) -> int:
     return max(1, round(percent))
 
 
+def _kelvin(light: LightFields, state: State | None) -> int | None:
+    """The requested color temperature held to the entity's own range, or None when none was asked."""
+    kelvin = light.color_temp_kelvin
+    if kelvin is not None and state is not None:
+        low = state.attributes.get(ATTR_MIN_COLOR_TEMP_KELVIN, kelvin)
+        high = state.attributes.get(ATTR_MAX_COLOR_TEMP_KELVIN, kelvin)
+        kelvin = min(max(kelvin, low), high)
+    return kelvin
+
+
+def _rgb(light: LightFields) -> tuple[int, int, int] | None:
+    """The requested color as rgb, converted by Home Assistant's own color util as core's light.turn_on converts it for
+    a light without hs or xy modes (light/helper.py process_turn_on_params): at full value, whatever mode the light
+    is in. A kelvin becomes the color color_temperature_to_hs gives it, unclamped, as core does.
+    The schema allows one color per call."""
+    if light.rgb_color is not None:
+        return tuple(light.rgb_color)
+    if light.hs_color is not None:
+        return color_hs_to_RGB(*light.hs_color)
+    if light.xy_color is not None:
+        return color_xy_to_RGB(*light.xy_color)
+    if light.color_temp_kelvin is not None:
+        return color_hs_to_RGB(*color_temperature_to_hs(light.color_temp_kelvin))
+    return None
+
+
 def light_params(light: LightFields, component: str, state: State | None) -> dict[str, Any]:
     """light.turn_on fields as <Component>.Set params, translated as shelly/light.py does bar brightness.
 
-    Brightness is a percent on both sides, so it goes straight to the device's whole-percent level.
+    Brightness is a percent on both sides, so it goes straight to the device's whole-percent level. RGB takes color
+    as {rgb}, RGBW as {rgb, white} (core's rgb to rgbw split), both converting a kelvin to color; CCT takes {ct}
+    alone; RGBCCT takes ct or rgb with the mode that goes with it.
     """
     params: dict[str, Any] = {}
     if light.brightness is not None:
         params["brightness"] = whole_percent(light.brightness)
     if light.transition is not None:
         params["transition_duration"] = min(max(light.transition, TRANSITION_LIMITS.min_s), TRANSITION_LIMITS.max_s)
-    if light.color_temp_kelvin is not None:
-        kelvin = light.color_temp_kelvin
-        if state is not None:
-            low = state.attributes.get(ATTR_MIN_COLOR_TEMP_KELVIN, kelvin)
-            high = state.attributes.get(ATTR_MAX_COLOR_TEMP_KELVIN, kelvin)
-            kelvin = min(max(kelvin, low), high)
+    if component in ("RGB", "RGBW"):
+        if (rgb := _rgb(light)) is not None and component == "RGB":
+            params["rgb"] = list(rgb)
+        elif rgb is not None:
+            red, green, blue, white = color_rgb_to_rgbw(*rgb)
+            params |= {"rgb": [red, green, blue], "white": white}
+        return params
+    if (kelvin := _kelvin(light, state)) is not None:
         params["ct"] = kelvin
-    # Core's light.turn_on sends hs and xy to a light without those modes as rgb, at full value, whatever mode the
-    # light is in: light/helper.py process_turn_on_params. The schema allows one color per call.
-    if light.rgb_color is not None:
-        params["rgb"] = list(light.rgb_color)
-    elif light.hs_color is not None:
-        params["rgb"] = list(color_hs_to_RGB(*light.hs_color))
-    elif light.xy_color is not None:
-        params["rgb"] = list(color_xy_to_RGB(*light.xy_color))
-    if component == "RGBCCT" and ("ct" in params or "rgb" in params):
-        params["mode"] = "cct" if "ct" in params else "rgb"
+    if component == "RGBCCT":
+        if light.color_temp_kelvin is None and (rgb := _rgb(light)) is not None:
+            params["rgb"] = list(rgb)
+        if "ct" in params or "rgb" in params:
+            params["mode"] = "cct" if "ct" in params else "rgb"
     return params
 
 
