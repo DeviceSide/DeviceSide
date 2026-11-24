@@ -50,8 +50,8 @@ Touches: custom_components/deviceside/integrations/matter/**, custom_components/
    TransitionTime `WRITE_FADE_TENTHS`, optionsMask 1 and optionsOverride 1. Brightness is MoveToLevel, never
    WithOnOff. Then wait `WRITE_FADE_WAIT_S` and read back.
 8. **Read-back confirms (your call).** set_attributes is confirmed when CurrentLevel and the color attributes read
-   what was sent (within one step), otherwise sent with a detail. Stop reads CurrentLevel (and saturation/hue when a
-   color move was stopped) twice, 0.2 s apart: equal values are confirmed, unequal ones are sent with `still_fading`,
+   what was sent (within one step), otherwise sent with a detail. Stop reads CurrentLevel (and saturation/hue on a light
+   with the HS feature, as saturation moves aren't tracked) twice, 0.2 s apart: equal values are confirmed, unequal ones are sent with `still_fading`,
    and a light reading off is unchanged with `off`. A failed read is sent with `readback_failed`. **The read-back may be
    dropped per class once a class leaves Labs on a pass:** record this in `docs/deferred.md` (reopens when a class's
    Labs flag lifts).
