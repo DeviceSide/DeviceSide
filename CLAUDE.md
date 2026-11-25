@@ -53,7 +53,9 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 2. Probe before you build: when unsure how a device you can reach responds, run a cheap probe and record what it shows;
    with none at hand, build from a cited source to Labs.
 3. Verify, then trust: a verified fact stands across firmware, HA and code changes until evidence contradicts it.
-4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis.
+4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis. A
+   layer that changes what we send (a converter's rewrite, a quirk) is a finding for a maintainer, in `internals.md`,
+   never "by design".
 5. Proof follows the call and the class: code that sends the same call to the same class of device inherits its
    evidence; unit tests pin the call.
 6. Simplify relentlessly: a new guardrail needs evidence its failure happens; a new rule or guardrail names the

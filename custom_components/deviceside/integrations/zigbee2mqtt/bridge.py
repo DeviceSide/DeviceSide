@@ -20,6 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 # Retained topics arrive once HA's debounced subscribe reaches the broker; the reply takes one settings write.
 INCHING_COMPOSITE = "inching_control_set"  # Z2M's write-only inching setting, on Sonoff and Tuya devices (families)
 OPTION = "hue_native_control"  # the entity option that changes the Zigbee commands a Hue light gets
+LEVEL_CLUSTER = "genLevelCtrl"  # zigbee-herdsman's name for Level Control, in a raw command or read
 _RETAINED_TIMEOUT_S = 2.0
 _REPLY_TIMEOUT_S = 5.0
 
@@ -196,6 +197,12 @@ def logged_options(hass: HomeAssistant, target: Target) -> dict:
     cache = bridge_cache.get(hass, address.base) if address is not None else None
     settings = cache.settings(f"{address.kind}s", address.z2m_id) if cache is not None and address is not None else None
     return {OPTION: None if settings is None else bool(settings.get(OPTION))}
+
+
+def raw_command(cluster: str, name: str, payload: dict) -> dict:
+    """A ZCL command as Z2M's generic `command` payload, with zigbee-herdsman's names: Z2M sends it as given, past the
+    device's converters, and publishes no state for it."""
+    return {"command": {"cluster": cluster, "command": name, "payload": payload}}
 
 
 async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
