@@ -86,11 +86,11 @@ stays on, or shows a wrong value, where the user sees it.
 **Split off:** Gledopto (`gledopto`) and Müller Licht (`muller_licht`), each a class of its own, not built on
 `get_attributes`, as the bridge reports their color temperature mode wrong:
 
-- [core #62497](https://github.com/home-assistant/core/issues/62497) (2021-2022): Gledopto GL-S-004P and GL-B-007P
-  bulbs and non-Pro strip controllers, a Müller Licht tint loris (firmware 2.5.3) and a LivarnoLux strip. After a
+- [core #62497](https://github.com/home-assistant/core/issues/62497) (2021-2022): Gledopto GL-S-004P (a Pro bulb) and GL-B-007P
+  bulbs and strip controllers, a Müller Licht tint loris (firmware 2.5.3) and a LivarnoLux strip. After a
   color temperature write, a second event within a second reports xy, so Home Assistant shows a color. The bridge
-  itself reports it: core's maintainer read it in the bridge's events, and a reporter saw the Hue app show it with Home
-  Assistant off the network. A Gledopto Pro strip controller didn't show it.
+  itself reports it: core's maintainer read it in the bridge's events (reporters disagreed on whether the Hue app
+  showed it too). A Gledopto Pro strip controller didn't show it.
 - [core #93459](https://github.com/home-assistant/core/issues/93459): a Gledopto GL-C-008P (a Pro controller,
   firmware 11076802) left `mirek_valid` unset, so Home Assistant showed its color temperature as a color (fixed by PR
   #97263).

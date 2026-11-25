@@ -53,7 +53,7 @@ SPLIT_OFF = {"gledopto": GLEDOPTO, "muller_licht": MULLER_LICHT}
         ("_TZ3210_mntza0sw", "TS0505B", "other"),  # a Tuya-made light under another brand has no key yet
     ],
 )
-async def test_a_light_is_classed_by_its_devices_manufacturer_and_model(hass, bridge, manufacturer, model_id, expected):
+async def test_a_light_is_classed_by_its_devices_manufacturer(hass, bridge, manufacturer, model_id, expected):
     entity_id = await lamp(hass, bridge, manufacturer=manufacturer, model_id=model_id)
 
     assert capability(hass, entity_id) == expected
