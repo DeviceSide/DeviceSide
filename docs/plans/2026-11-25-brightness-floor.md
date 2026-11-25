@@ -28,7 +28,7 @@ yet measured:
 - `set_attributes` writes level 1 raw, then publishes `_kept_level(1)`, which the same converter would send as a
   `moveToLevel` to 2: on a lit flagged bulb the read-back, which expects 1, may answer `not_stored`. Unverified.
 - A Hue bulb holds level 1: ZHA sends it raw ([ZHA internals](../integrations/zha/internals.md), `lower_brightness`).
-  The flag on Philips definitions protects nothing DeviceSide needs.
+  The flag on Philips definitions protects nothing DeviceSide needs. (Corrected by step 4's probe: the flag steps around the ZCL rule that a `...WithOnOff` command ending at the minimum turns the light off; plain `moveToLevel` holds level 1 lit. Decision 9.)
 
 It went unseen because the intent was written nowhere as a rule, unit tests pin the payload handed to Z2M and not the
 wire, and no rig case touches the bottom (lowest limit 30 %; the raise-from-off check takes any HA brightness to 8).
@@ -66,7 +66,14 @@ wire, and no rig case touches the bottom (lowest limit 30 %; the raise-from-off 
    member: it went back to 40.2 %, and plain HA group commands with no DeviceSide call did the same, so the memory is
    Z2M's own; (b) a raw lower from 30 % to 0.4 %, then an off with a transition before the end read-back: the plain
    on came back at 29.9 %. With the option on, neither jumped. The probes also showed the raw lower's
-   `moveToLevelWithOnOff` to level 1 leaves the bulb off. A failure reopens a fix in this PR: open, for Jason.
+   `moveToLevelWithOnOff` to level 1 leaves the bulb off. A failure reopens a fix in this PR: Decisions 9 and 10.
+9. **(2026-11-25, after step 4's probe) The bottom of a lit lower is a raw `moveToLevel` to level 1**, not
+   `moveToLevelWithOnOff` (which turns a light off at the minimum); the call ZHA's lower and Z2M's `set_attributes`
+   already send. Raise from off goes back to the converter: it starts at level 2 before fading up, unseen. Supersedes
+   Decision 3's call for the bottom. `lower_to_the_lowest_level` also asserts the light stays on.
+10. **(2026-11-25) Probe (b)'s stale window is documented, not fixed:** after a raw lower, Z2M's state lags until the
+    end read-back, so an off with a transition inside it makes the next plain on return to the pre-fade level. A known
+    narrow case in Z2M `internals.md`. (a) is Z2M's own group behavior, recorded there.
 
 The 2026-11-24 research note's aside ("DeviceSide should treat minimum staged level as 2, or skip") is superseded by
 Decision 1; research files aren't edited.
