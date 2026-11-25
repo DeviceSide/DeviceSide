@@ -311,9 +311,9 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
         )
 
     async def async_step_settings(self, user_input=None):
-        """The options, under what DeviceSide runs on each light and switch. Saving reloads the entry only if an option
-        changed (OptionsFlowWithReload). First, while an integration is still listing its devices (coverage.waiting),
-        HA's progress spinner for at most coverage.WAIT_S."""
+        """The options first, then, under Labs, what DeviceSide runs on each light and switch. Saving reloads the entry
+        only if an option changed (OptionsFlowWithReload). First, while an integration is still listing its devices
+        (coverage.waiting), HA's progress spinner for at most coverage.WAIT_S."""
         if user_input is not None:
             return self.async_create_entry(data=user_input)
         if not self._waited:

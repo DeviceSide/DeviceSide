@@ -280,13 +280,13 @@ def _plain(text: str) -> str:
 
 
 def table(hass: HomeAssistant, coverage: Coverage) -> str:
-    """The matrix in Markdown (HA's flow Markdown keeps tables, `ha-icon` and `align`, and strips style and class): an
-    entity per row under its integration's title, a column per feature (smooth
+    """The matrix in Markdown (HA's flow Markdown keeps tables, `ha-icon` and `center`, and strips style, class and
+    the `align` of a `div`): an entity per row under its integration's title, a column per feature (smooth
     saturation and hue share one), a mark where it runs and a blank where it doesn't. Empty with no rows."""
     if not coverage.rows:
         return ""
     registry = hass.data[DATA].registry
-    headings = " | ".join(f'<div align="center">{column.heading}</div>' for column in COLUMNS)
+    headings = " | ".join(f'<center>{column.heading}</center>' for column in COLUMNS)
     lines = [f"| | {headings} |", "|---|" + ":-:|" * len(COLUMNS)]
     shown = None
     for row in coverage.rows:
@@ -306,6 +306,6 @@ def legend() -> str:
         (
             f"{Mark.VERIFIED} Verified: works, tested on a real device",
             f"{Mark.DOCUMENTED} Documented: should work, same call pattern as a tested device",
-            f"{Mark.LABS} Labs: not yet passed on a real device. Turn on Labs below to try it",
+            f"{Mark.LABS} Labs: not yet passed on a real device. Turn on Labs above to try it",
         )
     )

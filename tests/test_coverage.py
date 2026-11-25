@@ -273,7 +273,7 @@ async def test_the_table_has_a_column_per_feature_and_a_blank_where_it_does_not_
     text = coverage.table(hass, found)
 
     assert text.splitlines()[:3] == [
-        "| | " + " | ".join(f'<div align="center">{column.heading}</div>' for column in COLUMNS) + " |",
+        "| | " + " | ".join(f'<center>{column.heading}</center>' for column in COLUMNS) + " |",
         "|---|:-:|:-:|:-:|:-:|:-:|:-:|",
         "| **Fake** | | | | | | |",
     ]
@@ -294,7 +294,7 @@ def test_the_legend_explains_each_mark():
     assert coverage.legend().split("\n\n") == [
         "🟢 Verified: works, tested on a real device",
         "🟡 Documented: should work, same call pattern as a tested device",
-        "⚪ Labs: not yet passed on a real device. Turn on Labs below to try it",
+        "⚪ Labs: not yet passed on a real device. Turn on Labs above to try it",
     ]
 
 
@@ -319,12 +319,14 @@ async def test_settings_shows_the_matrix_with_the_options_under_it(hass, setup_i
     assert result["data_schema"]({}) == {"predicted_state": True, "z2m_color_modes": True, "labs": False}
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())["options"]
     step = strings["step"]["settings"]
-    assert step["description"].format(**holders).startswith("DeviceSide runs 9 features on 4 of your devices now.")
+    assert "description" not in step
     assert step["data_description"]["labs"].format(**holders) == (
         "Turn on Labs: adds 2 features on 1 devices. "
         "Try out new integrations, actions and action options, and unproven devices. "
         "Labs features may misbehave, change or be withdrawn without notice. "
-        'Please report how they go with the "Report a device test result or bug" form.'
+        'Please report how they go with the "Report a device test result or bug" form.\n\n'
+        "DeviceSide runs 9 features on 4 of your devices.\n\n"
+        f"{holders['legend']}\n\n{holders['table']}"
     )
     assert "coverage" not in strings["step"]["init"]["menu_options"]
 
