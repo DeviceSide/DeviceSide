@@ -1,15 +1,3 @@
-  Measured with `hue_native_control` off, Z2M's default (with it on, nothing jumped), on the first call above:
-  - **Z2M's own group behavior.** A member soft-off at 40 %, then a group raise from off to 100 %, then a plain on to
-    that member: it went back to 40.2 %. The memory is per device, and a group's set doesn't clear a member's: plain
-    Home Assistant group commands, with no DeviceSide call, did the same ([probe](research/hue/2026-11-25-raw-bottom-probe.md)).
-  - **A known narrow case, the stale window after a raw lower.** A raw lower from 30 % to 0.4 %, then an off with a
-    transition 2 s later, before the end read-back: Z2M's state still held 30 %, which the off stored, and the plain on
-    restored 29.9 % ([probe](research/hue/2026-11-25-raw-bottom-probe.md)). The window is the fade's length and about 1 s more (`END_READ_S`); the converter's publish
-    would have moved Z2M's state to the end level at once. Documented, not fixed.
-  - After the read-back the bulb was already off (above), so an off with a transition stored nothing and the plain on
-    gave 0.4 %. A lit bulb at level 1 isn't measured: from source its stored 1 would go through the converter as 2
-    ([L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), 0.8 %.
-
 # Zigbee2MQTT internals
 
 How the Zigbee2MQTT adapters address a target, what they send and read back, and what was measured on real hardware.
@@ -429,15 +417,17 @@ one, the longest.
   ([L1320](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1320)–[L1329](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1329)); the next on with no brightness restores the stored level through the converter
   ([L1336](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1336), [L1354](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1354)–[L1356](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1356)), and only a converter brightness set clears the flag ([L1382](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1382)–[L1384](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1384)).
   A raw command touches neither. Measured with `hue_native_control` off, Z2M's default (with it on, nothing jumped):
-  - A member soft-off at 40 %, then a group raise from off to 100 %, then a plain on to that member: it went back to
-    40.2 %. The memory is per device, and a group's set doesn't clear a member's: plain Home Assistant group commands,
-    with no DeviceSide call, did the same. The raise's raw bottom to an all-off group is one groupcast.
-  - A raw lower from 30 % to 0.4 %, then an off with a transition 2 s later, before the end read-back: Z2M's state
-    still held 30 %, which the off stored, and the plain on restored 29.9 %. The window is the fade's length and
-    about 1 s more (`END_READ_S`). Before the bypass, the converter's publish moved Z2M's state to the end level at
-    once.
-  - After the read-back the bulb was already off (above), so an off with a transition stored nothing and the plain on
-    gave 0.4 %. A lit bulb at level 1 isn't measured: from source its stored 1 would go through the converter as 2
+  - **Z2M's own group behavior.** A member soft-off at 40 %, then a group raise from off to 100 %, then a plain on to
+    that member: it went back to 40.2 %. The memory is per device, and a group's set doesn't clear a member's: plain
+    Home Assistant group commands, with no DeviceSide call, did the same.
+  - **The stale window after a raw lower: documented, not fixed** (Decision 10). A raw lower from 30 % to 0.4 %, then
+    an off with a transition 2 s later, before the end read-back: Z2M's state still held 30 %, which the off stored,
+    and the plain on restored 29.9 %. The window is the fade's length and about 1 s more (`END_READ_S`). The
+    converter's publish would have moved Z2M's state to the end level at once.
+  - An off with a transition after the read-back was probed only with the superseded `moveToLevelWithOnOff` bottom,
+    which had already left the bulb off, so nothing was stored and the plain on gave 0.4 %. With the `moveToLevel`
+    bottom the bulb stays lit at level 1, and that case isn't measured: from source its stored 1 would go through the
+    converter as 2
     ([L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), 0.8 %.
 
   Other flagged lights keep Z2M's 2, so their lowest is 0.8 %: Innr's turn off at level 1 ([research](research/2026-11-24-other-brands-dimming.md), from Z2M #4035); ADEO's is read from the flag, not reported. IKEA (15 definitions),
