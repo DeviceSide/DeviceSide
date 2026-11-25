@@ -85,6 +85,15 @@ wire, and no rig case touches the bottom (lowest limit 30 %; the raise-from-off 
     `other` keeps the converter, a finding in Z2M `internals.md` (an unflagged light switches off at a lower to
     0.4 %) with a `docs/deferred.md` line. Caveat: ZHC flags 3 Aqara definitions; one in the `aqara` class would get a
     raw level 1 untested. Retest: Z2M `lower_brightness` on the Aqara bulb.
+12. **(2026-11-25, after #615 merged) No flagged-model list: #615's table covers it.** The idea: generate the
+    `turnsOffAtBrightness1` models from a pinned ZHC, so a lower to level 1 goes raw wherever no reached light is
+    flagged. #615's `standard_light` class (Decision 24 of its plan) already sends its members a raw level 2, and a
+    flagged light stays lit at 0.8 % through the converter. What a list would add is the unflagged lights off the
+    table, about 80-95 definitions at ZHC v26.137.0 (226 `other` light definitions less about 132 flagged), most of
+    them off it because their brightness path departs: 14 overridden converters (ORVIBO's sends `moveToLevel` alone,
+    Control4's scales 0-100) and 11 `omitOptionalLevelAndColorParams` lights, which reject the option fields the raw
+    call carries. A flag list can't tell those apart; the table's generator can. So nothing is built until a report
+    asks for it (`docs/deferred.md`, The raw bottom for other lights on Zigbee2MQTT).
 
 The 2026-11-24 research note's aside ("DeviceSide should treat minimum staged level as 2, or skip") is superseded by
 Decision 1; research files aren't edited.

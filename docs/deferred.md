@@ -186,10 +186,14 @@ turn off at level 1, which a raw call would not prevent. Standard lights get it 
 standard converters, with no meta or override touching the call), which an `other` light lacks.
 
 **Revisit when:**
-- a probe of an unflagged `other` light holds level 1 lit on a raw `moveToLevel`;
-- a report of an `other` light switching off at a lower to 0.4 %.
+- a report of an unflagged `other` light switching off at a lower to 0.4 %: then `scripts/zhc_table.py` emits a
+  bottom membership (a standard brightness converter and no flag touching it, whatever the other actions' departures),
+  not a separate list of `turnsOffAtBrightness1` models, which would send the raw call to overridden and
+  `omitOptionalLevelAndColorParams` lights;
+- a probe of a standard light holding level 1 lit on a raw `moveToLevel` (lowers its bottom to 1);
+- a probe of an unflagged `other` light holding level 1 lit on a raw `moveToLevel`.
 
-**Plan:** [`docs/plans/2026-11-25-brightness-floor.md`](plans/2026-11-25-brightness-floor.md), Decision 11
+**Plan:** [`docs/plans/2026-11-25-brightness-floor.md`](plans/2026-11-25-brightness-floor.md), Decisions 11 and 12
 
 ## Inching readback on Zigbee2MQTT
 
