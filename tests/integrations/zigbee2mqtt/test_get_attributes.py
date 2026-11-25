@@ -152,7 +152,7 @@ async def test_another_brands_light_is_read_in_labs_without_on_time(hass, broker
     ("device_class", "on_off"), [("other", ["onOff"]), ("aqara", ["onOff"]), ("hue", ["onOff", "onTime"])]
 )
 def test_only_other_and_aqara_are_asked_no_on_time(device_class, on_off):
-    """`aqara` sends exactly `other`'s read until a probe shows the bulb takes the timer."""
+    """`aqara` sends exactly `other`'s read: its bulb has no OnTime (research/aqara/2026-11-25-agl003-probe.md)."""
     target = SimpleNamespace(state=SimpleNamespace(attributes={"supported_color_modes": ["onoff"]}))
 
     assert read.clusters(target, device_class) == {"genOnOff": on_off}

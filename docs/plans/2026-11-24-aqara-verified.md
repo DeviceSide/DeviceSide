@@ -43,10 +43,11 @@ UNSUPPORTED_ATTRIBUTE); its timer behavior is unprobed; one unexplained `no genL
 8. **Decision 2, Fail:** `{"state":"ON","on_time":N}` from off never turned the bulb on (N 10, 30 then 10, 0); OnTime
    and OffWaitTime unsupported. A `NotBuilt` entry for `aqara` turn_on_for citing the probe; get_attributes keeps
    asking no OnTime, now on the probe.
-9. **Decision 5, Reproduces, limit recorded:** 1 in 10 when a while-off moveToLevel lands during the bulb's own 1.5 s
-   off fade (the rig's put-back: turn_off then set_attributes with no wait); 0 in 10 after HA shows off. Z2M's frame
-   logging was off, so no deeper root cause. Recorded in internals.md (mechanism, counts) and index.md (the user-facing
-   limit); not a blocker for Verified, as the test case's sequence never hit it.
+9. **Decision 5, Reproduces, limit recorded, trigger unexplained:** 1 in 10 in the rig's put-back sequence (turn_off
+   then set_attributes with no wait), 0 in 10 in the test case's (a ~0.1 s wait for HA's off); writes in both series
+   landed inside the bulb's 1.5 s off fade, so the fade isn't shown to be the cause. Z2M's frame logging was off.
+   Recorded as observed in internals.md and index.md, with no workaround advice. Proceeding to Verified on the record
+   is Decision 5's "record the limit" branch; a DeviceSide-side fix (waiting out the fade) is Jason's call, open.
 
 ## Steps
 

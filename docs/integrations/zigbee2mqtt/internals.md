@@ -474,8 +474,9 @@ Assistant 2026.10.4, EmberZNet. Probe: [research/aqara/2026-11-25-agl003-probe.m
   25 to 43 s, every read answered, Z2M logging nothing at `warning`. It also fades by its own 1.5 s
   (`onOffTransitionTime` 15).
 - **`no genLevelCtrl reply` is a hung `moveToLevel`.** `light.turn_off`, then at once `set_attributes` (the rig's
-  put-back) timed out in 1 of 10 runs; the same after Home Assistant showed off, in 0 of 10. The bulb is on and
-  starting its 1.5 s off fade when the override `moveToLevel` arrives. It sent no default response within
+  put-back) timed out in 1 of 10 runs; the same after Home Assistant showed off (about 0.1 s), in 0 of 10. In both
+  series the write landed inside the bulb's 1.5 s off fade, and in the timeout run DeviceSide sent after Z2M published
+  OFF, so the trigger is unexplained. The bulb sent no default response within
   herdsman's 10 s (`disableDefaultResponse: false`), the later `CurrentLevel` read was answered only 0.27 s after
   the `moveToLevel` timed out, and a plain `turn_on` sent meanwhile took effect then too: requests after the hung
   one waited behind it. Z2M's own kept-level `moveToLevel` (no override) was not held, and the color temperature

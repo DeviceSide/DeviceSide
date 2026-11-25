@@ -224,11 +224,12 @@ must take, and get and set attributes. Its other features aren't built yet, and 
 - **Hue and saturation:** the bulb reports xy and color temperature only (no hue or saturation attributes, and the
   hue and saturation moves leave its color unchanged), so raise and lower hue and saturation aren't built on it. An
   emulation from the host in xy is plausible, but nothing builds it yet ([probe](research/aqara/2026-11-25-agl003-probe.md), sections 1 and 2).
-- **Turn on with timer:** the bulb ignores the timer command, so from off it would never turn on, and isn't built
+- **Turn on with timer:** the bulb ignored a timed on from off and stayed off, so it isn't built
   ([probe](research/aqara/2026-11-25-agl003-probe.md), section 3).
-- **A write while it fades off:** a set attributes sent within about 1.5 s of a turn off, while the bulb is still
-  fading out, can time out and not land (1 in 10 in the probe's tests, none in 10 after Home Assistant shows it off).
-  Wait for it to show off first ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
+
+Set attributes on this bulb can time out. In the probe, `set_attributes` sent at once after a turn off timed out in 1
+of 10 runs (the call failed with no reply from Zigbee2MQTT and the values didn't land), and sent after Home Assistant
+showed the bulb off, about 0.1 s later, in 0 of 10. The cause is unexplained ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
 
 ### Other brands
 

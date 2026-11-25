@@ -79,7 +79,7 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         # Measured on the T2 E27: from off, `on_time` (0x42) never turned the bulb on, and it has no OnTime or
         # OffWaitTime (families/aqara; the probe, section 3).
         AQARA: NotBuilt(
-            reason="Its bulb ignores the timer, so it would stay off",
+            reason="Its bulb ignored a timed on from off and stayed off",
             source=RESEARCH + "aqara/2026-11-25-agl003-probe.md",
         ),
         # Reported failing the countdown with harm (plan Decisions 35 and 41).

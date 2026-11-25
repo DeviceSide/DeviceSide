@@ -38,7 +38,7 @@ def test_the_shared_reasons_are_the_catalog_s_and_the_switch_entries_are_switch_
     entries = REFUSALS["turn_on_for"]
 
     assert entries["other"].reason == OTHER_TIMER_REASON
-    assert entries["aqara"].reason == "Its bulb ignores the timer, so it would stay off"
+    assert entries["aqara"].reason == "Its bulb ignored a timed on from off and stayed off"
     assert entries["aqara"].source.endswith("research/aqara/2026-11-25-agl003-probe.md")
     assert entries["ikea_timer_harmed"].reason == TIMER_HARMED_REASON
     assert entries["tuya_countdown_harmed"].reason == COUNTDOWN_HARMED_REASON
