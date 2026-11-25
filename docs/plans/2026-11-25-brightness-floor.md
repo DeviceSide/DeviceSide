@@ -1,6 +1,6 @@
 # Brightness floor: 0.4 % is level 1, on Zigbee2MQTT's Hue bulbs too
 
-2026-11-25. Branch `wt/brightness-floor`, worktree `deviceside-wt/brightness-floor`.
+2026-11-25. Branch `wt/brightness-floor`, worktree `deviceside-wt/brightness-floor`, PR #613.
 
 ## Coordination
 
@@ -88,4 +88,4 @@ Decision 1; research files aren't edited.
    lower to 0.4 %. Risky step (a wire call changes on a Verified class): it gets its own `/audit-code`.
 4. **Retest and records.** Rerun the cases whose call changed (tenet 9: Z2M raise, lower, and set_attributes if
    changed), commit the records, then the PR audit (binding-rule text: Opus auditor), `owner-findings`, ready and
-   `merge-green 0 --squash --delete-branch` with the PR's number.
+   `merge-green 613 --squash --delete-branch`.
