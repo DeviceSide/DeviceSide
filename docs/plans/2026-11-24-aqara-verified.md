@@ -48,6 +48,16 @@ UNSUPPORTED_ATTRIBUTE); its timer behavior is unprobed; one unexplained `no genL
    Recorded as observed in internals.md and index.md, with no workaround advice. Proceeding to Verified on the record
    is Decision 5's "record the limit" branch; a DeviceSide-side fix (waiting out the fade) is Jason's call, open.
 
+## Step 4 ruling (2026-11-25)
+
+10. **Stop's record:** the lab_aqara run (09:29) passed set_attributes, raise and lower brightness and stop's three
+    dimming cases, but stop's suite also runs halts_brightness_and_{saturation,hue}, which fail on `aqara` (lower_saturation
+    refused not_built; the rig's mark_hue reads no hue), so the rig staged no stop record. A Verified move needs a stop
+    as strong (`tests/core/test_scope.py`, test_every_move_has_a_stop_at_least_as_strong), so the moves stay Labs with
+    it; set_attributes is lifted. Jason chose an ha-rig change: hue and saturation cases don't apply to a target
+    DeviceSide doesn't build those moves on; its own ha-rig PR, then a restricted `--action stop` rerun, then stop and
+    the brightness moves Verified here.
+
 ## Steps
 
 **No rig run or write probe before 07:45 local on 2026-11-25** (Jason, 2026-11-24): work that needs no device (steps 2, 3, 6) goes first. Every rig run and every write probe needs Jason's yes (`DEVICE_SIDE_RIG_RESTRICTED=1`). Read-only probes run through
