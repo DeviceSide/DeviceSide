@@ -270,6 +270,14 @@ def test_main_takes_the_branch(pinned, capsys):
     assert check_audit.main(["v0.0.2rc2", head, "release/v0.0.2"], repo=repo.path) == 0
 
 
+def test_a_local_run_on_a_fix_branch_takes_the_checked_out_branch(pinned):
+    # rc-audit's local run passes no branch: on a release/ branch it is exempt, as CI's run with the branch is.
+    repo, rc1, end = pinned
+    head = rc2(repo, rc1, end)
+    repo.git("checkout", "-q", "-b", "release/v0.0.2")
+    assert check_audit.main(["v0.0.2rc2", head], repo=repo.path) == 0
+
+
 def test_a_table_whose_pin_doesnt_parse_is_refused(pinned):
     repo, rc1, end = pinned
     repo.commit(check_audit.ZHC_TABLE, "ZHC_RELEASE = v1\n")

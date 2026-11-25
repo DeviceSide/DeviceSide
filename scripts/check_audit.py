@@ -12,7 +12,8 @@ The record is `docs/audits/<rc>.md`: YAML frontmatter (rc, base, passes, finding
   A release/vX.Y.Z branch is exempt, as no bump lands between an RC and its release. Git reads only.
 See .claude/skills/rc-audit/SKILL.md.
 
-Usage: scripts/check_audit.py <rc> <head-sha> [<branch>]   (the branch it is cut from; main when left out)
+Usage: scripts/check_audit.py <rc> <head-sha> [<branch>]   (the branch it is cut from; the checked-out one when left
+       out, main on a detached head)
        scripts/check_audit.py --base <rc>   (print the base /rc-audit starts rc1 or a new RC from)
 """
 
@@ -27,11 +28,11 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from scripts.check_tag import RC, git, name, releases  # noqa: E402
+from scripts.zhc_table import TABLE, load  # noqa: E402
 
 AUDITS = Path("docs") / "audits"
-# The standard lights table and the line its pin is on (scripts/zhc_table.py writes it).
-ZHC_TABLE = "custom_components/deviceside/zigbee/standard_lights.py"
-ZHC_PIN = re.compile(r'^ZHC_RELEASE = "([^"]*)"$', re.MULTILINE)
+# The standard lights table, where scripts/zhc_table.py keeps it; its pin is the module's ZHC_RELEASE.
+ZHC_TABLE = TABLE.as_posix()
 ZHC_SKIPPED = re.compile(r"^ZHC bump skipped: \S", re.MULTILINE)
 SEVERITIES = frozenset({"critical", "high"})
 # A squash or rebase merge replaces the commits a record cites, so they are no longer under the head.
@@ -89,10 +90,13 @@ def zhc_pin(repo: Path, rev: str) -> str | None:
     but its pin doesn't parse, as the guard would pass unchecked."""
     if not git(repo, "ls-tree", "--name-only", rev, "--", ZHC_TABLE).strip():
         return None
-    text = git(repo, "show", f"{rev}:{ZHC_TABLE}")
-    if not (match := ZHC_PIN.search(text)):
-        raise ValueError(f"{ZHC_TABLE} at {rev} has no ZHC_RELEASE = \"...\" line")
-    return match[1]
+    try:
+        pin = load(git(repo, "show", f"{rev}:{ZHC_TABLE}")).ZHC_RELEASE
+    except Exception as err:  # noqa: BLE001 - a table that won't load has no pin to compare
+        raise ValueError(f"{ZHC_TABLE} at {rev} has no ZHC_RELEASE: {err}") from err
+    if not isinstance(pin, str):
+        raise ValueError(f"{ZHC_TABLE} at {rev} has no ZHC_RELEASE string")
+    return pin
 
 
 def zhc_bump_errors(repo: Path, rc: str, head: str, branch: str, text: str) -> list[str]:
@@ -193,7 +197,9 @@ def main(argv: list[str] | None = None, repo: Path = REPO) -> int:
     if len(argv) not in (2, 3) or argv[0] == "--base":
         print(__doc__.split("Usage: ", 1)[1].strip(), file=sys.stderr)
         return 2
-    problems = errors(repo, *argv)
+    # rc-audit's local run passes no branch; on a release/vX.Y.Z fix branch the pin can't have moved.
+    branch = argv[2] if len(argv) == 3 else git(repo, "branch", "--show-current").strip() or "main"
+    problems = errors(repo, argv[0], argv[1], branch)
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)
     if not problems:
