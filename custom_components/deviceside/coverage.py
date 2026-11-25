@@ -300,6 +300,15 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
     return "\n".join(lines)
 
 
+def section(hass: HomeAssistant, coverage: Coverage) -> str:
+    """The Settings form's collapsed coverage: a call-to-action summary with the counts, opening on the legend and the
+    table. Built here, not in en.json: HA's frontend reads tags in a translation string as its own markup."""
+    return (
+        f"<details>\n<summary>See your devices: DeviceSide runs {coverage.features_now} features on "
+        f"{coverage.devices_now} of them.</summary>\n\n{legend()}\n\n{table(hass, coverage)}\n\n</details>"
+    )
+
+
 def legend() -> str:
     """What each mark means, a paragraph each, worded from the README's legend."""
     return "\n\n".join(

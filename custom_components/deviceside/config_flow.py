@@ -345,10 +345,7 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
                 }
             ),
             description_placeholders={
-                "features": str(found.features_now),
-                "devices": str(found.devices_now),
-                "legend": coverage.legend(),
-                "table": coverage.table(self.hass, found),
+                "coverage": coverage.section(self.hass, found),
                 # What Labs would add: said only while Labs is off and something is in Labs.
                 "labs_adds": (
                     f"Turn on Labs: adds {found.features_in_labs} features on {found.devices_in_labs} devices. "

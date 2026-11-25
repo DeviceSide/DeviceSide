@@ -76,6 +76,7 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 21. **The "Turn on Labs: adds…" sentence shows only while Labs is off (Jason, 2026-11-25),** closing audit report 2's Medium; with Labs on, the Labs description is the Settings form's own Labs text alone.
 22. **Controls first (Jason, 2026-11-25, live check):** the three options head the Settings form; the intro, legend and table follow in Labs's `data_description`, after the Labs text (HA renders a step's description above its fields, a section's description as plain text, and a field's `data_description` as Markdown). The intro drops "now": "DeviceSide runs {n} features on {m} of your devices." The Labs legend line says "above". Headings use `<center>`, as HA's Markdown sanitizer drops `align` from `div`.
 23. **Collapsed above the options (Jason, 2026-11-25, live check):** Decision 22's table under Labs still rendered the options last, and HA has no description below a step's fields, so the Settings description is a `<details>` whose summary is the intro sentence, holding the legend and table; Labs's description is its own text again, and the legend says "below". Replaces Decision 22's placement.
+24. **A call to action, built in code (Jason, 2026-11-25, live check):** the summary reads "See your devices: DeviceSide runs {n} features on {m} of them." `coverage.section()` builds the whole `<details>` block, as HA's frontend formatter (formatjs) reads tags in a translation string as its own markup and fails; the Settings description is `{coverage}`.
 
 ## Steps
 

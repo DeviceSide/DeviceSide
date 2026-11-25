@@ -26,7 +26,7 @@
       },
       "settings": {
         "title": "DeviceSide options",
-        "description": "<details>\n<summary>DeviceSide runs {features} features on {devices} of your devices.</summary>\n\n{legend}\n\n{table}\n\n</details>",
+        "description": "{coverage}",
         "data": {
           "predicted_state": "Fix Hue Bridge brightness reports while dimming",
           "z2m_color_modes": "Fix colors of full-color Zigbee2MQTT lights",

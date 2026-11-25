@@ -313,16 +313,15 @@ async def test_settings_shows_the_matrix_with_the_options_under_it(hass, setup_i
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "settings"
     holders = result["description_placeholders"]
-    assert (holders["features"], holders["devices"]) == ("9", "4")
-    assert holders["legend"] == coverage.legend()
-    assert f"| {SWITCH}c |" in holders["table"]
+    assert holders["coverage"] == (
+        "<details>\n<summary>See your devices: DeviceSide runs 9 features on 4 of them.</summary>\n\n"
+        f"{coverage.legend()}\n\n{coverage.table(hass, await coverage.collect(hass))}\n\n</details>"
+    )
+    assert f"| {SWITCH}c |" in holders["coverage"]
     assert result["data_schema"]({}) == {"predicted_state": True, "z2m_color_modes": True, "labs": False}
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())["options"]
     step = strings["step"]["settings"]
-    assert step["description"].format(**holders) == (
-        "<details>\n<summary>DeviceSide runs 9 features on 4 of your devices.</summary>\n\n"
-        f"{holders['legend']}\n\n{holders['table']}\n\n</details>"
-    )
+    assert step["description"] == "{coverage}"  # tags in a translation string break HA's frontend formatter
     assert step["data_description"]["labs"].format(**holders) == (
         "Turn on Labs: adds 2 features on 1 devices. "
         "Try out new integrations, actions and action options, and unproven devices. "
@@ -384,7 +383,7 @@ async def test_settings_waits_while_an_integration_is_listing_its_devices(hass, 
     result = await finish_progress(hass, result["flow_id"])
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "settings"
-    assert result["description_placeholders"]["features"] == "9"
+    assert "runs 9 features" in result["description_placeholders"]["coverage"]
 
 
 @pytest.mark.usefixtures("classed", "household", "listing")
@@ -399,7 +398,7 @@ async def test_settings_waits_no_longer_than_the_bound_for_a_device_list_that_ne
     result = await finish_progress(hass, result["flow_id"])
 
     assert result["type"] is FlowResultType.FORM  # what it has
-    assert result["description_placeholders"]["features"] == "9"
+    assert "runs 9 features" in result["description_placeholders"]["coverage"]
 
 
 def test_the_wait_is_ten_seconds():
@@ -468,4 +467,4 @@ async def test_labs_adds_is_said_only_while_labs_is_off(hass, setup_integration)
     on = await open_coverage(hass, setup_integration)
 
     assert on["description_placeholders"]["labs_adds"] == ""
-    assert on["description_placeholders"]["table"]  # the Labs cells are still shown
+    assert on["description_placeholders"]["coverage"]  # the Labs cells are still shown
