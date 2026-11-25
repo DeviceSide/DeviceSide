@@ -2045,6 +2045,23 @@ async def test_a_group_with_a_member_that_takes_a_call_of_its_own_falls_back(has
     assert "switch.fake_group falls back to its members (own_call)" in caplog.text
 
 
+@pytest.mark.usefixtures("classed")
+async def test_the_judgment_on_a_group_that_falls_back_is_its_members_and_a_call_runs_them(hass, fake, reset_script):
+    """The group's own gate refuses it (own_call), but a call runs the member, so judge gives the member's level."""
+    native_group(hass, fake, "switch.fake_group", ["switch.e"])
+    registry = get_runtime(hass).registry
+    adapter = registry.adapter("turn_off_for", "fake")
+    target = resolve(hass, registry, "switch.fake_group", None)
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        assert judge(hass, registry, adapter, target, TimedRequest(duration_s=5), False) == Gate(
+            Outcome.RUNS, Level.VERIFIED
+        )
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.e": SENT | {"capability": "E"}}
+
+
 # An adapter that serves only its classes' own calls (AdapterScope.own_calls_only): E takes its own, nothing else is
 # served, and execute is never run (the fake's records each run of it as "fake").
 ONLY_OWN = AdapterScope(

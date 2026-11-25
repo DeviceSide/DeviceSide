@@ -292,7 +292,7 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
         if row.integration != shown:
             shown = row.integration
             lines.append(f"| **{_plain(registry.integrations[shown].title)}** |" + " |" * len(COLUMNS))
-        icon = f' <ha-icon icon="{row.icon}"></ha-icon>' if row.icon else ""
+        icon = f' <ha-icon icon="{html.escape(row.icon)}"></ha-icon>' if row.icon else ""
         label = " <small>Group</small>" if row.group else ""
         cells = []
         for column in COLUMNS:

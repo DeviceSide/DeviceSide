@@ -458,13 +458,40 @@ def _judge(
     )
 
 
+def _falls_back(judged: _Judged) -> bool:
+    """Whether a native group's own gate sends it to its members, each judged alone: it is neither run nor a
+    device's refusal, and its members are known; one held in Labs falls back only by its classes alone (Gate)."""
+    decided = judged.gate
+    return (
+        decided is not None
+        and decided.outcome is not Outcome.RUNS
+        and not judged.device
+        and judged.members is not None
+        and (decided.outcome is not Outcome.LABS or decided.by_class_alone)
+    )
+
+
 def judge(
     hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, target: Target, request: Request, labs_on: bool
 ) -> Gate | None:
     """What a call of the adapter's action carrying `request` does on the target, judged by the dispatcher's own
     planning (_judge): supports() and a member it can't address first, then its class, then the gate. None for an
-    empty group, which a call skips silently, and for a call left nothing to send, which is unchanged."""
-    return _judge(hass, registry, adapter, request, target, labs_on).gate
+    empty group, which a call skips silently, and for a call left nothing to send, which is unchanged.
+
+    A native group that falls back to its members (_falls_back) gets theirs, each judged alone as the call plans
+    them (_members_planned), those with no decision left out: the first refusal, else Labs, else not built yet,
+    else it runs at the weakest member's level. A group with no member decided gets its own gate."""
+    judged = _judge(hass, registry, adapter, request, target, labs_on)
+    if not _falls_back(judged) or judged.members is None:
+        return judged.gate
+    planned = _members_planned(judged.members, set(), _by_device([target]))
+    gates = [g for member in planned if (g := judge(hass, registry, adapter, member, request, labs_on)) is not None]
+    if not gates:
+        return judged.gate
+    for outcome in (Outcome.REFUSED, Outcome.LABS, Outcome.NOT_BUILT):
+        if match := next((g for g in gates if g.outcome is outcome), None):
+            return match
+    return Gate(Outcome.RUNS, min(g.level for g in gates if g.level is not None))
 
 
 class Dispatcher:
@@ -653,7 +680,7 @@ class Dispatcher:
                 results += _skip(
                     _device_of(target), target.named, decided.reason, adapter.integration, decided.why, title
                 )
-            elif judged.members is not None and (decided.outcome is not Outcome.LABS or decided.by_class_alone):
+            elif _falls_back(judged):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused or
                 # flagged one is skipped as indirect (raised only if named on its own). So a group with one member
                 # not yet placed runs the rest, where the call harms a class; one with a member that takes a call of

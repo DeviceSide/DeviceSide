@@ -6,7 +6,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.data_entry_flow import FlowResultType
@@ -22,6 +22,7 @@ from custom_components.deviceside.core.scope import (
     AdapterScope,
     NoKnownMethod,
     NotBuilt,
+    OwnCall,
     Unplaced,
     documented,
     labs,
@@ -116,6 +117,18 @@ async def test_a_cell_is_what_a_call_on_the_entity_does(hass, fake, reset_script
     else:
         assert gate.reason == reason
         assert await refusal(hass, "turn_off_for", data) == reason
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_whose_member_takes_its_own_call_shows_the_members_mark(hass, fake):
+    """A call on the group runs the member (the dispatcher's fallback), so the cell is the member's, not own_call's."""
+    add_fake_entity(hass, fake, "switch.e")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.e"])
+    own = OwnCall(AsyncMock(), LIMITS)
+    scope = replace(GATED, capabilities=verified("E"), not_built={}, own_calls={"E": own})
+
+    with patch.object(FakeTurnOffFor, "scope", scope):
+        assert cell_of(hass, "switch.fake_group") == Cell(Mark.VERIFIED)
 
 
 @pytest.mark.usefixtures("classed")
