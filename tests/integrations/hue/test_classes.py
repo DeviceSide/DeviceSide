@@ -13,7 +13,7 @@ from custom_components.deviceside.integrations.hue import ADAPTERS, INTEGRATION,
 
 from .conftest import SENT, STOP, call, color_lamp, hs_xy, lamp
 from ...conftest import call as call_service
-from ...conftest import result
+from ...conftest import refusal, result
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry, light_action
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -25,11 +25,22 @@ def capability(hass, entity_id: str) -> str | None:
     return INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id))
 
 
+GL_C_008P = ("GLEDOPTO", "GL-C-008P")
+
+
 @pytest.mark.parametrize(
-    ("manufacturer", "expected"), [(classes.SIGNIFY, "hue"), (IKEA, "other"), ("Signify", "other")]
+    ("manufacturer", "model_id", "expected"),
+    [
+        (classes.SIGNIFY, None, "hue"),
+        (IKEA, None, "other"),
+        ("Signify", None, "other"),
+        (*GL_C_008P, "gledopto_gl_c_008p"),
+        ("Gledopto", "C-ZB-LC20v2-RGBCCT", "gledopto_gl_c_008p"),
+        ("GLEDOPTO", "GL-C-006P", "other"),
+    ],
 )
-async def test_a_light_is_classed_by_its_devices_manufacturer(hass, bridge, manufacturer, expected):
-    entity_id = await lamp(hass, bridge, manufacturer=manufacturer)
+async def test_a_light_is_classed_by_its_devices_manufacturer_and_model(hass, bridge, manufacturer, model_id, expected):
+    entity_id = await lamp(hass, bridge, manufacturer=manufacturer, model_id=model_id)
 
     assert capability(hass, entity_id) == expected
 
@@ -41,10 +52,13 @@ async def test_a_light_with_no_device_cant_be_classed(hass, bridge):
     assert capability(hass, entity_id) is None
 
 
-async def scene(hass, bridge, manufacturers: dict[str, str], *, smart: bool = False, missing: bool = False) -> str:
+async def scene(
+    hass, bridge, manufacturers: dict[str, str | tuple[str, str]], *, smart: bool = False, missing: bool = False
+) -> str:
     """scene.relax over one light per entry, made by that manufacturer; `missing` adds one the bridge doesn't list."""
-    for light_id, manufacturer in manufacturers.items():
-        bridge.light(light_id, manufacturer=manufacturer)
+    for light_id, maker in manufacturers.items():
+        manufacturer, model_id = maker if isinstance(maker, tuple) else (maker, None)
+        bridge.light(light_id, manufacturer=manufacturer, model_id=model_id)
     actions = [light_action(light_id, dimming={"brightness": 50.0}) for light_id in manufacturers]
     if missing:
         actions.append(light_action("gone", dimming={"brightness": 50.0}))
@@ -58,6 +72,8 @@ async def scene(hass, bridge, manufacturers: dict[str, str], *, smart: bool = Fa
     [
         pytest.param({"one": classes.SIGNIFY, "two": classes.SIGNIFY}, "hue", id="hue"),
         pytest.param({"one": classes.SIGNIFY, "two": IKEA}, "other", id="one_other"),
+        pytest.param({"one": classes.SIGNIFY, "two": GL_C_008P}, "gledopto_gl_c_008p", id="one_gl_c_008p"),
+        pytest.param({"one": IKEA, "two": GL_C_008P}, "other", id="two_others"),
         pytest.param({}, "hue", id="writes_none"),
     ],
 )
@@ -93,8 +109,12 @@ def get_entry(hass) -> str:
 
 @pytest.mark.parametrize("adapter", ADAPTERS, ids=lambda adapter: adapter.action)
 def test_hue_is_verified_and_other_documented_on_every_adapter(adapter):
-    # other on a bridge's one request (docs/evidence.md, Levels): every light gets the same CLIP v2 request.
-    assert adapter.scope.capabilities == {"hue": Level.VERIFIED, "other": Level.DOCUMENTED}
+    # other on a bridge's one request (docs/evidence.md, Levels): every light gets the same CLIP v2 request. The
+    # GL-C-008P shares other's levels but get_attributes', as it misreports its color temperature mode (core #93459).
+    levels = {"hue": Level.VERIFIED, "other": Level.DOCUMENTED}
+    if adapter.action != "get_attributes":
+        levels["gledopto_gl_c_008p"] = Level.DOCUMENTED
+    assert adapter.scope.capabilities == levels
 
 
 def test_only_set_scene_lists_smart_scenes_and_none_harms():
@@ -133,6 +153,23 @@ async def test_another_makers_light_runs_every_light_action_with_labs_off(hass, 
     assert list(response) == [entity_id]
     # A read sends nothing; every write goes to the light.
     assert [path for path, _ in bridge.puts] == ([] if action == "get_attributes" else ["light/light-1"])
+
+
+@pytest.mark.parametrize("action", [action for action in LIGHT_ACTIONS if action != "get_attributes"])
+async def test_a_gl_c_008p_runs_every_light_action_but_get_attributes(hass, bridge, action):
+    entity_id = await color_lamp(hass, bridge, manufacturer=GL_C_008P[0], model_id=GL_C_008P[1])
+
+    response = await call(hass, action, {"entity_id": entity_id, **LIGHT_ACTIONS[action]})
+
+    assert list(response) == [entity_id]
+    assert [path for path, _ in bridge.puts] == ["light/light-1"]
+
+
+async def test_a_gl_c_008p_is_refused_get_attributes_as_not_built(hass, bridge):
+    # It misreports its color temperature mode (core #93459), and get_attributes reports the light's actual value.
+    entity_id = await color_lamp(hass, bridge, manufacturer=GL_C_008P[0], model_id=GL_C_008P[1])
+
+    assert await refusal(hass, "get_attributes", {"entity_id": entity_id}) == "not_built"
 
 
 async def test_a_scene_writing_another_makers_light_runs_with_labs_off(hass, bridge):

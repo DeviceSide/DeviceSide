@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util.color import color_temperature_mired_to_kelvin
 
 from .bridge import bridge_api, resource_id
-from .classes import LEVELS
+from .classes import GET_ATTRIBUTES_LEVELS
 from .fade import light_xy, lit
 from .transition_cache import HueTransitionCache, transition_cache
 from ...core.adapter import Adapter
@@ -36,8 +36,8 @@ def in_color_temp_mode(light: Light) -> bool:
     """Whether the light is in color temperature mode, as core's hue integration decides it for a certified light
     (v2/light.py, color_temp_active; internals.md, Device classes): its `mirek_valid`. Never with no mirek, or 0, which
     core treats as no value (and which would divide by zero). A non-certified light may not set `mirek_valid`
-    reliably, where core reads its mode from its own last command instead: a known departure on `other`
-    (internals.md, Device classes)."""
+    reliably: the GL-C-008P is split off for it, and other uncertified lights would be on a report (internals.md, Device
+    classes). Core reads such a light's mode from its own last command, which get_attributes never reports."""
     if not (feature := light.color_temperature) or not feature.mirek:
         return False
     return feature.mirek_valid
@@ -78,7 +78,9 @@ class HueGetAttributes(Adapter[Request]):
 
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "hue"
-    scope: ClassVar[AdapterScope] = AdapterScope(capabilities=LEVELS, confirmable=True, native_groups=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        capabilities=GET_ATTRIBUTES_LEVELS, confirmable=True, native_groups=True
+    )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:

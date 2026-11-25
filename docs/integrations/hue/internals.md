@@ -75,10 +75,20 @@ So `other` holds every other maker's light. It is Documented on every action, on
   mid-transition (the LED1624G9 page).
 - **Color fades** (`raise_saturation`, `lower_saturation`): DeviceSide sends the xy unclamped where a light reports
   no gamut (above), leaving the bridge to fit it.
-- **`get_attributes`**: a non-certified light doesn't set `mirek_valid` reliably (above;
-  [core PR #97263](https://github.com/home-assistant/core/pull/97263)), where core reads its color temperature mode
-  from its own last command. DeviceSide reads only `mirek_valid`, so such a light may read no color temperature, or a
-  stale one in color mode.
+- **`get_attributes`**: a non-certified light may not set `mirek_valid` reliably (above), and DeviceSide reads only
+  `mirek_valid` for color temperature mode, so such a light may read no color temperature, or a stale one in color
+  mode. Core reads such a light's mode from its own last command
+  ([core PR #97263](https://github.com/home-assistant/core/pull/97263)), a cached write `get_attributes` never
+  reports.
+
+**Split off:** the Gledopto GL-C-008P (`gledopto_gl_c_008p`), not built on `get_attributes`, as Home Assistant showed
+its color temperature as a color, a `mirek_valid` it left unset
+([core #93459](https://github.com/home-assistant/core/issues/93459), firmware 11076802; fixed by PR #97263). Its class
+keys on the manufacturer `GLEDOPTO`, in any case, and the model IDs zigbee-herdsman-converters lists for it
+(`GL-C-008P`, `C-ZB-LC20v2-RGBCCT`,
+[`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L666-L668)),
+the Zigbee strings the bridge passes on as `product_data`: inferred, as no Hue diagnostics in the issue show them. Any
+other uncertified light reported the same way is split off alike.
 
 ## Modules
 

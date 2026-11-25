@@ -111,7 +111,7 @@ explained to users in [integrations.md](integrations.md#what-cant-be-done-and-wh
   its direction actions (`cover.open_cover`). `sweep_time` is how long a full range takes, `limit` ends the move
   early, and `stop` halts every move on the target. No color temperature move: every stop of a Hue fade jumps visibly.
 - **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read
-  what HA doesn't show. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
+  what HA doesn't show: the device's actual values (mid-move, where the move has reached), never a cached last write. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
 - **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
   Zigbee would follow the same pattern.
 

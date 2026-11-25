@@ -76,8 +76,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
     [Levels](#levels) admits it; one no route admits ships in Labs on a sourced call, or isn't built. This prevents
     refusing users a feature their device likely takes, and replaces flagging each new item until its own pass is on
     record.
-11. **Never withdraw silently.** A feature shipped outside Labs in a tagged release is withdrawn (refused, flagged or
-    dropped) only on a report or a root-caused finding, and the notes of the release that withdraws it say so. This
+11. **Never withdraw silently.** A feature shipped outside Labs in a release (not an RC) is withdrawn (refused, flagged
+    or dropped) only on a report or a root-caused finding, and the notes of the release that withdraws it say so. This
     prevents an upgrade breaking a user's working setup without a word, and replaces a demotion that landed with no
     word in the release notes.
 

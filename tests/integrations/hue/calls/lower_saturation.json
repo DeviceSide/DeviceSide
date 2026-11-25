@@ -360,6 +360,65 @@
   "result": [
    {
     "clamped_to": null,
+    "classes": "gledopto_gl_c_008p",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.323,
+         "y": 0.329
+        }
+       },
+       "dynamics": {
+        "duration": 2451
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "lower_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
     "classes": "other",
     "data": null,
     "detail": null,

@@ -41,11 +41,20 @@ gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scen
 result from any of these features shows at once and one tap fixes it ([internals](internals.md#device-classes)).
 
 Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
-and color at a time, some come on when written while off, and some don't report color temperature as Hue lights do,
-so `get_attributes` may leave it out. If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
+and color at a time, some come on when written while off, and some don't report color temperature mode as Hue lights do
+([one is known](#gledopto-gl-c-008p)). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
 with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model a class of its
 own and refuses it the action it fails (`not_built`, or `no_known_method` with why, where no command is known to
 work), and every other light keeps it.
+
+### Gledopto GL-C-008P
+
+Gledopto's GL-C-008P LED controller (model ID `GL-C-008P` or `C-ZB-LC20v2-RGBCCT`) gets every feature other brands'
+lights get, but `get_attributes`. It doesn't tell the bridge reliably when it's in color temperature mode, so Home
+Assistant has shown a color temperature it set as a blue color ([core #93459](https://github.com/home-assistant/core/issues/93459)).
+`get_attributes` reports the light's actual values, so it refuses this controller (`not_built`); read Home
+Assistant's own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, which core keeps from its
+own last command ([internals](internals.md#device-classes)).
 
 ## Smooth dimming
 

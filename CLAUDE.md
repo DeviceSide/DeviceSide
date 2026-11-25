@@ -70,8 +70,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
    action's call transcript, and a change reopens it only when a segment it was tested on changes or goes.
 10. Include unless harmful: an item ships outside Labs unless it is likely to harm or no route in `docs/evidence.md`
     (Levels) admits it.
-11. Never withdraw silently: a feature shipped outside Labs in a tagged release is withdrawn only on a report or a
-    root-caused finding, and its release notes name the withdrawal.
+11. Never withdraw silently: a feature shipped outside Labs in a release (not an RC) is withdrawn only on a report or
+    a root-caused finding, and its release notes name the withdrawal.
 
 The levels (Verified, Documented, Labs), device classes, caveats, the release gate and the sign-off
 format:

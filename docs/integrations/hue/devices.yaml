@@ -13,3 +13,6 @@ capabilities:
   other:
     phrase: other brands' lights
     section: Other brands
+  gledopto_gl_c_008p:
+    phrase: Gledopto GL-C-008P controllers
+    section: Gledopto GL-C-008P

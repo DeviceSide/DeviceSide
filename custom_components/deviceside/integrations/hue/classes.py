@@ -2,24 +2,25 @@
 
 DeviceSide sends the bridge the same CLIP v2 request for every light; the bridge picks the Zigbee call, and nothing in
 CLIP v2 shows which one it picked or routes a light by any field DeviceSide could read (internals.md, Device
-classes). So the class keys on the device's identity, the manufacturer core's hue integration registers from the
-bridge's `product_data.manufacturer_name`:
+classes). So the class keys on the device's identity, the manufacturer and model ID core's hue integration registers
+from the bridge's `product_data`:
 
 - `hue`: Signify's own lights, which every record ran on.
 - `other`, the default class: every other maker's light the bridge has paired, Friends of Hue certified ones
   included, as certification isn't Signify's firmware and no record reaches one.
+- `gledopto_gl_c_008p`: Gledopto's GL-C-008P controller, split off `other` as it misreports its color temperature
+  mode, so get_attributes doesn't serve it (internals.md, Device classes).
 - `smart_scene`: an All-Day scene, which has no fixed settings to write (set_scene's no known method entry).
 
-A scene is classed by the lights it writes: `other` when any of them is, else `hue`, as set_scene's call reaches each
-light; one that writes none, or that the bridge no longer lists (set_scene rejects it), is `hue`, as no light is
-reached. A room or zone is
-no device of its own: the dispatcher classes it by its members (bridge.expand_group), a light with no entity in Home
-Assistant included. Home Assistant registers every bridge device with its product data when the entry loads, so a
-device is placed once it has an entity: nothing is provisional (no Unplaced), and as no Hue action's failure harms
-(none is timed) nothing needs to be.
+A scene is classed by the lights it writes: the one class other than `hue` among them, `other` when they hold more,
+else `hue`, as set_scene's call reaches each light; one that writes none, or that the bridge no longer lists
+(set_scene rejects it), is `hue`, as no light is reached. A room or zone is no device of its own: the dispatcher
+classes it by its members (bridge.expand_group), a light with no entity in Home Assistant included. Home Assistant
+registers every bridge device with its product data when the entry loads, so a device is placed once it has an entity:
+nothing is provisional (no Unplaced), and as no Hue action's failure harms (none is timed) nothing needs to be.
 
-Every adapter's scope holds LEVELS; why `other` is Documented is in internals.md (Device classes) and index.md (Other
-brands).
+Every adapter's scope holds LEVELS, but get_attributes's holds GET_ATTRIBUTES_LEVELS; why each class sits where it does
+is in internals.md (Device classes) and index.md.
 """
 
 from aiohue.v2.models.resource import ResourceTypes
@@ -35,22 +36,32 @@ from ...core.scope import OTHER, NoKnownMethod, documented, verified
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
 SIGNIFY = "Signify Netherlands B.V."
+# Gledopto's GL-C-008P, by the Zigbee strings the bridge passes on as `manufacturer_name` and `model_id`: its basic
+# cluster's `GLEDOPTO` and either model ID zigbee-herdsman-converters lists for it (src/devices/gledopto.ts, at
+# afdaa028); a manufacturer matched in any case, as Zigbee2MQTT's Gledopto rule does. internals.md, Device classes.
+GLEDOPTO = "gledopto"
+GL_C_008P_MODEL_IDS = frozenset({"GL-C-008P", "C-ZB-LC20v2-RGBCCT"})
 
 HUE = "hue"
+GL_C_008P = "gledopto_gl_c_008p"
 SMART_SCENE = "smart_scene"
 # Each class's domains (IntegrationInfo.classes): a light, Hue's smart plug included, which the bridge shows as one,
 # and a scene, classed by the lights it writes; a smart scene is a scene alone.
 CLASSES = {
     HUE: frozenset({Platform.LIGHT, Platform.SCENE}),
     OTHER: frozenset({Platform.LIGHT, Platform.SCENE}),
+    GL_C_008P: frozenset({Platform.LIGHT, Platform.SCENE}),
     SMART_SCENE: frozenset({Platform.SCENE}),
 }
 
 # Every adapter's levels: Verified on Hue, whose lights every record ran on; Documented on `other`, on a bridge's one
 # request (docs/evidence.md, Levels): DeviceSide sends every light the same CLIP v2 light update, which Hue Smooth
 # Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and no Hue action's failure harms
-# (internals.md, Device classes).
-LEVELS = verified(HUE) | documented(OTHER)
+# (internals.md, Device classes). The GL-C-008P takes `other`'s levels on every action but get_attributes.
+LEVELS = verified(HUE) | documented(OTHER, GL_C_008P)
+# get_attributes reads `mirek_valid` for color temperature mode, which the GL-C-008P doesn't set reliably (core
+# #93459): not built there (a NotBuilt entry is only for an action whose failure harms).
+GET_ATTRIBUTES_LEVELS = verified(HUE) | documented(OTHER)
 
 _PAGE = DOCS_URL + "docs/integrations/hue/index.md"
 SET_SCENE_NO_KNOWN_METHOD = {
@@ -65,8 +76,12 @@ SET_SCENE_NO_KNOWN_METHOD = {
 
 
 def device_class(device: dr.DeviceEntry) -> str:
-    """A light's class by its registry device: `hue` for Signify's, else the default."""
-    return HUE if device.manufacturer == SIGNIFY else OTHER
+    """A light's class by its registry device: `hue` for Signify's, the GL-C-008P's own, else the default."""
+    if device.manufacturer == SIGNIFY:
+        return HUE
+    if (device.manufacturer or "").casefold() == GLEDOPTO and device.model_id in GL_C_008P_MODEL_IDS:
+        return GL_C_008P
+    return OTHER
 
 
 def capability(hass: HomeAssistant, target: Target) -> str | None:
@@ -93,4 +108,7 @@ def _scene_class(hass: HomeAssistant, target: Target) -> str | None:
         if (device := light_device(hass, target, light)) is None:
             return None
         found.add(device_class(device))
-    return OTHER if OTHER in found else HUE
+    others = found - {HUE}
+    if len(others) == 1:
+        return others.pop()
+    return OTHER if others else HUE
