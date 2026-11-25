@@ -81,6 +81,8 @@ def test_the_collection_finds_what_the_code_raises():
     assert _USED["options.step"] == {
         "init",
         "settings",
+        "coverage",
+        "coverage_view",
         "report_device",
         "report_link",
         "propose_device",

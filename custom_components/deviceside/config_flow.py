@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from dataclasses import dataclass
 from urllib.parse import quote, urlencode
@@ -15,6 +16,7 @@ from homeassistant.helpers.selector import (
 )
 from homeassistant.loader import async_get_integration
 
+from . import coverage
 from .const import (
     CONF_LABS,
     CONF_PREDICTED_STATE,
@@ -270,8 +272,45 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
 
     _issue_url: str = ""
 
+    _wait: asyncio.Task[None] | None = None
+
     async def async_step_init(self, user_input=None):
-        return self.async_show_menu(step_id="init", menu_options=["settings", *_FORMS_BY_STEP])
+        return self.async_show_menu(step_id="init", menu_options=["settings", "coverage", *_FORMS_BY_STEP])
+
+    async def async_step_coverage(self, user_input=None):
+        """Device coverage: while an integration is still listing its devices (coverage.waiting), HA's progress
+        spinner for at most coverage.WAIT_S, then the view."""
+        if self._wait is None:
+            if not (pending := coverage.waiting(self.hass)):
+                return await self.async_step_coverage_view()
+            self._wait = self.hass.async_create_task(coverage.settle(pending))
+        if not self._wait.done():
+            return self.async_show_progress(
+                step_id="coverage", progress_action="waiting_for_devices", progress_task=self._wait
+            )
+        return self.async_show_progress_done(next_step_id="coverage_view")
+
+    async def async_step_coverage_view(self, user_input=None):
+        """What DeviceSide runs on each light and switch, with the Labs option under it. Submitting saves the option,
+        which reloads the entry only if it changed (OptionsFlowWithReload)."""
+        options = dict(self.config_entry.options)
+        if user_input is not None:
+            if user_input[CONF_LABS] != options.get(CONF_LABS, LABS_DEFAULT):
+                options[CONF_LABS] = user_input[CONF_LABS]
+            return self.async_create_entry(data=options)
+        found = await coverage.collect(self.hass)
+        return self.async_show_form(
+            step_id="coverage_view",
+            data_schema=vol.Schema({vol.Required(CONF_LABS, default=options.get(CONF_LABS, LABS_DEFAULT)): bool}),
+            description_placeholders={
+                "features": str(found.features_now),
+                "devices": str(found.devices_now),
+                "legend": coverage.legend(),
+                "table": coverage.table(self.hass, found),
+                "labs_features": str(found.features_in_labs),
+                "labs_devices": str(found.devices_in_labs),
+            },
+        )
 
     async def async_step_report_device(self, user_input=None):
         return await self._pick_entities(_FORMS_BY_STEP["report_device"], user_input)

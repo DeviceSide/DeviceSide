@@ -2,6 +2,7 @@
 
 from . import lifecycle
 from .addressing import is_z2m_group
+from .bridge_cache import capability_ready
 from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
 from .clear_auto_off import Z2MClearAutoOff
 from .detect import detect
@@ -31,6 +32,7 @@ INTEGRATION = IntegrationInfo(
     is_group=is_z2m_group,
     expand_group=expand_group,
     capability=capability,
+    capability_ready=capability_ready,
     classes=CLASSES,
     default_class=OTHER,
     families=FAMILIES,
