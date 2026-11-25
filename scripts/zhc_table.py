@@ -20,7 +20,7 @@ saturation fade is `moveToColor`, not the call on record (docs/research/2026-11-
              full release, else **leaves**; and trait changes on the families' definitions, flagged, never
              classifying (which needs the previous pin built too). Needs git, node and network.
 --check      No network: the table loads, every EXCLUDED and KEPT row has its source or reason, no model is in both or
-             KEPT while a member, and the page is current.
+             KEPT while a member, PAIRS holds no split-off's key (`--write` drops them), and the page is current.
 """
 
 import argparse
@@ -30,7 +30,7 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -100,14 +100,50 @@ def _pairs(fingerprints: Iterable) -> tuple[tuple[str, str], ...]:
 
 def published(row: Mapping) -> list[tuple[str, str, tuple[str, ...], tuple[tuple[str, str], ...]]]:
     """The (model, vendor, zigbee_models, fingerprints) a definition can be published under: its own, and each white
-    label with a fingerprint, which Zigbee2MQTT names when the fingerprint matches (ZHC's findByDevice). A white label
-    takes its own fingerprints, and the definition keeps the rest."""
+    label with a fingerprint, which Zigbee2MQTT names when the fingerprint matches (ZHC's findByDevice). Each has its
+    own fingerprints (resolve.mjs leaves the white labels' out of the definition's)."""
     labels = [label for label in row["white_labels"] if label["fingerprinted"]]
-    theirs = {pair for label in labels for pair in _pairs(label.get("fingerprints", ()))}
-    own = tuple(pair for pair in _pairs(row.get("fingerprints", ())) if pair not in theirs)
-    return [(row["model"], row["vendor"], tuple(dict.fromkeys(row["zigbee_models"])), own)] + [
-        (label["model"], label["vendor"], (), _pairs(label.get("fingerprints", ()))) for label in labels
+    return [(row["model"], row["vendor"], tuple(dict.fromkeys(row["zigbee_models"])), _pairs(row["fingerprints"]))] + [
+        (label["model"], label["vendor"], (), _pairs(label["fingerprints"])) for label in labels
     ]
+
+
+Key = tuple[str, str]  # (model ID, manufacturer), "" where absent: a zigbeeModel z is (z, "")
+
+
+def keys(zigbee_models: Iterable[str], fingerprints: Iterable[Key]) -> set[Key]:
+    return {(zigbee_model, "") for zigbee_model in zigbee_models} | set(fingerprints)
+
+
+def member_pairs(entries: Iterable[tuple[str, set[Key]]], member: Mapping[str, bool]) -> dict[Key, bool]:
+    """Each key a member lists whose every definition is a member, with color_hs when all of them expose it
+    (`member`: a member's model, not excluded, and its color_hs). A key's definitions are those listing it or a key
+    it overlaps: for (m, mf), (m, "") and ("", mf); for (m, ""), any (m, *); for ("", mf), any (*, mf). That isn't
+    ZHC's matcher, and (m, "") isn't checked against ("", mf)."""
+    listing: dict[Key, set[str]] = {}
+    for model, held in entries:
+        for key in held:
+            listing.setdefault(key, set()).add(model)
+    by_model: dict[str, set[str]] = {}
+    by_manufacturer: dict[str, set[str]] = {}
+    for (model_id, manufacturer), models in listing.items():
+        by_model.setdefault(model_id, set()).update(models)
+        by_manufacturer.setdefault(manufacturer, set()).update(models)
+    none: set[str] = set()
+
+    def definitions(key: Key) -> set[str]:
+        model_id, manufacturer = key
+        if model_id and manufacturer:
+            return listing[key] | listing.get((model_id, ""), none) | listing.get(("", manufacturer), none)
+        if model_id:
+            return by_model[model_id]
+        return by_manufacturer[manufacturer] if manufacturer else none | {""}
+
+    found = {}
+    for key in listing:
+        if (models := definitions(key)) and all(model in member for model in models):
+            found[key] = all(member[model] for model in models)
+    return dict(sorted(found.items()))
 
 
 @dataclass(frozen=True)
@@ -119,10 +155,13 @@ class Resolved:
     members: dict[str, Row]
     ambiguous: list[str]
     traits: dict[str, tuple]
+    # The member keys (`member_pairs`), with color_hs.
+    pairs: dict[Key, bool] = field(default_factory=dict)
 
 
-def table(resolved: Mapping) -> Resolved:
-    """The members of one resolved ZHC release (resolve.mjs's output)."""
+def table(resolved: Mapping, excluded: Iterable[str] = ()) -> Resolved:
+    """The members of one resolved ZHC release (resolve.mjs's output), and the member keys, none of an `excluded`
+    model's."""
     seen: dict[str, list[tuple[Row | None, tuple]]] = {}
     for row in resolved["lights"]:
         member = not departures(row)
@@ -140,7 +179,14 @@ def table(resolved: Mapping) -> Resolved:
         elif rows[0][0] is not None:
             members[model] = rows[0][0]
     traits = {model: rows[0][1] for model, rows in seen.items() if len(rows) == 1 and rows[0][1]}
-    return Resolved(dict(sorted(members.items())), sorted(ambiguous), traits)
+    every = [
+        (model, keys(zigbee_models, fingerprints))
+        for row in [*resolved["lights"], *resolved.get("other_strings", ())]
+        for model, _, zigbee_models, fingerprints in published(row)
+    ]
+    out = set(excluded)
+    member = {model: row[1] for model, row in members.items() if model not in out}
+    return Resolved(dict(sorted(members.items())), sorted(ambiguous), traits, member_pairs(every, member))
 
 
 # The table module.
@@ -159,7 +205,11 @@ def members(module: SimpleNamespace) -> frozenset[str]:
     )
 
 
-def block(pin: str, models: Mapping[str, Row]) -> str:
+def block(
+    pin: str,
+    models: Mapping[str, Row],
+    pairs: Mapping[Key, bool] | None = None,
+) -> str:
     """The generated block, markers included, one row a line (`pin` runs ruff format on the file after)."""
     lines = [
         BEGIN,
@@ -167,6 +217,10 @@ def block(pin: str, models: Mapping[str, Row]) -> str:
         "# A member's definition model, with its row (Light).",
         "MODELS: dict[str, Light] = {",
         *(f"    {_str(model)}: Light{_literal(tuple(row))}," for model, row in sorted(models.items())),
+        "}",
+        "# The member keys: (model ID, manufacturer), with whether every definition under it exposes color_hs.",
+        "PAIRS: dict[tuple[str, str], bool] = {",
+        *(f"    {_literal(key)}: {hs!r}," for key, hs in sorted((pairs or {}).items())),
         "}",
         END,
     ]
@@ -185,10 +239,26 @@ def _literal(value) -> str:
     return _str(value) if isinstance(value, str) else repr(value)
 
 
-def rewrite(text: str, pin: str, models: Mapping[str, Row]) -> str:
+def rewrite(text: str, pin: str, models: Mapping[str, Row], pairs: Mapping[Key, bool] | None = None) -> str:
     """The module text with its generated block replaced, the hand-kept text around it untouched."""
     start, end = text.index(BEGIN), text.index(END) + len(END)
-    return text[:start] + block(pin, models) + text[end:]
+    return text[:start] + block(pin, models, pairs) + text[end:]
+
+
+def prune(text: str) -> str:
+    """The module text with the PAIRS keys an EXCLUDED row lists dropped: a split-off needs no --pin."""
+    module = load(text)
+    return rewrite(
+        text,
+        module.ZHC_RELEASE,
+        module.MODELS,
+        {k: hs for k, hs in module.PAIRS.items() if k not in excluded_keys(module)},
+    )
+
+
+def excluded_keys(module: SimpleNamespace) -> set[Key]:
+    rows = [module.MODELS[row.model] for row in module.EXCLUDED if row.model in module.MODELS]
+    return {key for row in rows for key in keys(row[2], row[3])}
 
 
 # The page.
@@ -267,7 +337,7 @@ def check(repo: Path = REPO) -> list[str]:
         problems.append("ZHC_RELEASE names no ZHC release")
     if not module.MODELS:
         problems.append("MODELS is empty")
-    problems += row_problems(module)
+    problems += row_problems(module) + pair_problems(module)
     if not problems:
         path = repo / PAGE
         if not path.exists() or path.read_text() != page(module):
@@ -291,6 +361,27 @@ def row_problems(module: SimpleNamespace) -> list[str]:
             problems.append(f"KEPT {row.model!r} is a member again: drop its row")
     if both := sorted({row.model for row in module.EXCLUDED} & {row.model for row in module.KEPT}):
         problems.append(f"both EXCLUDED and KEPT: {both}")
+    return problems
+
+
+def pair_problems(module: SimpleNamespace) -> list[str]:
+    """PAIRS' problems, offline: a key an EXCLUDED row lists, one no member row lists, or color_hs where a member row
+    listing the key doesn't expose it. The bump computes PAIRS over every ZHC definition; this catches a hand edit
+    and a new split-off (`--check --write` drops its keys)."""
+    out = {row.model for row in module.EXCLUDED}
+    rows = [
+        (row, model not in out) for model, row in [*module.MODELS.items(), *((r.model, r.light) for r in module.KEPT)]
+    ]
+    held = {key for row, member in rows if member for key in keys(row[2], row[3])}
+    problems = []
+    if found := sorted(set(module.PAIRS) & excluded_keys(module)):
+        problems.append(f"PAIRS holds keys of an EXCLUDED row: {found}; run scripts/zhc_table.py --check --write")
+    if found := sorted(set(module.PAIRS) - held - excluded_keys(module)):
+        problems.append(f"PAIRS holds keys no member row lists: {found}")
+    if found := sorted(
+        key for row, member in rows if member and not row[1] for key in keys(row[2], row[3]) if module.PAIRS.get(key)
+    ):
+        problems.append(f"PAIRS gives color_hs to keys of a row without it: {found}")
     return problems
 
 
@@ -434,10 +525,10 @@ def pin(tag: str, repo: Path = REPO) -> str:
     module = load(text)
     previous = module.ZHC_RELEASE
     resolved = resolve(tag)
-    new = table(resolved)
+    new = table(resolved, {row.model for row in module.EXCLUDED})
     changes = family_trait_changes(resolve(previous), resolved) if previous != tag else []
     body = proposal(tag, previous, module.MODELS, new, released_members(repo), module, changes)
-    path.write_text(rewrite(text, tag, new.members))
+    path.write_text(rewrite(text, tag, new.members, new.pairs))
     subprocess.run([sys.executable, "-m", "ruff", "format", "-q", str(path)], check=True)
     (repo / PAGE).write_text(page(load(path.read_text())))
     return body
@@ -448,12 +539,18 @@ def main(argv: list[str] | None = None, repo: Path = REPO) -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--pin", metavar="TAG", help="the ZHC release tag to regenerate at")
     group.add_argument("--check", action="store_true", help="check the table and page, no network")
-    parser.add_argument("--write", action="store_true", help="with --check: rewrite a stale page")
+    parser.add_argument(
+        "--write", action="store_true", help="with --check: drop a split-off's PAIRS keys and rewrite a stale page"
+    )
     args = parser.parse_args(argv)
     if args.pin:
         print(pin(args.pin, repo), end="")
         return 0
     if args.write:
+        table_path = repo / TABLE
+        if (pruned := prune(text := table_path.read_text())) != text:
+            table_path.write_text(pruned)
+            subprocess.run([sys.executable, "-m", "ruff", "format", "-q", str(table_path)], check=True)
         (repo / PAGE).parent.mkdir(parents=True, exist_ok=True)
         (repo / PAGE).write_text(page(load((repo / TABLE).read_text())))
     problems = check(repo)

@@ -4,7 +4,13 @@ matches them on, and which it splits off. scripts/zhc_table.py generates and che
 
 import pytest
 
-from custom_components.deviceside.zigbee.standard_lights import EXCLUDED, MODELS, Light, members
+from custom_components.deviceside.zigbee.standard_lights import (
+    EXCLUDED,
+    MODELS,
+    PAIRS,
+    Light,
+    members,
+)
 
 
 def test_the_members_hold_the_survey_s_examples():
@@ -62,3 +68,27 @@ def test_every_row_has_its_zigbee_strings_in_shape():
         assert isinstance(row, Light), model
         assert all(isinstance(zigbee_model, str) for zigbee_model in row.zigbee_models), model
         assert all(len(pair) == 2 and all(isinstance(s, str) for s in pair) for pair in row.fingerprints), model
+
+
+def test_a_pair_a_split_off_shares_with_a_member_is_no_key():
+    """Paulmann's 924.70 (excluded) and 948.47/29165 (a member) differ only by firmware build, which the table drops."""
+    pair = ("RGBW", "Paulmann Licht GmbH")
+    assert pair in MODELS["924.70"].fingerprints
+    assert pair in MODELS["948.47/29165"].fingerprints
+    assert pair not in PAIRS
+
+
+def test_a_pair_a_white_label_shares_with_its_definition_is_a_key_while_both_are_members():
+    """291.46 and its white label 291.48 differ only by firmware build: the pair is on each, and keys both."""
+    pair = ("RGBWW", "Paulmann Licht GmbH")
+    assert all(pair in MODELS[model].fingerprints for model in ("291.46", "291.48"))
+    assert PAIRS[pair] is True
+
+
+def test_every_key_is_a_members_and_no_split_offs():
+    excluded = {row.model for row in EXCLUDED}
+    listed = {}
+    for model, row in MODELS.items():
+        for key in {(z, "") for z in row.zigbee_models} | set(row.fingerprints):
+            listed.setdefault(key, set()).add(model)
+    assert all(listed[key] <= members() and not listed[key] & excluded for key in PAIRS)

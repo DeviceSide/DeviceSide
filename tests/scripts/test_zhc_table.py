@@ -50,8 +50,8 @@ def test_departures(row, why):
 
 def test_table_holds_members_and_their_fingerprinted_white_labels():
     labels = [
-        {"model": "W1", "vendor": "Other", "fingerprinted": True},
-        {"model": "W2", "vendor": "Other", "fingerprinted": False},
+        {"model": "W1", "vendor": "Other", "fingerprinted": True, "fingerprints": []},
+        {"model": "W2", "vendor": "Other", "fingerprinted": False, "fingerprints": []},
     ]
     resolved = {
         "lights": [light("L1", white_labels=labels, color_hs=True, meta={"supportsHueAndSaturation": True})],
@@ -61,17 +61,66 @@ def test_table_holds_members_and_their_fingerprinted_white_labels():
     assert zt.table(resolved).members == {"L1": ("Acme", True, ("L1",), ()), "W1": ("Other", True, (), ())}
 
 
-def test_a_white_label_takes_its_own_fingerprints_and_the_definition_the_rest():
-    labels = [{"model": "W1", "vendor": "Other", "fingerprinted": True, "fingerprints": [["TS0505B", "_TZ_w1"]]}]
-    row = light("L1", white_labels=labels) | {
-        "zigbee_models": [],
-        "fingerprints": [["TS0505B", "_TZ_l1"], ["TS0505B", "_TZ_w1"]],
-    }
+def test_a_white_label_and_its_definition_each_hold_their_own_fingerprints():
+    """resolve.mjs leaves the white labels' entries out of the definition's; a pair a white label shares with its
+    definition (Paulmann's 291.46, told apart by firmware build) stays a member key while both are members."""
+    labels = [
+        {"model": "W1", "vendor": "Other", "fingerprinted": True, "fingerprints": [["TS0505B", "_TZ_w1"]]},
+        {"model": "W2", "vendor": "Other", "fingerprinted": True, "fingerprints": [["TS0505B", "_TZ_l1"]]},
+    ]
+    row = light("L1", white_labels=labels) | {"zigbee_models": [], "fingerprints": [["TS0505B", "_TZ_l1"]]}
 
-    assert zt.table({"lights": [row], "other_models": []}).members == {
+    found = zt.table({"lights": [row], "other_models": []})
+
+    assert found.members == {
         "L1": ("Acme", False, (), (("TS0505B", "_TZ_l1"),)),
         "W1": ("Other", False, (), (("TS0505B", "_TZ_w1"),)),
+        "W2": ("Other", False, (), (("TS0505B", "_TZ_l1"),)),
     }
+    assert found.pairs == {("TS0505B", "_TZ_l1"): False, ("TS0505B", "_TZ_w1"): False}
+
+
+PAULMANN = ("RGBW", "Paulmann Licht GmbH")
+
+
+@pytest.mark.parametrize(
+    ("entries", "member", "pairs"),
+    [
+        # A pair a split-off shares with a member: Paulmann's 924.70 and 948.47/29165.
+        ([("924.70", {PAULMANN}), ("948.47/29165", {PAULMANN})], {"948.47/29165": True}, {}),
+        # Both members: the key, color_hs only when both expose it.
+        ([("A", {PAULMANN}), ("B", {PAULMANN})], {"A": True, "B": False}, {PAULMANN: False}),
+        # A Zigbee model (m, "") overlaps any (m, *), and a full pair overlaps (m, "").
+        ([("A", {("bulb", "")}), ("B", {("bulb", "Acme")})], {"A": True}, {}),
+        (
+            [("A", {("bulb", "")}), ("B", {("bulb", "Acme")})],
+            {"A": True, "B": True},
+            {("bulb", ""): True, ("bulb", "Acme"): True},
+        ),
+        # A manufacturer-only fingerprint overlaps any (*, mf).
+        ([("A", {("", "_TZ_x")}), ("B", {("TS0505B", "_TZ_x")})], {"B": True}, {}),
+        # A key no non-member touches; (m, "") isn't checked against ("", mf).
+        ([("A", {("bulb", "")}), ("B", {("", "Acme")})], {"A": True}, {("bulb", ""): True}),
+    ],
+)
+def test_a_key_is_a_member_only_when_every_definition_under_it_is(entries, member, pairs):
+    assert zt.member_pairs(entries, member) == pairs
+
+
+def test_table_keeps_out_a_key_a_definition_that_is_no_light_holds():
+    resolved = {
+        "lights": [light("L1"), light("L2") | {"zigbee_models": ["solo"]}],
+        "other_models": ["S1"],
+        "other_strings": [
+            {"model": "S1", "vendor": "Acme", "zigbee_models": ["L1"], "fingerprints": [], "white_labels": []}
+        ],
+    }
+
+    assert zt.table(resolved).pairs == {("solo", ""): False}
+
+
+def test_table_keeps_out_an_excluded_models_keys():
+    assert zt.table({"lights": [light("L1"), light("L2")], "other_models": []}, {"L1"}).pairs == {("L2", ""): False}
 
 
 def test_table_leaves_out_a_model_two_definitions_publish():
@@ -127,11 +176,11 @@ KEPT: tuple[Kept, ...] = ({kept})
 '''
 
 
-def write_table(root: Path, models=None, excluded="", kept="", pin="v1.0.0") -> Path:
+def write_table(root: Path, models=None, excluded="", kept="", pin="v1.0.0", pairs=None) -> Path:
     models = {"L1": row("Acme", False), "L2": row("Müller", True)} if models is None else models
     path = root / zt.TABLE
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(TABLE_TEXT.format(block=zt.block(pin, models), excluded=excluded, kept=kept))
+    path.write_text(TABLE_TEXT.format(block=zt.block(pin, models, pairs), excluded=excluded, kept=kept))
     page = root / zt.PAGE
     page.parent.mkdir(parents=True, exist_ok=True)
     page.write_text(zt.page(zt.load(path.read_text())))
@@ -187,6 +236,32 @@ def test_check_fails_a_bad_row(tmp_path, excluded, kept, problem):
     write_table(tmp_path, excluded=excluded, kept=kept)
 
     assert any(problem in found for found in zt.check(tmp_path))
+
+
+def test_check_fails_a_split_offs_key_until_write_drops_it(tmp_path):
+    models = {"L1": ("Paulmann", True, (), (PAULMANN,)), "L2": ("Acme", False, ("L2",), ())}
+    write_table(
+        tmp_path, models=models, excluded='Excluded("L1", "stop", "https://example.com/1"),', pairs={PAULMANN: True}
+    )
+
+    assert zt.check(tmp_path) == [
+        f"PAIRS holds keys of an EXCLUDED row: {[PAULMANN]}; run scripts/zhc_table.py --check --write"
+    ]
+    assert zt.main(["--check", "--write"], repo=tmp_path) == 0
+    assert zt.load((tmp_path / zt.TABLE).read_text()).PAIRS == {}
+
+
+@pytest.mark.parametrize(
+    ("pairs", "problem"),
+    [
+        ({("x", "y"): False}, "PAIRS holds keys no member row lists: [('x', 'y')]"),
+        ({("L1", ""): True}, "PAIRS gives color_hs to keys of a row without it: [('L1', '')]"),
+    ],
+)
+def test_check_fails_a_hand_edited_key(tmp_path, pairs, problem):
+    write_table(tmp_path, models={"L1": ("Acme", False, ("L1",), ())}, pairs=pairs)
+
+    assert zt.check(tmp_path) == [problem]
 
 
 def test_check_fails_a_stale_page(tmp_path):

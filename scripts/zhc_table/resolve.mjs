@@ -80,6 +80,28 @@ function pairs(fingerprints) {
     return (fingerprints ?? []).map((f) => [f.modelID ?? "", f.manufacturerName ?? ""]);
 }
 
+// The definition's fingerprints less its white labels' (an entry equal in every field is the white label's).
+function ownFingerprints(definition) {
+    const labels = new Set(
+        (definition.whiteLabel ?? []).flatMap((w) => (w.fingerprint ?? []).map((f) => JSON.stringify(f))),
+    );
+    return (definition.fingerprint ?? []).filter((f) => !labels.has(JSON.stringify(f)));
+}
+
+// The Zigbee strings of a definition and of each white label with a fingerprint, for any definition, light or not, so
+// scripts/zhc_table.py can find the strings more than one names.
+function stringsOf(definition) {
+    return {
+        model: definition.model,
+        vendor: definition.vendor,
+        zigbee_models: definition.zigbeeModel ?? [],
+        fingerprints: pairs(ownFingerprints(definition)),
+        white_labels: (definition.whiteLabel ?? [])
+            .filter((w) => w.fingerprint?.length)
+            .map((w) => ({model: w.model, vendor: w.vendor ?? definition.vendor, fingerprinted: true, fingerprints: pairs(w.fingerprint)})),
+    };
+}
+
 // Every model string a definition can be published under: its own, and each white label's.
 function modelsOf(definition) {
     return [definition.model, ...(definition.whiteLabel ?? []).map((w) => w.model)];
@@ -88,12 +110,14 @@ function modelsOf(definition) {
 const all = devices.default ?? devices.definitions ?? devices;
 const rows = [];
 const others = new Set();
+const otherStrings = [];
 for (const original of all) {
     const definition = zhc.prepareDefinition(original);
     const exposes = exposesOf(definition);
     const lights = exposes.filter((e) => e.type === "light");
     if (lights.length === 0) {
         for (const model of modelsOf(original)) others.add(model);
+        otherStrings.push(stringsOf(original));
         continue;
     }
     rows.push({
@@ -102,7 +126,7 @@ for (const original of all) {
         zigbee_models: original.zigbeeModel ?? [],
         fingerprinted: Boolean(original.fingerprint?.length),
         fingerprint_manufacturers: [...new Set((original.fingerprint ?? []).map((f) => f.manufacturerName).filter(Boolean))],
-        fingerprints: pairs(original.fingerprint),
+        fingerprints: pairs(ownFingerprints(original)),
         white_labels: (original.whiteLabel ?? []).map((w) => ({
             model: w.model,
             vendor: w.vendor ?? definition.vendor,
@@ -116,4 +140,6 @@ for (const original of all) {
         exposes: exposes.filter((e) => e.endpoint === undefined && e.property).map((e) => e.property),
     });
 }
-process.stdout.write(JSON.stringify({definitions: all.length, lights: rows, other_models: [...others].sort()}));
+process.stdout.write(
+    JSON.stringify({definitions: all.length, lights: rows, other_models: [...others].sort(), other_strings: otherStrings}),
+);

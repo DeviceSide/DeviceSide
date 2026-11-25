@@ -128,11 +128,13 @@ family's, so a family keeps its own lights). Evidence: [the converter survey](..
   read it. One exposing `color_hs` without `supportsHueAndSaturation` is out, as its saturation fade goes out as
   `moveToColor`, not the call on record. A definition model is the key, with each white label that has a fingerprint
   (Z2M publishes its model when the fingerprint matches); a model string two definitions publish is left out.
-- **The table** is the Zigbee catalog's `zigbee/standard_lights.py`, so another Zigbee integration can read it:
-  between its markers, generated, the ZHC release and `MODELS`, each member with the Zigbee strings ZHC matches it on
-  (its zigbeeModel IDs and its fingerprints' model ID and manufacturer); outside them, hand-kept, `EXCLUDED` (a
-  split-off, its action and source, keyed on the definition model, as no rule reads firmware) and `KEPT` (a departure
-  a maintainer kept, with the reason). [The standard lights page](standard-lights.md) is rendered from it.
+- **The table** is the Zigbee catalog's `zigbee/standard_lights.py`, so another Zigbee integration can read it: between
+  its markers, generated, the ZHC release and `MODELS`, each member with the Zigbee strings ZHC matches it on (its
+  zigbeeModel IDs and its fingerprints' model ID and manufacturer), and `PAIRS`, each (model ID, manufacturer) key whose
+  every definition is a member and none a split-off, the one key another integration may use (the module docstring says
+  how); outside them, hand-kept, `EXCLUDED` (a split-off, its action and source, keyed on the definition model, as no
+  rule reads firmware) and `KEPT` (a departure a maintainer kept, with the reason). [The standard lights
+  page](standard-lights.md) is rendered from it.
 - **The bump**, the first item of each RC (the release skill): `scripts/zhc_table.py --pin <ZHC release>` clones and
   builds ZHC at the tag, resolves its definitions (`scripts/zhc_table/resolve.mjs`), rewrites the table and the page,
   and prints the bump PR's body: additions; departures, each **review** when the model was a member at the last full
