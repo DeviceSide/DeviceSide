@@ -5,15 +5,15 @@ Saturation is a color with no hue, which zigbee-herdsman-converters' light_color
 an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one halted by StopMoveStep doesn't
 (docs/integrations/zigbee2mqtt/internals.md, Tested behavior).
 
-A lower to the lowest level goes raw where every light it reaches is of a class that declares its bottom level
-(RAW_BOTTOM: Hue and Aqara 1, families/hue and families/aqara; standard lights 2, zigbee/standard_lights.py), a group
-of them included, at the highest level any of them declares: the converter sends level 1 as 2 where every light's
-definition has turnsOffAtBrightness1 (a group only when all its members' do), and a Hue bulb holds 1; it sends it as
-moveToLevelWithOnOff, which switched an unflagged Aqara bulb off, and every standard light is unflagged. A group with
-any other light keeps the converter. The raw call is a moveToLevel, not the converter's moveToLevelWithOnOff, which
-turns a light off at the minimum (rig probe 2026-11-25); below a light's MinLevel a moveToLevel clamps there and leaves
-it lit. It publishes no state, which the end read-back makes up. A raise from off keeps the converter's bottom, level
-2, which the fade up hides (internals.md, `fade`)."""
+A lower to the bottom level or below goes raw, to that level, where every light it reaches is of a class that declares
+its bottom level (RAW_BOTTOM: Hue and Aqara 1, families/hue and families/aqara; standard lights 2,
+zigbee/standard_lights.py), a group of them included, at the highest level any of them declares: the converter sends
+level 1 as 2 where every light's definition has turnsOffAtBrightness1 (a group only when all its members' do), and a
+Hue bulb holds 1; it sends it as moveToLevelWithOnOff, which switched an unflagged Aqara bulb off, and every standard
+light is unflagged. A group with any other light keeps the converter. The raw call is a moveToLevel, not the
+converter's moveToLevelWithOnOff, which turns a light off at the minimum (rig probe 2026-11-25); below a light's
+MinLevel a moveToLevel clamps there and leaves it lit. It publishes no state, which the end read-back makes up. A raise
+from off keeps the converter's bottom, level 2, which the fade up hides (internals.md, `fade`)."""
 
 import logging
 from collections.abc import Coroutine
@@ -60,8 +60,8 @@ from ...zigbee.standard_lights import STANDARD_LIGHT
 
 _LOGGER = logging.getLogger(__name__)
 
-# The classes a lower to the lowest level sends a raw moveToLevel, each with its level, declared by its owner with its
-# evidence; set_attributes uses Hue's alone.
+# The classes a lower to their bottom level or below sends a raw moveToLevel, each with that level, declared by its
+# owner with its evidence; set_attributes uses Hue's alone.
 RAW_BOTTOM: dict[str, int] = {**HUE_RAW_BOTTOM, **AQARA_RAW_BOTTOM, STANDARD_LIGHT: STANDARD_BOTTOM_LEVEL}
 
 # Z2M reads a light back within 0.7 s of a stop, and once a fade has run its published end value is right.
@@ -321,7 +321,7 @@ def brightness_fade(
     hass: HomeAssistant, cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]
 ) -> Fade | str:
     """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg); a lower to
-    the lowest level raw where every light it reaches is of a class with a bottom level (raw_bottom)."""
+    the bottom level or below raw where every light it reaches is of a class with a bottom level (raw_bottom)."""
     if isinstance(leg := brightness_leg(cache, request, lights), str):
         return leg
     up, limit, lit_lights = request.up, leg.limit, leg.lit
@@ -334,7 +334,12 @@ def brightness_fade(
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
     before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
-    if not up and payload.get("brightness") == 1 and (level := bottom_level(hass, lights)) is not None:
+    if (
+        not up
+        and "brightness" in payload
+        and (level := bottom_level(hass, lights)) is not None
+        and payload["brightness"] <= level
+    ):
         payload = raw_bottom(payload, level)
     return Fade(
         BRIGHTNESS_FIELD, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before, leg.clamped_to
@@ -342,16 +347,16 @@ def brightness_fade(
 
 
 def bottom_level(hass: HomeAssistant, reached: list[Target]) -> int | None:
-    """The level a lower to the lowest level sends raw to the lights it reaches: the highest any of their classes
-    declares (RAW_BOTTOM), so every one stays lit, or None where one's class declares none, which keeps the converter.
-    A group reaches its members."""
+    """The bottom level of the lights a lower reaches, which a lower to it or below sends raw: the highest any of their
+    classes declares (RAW_BOTTOM), so every one stays lit, or None where one's class declares none, which keeps the
+    converter. A group reaches its members."""
     levels = [RAW_BOTTOM.get(capability(hass, light)) for light in reached]
     return None if None in levels else max(levels)
 
 
 def raw_bottom(payload: dict, level: int) -> dict:
-    """A lower's publish to the lowest level as a raw moveToLevel to the level, with the converter's transtime and
-    options: the converter's moveToLevelWithOnOff would turn the light off at the minimum."""
+    """A lower's publish to the bottom level or below as a raw moveToLevel to that level, with the converter's
+    transtime and options: the converter's moveToLevelWithOnOff would turn the light off at the minimum."""
     transtime = round(payload["transition"] * 10)  # the converter's: transition in tenths
     return raw_command(
         LEVEL_CLUSTER,

@@ -181,8 +181,9 @@ light would fix the first and lowers the second to 0.4 %.
 Open with it: a mixed group (a member of `other`) goes through the converter whole, so an off member lights at the
 lower (`moveToLevelWithOnOff`, which has On/Off), where a raw `moveToLevel` leaves it off.
 
-**Why not now:** the raw call is evidenced on two classes only; `other` has no record of holding level 1 on a raw
-`moveToLevel`, and Innr's lights are reported to turn off at level 1, which a raw call would not prevent.
+**Why not now:** standard lights are, by membership, on ZHC's standard converters with no meta or override touching
+the call; `other` holds lights on overridden or non-standard converters, where a raw call would bypass whatever the
+converter handles for them.
 
 **Revisit when:**
 - a probe of an unflagged `other` light holds level 1 lit on a raw `moveToLevel`;

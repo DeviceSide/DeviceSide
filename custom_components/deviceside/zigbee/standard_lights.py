@@ -30,10 +30,11 @@ from typing import NamedTuple
 
 STANDARD_LIGHT = "standard_light"
 
-# The Level Control level a lower to the lowest level sends a standard light, as a moveToLevel with no On/Off
-# (integrations/zigbee2mqtt/fade.py): 2, 0.8 %. A with-On/Off command to the minimum switched unflagged lights off, and
-# a plain moveToLevel below a light's MinLevel clamps there and leaves it lit; 2, not 1, as no standard light has been
-# probed holding level 1 (docs/integrations/zigbee2mqtt/internals.md, `fade`). A probe of one holding 1 lit reopens it.
+# The Level Control level a lower to it or below sends a standard light, as a moveToLevel with no On/Off
+# (integrations/zigbee2mqtt/fade.py): 2, 0.8 %. A with-On/Off command to the minimum switched an unflagged light (the
+# Aqara T2) off, and a plain moveToLevel below a light's MinLevel clamps there and leaves it lit; 2, not 1, as no
+# standard light has been probed holding level 1 (docs/integrations/zigbee2mqtt/internals.md, `fade`). A probe of one
+# holding 1 lit reopens it.
 BOTTOM_LEVEL = 2
 
 

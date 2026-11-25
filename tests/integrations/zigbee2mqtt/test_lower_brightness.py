@@ -85,6 +85,24 @@ async def test_to_the_bottom_goes_raw_to_hue_aqara_and_standard_lights_alone(has
     assert commands(broker) == [(to, payload)]
 
 
+@pytest.mark.parametrize(
+    ("kind", "payload"),
+    [
+        # At or below a standard light's bottom, level 2: raw to 2. Above Hue's, level 1: the converter.
+        pytest.param("standard_light", move_to_level(2, 30), id="standard_light"),
+        pytest.param("hue_light", {"brightness": 2, "transition": 3.0}, id="hue_light"),
+    ],
+)
+async def test_to_0_8_goes_raw_at_or_below_the_bottom_level(hass, broker, kind, payload):
+    # From 60 % to 0.8 % (brightness 2) of a 5 s sweep: 3 s, transtime 30.
+    entity_id, to = bottom_target(hass, broker, kind)
+
+    response = await call(hass, "lower_brightness", {"entity_id": entity_id, "limit": 0.8})
+
+    assert response == {entity_id: SENT}
+    assert commands(broker) == [(to, payload)]
+
+
 async def test_to_the_bottom_on_a_hue_group_leaves_an_off_member_off(hass, broker):
     # moveToLevel has no On/Off, so the off member ignores it: only the lit ones are lowered (core.zcl_fade).
     room = group(hass, broker, one={}, two={"state": "off"})
