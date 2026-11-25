@@ -9,7 +9,7 @@ Jason and is recorded there as a numbered Decision. Evidence: [the converter sur
 Intent: A new Zigbee2MQTT class, other brands' standard lights, keyed on a committed table of ZHC light definitions on
 the standard converters, is Documented on nine light actions with Labs off; evidence.md gains the route; a ZHC bump
 becomes the first step of each RC.
-Touches: docs/evidence.md, docs/plans/2026-11-25-standard-call-route.md, custom_components/deviceside/integrations/zigbee2mqtt/**, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, scripts/zhc_table.py, scripts/zhc_table/**, scripts/check_audit.py, tests/scripts/**, .github/workflows/tests.yml, .github/workflows/cut-release-candidate.yml, .claude/skills/release/SKILL.md, docs/device-compatibility.md, README.md
+Touches: docs/evidence.md, docs/design.md, CLAUDE.md, docs/plans/2026-11-25-standard-call-route.md, docs/research/2026-11-25-z2m-converter-survey.md, custom_components/deviceside/core/scope.py, custom_components/deviceside/core/registry.py, tests/core/test_registry.py, custom_components/deviceside/zigbee/standard_lights.py, tests/zigbee/**, scripts/owners.py, scripts/gen_codeowners.py, .github/CODEOWNERS, .pre-commit-config.yaml, custom_components/deviceside/integrations/zigbee2mqtt/**, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, scripts/zhc_table.py, scripts/zhc_table/**, scripts/check_audit.py, tests/scripts/**, .github/workflows/tests.yml, .github/workflows/cut-release-candidate.yml, .claude/skills/release/SKILL.md, docs/device-compatibility.md, README.md
 Depends-on: #613
 
 ## What is settled
@@ -92,6 +92,27 @@ Depends-on: #613
     line `ZHC bump skipped: <reason>`. A `release/vX.Y.Z` branch is exempt. Git reads only: no clone.
   - No bump between an RC and its release: the release skill says so in a line.
 
+## Decisions (step review, 2026-11-25)
+
+Numbered on from the parent plan's 16; made by Jason after the step's plan review.
+
+17. **The class is the integration's: `IntegrationInfo.own_classes`.** A class in no family, beside the default one,
+    checked in `core/registry.py`, and said in `docs/design.md`'s Family row. It stays Z2M's to declare and level
+    (Decision 7).
+18. **Added transcript segments are kept.** The new class's dispatcher tests add one segment each to
+    `raise_brightness`, `raise_hue` and `raise_saturation`, the wire call `other`'s segment already has. No existing
+    segment changes; the release sign-off covers the added ones.
+19. **Split-offs key on the definition model only.** The rules don't read firmware, so the Müller Licht tint report
+    excludes its whole definition (404036/45327/45317/45328), on every firmware. Narrow it once the rules read firmware.
+20. **Membership is stricter than the survey, kept.** Meta is an allowlist (an unknown flag keeps a definition out),
+    and `on_off` counts as standard only on a light with no brightness converter. Both err toward Labs.
+21. **The table is shared: the Zigbee catalog.** It moves to `custom_components/deviceside/zigbee/standard_lights.py`
+    with the `STANDARD_LIGHT` name, and the generator writes there. Each definition gains its fingerprints (Zigbee
+    model and manufacturer) so another Zigbee integration can key on them; only Z2M declares the class today.
+    Its owners are the maintainers of every integration that imports it, as `zigbee/reasons.py`'s are of the
+    integrations using it: `CLAUDE.md`'s Maintainers, `scripts/owners.py` and CODEOWNERS follow.
+    The member count lives in the PR body, not `internals.md` (it changes each bump).
+
 ## Steps
 
 One step: one implementer (`opus`: a binding-rule change, public text), then a fresh `plan-reviewer` (`opus`), then
@@ -112,7 +133,8 @@ it wasn't sure of. #613 must merge first (`Depends-on`); build on `main` and mer
 ## Verification
 
 - `.venv/bin/pytest -n auto --transcripts=check`; `scripts/gen_compat.py --check`; `scripts/zhc_table.py --check`.
-  No call or reply handling changes, so transcripts stay unchanged; a change there is a finding.
+  No call or reply handling changes, so no existing transcript segment changes; a change there is a finding. The new
+  class's tests add segments (Decision 18).
 - A scope test: with the Labs option off, a member light is Documented on the nine actions; an `other` light is still
   refused on them; an `other` switch is still refused; an `EXCLUDED` model and a `turnsOffAtBrightness1` one land in
   `other`; a member on `turn_on_for` is refused with the `NotBuilt` reason.
