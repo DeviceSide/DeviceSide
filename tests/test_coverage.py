@@ -96,7 +96,7 @@ def cell_of(hass, entity_id, feature=TIMER_OFF):
         pytest.param("switch.a", Cell(Mark.VERIFIED), None, id="verified"),
         pytest.param("switch.b", Cell(Mark.DOCUMENTED), None, id="documented"),
         pytest.param("switch.c", Cell(Mark.LABS), "labs_off", id="labs"),
-        pytest.param("switch.d", Cell(Mark.REFUSED, "It never switches on"), "no_known_method", id="refused"),
+        pytest.param("switch.d", None, "no_known_method", id="refused"),
         pytest.param("switch.e", None, "not_built", id="not_built"),
     ],
 )
@@ -105,7 +105,7 @@ async def test_a_cell_is_what_a_call_on_the_entity_does(hass, fake, reset_script
     allow_labs(hass, False)
 
     assert cell_of(hass, entity_id) == cell
-    # The same decision a call makes: the dispatcher's own, which runs it or refuses it with the reason the cell shows.
+    # The same decision a call makes: the dispatcher's own, which runs it, or refuses it where the cell is empty.
     registry = get_runtime(hass).registry
     gate = judge(
         hass, registry, registry.adapter("turn_off_for", "fake"), target_of(hass, entity_id), TimedRequest(5), False
@@ -137,10 +137,7 @@ async def test_a_group_whose_member_takes_its_own_call_shows_the_members_mark(ha
     [
         pytest.param("switch.a", {"domains": labs("switch")}, Cell(Mark.LABS), id="a Labs one makes it Labs"),
         pytest.param(
-            "switch.d",
-            {"capabilities": verified("D"), "no_known_method": {}},
-            Cell(Mark.REFUSED, "It never switches on"),
-            id="a refusal wins",
+            "switch.d", {"capabilities": verified("D"), "no_known_method": {}}, None, id="one refused leaves it empty"
         ),
         pytest.param(
             "switch.e", {"capabilities": verified("E"), "not_built": {}}, None, id="one not built leaves it empty"
@@ -162,8 +159,8 @@ async def test_a_feature_riding_several_actions_takes_its_weakest(hass, fake, en
     ("saturation", "hue", "expected"),
     [
         pytest.param(Cell(Mark.VERIFIED), Cell(Mark.LABS), Cell(Mark.LABS), id="the weaker of the two"),
-        pytest.param(Cell(Mark.LABS), Cell(Mark.REFUSED, "No hue"), Cell(Mark.REFUSED, "No hue"), id="a refusal wins"),
-        pytest.param(None, Cell(Mark.DOCUMENTED), Cell(Mark.DOCUMENTED), id="one empty shows the other"),
+        pytest.param(None, Cell(Mark.DOCUMENTED), Cell(Mark.DOCUMENTED), id="no saturation shows the hue"),
+        pytest.param(Cell(Mark.LABS), None, Cell(Mark.LABS), id="no hue (refused, say) shows the saturation"),
         pytest.param(None, None, None, id="both empty is empty"),
     ],
 )
@@ -189,8 +186,8 @@ def test_every_action_has_a_minimal_request(hass):
 
 @pytest.fixture
 def household(hass, fake):
-    """Lights and switches of each kind of row: one of each level, a refused one, one not built (no cell at all), a
-    native group over a Verified and a Documented member, and each kind that is left out."""
+    """Lights and switches of each kind of row: one of each level, a refused one and one not built (no cell, so
+    no row), a native group over a Verified and a Documented member, and each kind that is left out."""
     registry = er.async_get(hass)
     for entity_id in ("switch.a", "switch.b", "switch.c", "switch.d", "switch.e", "light.a_lamp"):
         add_fake_entity(hass, fake, entity_id)
@@ -217,7 +214,6 @@ async def test_the_rows_are_the_entities_a_call_could_reach(hass):
         ("light.a_lamp", False),
         ("switch.b", False),
         ("switch.c", False),
-        ("switch.d", False),
         ("switch.fake_group", True),
     ]
     by_id = {row.entity_id: row for row in found.rows}
@@ -232,7 +228,9 @@ async def test_the_rows_are_the_entities_a_call_could_reach(hass):
     }
     # A group takes its weakest member's.
     assert by_id["switch.fake_group"].cells["Timed off"] == Cell(Mark.DOCUMENTED)
-    assert by_id["switch.d"].cells["Timed on"] == Cell(Mark.REFUSED, "It never switches on")
+    # An entity whose only outcomes are refusals (d) or not built (e) has no row.
+    assert "switch.d" not in by_id
+    assert "switch.e" not in by_id
 
 
 @pytest.mark.usefixtures("classed", "household")
@@ -262,14 +260,14 @@ async def test_integrations_follow_the_cards_order_and_those_on_no_card_come_las
 async def test_the_counts_and_the_labs_line_read_the_cells(hass):
     found = await coverage.collect(hass)
 
-    # Verified and Documented count, a refusal never does: a, b, the group (two features each), the light (three).
+    # Verified and Documented count, a, b, the group (two features each), the light (three).
     assert (found.features_now, found.devices_now) == (9, 4)
     # Labs: switch.c's two features, on one device.
     assert (found.features_in_labs, found.devices_in_labs) == (2, 1)
 
 
 @pytest.mark.usefixtures("classed", "household")
-async def test_the_table_has_a_column_per_feature_and_one_footnote_per_reason(hass):
+async def test_the_table_has_a_column_per_feature_and_a_blank_where_it_does_not_run(hass):
     found = await coverage.collect(hass)
 
     text = coverage.table(hass, found)
@@ -280,11 +278,10 @@ async def test_the_table_has_a_column_per_feature_and_one_footnote_per_reason(ha
         "| **Fake** | | | | | | |",
     ]
     assert f"| a{SWITCH} |  |  |  | 🟢 | 🟢 |  |" in text
-    assert f"| d{SWITCH} |  |  |  | 🔴¹ | 🔴¹ |  |" in text
+    assert f"| d{SWITCH} |" not in text
     assert f"| c{SWITCH} |  |  |  | ⚪ | ⚪ |  |" in text
     assert f"| fake group{SWITCH} <small>Group</small> |  |  |  | 🟡 | 🟡 |  |" in text
-    assert text.endswith("\n\n¹ It never switches on")
-    assert text.count("¹ It never switches on") == 1
+    assert "🔴" not in text
 
 
 async def test_a_name_with_markup_is_shown_as_it_is(hass, fake):
@@ -294,7 +291,7 @@ async def test_a_name_with_markup_is_shown_as_it_is(hass, fake):
 
 
 def test_the_legend_names_the_marks():
-    assert coverage.legend() == "🟢 Verified · 🟡 Documented · ⚪ Labs · 🔴 Unsupported"
+    assert coverage.legend() == "🟢 Verified · 🟡 Documented · ⚪ Labs"
 
 
 # The Configure step
@@ -314,7 +311,7 @@ async def test_the_step_shows_the_matrix_with_the_labs_checkbox_under_it(hass, s
     holders = result["description_placeholders"]
     assert (holders["features"], holders["devices"]) == ("9", "4")
     assert holders["legend"] == coverage.legend()
-    assert f"| d{SWITCH} |" in holders["table"]
+    assert f"| c{SWITCH} |" in holders["table"]
     assert result["data_schema"]({}) == {"labs": False}
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())["options"]
     step = strings["step"]["coverage_view"]

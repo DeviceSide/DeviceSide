@@ -1,5 +1,6 @@
 """The Configure menu's Device coverage: per light and switch entity, which DeviceSide features run now (Verified,
-Documented), which need Labs, and which are refused and why (docs/design.md, Coverage view).
+Documented), and which need Labs (docs/design.md, Coverage view). A refused feature is an empty cell: blank is
+unsupported.
 
 It reads what a call would do, never a copy of it: each cell is dispatcher.judge on the entity (resolved as a call
 resolves it) with Labs off, for each action of the feature, on the action's minimal request. So a level, a refusal or a
@@ -67,21 +68,19 @@ class Mark(StrEnum):
     VERIFIED = "🟢"
     DOCUMENTED = "🟡"
     LABS = "⚪"
-    REFUSED = "🔴"
 
 
 # A feature riding several actions takes its weakest.
-_WEAKEST = (Mark.REFUSED, Mark.LABS, Mark.DOCUMENTED, Mark.VERIFIED)
+_WEAKEST = (Mark.LABS, Mark.DOCUMENTED, Mark.VERIFIED)
 _RUNS_NOW = (Mark.VERIFIED, Mark.DOCUMENTED)
 _BY_LEVEL = {Level.VERIFIED: Mark.VERIFIED, Level.DOCUMENTED: Mark.DOCUMENTED, Level.LABS: Mark.LABS}
 
 
 @dataclass(frozen=True, slots=True)
 class Cell:
-    """A feature's outcome on an entity; `reason` is a refusal's text, as the dispatcher raises with it."""
+    """A feature's outcome on an entity that runs, now or in Labs."""
 
     mark: Mark
-    reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +103,7 @@ class Coverage:
 
     @property
     def features_now(self) -> int:
-        """The cells that run now: Verified and Documented. A refusal never counts."""
+        """The cells that run now: Verified and Documented."""
         return len(self._cells(*_RUNS_NOW))
 
     @property
@@ -139,25 +138,23 @@ def minimal_request(hass: HomeAssistant, action: type[Action]) -> Request:
 
 
 def cell(hass: HomeAssistant, registry: AdapterRegistry, target: Target, column: Column) -> Cell | None:
-    """The target's cell for a column: the weakest, a refusal first, of its features' cells (None only where all are
-    None)."""
+    """The target's cell for a column: the weakest of its features' cells; a feature with none (refused or not for the
+    target) counts as empty, and the column is None only where all are."""
     cells = [got for feature in column.features if (got := _feature_cell(hass, registry, target, feature)) is not None]
     return min(cells, key=lambda got: _WEAKEST.index(got.mark), default=None)
 
 
 def _feature_cell(hass: HomeAssistant, registry: AdapterRegistry, target: Target, feature: str) -> Cell | None:
     """The target's cell for a feature, from dispatcher.judge with Labs off on each of the feature's actions: the
-    weakest, a refusal first. None where the feature isn't for the target (an action of it has no adapter or domain
-    there) or isn't built (not built yet, an empty group)."""
+    weakest. None where the feature isn't for the target (an action of it has no adapter or domain there), is
+    refused, or isn't built (not built yet, an empty group)."""
     judged = []
     for key in FEATURE_ACTIONS[feature]:
         action, adapter = registry.actions.get(key), registry.adapter(key, target.integration)
         if action is None or adapter is None or not {target.domain} <= action.domains & adapter.scope.domains.keys():
             return None
         judged.append(judge(hass, registry, adapter, target, minimal_request(hass, action), False))
-    if refused := next((gate for gate in judged if gate is not None and gate.outcome is Outcome.REFUSED), None):
-        return Cell(Mark.REFUSED, refused.why or refused.reason)
-    if any(gate is None or gate.outcome is Outcome.NOT_BUILT for gate in judged):
+    if any(gate is None or gate.outcome in (Outcome.REFUSED, Outcome.NOT_BUILT) for gate in judged):
         return None
     marks = [Mark.LABS if gate.outcome is Outcome.LABS else _BY_LEVEL[gate.level] for gate in judged if gate]
     return Cell(min(marks, key=_WEAKEST.index))
@@ -165,7 +162,7 @@ def _feature_cell(hass: HomeAssistant, registry: AdapterRegistry, target: Target
 
 def _unplaced(hass: HomeAssistant, registry: AdapterRegistry, target: Target) -> bool:
     """Whether the integration named the target's class from partial information (Unplaced): it is still being
-    placed, so its row would show refusals that clear within seconds."""
+    placed, so its row would show cells that clear within seconds."""
     if target.is_group or (capability := registry.integrations[target.integration].capability) is None:
         return False
     try:
@@ -274,7 +271,6 @@ class _Icons:
         return None
 
 
-_SUPERSCRIPT = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 _MARKDOWN = re.compile(r"([\\`*_{}\[\]()#+\-!|])")
 
 
@@ -286,14 +282,12 @@ def _plain(text: str) -> str:
 def table(hass: HomeAssistant, coverage: Coverage) -> str:
     """The matrix in Markdown (HA's flow Markdown keeps tables and `ha-icon`, and strips style and class): an
     entity per row under its integration's title, a column per feature (smooth
-    saturation and hue share one), a refusal as 🔴 with its footnote's number, and the footnotes, one per distinct
-    reason, under it. Empty with no rows."""
+    saturation and hue share one), a mark where it runs and a blank where it doesn't. Empty with no rows."""
     if not coverage.rows:
         return ""
     registry = hass.data[DATA].registry
     headings = " | ".join(column.heading for column in COLUMNS)
     lines = [f"| | {headings} |", "|---|" + ":-:|" * len(COLUMNS)]
-    notes: dict[str, int] = {}
     shown = None
     for row in coverage.rows:
         if row.integration != shown:
@@ -301,28 +295,11 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
             lines.append(f"| **{_plain(registry.integrations[shown].title)}** |" + " |" * len(COLUMNS))
         icon = f' <ha-icon icon="{html.escape(row.icon)}"></ha-icon>' if row.icon else ""
         label = " <small>Group</small>" if row.group else ""
-        cells = []
-        for column in COLUMNS:
-            got = row.cells.get(column.heading)
-            if got is None:
-                cells.append("")
-            elif got.mark is Mark.REFUSED:
-                number = notes.setdefault(got.reason or "", len(notes) + 1)
-                cells.append(f"{got.mark}{str(number).translate(_SUPERSCRIPT)}")
-            else:
-                cells.append(got.mark)
+        cells = [got.mark if (got := row.cells.get(column.heading)) else "" for column in COLUMNS]
         lines.append(f"| {_plain(row.name)}{icon}{label} | " + " | ".join(cells) + " |")
-    footnotes = [f"{str(number).translate(_SUPERSCRIPT)} {_plain(text)}" for text, number in notes.items()]
-    return "\n".join(lines) + ("\n\n" + "\n\n".join(footnotes) if footnotes else "")
+    return "\n".join(lines)
 
 
 def legend() -> str:
-    """The four marks."""
-    return " · ".join(
-        (
-            f"{Mark.VERIFIED} Verified",
-            f"{Mark.DOCUMENTED} Documented",
-            f"{Mark.LABS} Labs",
-            f"{Mark.REFUSED} Unsupported",
-        )
-    )
+    """The three marks."""
+    return " · ".join((f"{Mark.VERIFIED} Verified", f"{Mark.DOCUMENTED} Documented", f"{Mark.LABS} Labs"))

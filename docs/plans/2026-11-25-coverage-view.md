@@ -64,11 +64,13 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
     before the gate too (`adapter.supports`, the not-addressable branch), on a request the caller passes. The view
     passes each action's minimal request: the action's required fields only, and for `set_attributes` a
     brightness-only one. So an adapter's own refusal (ZHA's `unsupported_reason`, Shelly stop's `not_dimmable`) shows
-    as 🔴, never a 🟢 a call would refuse.
+    as an empty cell (Decision 19), never a 🟢 a call would refuse.
 14. **A native group held only by a member's Labs class** shows ⚪, the weakest of its members, though a call runs its
     Verified and Documented members: turning on Labs is what adds the rest.
 
 18. **Columns and legend, after the live check (Jason, 2026-11-25):** headings Smooth dimming, Smooth color (saturation and hue, the weaker), Set while off, Timed on, Timed off, Auto off/on, plain text; the legend's key line is gone and 🔴 reads Unsupported. Replaces Decision 6's headings and abbr, and Decision 8's key.
+
+19. **No refusals in the view (Jason, 2026-11-25):** a refused feature is an empty cell, as a blank is unsupported either way, and a row with no Verified, Documented or Labs cell is left out; the refusals' detail is the compatibility page's. Replaces Decision 7's 🔴 and footnotes, and the 🔴 in Decisions 8 and 18.
 
 ## Steps
 
@@ -82,11 +84,11 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 ## Verification
 
 - Every view cell equals the shared function's outcome for a call on that entity with Labs off, and a dispatcher test
-  shows a real call on the same fixture entity runs, skips as `labs_off` or refuses with the same reason (backlog plan,
+  shows a real call on the same fixture entity runs, skips as `labs_off` or refuses where the cell is empty (backlog plan,
   Verification: "the view's per-device level matches what a call on that device does").
 - Rows: an `entity_category` entity, a disabled one, a ZHA group and an Unplaced Z2M device are left out; a Z2M group
   shows "Group"; integration order follows the cards.
-- Counts and the Labs line on a fixture with known 🟢/🟡/⚪/🔴 cells.
+- Counts and the Labs line on a fixture with known 🟢/🟡/⚪ cells; an entity whose only outcomes are refusals has no row.
 - Progress: the step waits while Z2M has no `bridge/devices`, and renders after the 10 s bound.
 - Checks: `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check`, `scripts/check_ha_literals.py`.
 - Before ready: Jason opens Configure → Device coverage on his HA (a rig run isn't needed: no call changes).
