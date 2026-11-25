@@ -229,6 +229,16 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 - Adding an action means a block each in `services.yaml`, `translations/en.json` and `icons.json`;
   `tests/core/test_actions_setup.py` checks all three.
 
+### Coverage view
+
+Configure > Device coverage (`coverage.py`) shows, per light and switch entity, the features that run now (Verified,
+Documented), those that need Labs and those refused with the reason. It reads `dispatcher.judge`, the per-target
+decision a call makes (supports(), the class, the refusal, then the Labs gate), on each action of a feature with Labs
+off, and never a copy of it, so a cell can't disagree with a call. A feature riding several actions takes its weakest,
+a refusal first. An integration whose classes wait on a report (Z2M's bridge/devices) says so through
+`IntegrationInfo.capability_ready`; the step waits on it for at most 10 s, then shows what it has. The features and
+their actions are `features.py`'s, the integrations' order is `registry.CARD_ORDER`: the README's cards read both too.
+
 ## Release gates
 
 The rules are in [evidence.md](evidence.md#release-gate); each gate's mechanics are in the header of the script or
