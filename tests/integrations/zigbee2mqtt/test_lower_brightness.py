@@ -86,18 +86,20 @@ async def test_to_the_bottom_goes_raw_to_hue_aqara_and_standard_lights_alone(has
 
 
 @pytest.mark.parametrize(
-    ("kind", "payload"),
+    ("kind", "limit", "payload"),
     [
         # At or below a standard light's bottom, level 2: raw to 2. Above Hue's, level 1: the converter.
-        pytest.param("standard_light", move_to_level(2, 30), id="standard_light"),
-        pytest.param("hue_light", {"brightness": 2, "transition": 3.0}, id="hue_light"),
+        # From 60 % to 0.8 % (brightness 2) of a 5 s sweep: 3 s, transtime 30.
+        pytest.param("standard_light", 0.8, move_to_level(2, 30), id="standard_light"),
+        pytest.param("hue_light", 0.8, {"brightness": 2, "transition": 3.0}, id="hue_light"),
+        # Just above a standard light's bottom, 1.2 % (brightness 3): the converter, 2.94 s.
+        pytest.param("standard_light", 1.2, {"brightness": 3, "transition": 2.9}, id="standard_above"),
     ],
 )
-async def test_to_0_8_goes_raw_at_or_below_the_bottom_level(hass, broker, kind, payload):
-    # From 60 % to 0.8 % (brightness 2) of a 5 s sweep: 3 s, transtime 30.
+async def test_goes_raw_at_or_below_the_bottom_level_alone(hass, broker, kind, limit, payload):
     entity_id, to = bottom_target(hass, broker, kind)
 
-    response = await call(hass, "lower_brightness", {"entity_id": entity_id, "limit": 0.8})
+    response = await call(hass, "lower_brightness", {"entity_id": entity_id, "limit": limit})
 
     assert response == {entity_id: SENT}
     assert commands(broker) == [(to, payload)]

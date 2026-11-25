@@ -146,8 +146,9 @@ A sign-off covers only what was exercised; it never signs off untested code.
 against the device: it keeps `tuya_countdown`'s level, in Labs, until a pass on its maker string.
 
 *Example:* Zigbee2MQTT's `standard_light`, other brands' lights whose ZHC definition is on the standard converters, is
-Documented on the brightness and color fades and stop (Z2M sends them through those converters) and on `set_attributes`
-and `get_attributes`, raw commands whose known failures all raise or fail the read-back; Paulmann's 924.70, reported
+Documented on the brightness and color fades and stop (Z2M sends them through those converters, save a lower to the
+bottom, DeviceSide's raw `moveToLevel`, which every Zigbee 3.0 dimmable light must take) and on `set_attributes` and
+`get_attributes`, raw commands like it whose known failures all raise or fail the read-back; Paulmann's 924.70, reported
 failing a color read, stays in `other` ([the table and the bump](integrations/zigbee2mqtt/internals.md#standard_lights)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and

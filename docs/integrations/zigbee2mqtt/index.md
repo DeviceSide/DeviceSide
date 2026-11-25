@@ -248,8 +248,9 @@ section of its own here, such as Hue, IKEA or Tuya, stays there. Zigbee2MQTT's o
 and color moves through the same converters, and no Zigbee2MQTT or zigbee-herdsman-converters report names one of these
 lights failing them, so that usage is their evidence, in place of a DeviceSide test run
 ([survey](../../research/2026-11-25-z2m-converter-survey.md)). They get smooth dimming and stop, smooth color changes,
-and get and set attributes. Get and set attributes are DeviceSide's own commands, not Zigbee2MQTT's: they qualify as
-every failure reported for them shows as an error, never as a light quietly doing something else. Smooth hue and
+and get and set attributes. Get and set attributes are DeviceSide's own commands, not Zigbee2MQTT's, and so is a lower
+to the lowest brightness, a dimming command every Zigbee 3.0 dimmable light must take: they qualify as every failure
+reported for them shows as an error, never as a light quietly doing something else. Smooth hue and
 saturation changes need a light that exposes Zigbee2MQTT's `color_hs`; one without is left unchanged
 (`fields_dropped`), and the list's column says which do. A lower to the lowest brightness stops at 0.8 %
 ([lowest brightness](#lowest-brightness)). Turn on with timer isn't built, as for other brands.
