@@ -306,6 +306,6 @@ def legend() -> str:
         (
             f"{Mark.VERIFIED} Verified: works, tested on a real device",
             f"{Mark.DOCUMENTED} Documented: should work, same call pattern as a tested device",
-            f"{Mark.LABS} Labs: not yet passed on a real device. Turn on Labs above to try it",
+            f"{Mark.LABS} Labs: not yet passed on a real device. Turn on Labs below to try it",
         )
     )
