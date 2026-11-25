@@ -375,6 +375,44 @@ def test_families_are_checked(families, error):
         _registry([Classed], replace(WITH_FAMILIES, families=families))
 
 
+def test_a_class_the_integration_holds_itself_is_in_no_family():
+    """A class spanning vendors, as the default one does (Zigbee2MQTT's standard lights): no family's."""
+    own = replace(CLASSED, classes={**CLASSED.classes, "standard": ANYWHERE})
+    registry = _registry(
+        [Classed],
+        replace(own, default_class="other", families=WITH_FAMILIES.families, own_classes=frozenset({"standard"})),
+    )
+    assert registry.integrations["fake"].own_classes == {"standard"}
+
+
+@pytest.mark.parametrize(
+    ("changes", "error"),
+    [
+        pytest.param(
+            {"own_classes": frozenset({"hue"})},
+            r"family 'hue' holds classes the integration holds itself \(own_classes\): \['hue'\]",
+            id="in_a_family",
+        ),
+        pytest.param(
+            {"own_classes": frozenset({"standard"})},
+            r"own_classes \['standard'\] are none of its classes",
+            id="undeclared",
+        ),
+        pytest.param(
+            {"own_classes": frozenset({"other"})}, "own_classes holds the default class 'other'", id="default"
+        ),
+        pytest.param(
+            {"own_classes": frozenset({"tuya"}), "families": ()},
+            "own_classes is for an integration with families",
+            id="no_families",
+        ),
+    ],
+)
+def test_own_classes_are_checked(changes, error):
+    with pytest.raises(ValueError, match=error):
+        _registry([Classed], replace(WITH_FAMILIES, **changes))
+
+
 def test_an_integration_without_families_is_checked_for_none():
     """Families are opt-in: the classes of an integration that has none need no family."""
     _registry([Classed], replace(WITH_FAMILIES, families=()))

@@ -139,6 +139,9 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         # Another brand's lights and plugs: no pass, and a plug that never turns off would take on_time. Raw reads and
         # writes serve its lights alone (test_another_brands_reads_and_writes_are_in_labs_on_lights_alone).
         ("other", {"turn_on_for"}, ALL - CERTIFIED - {"get_attributes", "set_attributes"}, set()),
+        # Other brands' standard lights: Documented on `other`'s light actions and the hue and saturation moves, and
+        # refused on turn_on_for with `other`'s entry (test_standard_lights.py).
+        ("standard_light", {"turn_on_for"}, {"turn_on_for", "turn_off_for"} | AUTO_OFF, set()),
         # Hue's plug, on the switch domain alone; its bulbs keep their own level.
         ("hue", {"turn_on_for"}, {"turn_off_for"} | AUTO_OFF, set()),
         ("tuya_zcl", {"turn_on_for"}, ALL, set()),

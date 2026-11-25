@@ -219,11 +219,12 @@ On IKEA lights, lower brightness to off may stop at the lowest level instead of 
 ### Aqara
 
 Aqara's lights, placed by the Zigbee manufacturer string `Aqara`, which Zigbee2MQTT publishes as it connects (until
-then an Aqara light counts as another brand's). Lights that report `LUMI` stay with [other brands](#other-brands). The
-class starts from one bulb, the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights
-get: smooth dimming and stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light must take,
-and get and set attributes. On the rig it passed smooth dimming, stop, and get and set attributes ([records](test-records/)). Its other features
-aren't built yet, and DeviceSide refuses them, even with Labs on:
+then an Aqara light counts as another brand's). Lights that report `LUMI` are [standard lights](#standard-lights) when
+their model is on that list, and otherwise stay with [other brands](#other-brands). The class starts from one bulb,
+the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights get: smooth dimming and
+stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light must take, and get and set
+attributes. On the rig it passed smooth dimming, stop, and get and set attributes ([records](test-records/)). Its
+other features aren't built yet, and DeviceSide refuses them, even with Labs on:
 
 - **Hue and saturation:** the bulb reports xy and color temperature only (no hue or saturation attributes, and the
   hue and saturation moves leave its color unchanged), so raise and lower hue and saturation aren't built on it. An
@@ -238,9 +239,30 @@ Set attributes on this bulb can time out. In the probe, `set_attributes` sent at
 of 10 runs (the call failed with no reply from Zigbee2MQTT and the values didn't land), and sent after Home Assistant
 showed the bulb off, about 0.1 s later, in 0 of 10. The cause is unexplained ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
 
+### Standard lights
+
+Other brands' lights whose Zigbee2MQTT device definition sends DeviceSide's commands through the converters Zigbee2MQTT
+uses for most lights, with no change for that model: [the list](standard-lights.md), built from a
+zigbee-herdsman-converters release (the library that holds Zigbee2MQTT's device support). A light of a brand with a
+section of its own here, such as Hue, IKEA or Tuya, stays there. Zigbee2MQTT's own users send the same dimming, stop
+and color moves through the same converters, and no Zigbee2MQTT or zigbee-herdsman-converters report names one of these
+lights failing them, so that usage is their evidence, in place of a DeviceSide test run
+([survey](../../research/2026-11-25-z2m-converter-survey.md)). They get smooth dimming and stop, smooth color changes,
+and get and set attributes. Get and set attributes are DeviceSide's own commands, not Zigbee2MQTT's, and so is a lower
+to the lowest brightness, a dimming command every Zigbee 3.0 dimmable light must take: they qualify as every failure
+reported for them shows as an error, never as a light quietly doing something else. Smooth hue and
+saturation changes need a light that exposes Zigbee2MQTT's `color_hs`; one without is left unchanged
+(`fields_dropped`), and the list's column says which do. A lower to the lowest brightness stops at 0.8 %
+([lowest brightness](#lowest-brightness)). Turn on with timer isn't built, as for other brands.
+
+To check a light, open its device page in Zigbee2MQTT and look for its **Model** in [the list](standard-lights.md). A
+light a report shows failing one of these commands is listed apart, with the report, and stays with
+[other brands](#other-brands).
+
 ### Other brands
 
-Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable
+Lights of every other brand, such as Innr, and their plugs and switches. Lights on the
+[standard lights](#standard-lights) list have their own section. A Zigbee 3.0 certified dimmable
 light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they get
 exactly as a Hue bulb does, so they take smooth dimming and stop. Their lights also take Get attributes and Set
 attributes in Labs: no other brand's light is reported to come on when written while off, an older bulb that rejects
@@ -325,10 +347,16 @@ off at 0.4 %, which every Hue bulb's does, and to a group only when every member
 - **Hue and Aqara bulbs, and groups of them alone:** a lower sends 0.4 % directly, with the command Flash-free turn-on
   uses. In a test it held a Hue bulb, and a Hue group's lit bulbs, at 0.4 %, and left a group's off bulb off; an Aqara
   T2 bulb held 0.4 % lit the same way ([internals](internals.md#fade)).
+- **Standard lights stop at 0.8 %:** a lower to 0.8 % or below sends them 0.8 % directly, with the same command, so
+  they stay lit by the Zigbee standard, which holds a light at its own minimum; a group of them with Hue and Aqara bulbs
+  alone gets 0.8 % the same way. DeviceSide sends 0.8 % until a test shows one holds 0.4 % lit
+  ([internals](internals.md#fade)).
 - **Other lights not so flagged:** a lower to 0.4 % switches them off, since Zigbee2MQTT sends the lowest level with
-  its on/off command and DeviceSide sends the raw command to Hue and Aqara bulbs alone ([internals](internals.md#fade)).
-- **A group that mixes them with other lights** gets what Zigbee2MQTT sends: 0.8 % when every member's definition is
-  flagged. Otherwise the on/off command to 0.4 % switches the group's lit lights off, and lights its off members.
+  its on/off command and DeviceSide sends the raw command to Hue, Aqara and standard lights alone
+  ([internals](internals.md#fade)).
+- **A group that mixes any of these with other lights** gets what Zigbee2MQTT sends: 0.8 % when every member's
+  definition is flagged. Otherwise the on/off command to 0.4 % switches the group's lit lights off, and lights its off
+  members.
 - **Other lights so flagged stop at 0.8 %:** some Innr, ADEO, IKEA, Gledopto and Aqara lights. Innr's are reported
   to turn off at 0.4 %.
 
