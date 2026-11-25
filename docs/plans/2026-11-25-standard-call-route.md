@@ -121,6 +121,21 @@ Numbered on from the parent plan's 16; made by Jason after the step's plan revie
     brands are reworded, and a snapshot row pins it. The Aqara T2's get_attributes Labs isn't contrary evidence: its
     rig case `keeps_and_reads_hs_while_off` needs hs mode, which the bulb lacks. #614 limits that case to the hue
     class and lifts the family's get_attributes, closing the gap between the two strings.
+24. **A standard light's bottom is a raw level 2** (after #613 merged in; Jason, on brightness-floor's recommendation).
+    #613 found an unflagged light switches off at a lower to 0.4 %, as the converter sends level 1 with On/Off, and
+    every standard light is unflagged. So a lower to the lowest level sends standard lights a raw `moveToLevel` (no
+    On/Off) to level 2, through `fade.py`'s `raw_bottom`, with the level a parameter: below a light's MinLevel it
+    clamps there and leaves OnOff alone, so it holds any MinLevel lit. Level 2 (0.8 %), not 1, as no standard light has
+    been probed at 1. Each class's owner declares its bottom level: Hue and Aqara 1 (their families), `standard_light`
+    2 (`zigbee/standard_lights.py`); `fade.py` composes them. A group gets one raw groupcast only when every reached
+    light is in a raw class, at the highest level any member declares (Hue + Aqara: 1; with a standard light: 2); any
+    `other` member keeps the converter. `set_attributes`' kept-level skip stays Hue's (#613's Decision 7). Said, not
+    silent: index.md's Lowest brightness gains "standard lights stop at 0.8 %", pointed to from `### Standard lights`;
+    internals.md (`fade`) gives the why and what reopens it (a probe of a standard light holding level 1 on the raw
+    call). The raw call keeps lower_brightness Documented under evidence.md's raw-command clause: `moveToLevel` is a
+    command every Zigbee 3.0 dimmable light must take, and its known failure, a rejection, reaches the caller. Unit
+    tests pin the raw payloads as literals: a standard light alone (2), standard + Hue (2), Hue + Aqara (1), standard
+    + `other` (converter). Transcript: added segments only, as Decision 18.
 
 ## Steps
 
