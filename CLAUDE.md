@@ -25,6 +25,7 @@ shared home named in parentheses.
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
 | A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
 | Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |
+| A generated device table any Zigbee integration may read | the catalog: `zigbee/standard_lights.py` (`scripts/zhc_table.py`) |
 | A refusal reason two Zigbee integrations share | `zigbee/<family>.py` for a family's, `zigbee/reasons.py` otherwise; each integration's `refusals.py` builds its own entry from it |
 | A name HA defines (entity domain, service, state, attribute, `ColorMode`) | HA's constant (`homeassistant.const`, `homeassistant.components.light`); not where DeviceSide's meaning differs (its `brightness` is a percent), nor from an integration's `const.py` that imports a vendor library |
 | A wire fact two integrations share (ZCL or Matter encodings) | `core/`, named for the encoding (`core/zcl.py`); never another integration's package |

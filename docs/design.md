@@ -23,7 +23,8 @@ Code and docs use these terms. Each one's rules live where its link points.
   (`integrations/<x>/families/<family>/`), so a vendor is one path with its own maintainers. Rules:
   [Writing an integration](#core-contract), Family.
 - **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
-  (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
+  (`custom_components/deviceside/zigbee/<family>.py`), and generated device tables any Zigbee integration may read
+  (`zigbee/standard_lights.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
   `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); when a
   device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
