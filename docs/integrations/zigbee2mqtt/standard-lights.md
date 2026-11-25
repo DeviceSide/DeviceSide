@@ -4,9 +4,9 @@
 
 From zigbee-herdsman-converters [v26.137.0](https://github.com/Koenkk/zigbee-herdsman-converters/releases/tag/v26.137.0).
 
-The lights DeviceSide places in Zigbee2MQTT's [standard lights](index.md#standard-lights) class: each a Zigbee2MQTT device definition that sends DeviceSide's calls through the converters Zigbee2MQTT uses for most lights, with no change for that model. A light from a brand with a family of its own (Hue, IKEA, Tuya and the others on [the Zigbee2MQTT page](index.md)) stays in its family. To check yours, find the **Model** on its Zigbee2MQTT device page and look for it below.
+The lights DeviceSide places in Zigbee2MQTT's [standard lights](index.md#standard-lights) class: each a Zigbee2MQTT device definition that sends DeviceSide's calls through the converters Zigbee2MQTT uses for most lights, with no change for that model. To check yours, find the **Model** on its Zigbee2MQTT device page and look for it under Members. A light from a brand with a family of its own (Hue, IKEA, Tuya and the others on [the Zigbee2MQTT page](index.md)) stays in its family: those found here are under In a family, as far as the definition shows its brand.
 
-## Members (778)
+## Members (644)
 
 Smooth hue and saturation: whether the light takes hue and saturation moves (it exposes Zigbee2MQTT's `color_hs`).
 
@@ -35,46 +35,12 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | AduroSmart | Extended Color WS Strip V1.0 | yes |
 | Airam | 4713406 | no |
 | Airam | 4713407 | no |
-| Ajax Online | AJ_RGBCCT_CTRL | no |
 | Ajax Online | AJ_ZB_GU10 | no |
 | Ajax Online | Aj_Zigbee_Led_Strip | no |
 | Ajax Online | ZB-CCT_Filament | no |
 | Ajax Online | ZB_A60_RGBCW | no |
 | Alchemy | AL8RGB13W-AP | no |
 | Alchemy | AL8TC13W-AP | no |
-| Aldi | F122SB62H22A4.5W | no |
-| Aqara | CL-L02D | no |
-| Aqara | GDSD12LM | no |
-| Aqara | H1-EU | no |
-| Aqara | HCXDD12LM | no |
-| Aqara | HCXDD13LM | no |
-| Aqara | HLQDQ01LM | no |
-| Aqara | JWDL001A | no |
-| Aqara | JWSP001A | no |
-| Aqara | KD-R01D | no |
-| Aqara | LGYCDD01LM | no |
-| Aqara | SSWQD02LM | no |
-| Aqara | SSWQD03LM | no |
-| Aqara | SSWQD22LM | no |
-| Aqara | SSWQDYH02 | no |
-| Aqara | T2_E26 | no |
-| Aqara | T2_E26_CCT | no |
-| Aqara | T2_E27 | no |
-| Aqara | T2_E27_CCT | no |
-| Aqara | T2_GU10 | no |
-| Aqara | T2_GU10_CCT | no |
-| Aqara | TDL01LM | no |
-| Aqara | WS-K05E | no |
-| Aqara | ZNDDMK11LM | no |
-| Aqara | ZNDDQDQ11LM | no |
-| Aqara | ZNDDQDQ12LM | no |
-| Aqara | ZNDDQDQ13LM | no |
-| Aqara | ZNLDP12LM | no |
-| Aqara | ZNLDP13LM | no |
-| Aqara | ZNTGMK11LM | yes |
-| Aqara | ZNTGMK12LM | no |
-| Aqara | ZNXDD01LM | no |
-| Aqara | ZNYB01LM | no |
 | Atlantic Group | 100050768800 | no |
 | Aurora Lighting | AU-A1CE14ZCX6 | no |
 | Aurora Lighting | AU-A1GSZ9B/27 | no |
@@ -113,8 +79,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Candeo | C204 | no |
 | Candeo | C210 | no |
 | Centralite | 3420-G | no |
-| ClickSmart+ | CSP051 | no |
-| ClickSmart+ | CSP052 | no |
 | Commercial Electric | 53170161 | no |
 | CREE | B00TN589ZG | no |
 | CTM Lyng | 4503145 | no |
@@ -136,13 +100,7 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | EcoDim | ECO-DIM.06-ZGB | no |
 | EcoDim | Eco-Dim.07/Eco-Dim.10 | no |
 | EcoDim | ECO-DIM.13 | no |
-| EcoDim | ED-10032 | no |
 | EcoDim | ED-10041 | no |
-| EcoDim | ED-10042 | no |
-| ECODO | DR-MW-2436 | no |
-| ECODO | ECD-48V-MGT | no |
-| ECODO | ECD-SS12 | no |
-| ECODO | ECD-ZB-REPEATER | no |
 | EcoSmart | A9A19A60WESDZ02 | no |
 | EcoSmart | A9BR3065WESDZ02 | no |
 | EcoSmart | D1523 | no |
@@ -185,7 +143,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | EVN | ZB24100VS | yes |
 | EVN | ZBPD23400 | no |
 | eWeLink | CK-TLSR8258-L5PI-01(7009) | yes |
-| Fantem | ZB006-X | no |
 | Feibit | TZSC302W-V1 | no |
 | Fischer & Honsel | 020B0B | no |
 | Futurehome | 4509243 | no |
@@ -198,11 +155,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Gewiss | GWA1221 | no |
 | GIDEALED | ZC05M | yes |
 | GIDERWEL | GD-ZCRGB012 | yes |
-| Gledopto | GL-C-006P | no |
-| Gledopto | GL-C-009P | no |
-| Gledopto | GL-C-103P | no |
-| Gledopto | GL-SD-001P | no |
-| Gledopto | GL-SD-301P | no |
 | GMY Smart Bulb | B07KG5KF5R | no |
 | GS | BDHM8E27W70-I1 | no |
 | GS | BRHM8E27W70-I1 | no |
@@ -216,7 +168,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Heatit | 1444420 | no |
 | Heiman | HS2NLV | yes |
 | Heiman | HS2WDS | no |
-| Hejhome | GKZ-LB431RGBCW-E26 | no |
 | HFH Solutions | 303-0136 | no |
 | Hilux | D160-ZG | no |
 | Hilux | DZ8 | no |
@@ -282,8 +233,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Immax | 07088L | no |
 | Immax | 07089L | no |
 | Immax | 07115L | no |
-| Immax | 07743L | no |
-| Immax | TS0502C | no |
 | Innr | FL 142 C | yes |
 | Innr | RF 274 T | no |
 | Iolloi | ID-UK21FW09 | no |
@@ -300,7 +249,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | LDS | FWBulb03UK | no |
 | LDS | ZBT-RGBWLight-A0000 | no |
 | LED-Trading | HK-LN-DIM-A | no |
-| LEDEPLY | SG45-E26 | yes |
 | LEDVANCE | 4058075168572 | no |
 | LEDVANCE | 4058075173989 | no |
 | LEDVANCE | 4058075181472 | no |
@@ -366,23 +314,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | LG Electronics | B1027EB0Z01 | no |
 | LG Electronics | B1027EB0Z02 | no |
 | LG Electronics | B1027EB4Z01 | no |
-| Lidl | 14147206L | no |
-| Lidl | 14148906L | no |
-| Lidl | 14149505L/14149506L_1 | no |
-| Lidl | 14153806L | no |
-| Lidl | 14153905L | no |
-| Lidl | 14156408L | no |
-| Lidl | HG06104A | no |
-| Lidl | HG06106A | no |
-| Lidl | HG06106B | no |
-| Lidl | HG06106C | no |
-| Lidl | HG06462A | no |
-| Lidl | HG06463A | no |
-| Lidl | HG06463B | no |
-| Lidl | HG06492A/HG08130A | no |
-| Lidl | HG06492B/HG08130B | no |
-| Lidl | HG06492C/HG08130C/HG09154C | no |
-| Lidl | HG08633 | yes |
 | LifeControl | MCLH-02 | no |
 | Light Solutions | 200403V2-B | no |
 | Light Solutions | 3004482/3137308/3137309 | no |
@@ -400,27 +331,15 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Linkind | ZL1000701-27-EU-V1A02 | no |
 | Linkind | ZL13100314 | no |
 | LivingWise | LVS-ZB500D | no |
-| Lonsonho | QS-Zigbee-D02-TRIAC-2C-L | no |
-| Lonsonho | QS-Zigbee-D02-TRIAC-2C-LN | no |
-| Lonsonho | QS-Zigbee-D02-TRIAC-L | no |
-| Lonsonho | QS-Zigbee-D02-TRIAC-LN | no |
 | Lonsonho | ZB-RGBCW | no |
 | Lubeez | 12AB | no |
-| LUUMR | 10010339 | no |
-| LUUMR | 10024773 | no |
 | M-ELEC | ML-ST-BP-DIM | no |
 | M-ELEC | ML-ST-D200 | no |
 | M-ELEC | ML-ST-D200-NF | no |
 | Matcall | ZG401224 | no |
 | Matcall | ZG430700 | no |
 | Megaman | LC201060 | no |
-| Mercator Ikuü | SMCL01-ZB | no |
-| Mercator Ikuü | SMD4109W-RGB-ZB | no |
-| Mercator Ikuü | SMI7040 | no |
 | MiBoxer | E2-ZR | no |
-| MiBoxer | FUT035Z+ | no |
-| MiBoxer | FUT037Z | no |
-| MiBoxer | FUT038Z | no |
 | MiBoxer | FUTC04ZR | yes |
 | MiBoxer | PZ2 | no |
 | Micro Matic Norge AS | ZB250 | no |
@@ -428,7 +347,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | MLI | 404114 | no |
 | Modular | LWM005 | no |
 | Modular | MWM002 | no |
-| Mycket | MS-SP-LE27WRGB | no |
 | Müller Licht | 404001 | no |
 | Müller Licht | 404006/404008/404004 | no |
 | Müller Licht | 404023 | no |
@@ -437,7 +355,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Müller Licht | 404031 | no |
 | Müller Licht | 404037/404038 | no |
 | Müller Licht | 404051 | no |
-| Müller Licht | 404062 | no |
 | Müller Licht | 404127 | no |
 | Müller Licht | 44435 | no |
 | Müller Licht | 45727 | no |
@@ -528,7 +445,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | OSRAM | AC10787 | no |
 | OSRAM | AC16381 | yes |
 | OSRAM | ST8AU-CON | no |
-| Oz Smart Things | DL41-03-10-R-ZB | no |
 | Paulmann | 150257 | no |
 | Paulmann | 291.45 | yes |
 | Paulmann | 291.46 | yes |
@@ -561,7 +477,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Paulmann | 984.42 | no |
 | Paulmann | 984.43 | no |
 | Paulmann | CCT-I | no |
-| Philips | 912401483126 | no |
 | Phoscon | Hive | no |
 | Prolight | 5412748727364 | no |
 | Prolight | 5412748727371 | no |
@@ -569,7 +484,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Prolight | 5412748727401 | no |
 | Prolight | 5412748727432 | no |
 | QA | QADZC5 | yes |
-| QA | QAFZ200 | no |
 | Quotra | B07CVL9SZF | no |
 | Quotra | B07JHL6DRV | no |
 | Rademacher | 35104001 | no |
@@ -617,29 +531,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Schwaiger | HAL500 | no |
 | Schwaiger | HAL600 | no |
 | Schwaiger | HAL800 | no |
-| Sengled | E11-G13 | no |
-| Sengled | E11-G23/E11-G33 | no |
-| Sengled | E11-N13/E11-N13A/E11-N14/E11-N14A | no |
-| Sengled | E11-N1EA | no |
-| Sengled | E11-N1G | no |
-| Sengled | E11-U21U31 | no |
-| Sengled | E11-U2E | no |
-| Sengled | E11-U3E | no |
-| Sengled | E12-N14 | no |
-| Sengled | E12-N1E | no |
-| Sengled | E13-A21 | no |
-| Sengled | E13-N11 | no |
-| Sengled | E1ACA4ABE38A | no |
-| Sengled | E1F-N5E | no |
-| Sengled | E1F-N9G | no |
-| Sengled | E1G-G8E | no |
-| Sengled | E21-N13A | no |
-| Sengled | E21-N14A | no |
-| Sengled | E21-N1EA | no |
-| Sengled | E22-N1E | no |
-| Sengled | Z01-A19NAE26 | no |
-| Sengled | Z01-A60EAE27 | no |
-| Sengled | Z01-CIA19NAE26 | no |
 | Shada | 0190015 | no |
 | Shelly | S4DM-0010WW | no |
 | Shelly | S4DM-0A101WWL | no |
@@ -652,7 +543,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Shenzhen Homa | HOMA1001_RGB | no |
 | Shenzhen Homa | HOMA1001_RGBW | no |
 | Shenzhen Homa | HOMA1001_SC | no |
-| Sibling | Light-ZSLL | no |
 | SIMON | SM0501 | no |
 | SIMON | SM0502 | no |
 | Sinopé | DM2500ZB | no |
@@ -743,28 +633,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Trust | ZLED-2709 | no |
 | Trust | ZLED-RGB9 | no |
 | Trust | ZLED-TUNE9 | no |
-| Tuya | FS-05R | no |
-| Tuya | L1(ZW) | no |
-| Tuya | TS0052 | no |
-| Tuya | TS0052_2 | no |
-| Tuya | TS0501A | no |
-| Tuya | TS0501B_dimmer | no |
-| Tuya | TS0501B_dimmer_2 | no |
-| Tuya | TS0502A | no |
-| Tuya | TS0502B | no |
-| Tuya | TS0503A | no |
-| Tuya | TS0503B | no |
-| Tuya | TS0503B_hs | yes |
-| Tuya | TS0504A | no |
-| Tuya | TS0505 | yes |
-| Tuya | TS0505A | no |
-| Tuya | TS0505B_2 | yes |
-| Tuya | TS0505B_3 | yes |
-| Tuya | TS0505B_hs | yes |
-| Tuya | TS0901 | no |
-| Tuya | TS1101_dimmer_module_1ch | no |
-| Tuya | TS1101_dimmer_module_2ch | no |
-| Tuya | WZ5_rgb_1 | yes |
 | Ubisys | D1 | no |
 | Ubisys | LD6 | no |
 | VBLED | 43023 | no |
@@ -774,7 +642,6 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Villeroy & Boch | EC1366 | no |
 | Vimar | 14595.0 | no |
 | Wisdom | DMZ250 | no |
-| Woox | R9077 | no |
 | XAL | 050-0131558M | no |
 | XAL | 050-0511558F | no |
 | XAL | 050-1212558H | no |
@@ -785,11 +652,151 @@ Smooth hue and saturation: whether the light takes hue and saturation moves (it 
 | Ynoa | LA-GU10-RGBW | yes |
 | YOKIS | MTV300E-UP | no |
 | YSRSAI | YSR-MINI-01_dimmer | no |
-| YSRSAI | YSR-MINI-01_rgbcct | no |
 | YSRSAI | YSR-MINI-01_wwcw | no |
 | Zemismart | HGZB-DLC4-N15B | no |
 | Zemismart | LXZB-12A | no |
 | Zipato | rgbw2.zbee27 | no |
+
+## In a family (134)
+
+Lights whose definition qualifies, but whose family takes them first: they get the family's levels, on the section of the Zigbee2MQTT page it names.
+
+| Vendor | Model | Family |
+|---|---|---|
+| Ajax Online | AJ_RGBCCT_CTRL | [Tuya](index.md#tuya) |
+| Aldi | F122SB62H22A4.5W | [Tuya](index.md#tuya) |
+| Aqara | CL-L02D | [Aqara](index.md#aqara) |
+| Aqara | GDSD12LM | [Aqara](index.md#aqara) |
+| Aqara | H1-EU | [Aqara](index.md#aqara) |
+| Aqara | HCXDD12LM | [Aqara](index.md#aqara) |
+| Aqara | HCXDD13LM | [Aqara](index.md#aqara) |
+| Aqara | HLQDQ01LM | [Aqara](index.md#aqara) |
+| Aqara | JWDL001A | [Aqara](index.md#aqara) |
+| Aqara | JWSP001A | [Aqara](index.md#aqara) |
+| Aqara | KD-R01D | [Aqara](index.md#aqara) |
+| Aqara | LGYCDD01LM | [Aqara](index.md#aqara) |
+| Aqara | SSWQD02LM | [Aqara](index.md#aqara) |
+| Aqara | SSWQD03LM | [Aqara](index.md#aqara) |
+| Aqara | SSWQD22LM | [Aqara](index.md#aqara) |
+| Aqara | SSWQDYH02 | [Aqara](index.md#aqara) |
+| Aqara | T2_E26 | [Aqara](index.md#aqara) |
+| Aqara | T2_E26_CCT | [Aqara](index.md#aqara) |
+| Aqara | T2_E27 | [Aqara](index.md#aqara) |
+| Aqara | T2_E27_CCT | [Aqara](index.md#aqara) |
+| Aqara | T2_GU10 | [Aqara](index.md#aqara) |
+| Aqara | T2_GU10_CCT | [Aqara](index.md#aqara) |
+| Aqara | TDL01LM | [Aqara](index.md#aqara) |
+| Aqara | WS-K05E | [Aqara](index.md#aqara) |
+| Aqara | ZNDDMK11LM | [Aqara](index.md#aqara) |
+| Aqara | ZNDDQDQ11LM | [Aqara](index.md#aqara) |
+| Aqara | ZNDDQDQ12LM | [Aqara](index.md#aqara) |
+| Aqara | ZNDDQDQ13LM | [Aqara](index.md#aqara) |
+| Aqara | ZNLDP12LM | [Aqara](index.md#aqara) |
+| Aqara | ZNLDP13LM | [Aqara](index.md#aqara) |
+| Aqara | ZNTGMK11LM | [Aqara](index.md#aqara) |
+| Aqara | ZNTGMK12LM | [Aqara](index.md#aqara) |
+| Aqara | ZNXDD01LM | [Aqara](index.md#aqara) |
+| Aqara | ZNYB01LM | [Aqara](index.md#aqara) |
+| ClickSmart+ | CSP051 | [Tuya](index.md#tuya) |
+| ClickSmart+ | CSP052 | [Tuya](index.md#tuya) |
+| EcoDim | ED-10032 | [Tuya](index.md#tuya) |
+| EcoDim | ED-10042 | [Tuya](index.md#tuya) |
+| ECODO | DR-MW-2436 | [Tuya](index.md#tuya) |
+| ECODO | ECD-48V-MGT | [Tuya](index.md#tuya) |
+| ECODO | ECD-SS12 | [Tuya](index.md#tuya) |
+| ECODO | ECD-ZB-REPEATER | [Tuya](index.md#tuya) |
+| Fantem | ZB006-X | [Tuya](index.md#tuya) |
+| Gledopto | GL-C-006P | [Gledopto](index.md#gledopto) |
+| Gledopto | GL-C-009P | [Gledopto](index.md#gledopto) |
+| Gledopto | GL-C-103P | [Gledopto](index.md#gledopto) |
+| Gledopto | GL-SD-001P | [Gledopto](index.md#gledopto) |
+| Gledopto | GL-SD-301P | [Gledopto](index.md#gledopto) |
+| Hejhome | GKZ-LB431RGBCW-E26 | [Tuya](index.md#tuya) |
+| Immax | 07743L | [Tuya](index.md#tuya) |
+| Immax | TS0502C | [Tuya](index.md#tuya) |
+| LEDEPLY | SG45-E26 | [Tuya](index.md#tuya) |
+| Lidl | 14147206L | [Tuya](index.md#tuya) |
+| Lidl | 14148906L | [Tuya](index.md#tuya) |
+| Lidl | 14149505L/14149506L_1 | [Tuya](index.md#tuya) |
+| Lidl | 14153806L | [Tuya](index.md#tuya) |
+| Lidl | 14153905L | [Tuya](index.md#tuya) |
+| Lidl | 14156408L | [Tuya](index.md#tuya) |
+| Lidl | HG06104A | [Tuya](index.md#tuya) |
+| Lidl | HG06106A | [Tuya](index.md#tuya) |
+| Lidl | HG06106B | [Tuya](index.md#tuya) |
+| Lidl | HG06106C | [Tuya](index.md#tuya) |
+| Lidl | HG06462A | [Tuya](index.md#tuya) |
+| Lidl | HG06463A | [Tuya](index.md#tuya) |
+| Lidl | HG06463B | [Tuya](index.md#tuya) |
+| Lidl | HG06492A/HG08130A | [Tuya](index.md#tuya) |
+| Lidl | HG06492B/HG08130B | [Tuya](index.md#tuya) |
+| Lidl | HG06492C/HG08130C/HG09154C | [Tuya](index.md#tuya) |
+| Lidl | HG08633 | [Tuya](index.md#tuya) |
+| Lonsonho | QS-Zigbee-D02-TRIAC-2C-L | [Tuya](index.md#tuya) |
+| Lonsonho | QS-Zigbee-D02-TRIAC-2C-LN | [Tuya](index.md#tuya) |
+| Lonsonho | QS-Zigbee-D02-TRIAC-L | [Tuya](index.md#tuya) |
+| Lonsonho | QS-Zigbee-D02-TRIAC-LN | [Tuya](index.md#tuya) |
+| LUUMR | 10010339 | [Tuya](index.md#tuya) |
+| LUUMR | 10024773 | [Tuya](index.md#tuya) |
+| Mercator Ikuü | SMCL01-ZB | [Tuya](index.md#tuya) |
+| Mercator Ikuü | SMD4109W-RGB-ZB | [Tuya](index.md#tuya) |
+| Mercator Ikuü | SMI7040 | [Tuya](index.md#tuya) |
+| MiBoxer | FUT035Z+ | [Tuya](index.md#tuya) |
+| MiBoxer | FUT037Z | [Tuya](index.md#tuya) |
+| MiBoxer | FUT038Z | [Tuya](index.md#tuya) |
+| Mycket | MS-SP-LE27WRGB | [Tuya](index.md#tuya) |
+| Müller Licht | 404062 | [Tuya](index.md#tuya) |
+| Oz Smart Things | DL41-03-10-R-ZB | [Tuya](index.md#tuya) |
+| Philips | 912401483126 | [Hue](index.md#hue) |
+| QA | QAFZ200 | [Tuya](index.md#tuya) |
+| Sengled | E11-G13 | [Sengled](index.md#sengled) |
+| Sengled | E11-G23/E11-G33 | [Sengled](index.md#sengled) |
+| Sengled | E11-N13/E11-N13A/E11-N14/E11-N14A | [Sengled](index.md#sengled) |
+| Sengled | E11-N1EA | [Sengled](index.md#sengled) |
+| Sengled | E11-N1G | [Sengled](index.md#sengled) |
+| Sengled | E11-U21U31 | [Sengled](index.md#sengled) |
+| Sengled | E11-U2E | [Sengled](index.md#sengled) |
+| Sengled | E11-U3E | [Sengled](index.md#sengled) |
+| Sengled | E12-N14 | [Sengled](index.md#sengled) |
+| Sengled | E12-N1E | [Sengled](index.md#sengled) |
+| Sengled | E13-A21 | [Sengled](index.md#sengled) |
+| Sengled | E13-N11 | [Sengled](index.md#sengled) |
+| Sengled | E1ACA4ABE38A | [Sengled](index.md#sengled) |
+| Sengled | E1F-N5E | [Sengled](index.md#sengled) |
+| Sengled | E1F-N9G | [Sengled](index.md#sengled) |
+| Sengled | E1G-G8E | [Sengled](index.md#sengled) |
+| Sengled | E21-N13A | [Sengled](index.md#sengled) |
+| Sengled | E21-N14A | [Sengled](index.md#sengled) |
+| Sengled | E21-N1EA | [Sengled](index.md#sengled) |
+| Sengled | E22-N1E | [Sengled](index.md#sengled) |
+| Sengled | Z01-A19NAE26 | [Sengled](index.md#sengled) |
+| Sengled | Z01-A60EAE27 | [Sengled](index.md#sengled) |
+| Sengled | Z01-CIA19NAE26 | [Sengled](index.md#sengled) |
+| Sibling | Light-ZSLL | [Tuya](index.md#tuya) |
+| Tuya | FS-05R | [Tuya](index.md#tuya) |
+| Tuya | L1(ZW) | [Tuya](index.md#tuya) |
+| Tuya | TS0052 | [Tuya](index.md#tuya) |
+| Tuya | TS0052_2 | [Tuya](index.md#tuya) |
+| Tuya | TS0501A | [Tuya](index.md#tuya) |
+| Tuya | TS0501B_dimmer | [Tuya](index.md#tuya) |
+| Tuya | TS0501B_dimmer_2 | [Tuya](index.md#tuya) |
+| Tuya | TS0502A | [Tuya](index.md#tuya) |
+| Tuya | TS0502B | [Tuya](index.md#tuya) |
+| Tuya | TS0503A | [Tuya](index.md#tuya) |
+| Tuya | TS0503B | [Tuya](index.md#tuya) |
+| Tuya | TS0503B_hs | [Tuya](index.md#tuya) |
+| Tuya | TS0504A | [Tuya](index.md#tuya) |
+| Tuya | TS0505 | [Tuya](index.md#tuya) |
+| Tuya | TS0505A | [Tuya](index.md#tuya) |
+| Tuya | TS0505B_2 | [Tuya](index.md#tuya) |
+| Tuya | TS0505B_3 | [Tuya](index.md#tuya) |
+| Tuya | TS0505B_hs | [Tuya](index.md#tuya) |
+| Tuya | TS0901 | [Tuya](index.md#tuya) |
+| Tuya | TS1101_dimmer_module_1ch | [Tuya](index.md#tuya) |
+| Tuya | TS1101_dimmer_module_2ch | [Tuya](index.md#tuya) |
+| Tuya | WZ5_rgb_1 | [Tuya](index.md#tuya) |
+| Woox | R9077 | [Tuya](index.md#tuya) |
+| YSRSAI | YSR-MINI-01_rgbcct | [Tuya](index.md#tuya) |
 
 ## Excluded
 

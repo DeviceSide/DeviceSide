@@ -8,7 +8,8 @@ bumped: docs/integrations/zigbee2mqtt/internals.md, Standard lights.
 Another Zigbee integration keys on `PAIRS`: each key a (model ID, manufacturer) pair, "" where absent, so a zigbeeModel
 z is (z, ""). A key is there only when every ZHC definition listing it, or a key it overlaps ((m, "") and ("", mf) for
 (m, mf); any (m, *) for (m, ""); any (*, mf) for ("", mf)), is a member and none is a split-off, with color_hs only
-when all of them expose it. Look a device up as (m, mf), then (m, ""), then ("", mf), the first key found deciding.
+when all of them expose it. Look a device with a model ID up as (m, mf), then (m, ""), the first key found deciding, and never as ("", mf);
+look one with none up as ("", mf) alone.
 That follows ZHC's order without reproducing its matcher: ZHC's candidates are the definitions indexed under the
 device's model ID (https://github.com/Koenkk/zigbee-herdsman-converters/blob/v26.137.0/src/index.ts#L530), a zigbeeModel or a fingerprint's modelID, a fingerprint without one indexed
 under "null" (https://github.com/Koenkk/zigbee-herdsman-converters/blob/v26.137.0/src/indexer.ts#L90-L91), so a device with a model ID never meets a manufacturer-only fingerprint, and

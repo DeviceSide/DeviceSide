@@ -85,9 +85,14 @@ def previous_rc(repo: Path, rc: str, head: str) -> str | None:
 
 
 def zhc_pin(repo: Path, rev: str) -> str | None:
-    """The standard lights table's ZHC pin at rev, or None where the table isn't there."""
-    shown = subprocess.run(["git", "-C", str(repo), "show", f"{rev}:{ZHC_TABLE}"], capture_output=True, text=True)
-    return match[1] if shown.returncode == 0 and (match := ZHC_PIN.search(shown.stdout)) else None
+    """The standard lights table's ZHC pin at rev, or None where the table isn't there; raises ValueError where it is
+    but its pin doesn't parse, as the guard would pass unchecked."""
+    if not git(repo, "ls-tree", "--name-only", rev, "--", ZHC_TABLE).strip():
+        return None
+    text = git(repo, "show", f"{rev}:{ZHC_TABLE}")
+    if not (match := ZHC_PIN.search(text)):
+        raise ValueError(f"{ZHC_TABLE} at {rev} has no ZHC_RELEASE = \"...\" line")
+    return match[1]
 
 
 def zhc_bump_errors(repo: Path, rc: str, head: str, branch: str, text: str) -> list[str]:

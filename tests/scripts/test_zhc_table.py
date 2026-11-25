@@ -244,17 +244,31 @@ def test_check_fails_a_split_offs_key_until_write_drops_it(tmp_path):
         tmp_path, models=models, excluded='Excluded("L1", "stop", "https://example.com/1"),', pairs={PAULMANN: True}
     )
 
-    assert zt.check(tmp_path) == [
-        f"PAIRS holds keys of an EXCLUDED row: {[PAULMANN]}; run scripts/zhc_table.py --check --write"
-    ]
+    assert zt.check(tmp_path) == [NOT_ALLOWED.format([PAULMANN])]
     assert zt.main(["--check", "--write"], repo=tmp_path) == 0
     assert zt.load((tmp_path / zt.TABLE).read_text()).PAIRS == {}
+
+
+def test_check_fails_a_key_overlapping_a_split_offs_until_write_drops_it(tmp_path):
+    """L1's split-off holds (bulb, Acme), which a device keyed by L2's (bulb, "") could be."""
+    models = {"L1": ("Acme", True, (), (("bulb", "Acme"),)), "L2": ("Acme", True, ("bulb", "lamp"), ())}
+    pairs = {("bulb", ""): True, ("lamp", ""): True}
+    write_table(tmp_path, models=models, excluded='Excluded("L1", "stop", "https://example.com/1"),', pairs=pairs)
+
+    assert zt.check(tmp_path) == [NOT_ALLOWED.format([("bulb", "")])]
+    assert zt.main(["--check", "--write"], repo=tmp_path) == 0
+    assert zt.load((tmp_path / zt.TABLE).read_text()).PAIRS == {("lamp", ""): True}
+
+
+NOT_ALLOWED = (
+    "PAIRS holds keys a split-off overlaps or no member row lists: {}; run scripts/zhc_table.py --check --write"
+)
 
 
 @pytest.mark.parametrize(
     ("pairs", "problem"),
     [
-        ({("x", "y"): False}, "PAIRS holds keys no member row lists: [('x', 'y')]"),
+        ({("x", "y"): False}, NOT_ALLOWED.format([("x", "y")])),
         ({("L1", ""): True}, "PAIRS gives color_hs to keys of a row without it: [('L1', '')]"),
     ],
 )
@@ -262,6 +276,21 @@ def test_check_fails_a_hand_edited_key(tmp_path, pairs, problem):
     write_table(tmp_path, models={"L1": ("Acme", False, ("L1",), ())}, pairs=pairs)
 
     assert zt.check(tmp_path) == [problem]
+
+
+def test_check_fails_an_excluded_model_models_doesnt_hold(tmp_path):
+    write_table(tmp_path, excluded='Excluded("L9", "stop", "https://example.com/1"),')
+
+    assert zt.check(tmp_path) == ["EXCLUDED 'L9' is no MODELS key, so it excludes nothing"]
+
+
+def test_page_lists_a_member_its_family_keeps_apart(tmp_path):
+    models = {"L1": row("Acme"), "E11-G13": ("Sengled", False, ("E11-G13",), ())}
+    page = zt.page(zt.load(write_table(tmp_path, models=models).read_text()))
+
+    assert "## Members (1)" in page
+    assert "## In a family (1)" in page
+    assert "| Sengled | E11-G13 | [Sengled](index.md#sengled) |" in page
 
 
 def test_check_fails_a_stale_page(tmp_path):
@@ -326,6 +355,32 @@ def test_released_members_reads_the_last_full_release(repo: GitRepo):
     repo.git("tag", "v0.3.0rc1")
 
     assert zt.released_members(repo.path) == ("v0.2.0", frozenset({"L1"}))
+
+
+def test_released_members_refuses_a_clone_with_no_tags(repo: GitRepo):
+    repo.commit()
+
+    with pytest.raises(SystemExit, match="no release tags"):
+        zt.released_members(repo.path)
+
+
+def test_released_members_refuses_a_table_it_cant_read(repo: GitRepo, monkeypatch):
+    repo.commit()
+    write_table(repo.path)
+    repo.git("add", "-A")
+    repo.git("commit", "-q", "-m", "table")
+    repo.git("tag", "v0.1.0")
+    run = zt.subprocess.run
+
+    def failing_show(args, **kwargs):
+        if "show" in args:
+            return zt.subprocess.CompletedProcess(args, 128, "", "fatal: bad object")
+        return run(args, **kwargs)
+
+    monkeypatch.setattr(zt.subprocess, "run", failing_show)
+
+    with pytest.raises(SystemExit, match="can't read .* at v0.1.0: fatal: bad object"):
+        zt.released_members(repo.path)
 
 
 def test_released_members_before_the_table_existed(repo: GitRepo):

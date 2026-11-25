@@ -268,3 +268,19 @@ def test_main_takes_the_branch(pinned, capsys):
     head = rc2(repo, rc1, end)
     assert check_audit.main(["v0.0.2rc2", head], repo=repo.path) == 1
     assert check_audit.main(["v0.0.2rc2", head, "release/v0.0.2"], repo=repo.path) == 0
+
+
+def test_a_table_whose_pin_doesnt_parse_is_refused(pinned):
+    repo, rc1, end = pinned
+    repo.commit(check_audit.ZHC_TABLE, "ZHC_RELEASE = v1\n")
+    with pytest.raises(ValueError, match="has no ZHC_RELEASE"):
+        check_audit.errors(repo.path, "v0.0.2rc2", rc2(repo, rc1, end))
+
+
+def test_a_previous_rc_with_no_table_asks_no_bump(repo):
+    repo.commit()
+    repo.git("tag", "v0.0.1")
+    repo.git("tag", "v0.0.2rc1")
+    rc1 = repo.git("rev-parse", "v0.0.2rc1")
+    end = repo.commit(check_audit.ZHC_TABLE, table("v1"))
+    assert check_audit.errors(repo.path, "v0.0.2rc2", rc2(repo, rc1, end)) == []
