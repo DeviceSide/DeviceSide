@@ -334,7 +334,7 @@ departure is reported among its vendors, and a bulb older than ZCL rev 7 rejects
 Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "deviceside_read"}}`, one cluster at a
 time, answered on the state topic:
 
-- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) is asked `onOff` alone: ZCL
+- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) and an Aqara light (`aqara`, until a probe shows the bulb takes the timer) are asked `onOff` alone: ZCL
   doesn't require `onTime`, one unsupported attribute fails the whole cluster read (herdsman `Endpoint.read`), and no
   timer action serves `other` ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
 - `genLevelCtrl` (`currentLevel`), only when the light is on. An off light's brightness is Z2M's, from the state the

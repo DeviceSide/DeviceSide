@@ -23,10 +23,16 @@ from .addressing import bridge_topic, known_base, state_topic, topic, z2m_addres
 from .bridge import ensure_options, first_retained, publish, wait
 from .bridge_cache import cause, log_error
 from .classes import capability
+from .families.aqara import AQARA
 from ...core.models import Target
 from ...core.scope import OTHER
 
 _LOGGER = logging.getLogger(__name__)
+
+# The classes asked no OnTime: ZCL doesn't require it, and one unsupported attribute fails the whole cluster read.
+# Another brand's light (`other`) and Aqara's, which take other's calls until a probe shows the bulb takes the timer
+# (internals.md, get_attributes).
+_NO_ON_TIME = frozenset({OTHER, AQARA})
 
 READ_KEY = "deviceside_read"
 _FILTERED_CACHE = "filtered_cache"
@@ -44,12 +50,11 @@ def clusters(target: Target, device_class: str | None) -> dict[str, list[str]]:
     """The clusters and attributes to read for a light, by its class and supported color modes.
 
     One unsupported attribute fails a cluster's whole read, so only the color mode's own are asked for: a color
-    temperature bulb has no hue or saturation, and some have no EnhancedColorMode. Another brand's light (`other`) is
-    asked no OnTime, which ZCL doesn't require and no timer action serves there, so its row has no timer
-    (internals.md, get_attributes).
+    temperature bulb has no hue or saturation, and some have no EnhancedColorMode. A class in `_NO_ON_TIME` is
+    asked no OnTime, so its row has no timer.
     """
     modes = set((target.state and target.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES)) or ())
-    wanted = {"genOnOff": ["onOff"] if device_class == OTHER else ["onOff", "onTime"]}
+    wanted = {"genOnOff": ["onOff"] if device_class in _NO_ON_TIME else ["onOff", "onTime"]}
     if brightness_supported(modes):
         wanted["genLevelCtrl"] = ["currentLevel"]
     color = []
