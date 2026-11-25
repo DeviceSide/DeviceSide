@@ -404,7 +404,9 @@ one, the longest.
   end read-back, or at a report from the bulb; `brightness_move: stop` halts it as it does the converter's, both ZCL
   transitions. A raise from off keeps the converter's bottom, so it starts at level 2 before fading up, which the fade
   hides. `set_attributes` leaves out its kept-level publish only for a level 1 on lit Hue lights (`set_attributes`).
-  The `moveToLevel` lower isn't run on the rig yet.
+  Rig run 2026-11-25 ([research](research/hue/2026-11-25-move-to-level-bottom-rig.md)): the raw `moveToLevel` lower
+  to 0.4 % held the LTA009 lit at level 1 (`lower_to_the_lowest_level`), and, groupcast to an all-Hue group of three
+  with one member off, held the two lit ones at level 1 and left the off one off at its own level.
 
   Rig probes 2026-11-25, the LTA009 above ([probe](research/hue/2026-11-25-raw-bottom-probe.md)), of the bypass's first call, `moveToLevelWithOnOff` to level 1: the
   raw lower to 0.4 % ended with the bulb off. At the end read-back its `onOff` read off, so Z2M and Home Assistant

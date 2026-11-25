@@ -6,9 +6,9 @@
   "date": "2026-11-25",
   "source": {
     "kind": "rig",
-    "commit": "444529b7"
+    "commit": "b6108499"
   },
-  "calls": "02481ff56eb268374471b26dbaff0ac3ee9d825b",
+  "calls": "7a40905cdabf20500f22ef504ad413e38ccc11d0",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -22,20 +22,6 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
           "class": "hue"
-        }
-      ]
-    },
-    {
-      "id": "lower_to_off[light_ct]",
-      "domain": "light",
-      "role": "light_ct",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "lumi.light.agl003",
-          "manufacturer": "Aqara",
-          "firmware": null,
-          "class": "aqara"
         }
       ]
     },
@@ -81,20 +67,6 @@
       ]
     },
     {
-      "id": "lower_to_a_limit[light_ct]",
-      "domain": "light",
-      "role": "light_ct",
-      "result": "pass",
-      "devices": [
-        {
-          "model": "lumi.light.agl003",
-          "manufacturer": "Aqara",
-          "firmware": null,
-          "class": "aqara"
-        }
-      ]
-    },
-    {
       "id": "lower_to_a_limit[group]",
       "domain": "light",
       "role": "group",
@@ -117,6 +89,20 @@
           "model": "LCA016",
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "lower_to_the_lowest_level[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
           "class": "hue"
         }
       ]
