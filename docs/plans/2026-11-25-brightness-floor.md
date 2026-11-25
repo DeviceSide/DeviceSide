@@ -6,7 +6,7 @@
 
 Intent: Write down that 0.4 % is a light's lowest level (level 1) and every level is reachable; pin it on the rig; and
 make Zigbee2MQTT's Hue fades reach level 1, where Z2M's converter sends 2 today.
-Touches: docs/design.md, CLAUDE.md, docs/evidence.md, docs/integrations/zigbee2mqtt/internals.md, docs/integrations/zigbee2mqtt/index.md, custom_components/deviceside/integrations/zigbee2mqtt/fade.py, custom_components/deviceside/integrations/zigbee2mqtt/set_attributes.py, custom_components/deviceside/integrations/zigbee2mqtt/families/hue/**, tests/integrations/zigbee2mqtt/**, tests/rig/steps/lower_brightness.yaml, tests/rig/steps/raise_brightness.yaml, tests/rig/steps/set_attributes.yaml, docs/integrations/*/test-records/**
+Touches: docs/design.md, CLAUDE.md, docs/evidence.md, docs/integrations/zigbee2mqtt/internals.md, docs/integrations/zigbee2mqtt/index.md, custom_components/deviceside/integrations/zigbee2mqtt/fade.py, custom_components/deviceside/integrations/zigbee2mqtt/set_attributes.py, custom_components/deviceside/integrations/zigbee2mqtt/families/hue/**, tests/integrations/zigbee2mqtt/**, tests/rig/steps/lower_brightness.yaml, tests/rig/steps/set_attributes.yaml, docs/integrations/*/test-records/**
 
 ## Why
 
