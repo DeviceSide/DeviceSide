@@ -4,7 +4,7 @@
 from homeassistant.const import Platform
 
 from .....core.rules import Rule
-from .....core.scope import Family, FamilyScope, labs, verified
+from .....core.scope import Family, FamilyScope, verified
 
 AQARA = "aqara"
 
@@ -14,9 +14,7 @@ RULES = (Rule(AQARA, {"zigbee_manufacturer": "Aqara"}),)
 
 # `other`'s actions for lights (classes.py): Level Control's moves and stop, which a Zigbee 3.0 dimmable light must
 # take, and raw ZCL reads and writes. Verified where an Aqara bulb's record passes; the moves with stop, which must
-# halt them (tests/core/test_scope.py). get_attributes stays in Labs, as its record also runs an hs color mode case
-# (keeps_and_reads_hs_while_off) this bulb can't pass, so the rig writes no Aqara rows for it.
-_LABS = FamilyScope(capabilities=labs(AQARA))
+# halt them (tests/core/test_scope.py). Everything it takes is Verified.
 _VERIFIED = FamilyScope(capabilities=verified(AQARA))
 
 FAMILY = Family(
@@ -27,7 +25,7 @@ FAMILY = Family(
         "raise_brightness": _VERIFIED,
         "lower_brightness": _VERIFIED,
         "stop": _VERIFIED,
-        "get_attributes": _LABS,
+        "get_attributes": _VERIFIED,
         "set_attributes": _VERIFIED,
     },
     # Not in the other scopes: not built there. Hue and saturation actions are not built, as the bulb has xy and color

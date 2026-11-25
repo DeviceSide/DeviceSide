@@ -46,6 +46,14 @@ Bulb. Model IDs: `LTA009`, `9290024684`.
 | [ZHA](#zha) | [turn on with timer](integrations/zha/test-records/turn_on_for.json)<br>smooth dimming: [up](integrations/zha/test-records/raise_brightness.json) [down](integrations/zha/test-records/lower_brightness.json)<br>[set without turning on](integrations/zha/test-records/set_attributes.json)<br>[get attributes](integrations/zha/test-records/get_attributes.json)<br>[stop](integrations/zha/test-records/stop.json) | `0x01002a00` | ✔ rig |
 | [Hue](#hue) | smooth dimming: [up predicted state](integrations/hue/test-records/raise_brightness-predicted_state.json) [up](integrations/hue/test-records/raise_brightness.json) [down predicted state](integrations/hue/test-records/lower_brightness-predicted_state.json) [down](integrations/hue/test-records/lower_brightness.json)<br>[set without turning on](integrations/hue/test-records/set_attributes.json)<br>[get attributes](integrations/hue/test-records/get_attributes.json)<br>stop: [predicted state](integrations/hue/test-records/stop-predicted_state.json) [record](integrations/hue/test-records/stop.json) | `1.163.1` | ✔ rig |
 
+### Aqara
+
+Bulb. Model IDs: `lumi.light.agl003`, `T2_E27`.
+
+| Integration | Features tested | Firmware | How |
+|---|---|---|---|
+| [Zigbee2MQTT](#zigbee2mqtt) | smooth dimming: [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json)<br>[set without turning on](integrations/zigbee2mqtt/test-records/set_attributes.json)<br>[get attributes](integrations/zigbee2mqtt/test-records/get_attributes.json)<br>[stop](integrations/zigbee2mqtt/test-records/stop.json) | | ✔ rig |
+
 ### Hue Essential White and Color Ambiance A60
 
 Bulb. Model IDs: `LCA016`, `8720169392182`.
@@ -64,14 +72,6 @@ Bulb. Model IDs: `LWA012`, `9290018217`.
 |---|---|---|---|
 | [Zigbee2MQTT](#zigbee2mqtt) | [turn on with timer](integrations/zigbee2mqtt/test-records/turn_on_for.json)<br>[get attributes](integrations/zigbee2mqtt/test-records/get_attributes.json) | `1.163.1` | ✔ rig |
 | [ZHA](#zha) | [turn on with timer](integrations/zha/test-records/turn_on_for.json)<br>[get attributes](integrations/zha/test-records/get_attributes.json) | `0x01002a00` | ✔ rig |
-
-### Aqara
-
-Bulb. Model IDs: `lumi.light.agl003`, `T2_E27`.
-
-| Integration | Features tested | Firmware | How |
-|---|---|---|---|
-| [Zigbee2MQTT](#zigbee2mqtt) | smooth dimming: [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json)<br>[set without turning on](integrations/zigbee2mqtt/test-records/set_attributes.json)<br>[stop](integrations/zigbee2mqtt/test-records/stop.json) | | ✔ rig |
 
 ### Shelly Multicolor Bulb Gen3
 
@@ -139,7 +139,7 @@ Each mark links its proof: 🟢 its records, 🟡 and ⚪ the class's section on
 | Class | turn on with timer | turn off with timer | auto-off/on | smooth dimming | smooth saturation | smooth hue | set without turning on | get attributes | stop |
 |---|---|---|---|---|---|---|---|---|---|
 | [native groups](#native-groups) ✔ | 🟢 [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) | | | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_saturation.json) [down](integrations/zigbee2mqtt/test-records/lower_saturation.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_hue.json) [down](integrations/zigbee2mqtt/test-records/lower_hue.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/set_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/get_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/stop.json) |
-| [Aqara lights](integrations/zigbee2mqtt/index.md#aqara) ([Aqara LED Bulb T2 E27](#aqara) ✔) | | | | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json) | | | 🟢 [record](integrations/zigbee2mqtt/test-records/set_attributes.json) | ⚪ [why](integrations/zigbee2mqtt/index.md#aqara) | 🟢 [record](integrations/zigbee2mqtt/test-records/stop.json) |
+| [Aqara lights](integrations/zigbee2mqtt/index.md#aqara) ([Aqara LED Bulb T2 E27](#aqara) ✔) | | | | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json) | | | 🟢 [record](integrations/zigbee2mqtt/test-records/set_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/get_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | [Hue lights](integrations/zigbee2mqtt/index.md#hue) ([Hue White Ambiance E27 1100lm](#hue-white-ambiance-e27-1100lm) ✔, [Hue Essential White and Color Ambiance A60](#hue-essential-white-and-color-ambiance-a60) ✔, [Hue White A60 B22](#hue-white-a60-b22) ✔) | 🟢 [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) | | | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_saturation.json) [down](integrations/zigbee2mqtt/test-records/lower_saturation.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_hue.json) [down](integrations/zigbee2mqtt/test-records/lower_hue.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/set_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/get_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](integrations/zigbee2mqtt/index.md#ikea) | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) | | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) |
 | [IKEA lights](integrations/zigbee2mqtt/index.md#ikea) | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) | | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) |
