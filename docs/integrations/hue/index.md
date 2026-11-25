@@ -28,8 +28,8 @@ for each light.
 - A **scene** counts as its lights: one with a light of another brand counts as that brand's, or as other brands'
   when it holds lights of two such classes.
 - A **room or zone** counts as all its lights, a light the bridge has in the room but Home Assistant has no light
-  entity for included, as the room's command reaches it. Where one of its lights is refused an action (as the
-  [GL-C-008P](#gledopto-gl-c-008p) is `get_attributes`), the room answers through its other lights, each on its own.
+  entity for included, as the room's command reaches it. Where one of its lights is refused an action (as
+  [Gledopto's lights](#gledopto) are `get_attributes`), the room answers through its other lights, each on its own.
 
 ### Hue lights
 
@@ -44,19 +44,25 @@ these features harms when it fails ([internals](internals.md#device-classes)).
 
 Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
 and color at a time, some come on when written while off, and some don't report color temperature mode as Hue lights do
-([one is known](#gledopto-gl-c-008p)). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
-with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model a class of its
+([Gledopto](#gledopto) and [Müller Licht](#müller-licht) are known). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
+with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model, or its maker, a class of its
 own and refuses it the action it fails (`not_built`, or `no_known_method` with why, where no command is known to
 work), and every other light keeps it.
 
-### Gledopto GL-C-008P
+### Gledopto
 
-Gledopto's GL-C-008P LED controller (model ID `GL-C-008P` or `C-ZB-LC20v2-RGBCCT`) gets every feature other brands'
-lights get, but `get_attributes`. It doesn't tell the bridge reliably when it's in color temperature mode, so Home
-Assistant has shown a color temperature it set as a blue color ([core #93459](https://github.com/home-assistant/core/issues/93459)).
-`get_attributes` reports the light's actual values, so it refuses this controller (`not_built`); read Home
-Assistant's own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, where core reads its color
-temperature mode from its own last command ([internals](internals.md#device-classes)).
+Gledopto's lights and LED controllers (manufacturer `GLEDOPTO`, any model) get every feature other brands' lights get,
+but `get_attributes`. The bridge has reported several of them in color mode after a color temperature write, so Home
+Assistant showed a color temperature it set as a color ([core #62497](https://github.com/home-assistant/core/issues/62497), [core #93459](https://github.com/home-assistant/core/issues/93459)).
+`get_attributes` reports the light's actual values, so it refuses Gledopto lights (`not_built`); read Home Assistant's
+own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, where core reads its color temperature
+mode from its own last command ([internals](internals.md#device-classes)).
+
+### Müller Licht
+
+Müller Licht's tint lights (manufacturer `MLI`, any model) are refused `get_attributes` as [Gledopto's](#gledopto) are,
+and get every other feature: the bridge has reported a tint light in color mode after a color temperature write the
+same way ([core #62497](https://github.com/home-assistant/core/issues/62497)).
 
 ## Smooth dimming
 

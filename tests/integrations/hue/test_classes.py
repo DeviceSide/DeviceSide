@@ -25,7 +25,11 @@ def capability(hass, entity_id: str) -> str | None:
     return INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id))
 
 
-GL_C_008P = ("GLEDOPTO", "GL-C-008P")
+# The split-off makers' Zigbee manufacturer strings, as the bridge passes them on (internals.md, Device classes).
+GLEDOPTO = ("GLEDOPTO", "GL-C-008P")
+MULLER_LICHT = ("MLI", "tint-ExtendedColor")
+# Every maker get_attributes doesn't serve, by its class.
+SPLIT_OFF = {"gledopto": GLEDOPTO, "muller_licht": MULLER_LICHT}
 
 
 @pytest.mark.parametrize(
@@ -34,9 +38,19 @@ GL_C_008P = ("GLEDOPTO", "GL-C-008P")
         (classes.SIGNIFY, None, "hue"),
         (IKEA, None, "other"),
         ("Signify", None, "other"),
-        (*GL_C_008P, "gledopto_gl_c_008p"),
-        ("Gledopto", "C-ZB-LC20v2-RGBCCT", "gledopto_gl_c_008p"),
-        ("GLEDOPTO", "GL-C-006P", "other"),
+        # Gledopto by its maker, any model, in any case (core #62497, #93459).
+        (*GLEDOPTO, "gledopto"),
+        ("Gledopto", "C-ZB-LC20v2-RGBCCT", "gledopto"),
+        ("GLEDOPTO", "GL-S-004P", "gledopto"),
+        ("gledopto", "GL-B-007P", "gledopto"),
+        ("GLEDOPTO", None, "gledopto"),
+        ("Gledopto Lighting", "GL-C-008P", "other"),  # the whole string, not a prefix
+        # Müller Licht by its Zigbee string, any model (core #62497).
+        (*MULLER_LICHT, "muller_licht"),
+        ("MLI", "Bulb white+color", "muller_licht"),
+        ("mli", None, "muller_licht"),
+        ("Müller Licht", "tint-ExtendedColor", "other"),  # Zigbee2MQTT's vendor name, not the device's string
+        ("_TZ3210_mntza0sw", "TS0505B", "other"),  # a Tuya-made light under another brand has no key yet
     ],
 )
 async def test_a_light_is_classed_by_its_devices_manufacturer_and_model(hass, bridge, manufacturer, model_id, expected):
@@ -72,8 +86,9 @@ async def scene(
     [
         pytest.param({"one": classes.SIGNIFY, "two": classes.SIGNIFY}, "hue", id="hue"),
         pytest.param({"one": classes.SIGNIFY, "two": IKEA}, "other", id="one_other"),
-        pytest.param({"one": classes.SIGNIFY, "two": GL_C_008P}, "gledopto_gl_c_008p", id="one_gl_c_008p"),
-        pytest.param({"one": IKEA, "two": GL_C_008P}, "other", id="two_others"),
+        pytest.param({"one": classes.SIGNIFY, "two": GLEDOPTO}, "gledopto", id="one_gledopto"),
+        pytest.param({"one": classes.SIGNIFY, "two": MULLER_LICHT}, "muller_licht", id="one_muller_licht"),
+        pytest.param({"one": IKEA, "two": GLEDOPTO}, "other", id="two_others"),
         pytest.param({}, "hue", id="writes_none"),
     ],
 )
@@ -109,11 +124,12 @@ def get_entry(hass) -> str:
 
 @pytest.mark.parametrize("adapter", ADAPTERS, ids=lambda adapter: adapter.action)
 def test_hue_is_verified_and_other_documented_on_every_adapter(adapter):
-    # other on a bridge's one request (docs/evidence.md, Levels): every light gets the same CLIP v2 request. The
-    # GL-C-008P shares other's levels but get_attributes', as it misreports its color temperature mode (core #93459).
+    # other on a bridge's one request (docs/evidence.md, Levels): every light gets the same CLIP v2 request. Gledopto
+    # and Müller Licht share other's levels but get_attributes', as the bridge reports their color temperature mode
+    # wrong (core #62497, #93459).
     levels = {"hue": Level.VERIFIED, "other": Level.DOCUMENTED}
     if adapter.action != "get_attributes":
-        levels["gledopto_gl_c_008p"] = Level.DOCUMENTED
+        levels |= {"gledopto": Level.DOCUMENTED, "muller_licht": Level.DOCUMENTED}
     assert adapter.scope.capabilities == levels
 
 
@@ -155,9 +171,11 @@ async def test_another_makers_light_runs_every_light_action_with_labs_off(hass, 
     assert [path for path, _ in bridge.puts] == ([] if action == "get_attributes" else ["light/light-1"])
 
 
+@pytest.mark.parametrize("maker", SPLIT_OFF)
 @pytest.mark.parametrize("action", [action for action in LIGHT_ACTIONS if action != "get_attributes"])
-async def test_a_gl_c_008p_runs_every_light_action_but_get_attributes(hass, bridge, action):
-    entity_id = await color_lamp(hass, bridge, manufacturer=GL_C_008P[0], model_id=GL_C_008P[1])
+async def test_a_split_off_makers_light_runs_every_light_action_but_get_attributes(hass, bridge, action, maker):
+    manufacturer, model_id = SPLIT_OFF[maker]
+    entity_id = await color_lamp(hass, bridge, manufacturer=manufacturer, model_id=model_id)
 
     response = await call(hass, action, {"entity_id": entity_id, **LIGHT_ACTIONS[action]})
 
@@ -165,9 +183,12 @@ async def test_a_gl_c_008p_runs_every_light_action_but_get_attributes(hass, brid
     assert [path for path, _ in bridge.puts] == ["light/light-1"]
 
 
-async def test_a_gl_c_008p_is_refused_get_attributes_as_not_built(hass, bridge):
-    # It misreports its color temperature mode (core #93459), and get_attributes reports the light's actual value.
-    entity_id = await color_lamp(hass, bridge, manufacturer=GL_C_008P[0], model_id=GL_C_008P[1])
+@pytest.mark.parametrize("maker", SPLIT_OFF)
+async def test_a_split_off_makers_light_is_refused_get_attributes_as_not_built(hass, bridge, maker):
+    # The bridge reports its color temperature mode wrong (core #62497, #93459), and get_attributes reports the
+    # light's actual value.
+    manufacturer, model_id = SPLIT_OFF[maker]
+    entity_id = await color_lamp(hass, bridge, manufacturer=manufacturer, model_id=model_id)
 
     assert await refusal(hass, "get_attributes", {"entity_id": entity_id}) == "not_built"
 
@@ -281,12 +302,13 @@ async def test_a_room_light_ha_has_no_device_for_classes_the_room_unknown(hass, 
     assert list(await call(hass, "get_attributes", {"entity_id": "light.room"})) == ["light.one"]
 
 
-async def test_a_room_with_a_gl_c_008p_falls_back_on_get_attributes_alone(hass, bridge):
-    # get_attributes doesn't serve the GL-C-008P, so the room answers through its other lights; stop serves both, so
-    # the room runs whole.
-    await mixed_room(hass, bridge, two=GL_C_008P)
+@pytest.mark.parametrize("maker", SPLIT_OFF)
+async def test_a_room_with_a_split_off_makers_light_falls_back_on_get_attributes_alone(hass, bridge, maker):
+    # get_attributes doesn't serve the maker's light, so the room answers through its other lights; stop serves both,
+    # so the room runs whole.
+    await mixed_room(hass, bridge, two=SPLIT_OFF[maker])
 
     assert list(await call(hass, "get_attributes", {"entity_id": "light.room"})) == ["light.one"]
     response = await call_service(hass, "stop", {"entity_id": "light.room"})
     assert list(response) == ["light.room"]
-    assert response["light.room"]["capabilities"] == ["gledopto_gl_c_008p", "hue"]
+    assert response["light.room"]["capabilities"] == sorted([maker, "hue"])

@@ -1067,7 +1067,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "gledopto_gl_c_008p",
+    "classes": "gledopto",
     "data": null,
     "detail": null,
     "entity_id": "light.lamp",
@@ -1338,6 +1338,65 @@
        },
        "dynamics": {
         "duration": 5000
+       },
+       "on": {
+        "on": true
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "muller_licht",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 100.0
+       },
+       "dynamics": {
+        "duration": 2000
        },
        "on": {
         "on": true

@@ -820,7 +820,7 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "gledopto_gl_c_008p",
+    "classes": "gledopto",
     "data": null,
     "detail": null,
     "entity_id": "light.lamp",
@@ -912,6 +912,62 @@
    {
     "clamped_to": null,
     "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dynamics": {
+        "duration": 3000
+       },
+       "on": {
+        "on": false
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "muller_licht",
     "data": null,
     "detail": null,
     "entity_id": "light.lamp",

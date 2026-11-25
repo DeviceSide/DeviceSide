@@ -8,8 +8,8 @@ from the bridge's `product_data`:
 - `hue`: Signify's own lights, which every record ran on.
 - `other`, the default class: every other maker's light the bridge has paired, Friends of Hue certified ones
   included, as certification isn't Signify's firmware and no record reaches one.
-- `gledopto_gl_c_008p`: Gledopto's GL-C-008P controller, split off `other` as it misreports its color temperature
-  mode, so get_attributes doesn't serve it (internals.md, Device classes).
+- `gledopto` and `muller_licht`: Gledopto's and Müller Licht's lights, any model, split off `other` as the bridge
+  reports their color temperature mode wrong, so get_attributes doesn't serve them (internals.md, Device classes).
 - `smart_scene`: an All-Day scene, which has no fixed settings to write (set_scene's no known method entry).
 
 A scene is classed by the lights it writes: the one class other than `hue` among them, `other` when they hold more,
@@ -36,31 +36,33 @@ from ...core.scope import OTHER, NoKnownMethod, documented, verified
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
 SIGNIFY = "Signify Netherlands B.V."
-# Gledopto's GL-C-008P, by the Zigbee strings the bridge passes on as `manufacturer_name` and `model_id`: its basic
-# cluster's `GLEDOPTO` and either model ID zigbee-herdsman-converters lists for it (src/devices/gledopto.ts, at
-# afdaa028); a manufacturer matched in any case, as Zigbee2MQTT's Gledopto rule does. internals.md, Device classes.
-GLEDOPTO = "gledopto"
-GL_C_008P_MODEL_IDS = frozenset({"GL-C-008P", "C-ZB-LC20v2-RGBCCT"})
-
 HUE = "hue"
-GL_C_008P = "gledopto_gl_c_008p"
+GLEDOPTO = "gledopto"
+MULLER_LICHT = "muller_licht"
 SMART_SCENE = "smart_scene"
+# The split-off makers, by the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`,
+# casefolded and matched in any case, as Zigbee2MQTT's Gledopto rule does: Gledopto's `GLEDOPTO` (src/devices/
+# gledopto.ts) and Müller Licht's `MLI` (src/devices/muller_licht.ts), zigbee-herdsman-converters at the commits
+# internals.md (Device classes) cites.
+_MAKERS = {"gledopto": GLEDOPTO, "mli": MULLER_LICHT}
 # Each class's domains (IntegrationInfo.classes): a light, Hue's smart plug included, which the bridge shows as one,
 # and a scene, classed by the lights it writes; a smart scene is a scene alone.
 CLASSES = {
     HUE: frozenset({Platform.LIGHT, Platform.SCENE}),
     OTHER: frozenset({Platform.LIGHT, Platform.SCENE}),
-    GL_C_008P: frozenset({Platform.LIGHT, Platform.SCENE}),
+    GLEDOPTO: frozenset({Platform.LIGHT, Platform.SCENE}),
+    MULLER_LICHT: frozenset({Platform.LIGHT, Platform.SCENE}),
     SMART_SCENE: frozenset({Platform.SCENE}),
 }
 
 # Every adapter's levels: Verified on Hue, whose lights every record ran on; Documented on `other`, on a bridge's one
 # request (docs/evidence.md, Levels): DeviceSide sends every light the same CLIP v2 light update, which Hue Smooth
 # Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and no Hue action's failure harms
-# (internals.md, Device classes). The GL-C-008P takes `other`'s levels on every action but get_attributes.
-LEVELS = verified(HUE) | documented(OTHER, GL_C_008P)
-# get_attributes reads `mirek_valid` for color temperature mode, which the GL-C-008P doesn't set reliably (core
-# #93459): not built there (a NotBuilt entry is only for an action whose failure harms).
+# (internals.md, Device classes). Gledopto and Müller Licht take `other`'s levels on every action but get_attributes.
+LEVELS = verified(HUE) | documented(OTHER, GLEDOPTO, MULLER_LICHT)
+# get_attributes reads `mirek_valid` for color temperature mode, which the bridge reports wrong for Gledopto and
+# Müller Licht lights (core #62497, #93459): not built there (a NotBuilt entry is only for an action whose failure
+# harms).
 GET_ATTRIBUTES_LEVELS = verified(HUE) | documented(OTHER)
 
 _PAGE = DOCS_URL + "docs/integrations/hue/index.md"
@@ -76,12 +78,10 @@ SET_SCENE_NO_KNOWN_METHOD = {
 
 
 def device_class(device: dr.DeviceEntry) -> str:
-    """A light's class by its registry device: `hue` for Signify's, the GL-C-008P's own, else the default."""
+    """A light's class by its registry device: `hue` for Signify's, a split-off maker's own, else the default."""
     if device.manufacturer == SIGNIFY:
         return HUE
-    if (device.manufacturer or "").casefold() == GLEDOPTO and device.model_id in GL_C_008P_MODEL_IDS:
-        return GL_C_008P
-    return OTHER
+    return _MAKERS.get((device.manufacturer or "").casefold(), OTHER)
 
 
 def capability(hass: HomeAssistant, target: Target) -> str | None:

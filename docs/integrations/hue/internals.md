@@ -64,7 +64,7 @@ So `other` holds every other maker's light. It is Documented on every action, on
   fields Hue Smooth Dimming sent apart; and `stop`'s xy halt and soft-off cut, writes mid-transition measured only on
   Hue bulbs (Modules, `stop`).
 
-**Known departures**, which a failing report on an `other` light would split off at its manufacturer and model:
+**Known departures**, which a failing report on an `other` light would split off at its manufacturer, or its model:
 
 - **Writes while off** (`set_attributes`, `set_scene`): a Sengled E11-G13 jumps to full on `MoveToLevel` while off
   ([ZHA internals](../zha/internals.md)); a Gledopto turns on when its color is set while off
@@ -79,16 +79,30 @@ So `other` holds every other maker's light. It is Documented on every action, on
   `mirek_valid` for color temperature mode, so such a light may read no color temperature, or a stale one in color
   mode. Core reads an uncertified light's mode from its own last command, `_color_temp_active`, set on each turn on
   ([`v2/light.py`](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L155-L164), [L258](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L258), Home Assistant 2026.10.2), a cached write
-  `get_attributes` never reports.
+  `get_attributes` never reports. Reported: [core #62497](https://github.com/home-assistant/core/issues/62497) and
+  [core #93459](https://github.com/home-assistant/core/issues/93459), split off below.
 
-**Split off:** the Gledopto GL-C-008P (`gledopto_gl_c_008p`), not built on `get_attributes`, as Home Assistant showed
-its color temperature as a color, a `mirek_valid` it left unset
-([core #93459](https://github.com/home-assistant/core/issues/93459), firmware 11076802; fixed by PR #97263). Its class
-keys on the manufacturer `GLEDOPTO`, in any case, and the model IDs zigbee-herdsman-converters lists for it
-(`GL-C-008P`, `C-ZB-LC20v2-RGBCCT`,
-[`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L666-L668)),
-the Zigbee strings the bridge passes on as `product_data`: inferred, as no Hue diagnostics in the issue show them. Any
-other uncertified light reported the same way is split off alike.
+**Split off:** Gledopto (`gledopto`) and Müller Licht (`muller_licht`), each a class of its own, not built on
+`get_attributes`, as the bridge reports their color temperature mode wrong:
+
+- [core #62497](https://github.com/home-assistant/core/issues/62497) (2021-2022): Gledopto GL-S-004P and GL-B-007P
+  bulbs and non-Pro strip controllers, a Müller Licht tint loris (firmware 2.5.3) and a LivarnoLux strip. After a
+  color temperature write, a second event within a second reports xy, so Home Assistant shows a color. The bridge
+  itself reports it: core's maintainer read it in the bridge's events, and a reporter saw the Hue app show it with Home
+  Assistant off the network. A Gledopto Pro strip controller didn't show it.
+- [core #93459](https://github.com/home-assistant/core/issues/93459): a Gledopto GL-C-008P (a Pro controller,
+  firmware 11076802) left `mirek_valid` unset, so Home Assistant showed its color temperature as a color (fixed by PR
+  #97263).
+
+As a Pro controller shows it too, each class keys on the maker, any model: the Zigbee manufacturer string the bridge
+passes on as `product_data.manufacturer_name`, in any case. Gledopto's is `GLEDOPTO`
+([`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L400)), Müller Licht's `MLI`,
+the string zigbee-herdsman-converters' fingerprints give its tint lights
+([`muller_licht.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/muller_licht.ts#L333-L354)): inferred, as
+no Hue diagnostics in either issue show them. Müller Licht lights made by Tuya (a `_TZ…` string) stay in `other`.
+Livarno (Lidl) is recorded as reported but has no key yet: its lights are Tuya inside, with a `_TZ…` manufacturer
+string per model, and the report gives none, so it splits off once a report gives its strings. Any other maker reported
+the same way is split off alike.
 
 ## Modules
 
