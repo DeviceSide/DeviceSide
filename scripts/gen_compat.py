@@ -188,7 +188,7 @@ OUTCOMES = (
     (
         "labs",
         "⚪",
-        "Labs: not yet passed on a real device, or held back to soak. Enable Labs in Configure > Settings",
+        "Labs: not yet passed on a real device. Enable Labs in Configure > Settings",
     ),
     ("no_known_method", "🔴", "no known command works on it"),
 )

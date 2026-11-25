@@ -38,7 +38,7 @@ pytestmark = pytest.mark.usefixtures("setup_integration")
 
 TIMER_OFF = "turn off with timer"
 TIMER_ON = "turn on with timer"
-SWITCH = ' <ha-icon icon="mdi:toggle-switch-variant"></ha-icon>'  # the domain's default icon
+SWITCH = '<ha-icon icon="mdi:toggle-switch-variant"></ha-icon> '  # the domain's default icon
 ANYWHERE = frozenset({"light", "switch"})
 # A class at each level, one with no known method and one not built yet (as test_dispatcher's GATED).
 GATED = AdapterScope(
@@ -273,14 +273,14 @@ async def test_the_table_has_a_column_per_feature_and_a_blank_where_it_does_not_
     text = coverage.table(hass, found)
 
     assert text.splitlines()[:3] == [
-        "| | " + " | ".join(column.heading for column in COLUMNS) + " |",
+        "| | " + " | ".join(f'<div align="center">{column.heading}</div>' for column in COLUMNS) + " |",
         "|---|:-:|:-:|:-:|:-:|:-:|:-:|",
         "| **Fake** | | | | | | |",
     ]
-    assert f"| a{SWITCH} |  |  |  | 🟢 | 🟢 |  |" in text
-    assert f"| d{SWITCH} |" not in text
-    assert f"| c{SWITCH} |  |  |  | ⚪ | ⚪ |  |" in text
-    assert f"| fake group{SWITCH} <small>Group</small> |  |  |  | 🟡 | 🟡 |  |" in text
+    assert f"| {SWITCH}a |  |  |  | 🟢 | 🟢 |  |" in text
+    assert f"| {SWITCH}d |" not in text
+    assert f"| {SWITCH}c |  |  |  | ⚪ | ⚪ |  |" in text
+    assert f"| {SWITCH}fake group <small>Group</small> |  |  |  | 🟡 | 🟡 |  |" in text
     assert "🔴" not in text
 
 
@@ -294,7 +294,7 @@ def test_the_legend_explains_each_mark():
     assert coverage.legend().split("\n\n") == [
         "🟢 Verified: works, tested on a real device",
         "🟡 Documented: should work, same call pattern as a tested device",
-        "⚪ Labs: not yet passed on a real device, or held back to soak. Turn on Labs below to use it",
+        "⚪ Labs: not yet passed on a real device. Turn on Labs below to try it",
     ]
 
 
@@ -315,7 +315,7 @@ async def test_the_step_shows_the_matrix_with_the_labs_checkbox_under_it(hass, s
     holders = result["description_placeholders"]
     assert (holders["features"], holders["devices"]) == ("9", "4")
     assert holders["legend"] == coverage.legend()
-    assert f"| c{SWITCH} |" in holders["table"]
+    assert f"| {SWITCH}c |" in holders["table"]
     assert result["data_schema"]({}) == {"labs": False}
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())["options"]
     step = strings["step"]["coverage_view"]

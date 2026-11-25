@@ -280,23 +280,23 @@ def _plain(text: str) -> str:
 
 
 def table(hass: HomeAssistant, coverage: Coverage) -> str:
-    """The matrix in Markdown (HA's flow Markdown keeps tables and `ha-icon`, and strips style and class): an
+    """The matrix in Markdown (HA's flow Markdown keeps tables, `ha-icon` and `align`, and strips style and class): an
     entity per row under its integration's title, a column per feature (smooth
     saturation and hue share one), a mark where it runs and a blank where it doesn't. Empty with no rows."""
     if not coverage.rows:
         return ""
     registry = hass.data[DATA].registry
-    headings = " | ".join(column.heading for column in COLUMNS)
+    headings = " | ".join(f'<div align="center">{column.heading}</div>' for column in COLUMNS)
     lines = [f"| | {headings} |", "|---|" + ":-:|" * len(COLUMNS)]
     shown = None
     for row in coverage.rows:
         if row.integration != shown:
             shown = row.integration
             lines.append(f"| **{_plain(registry.integrations[shown].title)}** |" + " |" * len(COLUMNS))
-        icon = f' <ha-icon icon="{html.escape(row.icon)}"></ha-icon>' if row.icon else ""
+        icon = f'<ha-icon icon="{html.escape(row.icon)}"></ha-icon> ' if row.icon else ""
         label = " <small>Group</small>" if row.group else ""
         cells = [got.mark if (got := row.cells.get(column.heading)) else "" for column in COLUMNS]
-        lines.append(f"| {_plain(row.name)}{icon}{label} | " + " | ".join(cells) + " |")
+        lines.append(f"| {icon}{_plain(row.name)}{label} | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
@@ -306,6 +306,6 @@ def legend() -> str:
         (
             f"{Mark.VERIFIED} Verified: works, tested on a real device",
             f"{Mark.DOCUMENTED} Documented: should work, same call pattern as a tested device",
-            f"{Mark.LABS} Labs: not yet passed on a real device, or held back to soak. Turn on Labs below to use it",
+            f"{Mark.LABS} Labs: not yet passed on a real device. Turn on Labs below to try it",
         )
     )
