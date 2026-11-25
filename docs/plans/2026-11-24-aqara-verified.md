@@ -1,4 +1,4 @@
-# Aqara bulb to Verified on Zigbee2MQTT, then Documented by call pattern
+# Aqara bulb to Verified on Zigbee2MQTT
 
 2026-11-24. Planned from [the handoff](2026-11-24-aqara-verified-handoff.md); branch `wt/aqara-verified`, worktree
 `deviceside-wt/aqara-verified`.
@@ -6,8 +6,8 @@
 ## Context
 
 Jason's goal: (1) the Aqara color bulb (Z2M definition T2_E27, model `lumi.light.agl003`, manufacturer `Aqara`)
-Verified on DeviceSide for every action it supports; (2) a judgment call on which other devices can be Documented by a
-shared call pattern. Since #605/#607 the bulb is placed as `other` and takes dimming, stop and set/get attributes in
+Verified on DeviceSide for every action it supports; (2), a judgment call on which other devices can be Documented by a
+shared call pattern, moved to [the v0.2.0 backlog](2026-11-25-v0.2.0-backlog.md) (#610) on 2026-11-25. Since #605/#607 the bulb is placed as `other` and takes dimming, stop and set/get attributes in
 Labs. The 2026-11-24 23:29 rig run passed those (17 pass / 16 fail / 28 skip) but wrote **no records**: `lab_aqara`
 has no group roles, and the rig never overwrites a record with one that skips a case it passed (ha-rig `docs/rig.md`,
 "A record never narrows to a profile"). Open facts: the bulb looks xy-only (stays `color_mode: xy`, `currentHue`
@@ -31,9 +31,8 @@ UNSUPPORTED_ATTRIBUTE); its timer behavior is unprobed; one unexplained `no genL
    step 4 waits on.
 5. **Timeout:** repro ~10 runs of the setup step that hit it, with Z2M debug logging. Reproduces: root-cause and fix,
    or record the limit, before Verified. Doesn't: record it in `internals.md` as seen once, unexplained, and proceed.
-6. **Goal 2 (Documented) is open:** Jason wants the evidence of what vendors publish first (step 6). Today's rule:
-   a class spanning vendors is never Documented by a sibling's pass, and the sibling route needs the vendor's own docs
-   giving the call identically.
+6. **Goal 2 (Documented): moved** (Jason, 2026-11-25) to [the v0.2.0 backlog](2026-11-25-v0.2.0-backlog.md), #610,
+   which takes a standard-call route to Documented for low-harm light writes and builds on step 6's research.
 
 ## Step 1 rulings (2026-11-25, from [the probe](../integrations/zigbee2mqtt/research/aqara/2026-11-25-agl003-probe.md))
 
@@ -75,12 +74,8 @@ hostnames in commits, docs or research files.
    The coverage check (`docs/evidence.md`, The coverage check) must pass. Decision for this run: lifting the Labs flag. The rig carries rows only onto an identical call transcript (HA-rig#108), and the Z2M records for get_attributes, lower_hue, lower_saturation and turn_on_for cite an older transcript than HEAD's: their Aqara rows land only after a Hue-profile rerun of those suites (Jason's yes), or the rig prints `Kept`.
 5. **Audit and ready**: `audit-gate` on the PR diff, `owner-findings`, then `gh pr ready` (default-branch PR: Jason
    merges).
-6. **Goal 2 research** (Decision 6), independent of steps 1-5: `/research` into what Zigbee vendors publish about their
-   lights' ZCL calls (Aqara, Innr, Ledvance, IKEA, Signify's Hue developer docs, Sengled, Gledopto, Tuya), and what Zigbee
-   3.0 / ZLL certification tests for Level Control and Color Control (moveToLevel with ExecuteIfOff, attribute reads).
-   Output: `docs/research/2026-11-2x-vendor-call-documentation.md`. Then bring Jason the decision (keep the rule, amend
-   `docs/evidence.md` with a call-pattern route, or a narrower route) via `/grilling`; an amendment is a binding-rule
-   change with its own plan and an opus auditor.
+6. **Goal 2 research: done, then moved.** `docs/research/2026-11-25-vendor-call-documentation.md` is committed here
+   and complete; the rule decision and its PR are #610's (Decision 6).
 
 ## Handoff
 
@@ -112,7 +107,6 @@ hostnames in commits, docs or research files.
 
 ## Coordination
 
-Intent: Aqara color bulbs Verified on Zigbee2MQTT as a new `aqara` class, on probes and rig records; research what
-vendors publish to decide whether a call pattern can make other devices Documented.
+Intent: Aqara color bulbs Verified on Zigbee2MQTT as a new `aqara` class, on probes and rig records.
 Touches: custom_components/deviceside/integrations/zigbee2mqtt/families/aqara/**, custom_components/deviceside/integrations/zigbee2mqtt/families/__init__.py, custom_components/deviceside/integrations/zigbee2mqtt/refusals.py, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, docs/models.yaml, docs/device-compatibility.md, docs/research/**, README.md, .github/CODEOWNERS
 Depends-on: jasonmx/HA-rig#108
