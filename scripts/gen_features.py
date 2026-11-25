@@ -44,7 +44,8 @@ START = "<!-- features:start -->"
 END = "<!-- features:end -->"
 # Absolute: the raw file, so GitHub shows the icon inline rather than linking its SVG page.
 ICON_URL = "https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/{}.svg"
-# Absolute for the same reason. Without a link of its own, GitHub links each icon to its SVG file.
+# A doc link, absolute: one form for every link in the table. Without a link of its own, GitHub links each icon to its
+# SVG file.
 DOC_URL = DOCS_URL + "{}#{}"
 INTEGRATIONS = "docs/integrations.md"
 # The integrations.md section explaining every NO_PATH entry to users; keep the two in step.
