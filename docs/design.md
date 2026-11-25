@@ -231,7 +231,7 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 
 ### Coverage view
 
-The Settings form in Configure (`coverage.py`) shows, in a collapsed section above the options, per light and switch entity, the features that run now (Verified,
+The Settings form in Configure (`coverage.py`) shows, above the options, per light and switch entity, the features that run now (Verified,
 Documented), and those that need Labs; a refused feature is an empty cell, as a blank is unsupported, and an entity with no cell has no row. It reads `dispatcher.judge`, the per-target
 decision a call makes (supports(), the class, the refusal, then the Labs gate), on each action of a feature with Labs
 off, and never a copy of it, so a cell can't disagree with a call. A feature riding several actions takes its weakest;

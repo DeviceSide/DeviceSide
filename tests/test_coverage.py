@@ -314,11 +314,12 @@ async def test_settings_shows_the_matrix_with_the_options_under_it(hass, setup_i
     assert result["step_id"] == "settings"
     holders = result["description_placeholders"]
     assert holders["coverage"] == (
-        "<details>\n<summary>See your devices: DeviceSide runs 9 features on 4 of them.</summary>\n\n"
-        f"{coverage.legend()}\n\n{coverage.table(hass, await coverage.collect(hass))}\n\n</details>"
+        "DeviceSide runs 9 features on 4 of your devices.\n\n"
+        f"{coverage.legend()}\n\n{coverage.table(hass, await coverage.collect(hass))}"
     )
     assert f"| {SWITCH}c |" in holders["coverage"]
     assert result["data_schema"]({}) == {"predicted_state": True, "z2m_color_modes": True, "labs": False}
+    assert [str(key) for key in result["data_schema"].schema] == ["labs", "predicted_state", "z2m_color_modes"]
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())["options"]
     step = strings["step"]["settings"]
     assert step["description"] == "{coverage}"  # tags in a translation string break HA's frontend formatter

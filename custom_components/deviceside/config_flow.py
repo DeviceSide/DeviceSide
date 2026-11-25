@@ -311,7 +311,7 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
         )
 
     async def async_step_settings(self, user_input=None):
-        """What DeviceSide runs on each light and switch, collapsed above the options. Saving reloads the entry
+        """What DeviceSide runs on each light and switch, above the options, Labs first. Saving reloads the entry
         only if an option changed (OptionsFlowWithReload). First, while an integration is still listing its devices
         (coverage.waiting), HA's progress spinner for at most coverage.WAIT_S."""
         if user_input is not None:
@@ -335,13 +335,13 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
             step_id="settings",
             data_schema=vol.Schema(
                 {
+                    vol.Required(CONF_LABS, default=labs): bool,
                     vol.Required(
                         CONF_PREDICTED_STATE, default=options.get(CONF_PREDICTED_STATE, PREDICTED_STATE_DEFAULT)
                     ): bool,
                     vol.Required(
                         CONF_Z2M_COLOR_MODES, default=options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
                     ): bool,
-                    vol.Required(CONF_LABS, default=labs): bool,
                 }
             ),
             description_placeholders={

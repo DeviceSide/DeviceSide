@@ -301,11 +301,10 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
 
 
 def section(hass: HomeAssistant, coverage: Coverage) -> str:
-    """The Settings form's collapsed coverage: a call-to-action summary with the counts, opening on the legend and the
-    table. Built here, not in en.json: HA's frontend reads tags in a translation string as its own markup."""
+    """The Settings form's coverage, above the options: the counts, the legend and the table."""
     return (
-        f"<details>\n<summary>See your devices: DeviceSide runs {coverage.features_now} features on "
-        f"{coverage.devices_now} of them.</summary>\n\n{legend()}\n\n{table(hass, coverage)}\n\n</details>"
+        f"DeviceSide runs {coverage.features_now} features on {coverage.devices_now} of your devices.\n\n"
+        f"{legend()}\n\n{table(hass, coverage)}"
     )
 
 
