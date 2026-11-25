@@ -30,7 +30,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
-from ...conftest import Clock, leaked, unload_mock_entries
+from ...conftest import Clock, allow_labs, leaked, unload_mock_entries
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import (
     DEFAULT_BASE,
@@ -220,6 +220,7 @@ def light(
     color_mode: str = "xy",
     base: str = DEFAULT_BASE,
     name: str | None = None,
+    definition_model: str | None = None,
 ) -> str:
     """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR, on the
     instance with this base topic, under this friendly name (by default the entity_id's object id).
@@ -227,7 +228,8 @@ def light(
     Its bridge/devices entry holds the Zigbee manufacturer and model `zigbee` names. By default, REGISTRY, the
     registry's manufacturer and ZIGBEE_MODEL: an interviewed device of that vendor that shows no Tuya string. None
     writes an entry with neither, as Zigbee2MQTT lists a device mid-interview, which the classifier can't place by
-    them. `interview_completed` is `interviewed`, by default whether `zigbee` names any string.
+    them. `interview_completed` is `interviewed`, by default whether `zigbee` names any string. Its definition carries
+    `definition_model` as its model, where given.
     """
     name = name or entity_id.split(".")[1]
     entries = hass.config_entries.async_entries("mqtt")
@@ -252,6 +254,8 @@ def light(
     broker.retained[INFO]["config"]["devices"].setdefault(ieee, {})
     features = [{"name": "state"}, {"name": "brightness"}] + ([{"name": "color_hs"}] if color_hs else [])
     device = {"ieee_address": ieee, "definition": {"exposes": [{"type": "light", "features": features}]}}
+    if definition_model is not None:
+        device["definition"]["model"] = definition_model
     if zigbee is REGISTRY:
         zigbee = (manufacturer, ZIGBEE_MODEL)
     # Its own Zigbee manufacturer and model, which the classifier reads; Z2M holds null for one it hasn't read.
@@ -345,6 +349,42 @@ SET = f"zigbee2mqtt/{IEEE}/set"
 GET = f"zigbee2mqtt/{IEEE}/get"
 # An off light is put here first, so a fade from off starts at the bottom, not the level it kept.
 BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
+
+
+def move_to_level(level: int, transtime: int) -> dict:
+    """The lowest level as a lower sends it to Hue, Aqara and standard lights alone: a raw moveToLevel, as the converter
+    would send 2 to a flagged light, and its moveToLevelWithOnOff would turn the light off at the minimum
+    (fade.raw_bottom)."""
+    return {
+        "command": {
+            "cluster": "genLevelCtrl",
+            "command": "moveToLevel",
+            "payload": {"level": level, "transtime": transtime, "optionsMask": 0, "optionsOverride": 0},
+        }
+    }
+
+
+def bottom_target(hass, broker, kind: str, **options) -> tuple[str, str]:
+    """A fade's target at the bottom and the topic it publishes to: a Hue light, an Aqara light, a standard light, a
+    group of Hue lights, a group of Aqara and Hue lights, a group of a standard and a Hue light, a group with an Innr
+    light (Hue, Aqara or a standard light, and Innr), or an Innr light alone (`other`, in Labs)."""
+    allow_labs(hass)
+    hue, aqara, other = {"manufacturer": "Philips"}, {"manufacturer": "Aqara"}, {"manufacturer": "Innr"}
+    standard = {"manufacturer": "OSRAM", "model_id": "4058075816718", "definition_model": "4058075816718"}
+    members = {
+        "hue_group": (hue, hue),
+        "aqara_hue_group": (aqara, hue),
+        "standard_hue_group": (standard, hue),
+        "mixed_group": (hue, other),
+        "aqara_other_group": (aqara, other),
+        "standard_other_group": (standard, other),
+    }
+    if kind in members:
+        one, two = members[kind]
+        return group(hass, broker, one=options | one, two=options | two), "zigbee2mqtt/7/set"
+    alone = {"other_light": other, "aqara_light": aqara, "standard_light": standard}.get(kind, hue)
+    return light(hass, broker, **options, **alone), SET
+
 
 # The inching families' shared test inputs: the composite and switch exposes Z2M lists, and the call's data and topic.
 COMPOSITE = {"type": "composite", "name": "inching_control_set", "property": "inching_control_set", "access": 2}

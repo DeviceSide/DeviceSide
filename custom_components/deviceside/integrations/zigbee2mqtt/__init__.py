@@ -2,6 +2,7 @@
 
 from . import lifecycle
 from .addressing import is_z2m_group
+from .bridge_cache import capability_ready
 from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
 from .clear_auto_off import Z2MClearAutoOff
 from .detect import detect
@@ -21,6 +22,7 @@ from .stop import Z2MStop
 from .turn_off_for import Z2MTurnOffFor
 from .turn_on_for import Z2MTurnOnFor
 from ...core.scope import IntegrationInfo
+from ...zigbee.standard_lights import STANDARD_LIGHT
 
 INTEGRATION = IntegrationInfo(
     key="zigbee2mqtt",
@@ -31,9 +33,11 @@ INTEGRATION = IntegrationInfo(
     is_group=is_z2m_group,
     expand_group=expand_group,
     capability=capability,
+    capability_ready=capability_ready,
     classes=CLASSES,
     default_class=OTHER,
     families=FAMILIES,
+    own_classes=frozenset({STANDARD_LIGHT}),
     zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=Z2MCallResolver(),
     setup=lifecycle.setup,

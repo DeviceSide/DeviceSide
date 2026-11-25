@@ -38,8 +38,9 @@ class Level(IntEnum):
     # The Labs flag on one item, not yet passed on a real device or held back: refused unless the Labs option is on. A
     # maintainer lifts it once a pass is on record and they judge it enough (docs/evidence.md, The Labs flag).
     LABS = 0
-    # Reaches the same capability as a Verified item, differing only in addressing, or a read a certification tests on
-    # every certified device, its class keyed on a marker (docs/evidence.md, Levels); unit tests pin the payload.
+    # Reaches the same capability as a Verified item, differing only in addressing; a read a certification tests on
+    # every certified device, its class keyed on a marker; or a Zigbee2MQTT light's call through ZHC's standard
+    # converters, its class keyed on the definition (docs/evidence.md, Levels); unit tests pin the payload.
     DOCUMENTED = 10
     # A maintainer has verified the call on a real device.
     VERIFIED = 20
@@ -114,7 +115,7 @@ class NoKnownMethod:
     """A class with no known method, a device limit as far as anyone knows (docs/evidence.md, No known method): no
     known call works on it, or the only one known is unsafe, and the reason says which. What the card names, why, and
     the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it as `no_known_method`,
-    raising with the reason; the card marks it 🔴.
+    raising with the reason; the compatibility page marks it 🔴.
 
     Whether the call harms the class is the action's (Action.failure_harms), not the entry's: on an action whose
     failure harms, the entry also makes the scope refuse a target that could still be in it (AdapterScope.harms).
@@ -521,6 +522,11 @@ class IntegrationInfo:
     # matches gets the default class, never None: core refuses None there as class_unknown, as it does Unplaced. None
     # for an integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
+    # Whether capability() can name every device now, for the coverage view, which would otherwise show devices the
+    # integration hasn't reported yet as unplaced (Z2M's bridge/devices arrives after the entry sets up): sync, no I/O.
+    # None when it can; else an awaitable that completes once it can, which the view waits on for a bounded time
+    # (coverage.WAIT_S) and then reads what it has. None as the hook, for an integration that is always ready.
+    capability_ready: Callable[[HomeAssistant], Awaitable[None] | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
     # adapter serves in neither its capabilities nor its no_known_method as not built yet. Each with the entity
     # domains whose features its devices have (a TS011F plug: a switch, even where Zigbee2MQTT shows it as a light), so
@@ -533,8 +539,12 @@ class IntegrationInfo:
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).
     default_class: str | None = None
     # The vendor families that hold its classes, each with its own maintainers; between them every class but the
-    # default one, each once (core/registry.py, check_families). Empty for an integration that has none.
+    # default one and `own_classes`, each once (core/registry.py, check_families). Empty for an integration that has
+    # none.
     families: tuple[Family, ...] = ()
+    # On an integration with families, the classes it holds itself beside the default one, in no family: a class that
+    # spans vendors as the default one does (Zigbee2MQTT's standard lights), so no family's maintainers own it.
+    own_classes: frozenset[str] = frozenset()
     # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.
     call_resolver: CallResolver | None = None
     # Starts what the integration keeps running while the entry is loaded (Z2M's bridge cache). Core runs it as the

@@ -3,12 +3,12 @@
   "integration": "zigbee2mqtt",
   "action": "set_attributes",
   "result": "pass",
-  "date": "2026-11-18",
+  "date": "2026-11-25",
   "source": {
     "kind": "rig",
-    "commit": "c05e6168"
+    "commit": "8d2a57d7"
   },
-  "calls": "338d7caaae85ec84b4b0daf98846a9cd82206f1b",
+  "calls": "a1874fbac3d780e9d353f826d4278dbff2bee438",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -22,6 +22,20 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
           "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "sets_while_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
         }
       ]
     },
@@ -67,6 +81,20 @@
       ]
     },
     {
+      "id": "sets_after_a_soft_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
       "id": "sets_after_a_soft_off[group]",
       "domain": "light",
       "role": "group",
@@ -108,6 +136,20 @@
       ]
     },
     {
+      "id": "sets_color_while_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
       "id": "sets_color_while_off[light_color] observed",
       "role": "light_color",
       "result": "skipped",
@@ -124,6 +166,20 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.164.2",
           "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "sets_hs_while_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
         }
       ]
     },
@@ -157,6 +213,20 @@
       ]
     },
     {
+      "id": "sets_xy_while_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
       "id": "sets_xy_while_off[group_color]",
       "domain": "light",
       "role": "group_color",
@@ -172,7 +242,63 @@
       ]
     },
     {
+      "id": "sets_the_lowest_level_while_lit[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "sets_the_lowest_level_while_lit[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
       "id": "min_brightness_raises[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "min_brightness_raises[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
+      "id": "min_brightness_leaves_brighter[light_ct]",
       "domain": "light",
       "role": "light_ct",
       "result": "pass",
@@ -192,10 +318,10 @@
       "result": "pass",
       "devices": [
         {
-          "model": "LTA009",
-          "manufacturer": "Signify Netherlands B.V.",
-          "firmware": "1.163.1",
-          "class": "hue"
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
         }
       ]
     },
@@ -210,6 +336,20 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
           "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "max_brightness_lowers[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
         }
       ]
     }

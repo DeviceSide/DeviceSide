@@ -171,6 +171,30 @@ halted from one still moving, so the reads are the only signal a device report h
 
 **Plan:** [`docs/plans/2026-11-24-matter-light-actions.md`](plans/2026-11-24-matter-light-actions.md), Decision 8
 
+## The raw bottom for other lights on Zigbee2MQTT
+
+A lower to 0.4 % sends level 1 as a raw `moveToLevel` to Hue and Aqara lights alone, and level 2 to standard lights
+([internals](integrations/zigbee2mqtt/internals.md#fade)). An unflagged `other` light switches off at it, as
+Zigbee2MQTT's converter sends level 1 as `moveToLevelWithOnOff`; a flagged one stops at 0.8 %. Sending it raw to every
+light would fix the first and lowers the second to 0.4 %.
+
+Open with it: a mixed group (a member of `other`) goes through the converter whole, so an off member lights at the
+lower (`moveToLevelWithOnOff`, which has On/Off), where a raw `moveToLevel` leaves it off.
+
+**Why not now:** `other` has no record of holding level 1 on a raw `moveToLevel`, and Innr's lights are reported to
+turn off at level 1, which a raw call would not prevent. Standard lights get it at level 2 on their membership (ZHC's
+standard converters, with no meta or override touching the call), which an `other` light lacks.
+
+**Revisit when:**
+- a report of an unflagged `other` light switching off at a lower to 0.4 %: then `scripts/zhc_table.py` emits a
+  bottom membership (a standard brightness converter and no flag touching it, whatever the other actions' departures),
+  not a separate list of `turnsOffAtBrightness1` models, which would send the raw call to overridden and
+  `omitOptionalLevelAndColorParams` lights;
+- a probe of a standard light holding level 1 lit on a raw `moveToLevel` (lowers its bottom to 1);
+- a probe of an unflagged `other` light holding level 1 lit on a raw `moveToLevel`.
+
+**Plan:** [`docs/plans/2026-11-25-brightness-floor.md`](plans/2026-11-25-brightness-floor.md), Decisions 11 and 12
+
 ## Inching readback on Zigbee2MQTT
 
 Read the persisted inching setting back, so `set_auto_off` and `clear_auto_off` could be `confirmed` and

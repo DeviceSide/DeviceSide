@@ -23,7 +23,8 @@ Code and docs use these terms. Each one's rules live where its link points.
   (`integrations/<x>/families/<family>/`), so a vendor is one path with its own maintainers. Rules:
   [Writing an integration](#core-contract), Family.
 - **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
-  (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
+  (`custom_components/deviceside/zigbee/<family>.py`), and generated device tables any Zigbee integration may read
+  (`zigbee/standard_lights.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
   `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); when a
   device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
@@ -97,7 +98,7 @@ built:
 
 ## Scope
 
-Which integrations have which actions: the README feature table (`scripts/gen_features.py`); each integration's page:
+Which integrations have which actions: the feature table on docs/device-compatibility.md (`scripts/gen_features.py`); each integration's page:
 [integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`,
 explained to users in [integrations.md](integrations.md#what-cant-be-done-and-why). Per device class:
 [device-compatibility.md](device-compatibility.md). Each adapter's `AdapterScope` says what it covers.
@@ -130,7 +131,9 @@ Facts from HA core this rests on:
 - Schemas use `probatio` and reuse `light.const.LIGHT_TURN_ON_SCHEMA` entries, so ranges never drift from core,
   bar brightness: it is a percent in every action, as in Hue Smooth Dimming. `turn_on_for` converts it to 1–255 where
   it calls `light.turn_on`, never to 0, and never as `brightness_pct`, which core (`light/helper.py`) rounds to 0
-  below 0.2%.
+  below 0.2%. 0.4 % is level 1, the lowest a light takes, and every level 1–254 is reachable: no shared conversion
+  raises the floor. A device, or a layer below DeviceSide, that can't reach level 1 is a device fact in its bundle's
+  `internals.md` and a class limit in its `index.md`.
 
 ### core/
 
@@ -168,7 +171,7 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 | Hook or field | What it buys | Where its rules live |
 |---|---|---|
 | `IntegrationInfo.capability`, `classes`, `default_class` | Each target's class, so each class stands on its own evidence. `capability` is sync and cheap, no I/O; it gives the default class to a device no rule matches, `Unplaced` to one not yet placed, `None` only to one it can't class at all. Every adapter sees the same class and maps the classes it serves to its own branch: a class is a device class, not a call pattern, as patterns are per action. `classes` gives each class the entity domains a device in it can be (a family's from its `Family`), so no scope holds a class on an action none of those domains reaches. | [evidence.md](evidence.md#device-classes); `Unplaced` in `core/scope.py`; the registry's checks: `check_integration` and `check_classes` in `core/registry.py` |
-| **Family**: `IntegrationInfo.families` (`Family`, `FamilyScope`), `integrations/<x>/refusals.py` | A vendor's classes as one path with its own maintainers: a `Family` names its classes and holds their rules, levels and own calls. Opt-in: an integration with none holds its classes itself. The integration keeps the transport, the default class, the rule order between families (`families/__init__.py`) and every refusal entry (`refusals.py`, merged in by `class_scope`). | `Family`, `FamilyScope` and `class_scope` in `core/scope.py`; `check_families` in `core/registry.py`; `core/rules.py`; [CLAUDE.md](../CLAUDE.md#maintainers) |
+| **Family**: `IntegrationInfo.families` (`Family`, `FamilyScope`), `integrations/<x>/refusals.py` | A vendor's classes as one path with its own maintainers: a `Family` names its classes and holds their rules, levels and own calls. Opt-in: an integration with none holds its classes itself. The integration keeps the transport, the default class and any other class spanning vendors (`IntegrationInfo.own_classes`: Zigbee2MQTT's standard lights), the rule order between families (`families/__init__.py`) and every refusal entry (`refusals.py`, merged in by `class_scope`). | `Family`, `FamilyScope` and `class_scope` in `core/scope.py`; `check_families` in `core/registry.py`; `core/rules.py`; [CLAUDE.md](../CLAUDE.md#maintainers) |
 | **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone, say) goes to the device as one command. `is_group` recognizes one; `expand_group` lists its members, sync and with no I/O; an adapter with `native_groups` gets the group as one target. `expand_group`'s members give the group its classes and are what it falls back to when a member's class is refused, takes a call of its own, or is in Labs, or holds a field the call carries in Labs (`AdapterScope.class_labs`), with the option off; an adapter without `native_groups` gets them as its targets. | `core/dispatcher.py`'s module docstring, Native groups; [evidence.md](evidence.md#device-classes), Groups |
 | `IntegrationInfo.setup`, `remove` | `setup` starts what the integration keeps running while the entry is loaded, as the entry's background task, and registers its own teardown with `entry.async_on_unload`; `remove` undoes what it changed outside HA as DeviceSide is deleted. A hook that raises is logged and isolated. The component root names no integration. | `IntegrationInfo` in `core/scope.py`; `_guarded` in `__init__.py` |
 | `IntegrationInfo.detect` | Picks this integration over a generic sibling on the same `ha_domain` (Zigbee2MQTT over plain MQTT): a different gateway or API is an integration of its own. | [evidence.md](evidence.md#the-split-rule); Resolver, below |
@@ -228,6 +231,17 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
   `light/services.yaml`'s `supported_color_modes` filters; a switch-only selection shows just `duration`.
 - Adding an action means a block each in `services.yaml`, `translations/en.json` and `icons.json`;
   `tests/core/test_actions_setup.py` checks all three.
+
+### Coverage view
+
+The Settings form in Configure (`coverage.py`) shows, above the options, per light and switch entity, the features that run now (Verified,
+Documented), and those that need Labs; a refused feature is an empty cell, as a blank is unsupported, and an entity with no cell has no row. It reads `dispatcher.judge`, the per-target
+decision a call makes (supports(), the class, the refusal, then the Labs gate), on each action of a feature with Labs
+off, and never a copy of it, so a cell can't disagree with a call. A feature riding several actions takes its weakest;
+Smooth color is saturation and hue in one column, the weaker of the two, a refused one counting as empty. An integration whose classes wait on a report (Z2M's bridge/devices) says so through
+`IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has. The features and
+their actions are `features.py`'s, which the README's cards read too; the integrations' order is `registry.CARD_ORDER`, a
+copy of the bundles' `column_order` that `tests/test_card_order.py` keeps equal.
 
 ## Release gates
 

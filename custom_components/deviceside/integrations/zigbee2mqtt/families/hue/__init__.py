@@ -39,6 +39,15 @@ NEED: dict[str, bool] = {
     "lower_saturation": False,
 }
 
+# The classes whose lights a lower to the lowest level sends a raw moveToLevel, each with the level sent: 1, the bulb's
+# lowest (fade.py, which joins it with the other classes' levels); set_attributes sends no kept-level publish after a
+# level 1 on a lit one (set_attributes.py, Hue's classes alone): Z2M's converter sends a brightness of 1 as level 2 on a
+# definition with turnsOffAtBrightness1, which philips.m.light sets, yet a Hue bulb holds level 1 lit (rig runs
+# 2026-11-25: ZHA and set_attributes' raw moveToLevel read 1, the converter 2; internals.md, `fade`). A raise from off
+# keeps the converter's level 2 bottom, which its fade up hides. Other flagged brands turn off at 1, or aren't known not
+# to, so they keep the converter's 2 (index.md, Lowest brightness).
+RAW_BOTTOM: dict[str, int] = {HUE: 1}
+
 # Verified on every action, as every record ran on a Hue bulb.
 _VERIFIED = FamilyScope(capabilities=verified(HUE))
 FAMILY = Family(

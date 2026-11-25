@@ -3,10 +3,10 @@
   "integration": "zigbee2mqtt",
   "action": "raise_brightness",
   "result": "pass",
-  "date": "2026-11-18",
+  "date": "2026-11-25",
   "source": {
     "kind": "rig",
-    "commit": "c05e6168"
+    "commit": "444529b7"
   },
   "calls": "a170a554e65e9a744dd219de970548c10bbd1ac7",
   "home_assistant": "2026.10.4",
@@ -22,6 +22,20 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
           "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "raise[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
         }
       ]
     },
@@ -63,6 +77,20 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
           "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "raise_after_soft_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
         }
       ]
     },

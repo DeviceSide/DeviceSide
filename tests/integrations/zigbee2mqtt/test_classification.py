@@ -69,6 +69,12 @@ DEVICES = {
     "hue_listed": (listed(("Philips", "9290018217"), ("Signify Netherlands B.V.", "LWA012")), "hue"),
     "sengled": (device(("Sengled", "E11-G13")), "sengled"),
     "sengled_listed": (listed(("Sengled", "E11-G13"), ("sengled", "E11-G13")), "sengled"),
+    # Aqara's rule reads the Zigbee string alone, so a registry-only device waits in `other`, and a bulb of Z2M's vendor
+    # `Aqara` whose string is `LUMI` falls past it: a standard light when its definition is on the table, else `other`.
+    "aqara_before": (device(("Aqara", "T2_E27")), "other"),
+    "aqara_listed": (listed(("Aqara", "T2_E27"), ("Aqara", "lumi.light.agl003")), "aqara"),
+    "aqara_lumi_listed": (listed(("Aqara", "T1"), ("LUMI", "lumi.light.acn014")), "other"),
+    "aqara_lumi_standard": (listed(("Aqara", "T2_E27"), ("LUMI", "lumi.light.agl003")), "standard_light"),
     "gledopto": (device(("Gledopto", "GL-C-008")), "gledopto"),
     "gledopto_listed": (listed(("Gledopto", "GL-C-008"), ("GLEDOPTO", "GL-C-008")), "gledopto"),
     "other": (device(("Innr", "RB 285 C")), "other"),
@@ -188,6 +194,19 @@ DEVICES = {
     # And after the vendor rules: a device a vendor rule and a Tuya registry rule both match is the vendor's.
     "vendor_against_registry_ts_model": (device(("Sengled", "TS0505B")), "sengled"),
     "vendor_against_registry_ts_model_listed": (listed(("Gledopto", "TS0505B"), ("GLEDOPTO", "GL-C-008")), "gledopto"),
+    # Other brands' standard lights (zigbee/standard_lights.py): by the definition model alone, after every family's
+    # rules, so `other` until bridge/devices lists the definition. A member; a split-off, which stays in `other`; a
+    # definition with turnsOffAtBrightness1, no member; a family's light whose definition is a member, which its family
+    # keeps (`aqara_listed`'s T2_E27 is one too); and a Tuya light under a member's definition, which Tuya's rules keep.
+    "standard_light": (
+        listed(("OSRAM", "4058075816718"), ("OSRAM", "Outdoor Lantern W RGBW OSRAM")),
+        "standard_light",
+    ),
+    "standard_light_before": (device(("OSRAM", "4058075816718")), "other"),
+    "standard_light_excluded": (listed(("Paulmann", "924.70"), ("Paulmann Licht GmbH", "RGBW")), "other"),
+    "standard_light_turns_off_at_1": (listed(("Innr", "RB 285 C"), ("innr", "RB 285 C")), "other"),
+    "standard_light_in_a_family": (listed(("Sengled", "E11-G13"), ("sengled", "E11-G13")), "sengled"),
+    "standard_light_tuya_inside": (listed(("Lidl", "14147206L"), (TUYA, "TS0505A")), "tuya_zcl"),
 }
 
 

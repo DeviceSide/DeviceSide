@@ -199,6 +199,20 @@ def test_the_shared_catalog_files_go_to_the_reading_integrations_never_a_family(
     )
 
 
+def test_an_imported_catalog_module_goes_to_the_importing_integrations(stacks):
+    """`control4`'s package imports the module outside its families; `hue`'s only names it."""
+    (stacks / "custom_components/deviceside/zigbee/standard_lights.py").write_text("")
+    (stacks / "tests/zigbee/test_standard_lights.py").write_text("")
+    package = stacks / "custom_components/deviceside/integrations"
+    (package / "control4/classes.py").write_text("from ...zigbee.standard_lights import STANDARD_LIGHT\n")
+    (package / "hue/notes.py").write_text("# standard_lights\n")
+    text = gco.generate(registry(hue=info("jasonmx", "dave"), control4=info("alice")), stacks)
+    assert text.endswith(
+        "\n\n/custom_components/deviceside/zigbee/standard_lights.py @alice @jasonmx\n"
+        "/tests/zigbee/test_standard_lights.py @alice @jasonmx\n"
+    )
+
+
 def test_a_family_without_a_package_is_an_error(stacks):
     with pytest.raises(SystemExit, match="hue: no package for family sengled"):
         gco.generate(registry(hue=info("jasonmx", families=(family("sengled"),))), stacks)

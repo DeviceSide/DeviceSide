@@ -47,10 +47,10 @@ jobs:
           else
             files=$(git diff --name-only --no-renames "$BASE...$HEAD")
             echo "$files"
-            # The bundles' records, devices.yaml, index and internals pages, icons, models.yaml, the records' schema, the
-            # shared pages and the README are docs, but generated, generated from or cited by code: check them.
+            # The bundles' records, devices.yaml, index, internals and generated pages, icons, models.yaml, the records'
+            # schema, the shared pages and the README are docs, but generated, generated from or cited by code: check them.
             if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true
-            elif grep -qE '^docs/integrations/[^/]+/(test-records/|devices\.yaml$|index\.md$|internals\.md$)' <<<"$files"; then code=true
+            elif grep -qE '^docs/integrations/[^/]+/(test-records/|devices\.yaml$|index\.md$|internals\.md$|standard-lights\.md$)' <<<"$files"; then code=true
             elif grep -qE '^(docs/(icons/|device-compatibility\.md$|integrations\.md$|internals\.md$|models\.yaml$|test-records\.schema\.json$)|README\.md$)' <<<"$files"; then code=true
             else code=false; fi
           fi
@@ -99,7 +99,10 @@ jobs:
       - name: Check the device cards, compatibility page and integration links are current
         run: .venv/bin/python scripts/gen_compat.py --check
 
-      - name: Check the README feature table is current
+      - name: Check the standard lights table and its page are current
+        run: .venv/bin/python scripts/zhc_table.py --check
+
+      - name: Check the feature table is current
         run: .venv/bin/python scripts/gen_features.py --check
 
       - name: Check CODEOWNERS and the device report dropdown are current

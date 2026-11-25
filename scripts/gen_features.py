@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Generate the README feature table: per feature and integration, an icon for each kind of target that is built
-(light, switch, native group, native scene), and a lone prohibited sign for a feature that is not possible on the
-whole integration.
+"""Generate the feature table at the top of docs/device-compatibility.md: per feature and integration, an icon for each
+kind of target that is built (light, switch, native group, native scene), and a lone prohibited sign for a feature
+that is not possible on the whole integration.
 
 Each icon links to the docs: a cell's to its integration's page, `docs/integrations/<integration>/index.md` (the
 feature's section when it has one), a prohibited sign's to the section of docs/integrations.md that says why, a legend
 entry's to the heading that explains it.
 
-The columns come from each integration's bundle: `column` (the README label) and `column_order` in
+The columns come from each integration's bundle: `column` (the table's label) and `column_order` in
 `docs/integrations/<integration>/devices.yaml`. An integration without one is an error naming the file to add.
 
 What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Labs option
@@ -16,7 +16,7 @@ each. A blank cell means possible on some device, or not built yet.
 
 Usage: scripts/gen_features.py [--check]
 
---check exits 1 when the table in README.md differs from what the adapters generate.
+--check exits 1 when the table in docs/device-compatibility.md differs from what the adapters generate.
 """
 
 import argparse
@@ -34,14 +34,18 @@ sys.path.insert(0, str(REPO))
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
+from custom_components.deviceside.features import FEATURE_ACTIONS  # noqa: E402
 from scripts.check_release import BUNDLES, adapters  # noqa: E402
 
 README = REPO / "README.md"
+PAGE_FILE = "docs/device-compatibility.md"
+PAGE = REPO / PAGE_FILE
 START = "<!-- features:start -->"
 END = "<!-- features:end -->"
-# Absolute: HACS renders the README inside Home Assistant, where relative image paths don't resolve.
+# Absolute: the raw file, so GitHub shows the icon inline rather than linking its SVG page.
 ICON_URL = "https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/{}.svg"
-# Absolute for the same reason. Without a link of its own, GitHub links each icon to its SVG file.
+# A doc link, absolute: one form for every link in the table. Without a link of its own, GitHub links each icon to its
+# SVG file.
 DOC_URL = DOCS_URL + "{}#{}"
 INTEGRATIONS = "docs/integrations.md"
 # The integrations.md section explaining every NO_PATH entry to users; keep the two in step.
@@ -49,63 +53,81 @@ IMPOSSIBLE = "what-cant-be-done-and-why"
 
 # Icon key -> alt text in a cell, in the order a cell shows them.
 ICONS = {"light": "light", "switch": "switch", "group": "native group", "scene": "native scene"}
-# (label, README anchor, integration page section, device cards' name, actions): a cell is built only for what every
-# one of the row's actions takes. A smooth move is unusable without `stop`, so its rows include it. A cell's icons link
-# to the section of the integration's page, or to the page when it has none. The device cards (gen_compat) name each
-# action's feature by its row's card name.
+# (label, README section anchor, integration page section, device cards' name, actions): a cell is built only for
+# what every one of the row's actions takes. A smooth move is unusable without `stop`, so its rows include it. A cell's
+# icons link to the section of the integration's page, or to the page when it has none. The device cards (gen_compat)
+# name each action's feature by its row's card name.
 FEATURES = (
-    ("Turn on with timer", "turn-on-with-timer", "Turn on with timer", "turn on with timer", ("turn_on_for",)),
-    ("Turn off with timer", "turn-off-with-timer", "Turn off with timer", "turn off with timer", ("turn_off_for",)),
+    (
+        "Turn on with timer",
+        "turn-on-with-timer",
+        "Turn on with timer",
+        "turn on with timer",
+        FEATURE_ACTIONS["turn on with timer"],
+    ),
+    (
+        "Turn off with timer",
+        "turn-off-with-timer",
+        "Turn off with timer",
+        "turn off with timer",
+        FEATURE_ACTIONS["turn off with timer"],
+    ),
     (
         "Auto-off/on (aka inching)",
         "auto-off-aka-inching-and-auto-on",
         "Auto-off/on",
         "auto-off/on",
-        ("set_auto_off", "set_auto_on", "clear_auto_off", "clear_auto_on"),
+        FEATURE_ACTIONS["auto-off/on"],
     ),
     (
         "Smooth dimming",
         "smooth-dimming",
         "Smooth dimming",
         "smooth dimming",
-        ("raise_brightness", "lower_brightness", "stop"),
+        FEATURE_ACTIONS["smooth dimming"],
     ),
     (
         "Smooth saturation change",
         "smooth-color-changes",
         "Smooth color changes",
         "smooth saturation",
-        ("raise_saturation", "lower_saturation", "stop"),
+        FEATURE_ACTIONS["smooth saturation"],
     ),
     (
         "Smooth hue change",
         "smooth-color-changes",
         "Smooth color changes",
         "smooth hue",
-        ("raise_hue", "lower_hue", "stop"),
+        FEATURE_ACTIONS["smooth hue"],
     ),
     (
         "Set brightness, color or CT<br>without turning on",
         "set-brightness-color-temperature-or-color-without-turning-on",
         "Flash-free turn-on",
         "set without turning on",
-        ("set_attributes",),
+        FEATURE_ACTIONS["set without turning on"],
     ),
-    ("Set scene without turning on", "set-scene-without-turning-on", "Flash-free turn-on", "set scene", ("set_scene",)),
-    ("Get attributes", "get-attributes", "Get attributes", "get attributes", ("get_attributes",)),
+    (
+        "Set scene without turning on",
+        "set-scene-without-turning-on",
+        "Flash-free turn-on",
+        "set scene",
+        FEATURE_ACTIONS["set scene"],
+    ),
+    ("Get attributes", "get-attributes", "Get attributes", "get attributes", FEATURE_ACTIONS["get attributes"]),
 )
 # (icons, alt text, label, file, anchor): the legend, in order. Each icon links to the heading that explains it; a
-# README heading links within the page.
+# heading of the page itself links within it.
 LEGEND = (
-    (("light",), "light", "lights", "docs/device-compatibility.md", "tested-devices"),
-    (("switch",), "switch", "switches", "docs/device-compatibility.md", "tested-devices"),
-    (("group",), "native group", "groups", "docs/device-compatibility.md", "native-groups"),
+    (("light",), "light", "lights", PAGE_FILE, "tested-devices"),
+    (("switch",), "switch", "switches", PAGE_FILE, "tested-devices"),
+    (("group",), "native group", "groups", PAGE_FILE, "native-groups"),
     (("scene",), "native scene", "scenes", "README.md", "set-scene-without-turning-on"),
     (
         ("light-grey", "switch-grey"),
         "Labs",
         "Labs",
-        "docs/device-compatibility.md",
+        PAGE_FILE,
         "levels-of-proof",
     ),
     (("no",), "not possible", "not possible", INTEGRATIONS, IMPOSSIBLE),
@@ -146,7 +168,7 @@ def page(integration: str) -> str:
 
 
 def columns(integrations: Iterable[str]) -> dict[str, str]:
-    """Integration -> its README column label, in `column_order`, from each bundle."""
+    """Integration -> its column label, in `column_order`, from each bundle."""
     found = {}
     for key in integrations:
         data = bundle(key)
@@ -226,7 +248,7 @@ def img(name: str, text: str, href: str) -> str:
 
 
 def href(file: str, anchor: str | None) -> str:
-    if file == "README.md":
+    if file == PAGE_FILE:
         return f"#{anchor}"
     return DOC_URL.format(file, anchor) if anchor else DOC_URL.format(file, "").removesuffix("#")
 
@@ -264,7 +286,7 @@ def generate(registry: AdapterRegistry) -> str:
     labels = {label for label, *_ in FEATURES}
     for label, integration in NO_PATH:
         if label not in labels or integration not in cols:
-            raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no README row or column")
+            raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no row or column")
         if found := in_labs[label, integration]:
             raise SystemExit(
                 f"{label} on {cols[integration]}: {', '.join(sorted(found))} is built, so not impossible; "
@@ -288,7 +310,7 @@ def generate(registry: AdapterRegistry) -> str:
             )
             for integration in cols
         ]
-        lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
+        lines.append(f"| [{label}]({DOC_URL.format('README.md', anchor)}) | {' | '.join(row)} |")
     legend = [
         f"{'&nbsp;'.join(img(icon, alt, href(file, anchor)) for icon in icons)} {label}"
         for icons, alt, label, file, anchor in LEGEND
@@ -323,38 +345,39 @@ def anchors(text: str) -> set[str]:
 
 def check_anchors(text: str) -> None:
     """Every row and legend entry links to a heading that exists, so a renamed heading fails here rather than leaving
-    a dead link."""
-    if dead := sorted({anchor for _, anchor, *_ in FEATURES} - anchors(text)):
+    a dead link. `text` is the page the table goes in: the rows link to the README's headings, a legend entry to its
+    file's (the page's own when the file is the page)."""
+    if dead := sorted({anchor for _, anchor, *_ in FEATURES} - anchors(README.read_text())):
         raise SystemExit(f"README.md has no heading for #{', #'.join(dead)}; fix FEATURES")
     for _, _, _, file, anchor in LEGEND:
-        if anchor not in anchors(text if file == "README.md" else (REPO / file).read_text()):
+        if anchor not in anchors(text if file == PAGE_FILE else (REPO / file).read_text()):
             raise SystemExit(f"{file} has no heading for #{anchor}; fix LEGEND")
 
 
 def splice(text: str, table: str) -> str:
-    """The README with the text between the markers, markers included, replaced by the table."""
+    """The page with the text between the markers, markers included, replaced by the table."""
     if text.count(START) != 1 or text.count(END) != 1 or text.index(START) > text.index(END):
-        raise SystemExit(f"README.md needs one {START} before one {END}")
+        raise SystemExit(f"{PAGE_FILE} needs one {START} before one {END}")
     return text[: text.index(START)] + table + text[text.index(END) + len(END) :]
 
 
-def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None, readme: Path = README) -> int:
+def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None, page_path: Path = PAGE) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="fail when the README table is out of date")
+    parser.add_argument("--check", action="store_true", help="fail when the feature table is out of date")
     args = parser.parse_args(argv)
 
-    text = readme.read_text()
+    text = page_path.read_text()
     new = splice(text, generate(registry or AdapterRegistry.discover()))
     check_anchors(text)
     if args.check:
         if new != text:
             print(
-                f"error: the feature table in {readme.name} is out of date; run scripts/gen_features.py",
+                f"error: the feature table in {page_path.name} is out of date; run scripts/gen_features.py",
                 file=sys.stderr,
             )
             return 1
         return 0
-    readme.write_text(new)
+    page_path.write_text(new)
     return 0
 
 

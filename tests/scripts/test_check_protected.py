@@ -1,4 +1,4 @@
-"""scripts/check_protected.py: README outside its generated blocks is the maintainers'; a manifest change is flagged."""
+"""scripts/check_protected.py: README outside its generated block is the maintainers'; a manifest change is flagged."""
 
 import pytest
 
@@ -8,10 +8,6 @@ MAINTAINERS = frozenset({"jasonmx"})
 README = """# DeviceSide
 
 Intro.
-
-<!-- features:start -->
-old table
-<!-- features:end -->
 
 <!-- devices:start -->
 old cards
@@ -37,7 +33,7 @@ def on_pr(repo, file, text):
 
 def test_a_contributor_may_regenerate_the_blocks_alongside_code(pr):
     on_pr(pr, "code.py", "x = 1\n")
-    on_pr(pr, cp.README, README.replace("old table", "new table").replace("old cards", "new cards"))
+    on_pr(pr, cp.README, README.replace("old cards", "new cards"))
     assert cp.check("main", "pr", "alice", MAINTAINERS) == (True, False)
 
 

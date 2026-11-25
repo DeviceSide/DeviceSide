@@ -28,7 +28,10 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    Nobody goes looking for things to re-prove.
 4. **Surprises reopen facts.** A bug or unexplained behavior triggers a root-cause dive. The finding joins the fact
    base and is then trusted in turn. Log so that the first bug report already holds the diagnosis: what DeviceSide
-   sent, what the device answered, and which way DeviceSide went because of it.
+   sent, what the device answered, and which way DeviceSide went because of it. A layer between DeviceSide and the
+   device that changes what DeviceSide sends (a converter's rewrite, a quirk) is such a finding even when its author
+   meant it: record it, with its source, in the bundle's `internals.md`, and a maintainer decides whether DeviceSide
+   goes around it, keeps it as a class limit (`index.md`), or reports it upstream. It is never closed as "by design".
 5. **Proof follows the call and the class.** Evidence is about how a class of devices responds to a call
    ([device classes](#device-classes)). Any code that sends the same call to the same class inherits it, and unit tests
    pin the call. So does a no known method entry: it may cover every action that sends that call to that class or
@@ -104,12 +107,21 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
     a marker certified devices carry and known uncertified ones don't, and on the one part the test runs on. A write
     never qualifies, as the test's field values are its own. The PR names the marker and what slips past it
     ([Matter](integrations/matter/internals.md#what-decides-the-call)).
+  - **a standard converter's call:** on Zigbee2MQTT lights alone, as a light write's failure is low harm and Z2M's
+    usage is the evidence (ZHA's isn't). The class keys on a zigbee-herdsman-converters (ZHC) definition whose
+    converters for the action are ZHC's standard ones, with no flag or override touching the call, from a committed
+    table naming the ZHC release it was built from: Z2M's users send the same call through the same converters. An
+    action DeviceSide builds as a raw command qualifies only where every known failure is visible to the caller.
+    Split-offs, each at the narrowest identity a class rule can key on: a ZHC flag or override takes a model out at the
+    next bump; a Z2M or ZHC issue or PR reporting a device failing DeviceSide's call excludes it on the report alone,
+    citing it; a DeviceSide report follows contrary evidence (below). A bump's departure of a model whose features
+    shipped outside Labs in a full release needs a maintainer's review: kept with a reason, or excluded with a source.
 - **Labs:** built on a sourced call and untested, as no real device has passed it yet, or tested and held back by a
   maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
 
 A field can be in Labs on some classes alone (`labs_fields(...)`, `AdapterScope.class_labs`) while it keeps its level in
 `fields` on the rest. With the Labs option off it is dropped on those classes (`fields_dropped`), not refused; with it
-on, the call is Labs. A pass on such a class credits no model on its card for that action, as a record doesn't say which
+on, the call is Labs. A pass on such a class credits no model in the compatibility page's matrix for that action, as a record doesn't say which
 fields a test sent.
 
 A sign-off covers only what was exercised; it never signs off untested code.
@@ -132,6 +144,12 @@ A sign-off covers only what was exercised; it never signs off untested code.
 *Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet. Z2M
 #25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, a different call, so it is no evidence
 against the device: it keeps `tuya_countdown`'s level, in Labs, until a pass on its maker string.
+
+*Example:* Zigbee2MQTT's `standard_light`, other brands' lights whose ZHC definition is on the standard converters, is
+Documented on the brightness and color fades and stop (Z2M sends them through those converters, save a lower to the
+bottom, DeviceSide's raw `moveToLevel`, which every Zigbee 3.0 dimmable light must take) and on `set_attributes` and
+`get_attributes`, raw commands like it whose known failures all raise or fail the read-back; Paulmann's 924.70, reported
+failing a color read, stays in `other` ([the table and the bump](integrations/zigbee2mqtt/internals.md#standard_lights)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -201,8 +219,8 @@ supported, where DeviceSide can't do the action for the class, each named for wh
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
   tells users not to ask DeviceSide to build. A method is a call that does what was asked and fails without harm, so
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
-  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
-  it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
+  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the compatibility
+  page marks it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
   class not admitted to Labs (below), as research predicts most of it fails the default call or no source admits it,
   while another call is known or plausible. The integration names it, and the adapter's
@@ -279,13 +297,13 @@ On an integration that names classes, every class an adapter's scope holds as Ve
 test in that domain (a manual row names no domain, so it covers each). A record names the class each test's devices
 reached, and a manual row each device's. A native group's test credits each member's class, from its members' entries
 (the response's `member_capabilities`, [action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one
-call reached each member (a null one credits none; the cards add "native groups", never the members' models). A group
-with a null-class member is on no card, as "native groups" needs every member's class named and unflagged, while its
+call reached each member (a null one credits none; the cards and the page add "native groups", never the members' models). A group
+with a null-class member is on no card or page line, as "native groups" needs every member's class named and unflagged, while its
 named members still count here; a manual row credits every class it lists to every action it passed, so a row whose
 actions reached different classes is split. A manual row may carry `group`, as a rig group test does: its devices are
-the members, credited as a group test's are; the evidence table shows it as "group, by hand", and the card "native
+the members, credited as a group test's are; the evidence table shows it as "group, by hand", and the page "native
 groups", with no ✔ from it. A scene's test is a group's, its members the scene's lights. A null class credits none, here
-or on the cards, as does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer
+or on the page, as does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer
 sees it early, and names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
 `scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
 checks that evidence exists, not that it suffices (tenet 7).
@@ -346,12 +364,12 @@ maintainer's `_manual.json` sign-off carrying them (`reports`, [Sign-off format]
 item, which the compatibility page shows "by report". The maintainer judges how many are enough (tenet 7); nothing
 counts them in code.
 
-The cards never credit a tested model from a pass on a flagged item while its flag stands, and fold two or more
-top-level Labs lines on a card (⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) into one ⚪ line
+The compatibility page's matrix never credits a tested model from a pass on a flagged item while its flag stands, and the
+README's cards fold two or more top-level Labs lines on a card (⚪ with no 🟢 or 🟡) into one ⚪ line
 (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `labs("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model in the page's matrix and
 lets a Shelly maintainer lift the flag, once they judge that pass enough: their PR makes it `verified("Light")`.
 
 *Example:* Zigbee2MQTT's set auto-off and clear auto-off on Tuya and Sonoff inching switches are in Labs, untested.
@@ -413,7 +431,7 @@ which `--transcripts` enforces: without one, a change to what it does on a group
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual row is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
-  no separate level: the cards keep their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
+  no separate level: the compatibility page keeps its ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
   or manual) for the RC audit.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration with a changed
   action that has no sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others

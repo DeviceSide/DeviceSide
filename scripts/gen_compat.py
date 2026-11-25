@@ -16,18 +16,23 @@ its tests the classes they reached, if it recorded them. A manual row's devices 
 `reports` shows as "by report", linking the issues, in place of "by hand". A level comes from the scope alone (verify,
 then trust): a record never ages.
 
-**Cards.** One collapsed section between the README's devices markers: the legend, of the marks the cards use, then a
-card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's
-index.md), with "⚠️ Unmaintained" when every adapter is; the features of the adapters with each `caveat` (🔧 Untested
-fix, then ⚠️ Unmaintained, linking its reason); then a line per feature set, naming each class on one line, with its
-features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · ⚪ get attributes". Only classes of
-one brand share a line (`brand`): the class's family, else other brands; an integration with no families is one brand,
-its "Other brands" section the other brands. Native groups sort first, then lines by brand, alphabetically, then
-other brands, then models no class line takes; within a brand, tested lines first, "other …" lines last, the rest
-alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before its maker strings.
+**Cards.** One collapsed section between the README's devices markers: the legend, of the marks the cards use (the
+three marks' entries are coverage.LEGEND's, as the Settings view words them), then a card per integration, then a link
+to the compatibility page, for models, and one to the integrations page. The cards answer "will it work with my
+devices?" by class: a line names its classes, never a tested model (the page lists each, with how it was
+tested), and shows no ✔ and no 🔴 (the page's matrix and Not supported table hold the refusals).
+A card has its name, linked to its page (the bundle's index.md), with "⚠️ Unmaintained" when every adapter is; the
+features of the adapters with each `caveat` (🔧 Untested fix, then ⚠️ Unmaintained, linking its reason); then a line per
+feature set, naming each class on one line, with its features by status: "Hue lights: 🟢 turn on with timer · ⚪ get
+attributes". Only classes of one brand share a line (`brand`): the class's family, else other brands; an integration
+with no families is one brand, its "Other brands" section the other brands. Native groups sort first, then lines by
+brand, alphabetically, then other brands, then models no class line takes; within a brand, tested lines first, "other …"
+lines last, the rest alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before
+its maker strings.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
   level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, ⚪ Labs; 🔴 for a scope's
-  `no_known_method` entry, which names a class devices.yaml gives no phrase by its `what`. A feature whose actions
+  `no_known_method` entry, which names a class devices.yaml gives no phrase by its `what`, on the page's matrix
+  alone: a card drops a 🔴 part, and a line left with only 🔴. A feature whose actions
   differ in status names its parts ("🟡 smooth dimming down · ⚪ smooth dimming up"), so none shows twice. A feature not
   built yet on a class (in no scope, or a `not_built` entry) is left out, and a class with nothing left has no line.
   Where the integration names no classes, its domains stand in for them.
@@ -38,21 +43,22 @@ alphabetically, and a line's names sort the same way (`ordered`), a variant's pl
   the section instead, by its devices.yaml `sections` phrase.
 - Variants: a section with `variants` (a model whose classes its page tells apart) is a parent line, "Tuya TS011F
   plugs: check Manufacturer …", with a child line per feature set of its classes, named by their phrases ("a, b, or
-  c") and ending ✔ for a rig-tested model, which the parent names. Children never merge with another section's classes.
+  c"). Children never merge with another section's classes.
 - Tested models follow the line of the class and domain a test reached them on (else of their class; else, from a format
   1 record or a manual row naming none, a line of their own with the features tested), and native groups get a line,
-  with the features a test reached them on; rig-tested ones end ✔. A pass on a flagged item never credits a model: an
-  adapter flagged whole, or on any field, credits none, nor does a class with fields in Labs on it alone (`class_labs`),
-  as a record doesn't say which fields a test sent. One flagged on a domain or class credits, from a format 2 record,
-  each model a passing test reached on an unflagged domain and, with a class flagged, an unflagged class (a null one is
-  none), and native groups when every member's class is unflagged; from a format 1 record, which doesn't say which test
-  reached which model, the run's models only when every passing test targets an unflagged domain and, with a class
-  flagged, names unflagged classes only; and, unless a domain is flagged (a manual row names none), each `_manual.json`
-  model whose class is unflagged.
-- devices.yaml's and models.yaml's `no_known_method` entries, which name no class, each get a 🔴 line; models.yaml's
-  `not_built` ones are on no card. The page's Not supported table lists both, and the scopes' `not_built` entries,
-  with why and the source.
-A model or blocker drops the integration's name where it leads, as the card's name already gives it. Cards show
+  with the features a test reached them on. On a card only the model lines no class takes, and native groups, name them
+  (unmarked); the page's matrix names each line's models, rig-tested ones ending ✔. A pass on a flagged item never
+  credits a model: an adapter flagged whole, or on any field, credits none, nor does a class with fields in Labs on it
+  alone (`class_labs`), as a record doesn't say which fields a test sent. One flagged on a domain or class credits, from
+  a format 2 record, each model a passing test reached on an unflagged domain and, with a class flagged, an unflagged
+  class (a null one is none), and native groups when every member's class is unflagged; from a format 1 record, which
+  doesn't say which test reached which model, the run's models only when every passing test targets an unflagged
+  domain and, with a class flagged, names unflagged classes only; and, unless a domain is flagged (a manual row names
+  none), each `_manual.json` model whose class is unflagged.
+- devices.yaml's and models.yaml's `no_known_method` entries, which name no class, are on no card (the page's matrix
+  has each as a 🔴 line), nor are models.yaml's `not_built` ones. The page's Not supported table lists both, and the
+  scopes' `not_built` entries, with why and the source.
+A model drops the integration's name where it leads, as the card's name already gives it. Cards show
 features, not fields: a flagged or Documented field shows on the integration's page and in the page's footnote only.
 
 **The model.** `card` builds each card's model before anything is folded or rendered: `Card.entries`, the ordered,
@@ -61,12 +67,12 @@ per-feature status with `stop` in its own column, `models` the tested models), `
 places and actions, and per action its `Proof`: record paths, firmware, rig and by hand, each kept when both
 tested it), `Card.refused`, `Card.broken` (a refused class's Not supported row), `Card.field_notes` and `Card.marks`
 (the caveats). `show` renders the README's lines from it, folding last, so another render (the page's matrix) reads
-the same unfolded lines.
+the same unfolded lines, with their 🔴 parts and models.
 
-**The fold** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪
-(🔴 may sit beside it) fold, when there are two or more, into one last line, "⚪ [class] (features);
-[class], [class] (features)": classes with the same features share a parenthesis, a 🔴 part stays inside it, and a
-variants parent's children never fold.
+**The fold** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪ (a 🔴 beside it is
+dropped, as on every card line) fold, when there are two or more, into one last line, "⚪ [class] (features);
+[class], [class] (features)": classes with the same features share a parenthesis, and a variants parent's children
+never fold.
 
 **The page.** The block between the evidence markers of docs/device-compatibility.md, in three parts; every device fact
 in it comes from the model above, so one change in code, devices.yaml, models.yaml or a record moves the README and the
@@ -74,12 +80,12 @@ page together, and `--check` proves both.
   - *Tested devices*: a `###` per model a record row names, credited to a card or not (a hand-tested model in a Labs
   class is listed; the matrix's levels are the code's alone), headed by its `section` (its `name` by default: the
   heading every card links, `Data.model_url`), with its type and ids, then a table of Integration (linking its matrix
-  below), Features tested (each linking its records, a split feature's parts apart, in README order), Firmware (the
-  distinct values the records name) and How (✔ rig, by hand, by report). Then `### Native groups`, the same table per
-  integration without the firmware.
+  below), Features tested (each linking its records, a split feature's parts apart, in the feature table's
+  order), Firmware (the distinct values the records name) and How (✔ rig, by hand, by report). Then
+  `### Native groups`, the same table per integration without the firmware.
 - *By integration*: a `###` per integration, by its title, the card's caveats under it, then a matrix: a row per
   unfolded card line (native groups first, a variants parent's children indented under it), a column per feature in the
-  README's order (`stop` last), a cell holding the status and its proof. 🟢 links its records (the line's tested
+  feature table's order (`stop` last), a cell holding the status and its proof. 🟢 links its records (the line's tested
   models'; where none tested the action on the line, the integration's, as a scene is classed by its lights), 🟡 and ⚪
   the class's section on its integration's page, 🔴 its row under Not supported; a split feature shows its parts ("🟢
   down · ⚪ up"). Under the matrix, a footnote lists each field proven less than its feature (a field whose level is
@@ -104,7 +110,7 @@ only one integration names is in its bundle's devices.yaml), and `no_known_metho
 their `integrations` (`what`, `reason`, `source`, optional `section`: the anchor id of its Not supported row, its
 `what` by default), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as
 an unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
-`column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
+`column_order` (the feature table's, read by gen_features), `requires` (shown after the card's name),
 `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `section` is a heading of the integration's page, which a
 Documented or Labs class must have; `domains`, a phrase per entity domain, for a class the card splits), `sections`
@@ -147,6 +153,7 @@ sys.path.insert(0, str(REPO))
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
+from custom_components.deviceside.coverage import legend_entries  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     MANUAL,
     adapters,
@@ -181,29 +188,25 @@ REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=devic
 
 # Device types, in a card's order for a line's tested models.
 TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
-# A line's statuses, in its order: (key, icon, legend). Not built yet has none: a card leaves those out.
+# A line's statuses, in its order: (key, icon). Not built yet has none: a card leaves those out.
+REFUSED = "no_known_method"
 OUTCOMES = (
-    ("works", "🟢", "works"),
-    ("should", "🟡", "should work: same call pattern as a tested device"),
-    (
-        "labs",
-        "⚪",
-        "Labs: not yet passed on a real device, or held back to soak. Enable Labs in Configure > Settings",
-    ),
-    ("no_known_method", "🔴", "no known command works on it"),
+    ("works", "🟢"),
+    ("should", "🟡"),
+    ("labs", "⚪"),
+    (REFUSED, "🔴"),
 )
-LABS = next(icon for key, icon, _ in OUTCOMES if key == "labs")
+LABS = next(icon for key, icon in OUTCOMES if key == "labs")
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.LABS: "labs"}
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
 UNTESTED_FIX = "🔧 Untested fix"
 # The scope's caveats, as (kind, label), in a card's order.
 MARKS = ((CaveatKind.UNTESTED_FIX, UNTESTED_FIX), (CaveatKind.UNMAINTAINED, UNMAINTAINED))
-# The legend's entries, as (icon, text), in its order; it lists only those a card uses (`legend`).
-LEGEND = (
-    (OUTCOMES[0][1], OUTCOMES[0][2]),
-    (VERIFIED, "verified on automated rig"),
-    *((icon, text) for _, icon, text in OUTCOMES[1:]),
+# Where the README's legend sends a reader to turn Labs on; the Settings view's says "below" (coverage.LABS_BELOW).
+LABS_POINTER = "Turn on Labs in Configure > Settings to try it"
+# The legend's entries beyond coverage.LEGEND's three marks, as (icon, text); `legend` lists only those a card uses.
+CAVEATS = (
     ("🔧", f"untested fix: please try it and [report whether it works]({REPORT_URL})"),
     ("⚠️", "unmaintained: use at your own risk"),
 )
@@ -231,7 +234,7 @@ OTHER_BRANDS = "Other brands"  # the devices.yaml section of other brands' class
 
 
 def card_features() -> dict[str, str]:
-    """Each action's feature, as a card names it, in the README feature table's order (gen_features.FEATURES). An
+    """Each action's feature, as a card names it, in the feature table's order (gen_features.FEATURES). An
     action in more than one row (`stop`, riding every smooth move) is named by itself, last, so a card names it only
     when nothing else is."""
     rows = [action for *_, actions in TABLE_FEATURES for action in actions]
@@ -677,7 +680,7 @@ def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
 
 
 def by_integration(registry: AdapterRegistry) -> dict[str, list]:
-    """The adapters per integration, in the README feature table's column order, so the cards read across as it does."""
+    """The adapters per integration, in the feature table's column order, so the cards read across as it does."""
     grouped: dict[str, list] = {}
     for _, adapter in adapters(registry):
         grouped.setdefault(adapter.integration, []).append(adapter)
@@ -801,7 +804,7 @@ def status_cell(
             actions = feature_actions(feature, label)
             # A class with no model of its own on the action (a scene is classed by its lights) takes the integration's.
             links = record_links(proofs(held, actions) or proofs(everything, actions), part_named=label != feature)
-        elif status == "no_known_method":
+        elif status == REFUSED:
             refused = [
                 card.broken[(name, action)]
                 for name, _ in line.items
@@ -835,7 +838,7 @@ def matrix_rows(card: Card, columns: list[str], data: Data, ids: dict, icons: di
             rows.append([cell(("&emsp;" if entry.note is not None else "") + name), *(cell(x) for x in cells)])
     for entry in card.refused:
         key = (entry["what"], entry["reason"], entry["source"])
-        link = f"{icons['no_known_method']} [why](#{ids[key]})" if key in ids else icons["no_known_method"]
+        link = f"{icons[REFUSED]} [why](#{ids[key]})" if key in ids else icons[REFUSED]
         name = anchor(card.short(entry["what"]), data.url(card.key, entry["section"]))
         rows.append([cell(name), *[link] * len(columns)])
     return rows
@@ -843,7 +846,7 @@ def matrix_rows(card: Card, columns: list[str], data: Data, ids: dict, icons: di
 
 def matrix(card: Card, data: Data, ids: dict) -> list[str]:
     """The integration's class by feature matrix, with its caveats above and its fields' footnote below."""
-    icons = {key: icon for key, icon, _ in OUTCOMES}
+    icons = dict(OUTCOMES)
     columns: Features = {}
     for entry in card.entries:
         for line in (entry, *entry.children):
@@ -876,7 +879,7 @@ def on_classes(card: Card, data: Data, classes: tuple[str, ...]) -> str:
 
 
 def tested_features(held: Reached) -> str:
-    """The features a model (or native groups) was tested on, in README order, each with its records."""
+    """The features a model (or native groups) was tested on, in the feature table's order, each with its records."""
     by_feature: dict[str, list[str]] = {}
     for action in sorted(held.by_action, key=list(FEATURES).index):
         by_feature.setdefault(FEATURES[action], []).append(action)
@@ -1060,7 +1063,8 @@ def part(action: str) -> str:
 PART_FEATURE = {part(action): FEATURES[action] for action in FEATURES}
 
 
-# A line's features with their statuses, `stop` included: {feature: ((status, label), ...)}, in README feature order.
+# A line's features with their statuses, `stop` included: {feature: ((status, label), ...)}, in the feature table's
+# order.
 type Features = dict[str, tuple[tuple[str, str], ...]]
 
 
@@ -1093,7 +1097,7 @@ def feature_statuses(by_status: dict[str, set[str]]) -> Features:
 
 
 def join_features(into: Features, more: Features) -> Features:
-    """`into` with `more`'s pairs added where it lacks them, in README feature order (then unlisted actions')."""
+    """`into` with `more`'s pairs added where it lacks them, in the feature table's order (then unlisted actions')."""
     joined = {feature: list(pairs) for feature, pairs in into.items()}
     for feature, pairs in more.items():
         have = joined.setdefault(feature, [])
@@ -1110,7 +1114,7 @@ def shape(by_status: dict[str, set[str]]) -> Shape:
     every = [label for found in labels.values() for label in found]
     if set(every) - {"stop"}:
         labels = {status: tuple(label for label in found if label != "stop") for status, found in labels.items()}
-    return tuple((key, labels[key]) for key, *_ in OUTCOMES if labels.get(key))
+    return tuple((key, labels[key]) for key, _ in OUTCOMES if labels.get(key))
 
 
 def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[Item, dict[str, set[str]]]:
@@ -1130,7 +1134,7 @@ def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[It
             for name in [*names, *scope.no_known_method]:
                 for domain in reached(class_domains, name, scope):
                     if name in scope.no_known_method:
-                        held.append(((name, domain), "no_known_method"))
+                        held.append(((name, domain), REFUSED))
                     else:
                         held.append(((name, domain), TIER[scope.level(domain, [name])]))
         for item, status in held:
@@ -1181,7 +1185,7 @@ class Line:
     models: list[str] = field(default_factory=list)  # model names, as `works` gives them
     label: str | None = None  # a line no class names: native groups, or models no class line takes
     # A model's variants (devices.yaml `sections` with `variants`): the parent names the model and what to check, each
-    # child a variant, by its classes' phrases, with ✔ for a rig-tested model, which the parent already names.
+    # child a variant, by its classes' phrases (the page adds ✔ for a rig-tested model, which the parent already names).
     note: str | None = None
     children: list[Line] = field(default_factory=list)
     variant: bool = False
@@ -1196,15 +1200,28 @@ class Line:
         """The name as text, for sorting."""
         return (self.label or ", ".join(text(phrases) for phrases in self.sections.values())).lower()
 
-    def name(self, card: Card, key: str, data: Data, rig: set[str]) -> str:
+    @property
+    def claims(self) -> Shape:
+        """The shape without the refused part: what the README shows, which has no 🔴."""
+        return tuple(pair for pair in self.shape if pair[0] != REFUSED)
+
+    def name(self, card: Card, key: str, data: Data, rig: set[str], readme: bool = False) -> str:
+        """The line's name. The README's (`readme`) is the classes alone: no tested models and no ✔, and a model line
+        no class takes (a label) keeps its models, unmarked."""
         if self.label is not None:
-            return self.label
+            if readme and not (self.native or not self.models):
+                return ", ".join(card.model(name, key, data, set()) for name in self.models)
+            return self.label.removesuffix(f" {VERIFIED}") if readme else self.label
         if self.variant:
             ((section, phrases),) = self.sections.items()
             # Variants read as either: "no countdown setting, _TZ3000_a, or _TZ3000_b".
             either = f"{', '.join(phrases[:-1])}, or {phrases[-1]}" if len(phrases) > 1 else phrases[0]
-            return anchor(either, data.url(key, section)) + (f" {VERIFIED}" if set(self.models) & rig else "")
+            return anchor(either, data.url(key, section)) + (
+                f" {VERIFIED}" if set(self.models) & rig and not readme else ""
+            )
         names = ", ".join(merged(phrases, data.url(key, section)) for section, phrases in self.sections.items())
+        if readme:
+            return names
         tested = [card.short(name) for name in self.models]
         if len(tested) == 1 and [tested[0]] == [p for phrases in self.sections.values() for p in phrases]:
             return names + (f" {VERIFIED}" if self.models[0] in rig else "")  # a class that is its model
@@ -1212,13 +1229,20 @@ class Line:
             names += f" ({', '.join(card.model(name, key, data, rig) for name in self.models)})"
         return names
 
-    def render(self, card: Card, key: str, data: Data, rig: set[str]) -> str:
+    def render(self, card: Card, key: str, data: Data, rig: set[str], readme: bool = False) -> str | None:
+        """The line as the page's card or, with `readme`, the README shows it: None where the README has nothing to say
+        (no mark left once 🔴 goes, or a variants parent with no child left)."""
         if self.note is not None:
-            children = "".join(f"\n  - {child.render(card, key, data, rig)}" for child in self.children)
-            return f"{self.name(card, key, data, rig)}: {self.note}{children}"
-        icons = {key: icon for key, icon, _ in OUTCOMES}
-        found = " · ".join(f"{icons[status]} {', '.join(labels)}" for status, labels in self.shape)
-        return f"{self.name(card, key, data, rig)}: {found}"
+            kids = [child.render(card, key, data, rig, readme) for child in self.children]
+            if readme and not any(kids):
+                return None
+            children = "".join(f"\n  - {child}" for child in kids if child)
+            return f"{self.name(card, key, data, rig, readme)}: {self.note}{children}"
+        icons = dict(OUTCOMES)
+        found = " · ".join(
+            f"{icons[status]} {', '.join(labels)}" for status, labels in (self.claims if readme else self.shape)
+        )
+        return f"{self.name(card, key, data, rig, readme)}: {found}" if found else None
 
     def in_labs(self) -> bool:
         """Shows ⚪ and no 🟢 or 🟡 (🔴 may sit beside it): a line that claims nothing yet."""
@@ -1226,29 +1250,25 @@ class Line:
         return self.note is None and "labs" in statuses and not statuses & {"works", "should"}
 
 
-def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> tuple[list[Line], str | None]:
+def fold(lines: list[Line], card: Card, key: str, data: Data) -> tuple[list[Line], str | None]:
     """Two or more top-level lines that are in Labs (`Line.in_labs`) leave `lines` for one folded line:
-    "⚪ [a] (x, y); [b], [c] (z)". Lines with the same features share a parenthesis, a 🔴 part inside it
-    after " · ", and a group sits where its last line does, so one holding an "other brands" line comes last.
+    "⚪ [a] (x, y); [b], [c] (z)", as the README shows it (no 🔴, no ✔, no models). Lines with the same features share a
+    parenthesis, and a group sits where its last line does, so one holding an "other brands" line comes last.
     A variants parent's children, and a single such line, stay where they are."""
     labs_only = [line for line in lines if line.in_labs() and not line.variant]
     if len(labs_only) < 2:
         return lines, None
-    icons = {status: icon for status, icon, _ in OUTCOMES}
     groups: dict[Shape, list[str]] = {}
     for line in labs_only:
-        groups.setdefault(line.shape, []).append(line.name(card, key, data, rig))
+        groups.setdefault(line.claims, []).append(line.name(card, key, data, set(), readme=True))
     # A group sits where its last line does, so a group with an "other brands" line comes last, as on the card.
     last = {
-        found: max(i for i, line in enumerate(lines) if line.shape == found and line in labs_only) for found in groups
+        found: max(i for i, line in enumerate(lines) if line.claims == found and line in labs_only) for found in groups
     }
     parts = []
     for found in sorted(groups, key=last.get):
         names = groups[found]
-        inside = " · ".join(
-            ", ".join(labels) if status == "labs" else f"{icons[status]} {', '.join(labels)}"
-            for status, labels in found
-        )
+        inside = ", ".join(label for _, labels in found for label in labels)  # only ⚪ is left
         parts.append(f"{', '.join(names)} ({inside})")
     return [line for line in lines if line not in labs_only], f"{LABS} {'; '.join(parts)}"
 
@@ -1682,29 +1702,20 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
 
 
 def show(result: Card, data: Data) -> None:
-    """Render the card's model as the README shows it: the fold (the unfolded lines stay in `entries`) and the lines."""
-    key, rig = result.key, result.rig
-    lines, folded = fold(result.entries, result, key, data, rig)
-    result.lines = [line.render(result, key, data, rig) for line in lines]
-    result.lines += [
-        f"{anchor(result.short(entry['what']), data.url(key, entry['section']))}: {OUTCOMES[-1][1]}"
-        for entry in result.refused
-    ]
+    """Render the card's model as the README shows it: the classes with their marks, no tested models, ✔ or 🔴 (the
+    refused entries have no line), the fold last; the unfolded lines stay in `entries`."""
+    key = result.key
+    lines, folded = fold(result.entries, result, key, data)
+    result.lines = [shown for line in lines if (shown := line.render(result, key, data, set(), readme=True))]
     if folded:
         result.lines.append(folded)
 
 
 def legend(text: str) -> str:
-    """The legend's entries for the marks the cards use, one per line. Verified qualifies works, so it shares its
-    line."""
-    lines: list[str] = []
-    for icon, entry in LEGEND:
-        if icon not in text:
-            continue
-        if icon == VERIFIED and lines and lines[-1].startswith(OUTCOMES[0][1]):
-            lines[-1] += f" · {icon} {entry}"
-        else:
-            lines.append(f"{icon} {entry}")
+    """The legend's entries for the marks the cards use, one per line: the three marks' (coverage.LEGEND, as the
+    Settings view words them), then the caveats'."""
+    lines = [line for mark, line in legend_entries(LABS_POINTER) if mark in text]
+    lines += [f"{icon} {entry}" for icon, entry in CAVEATS if icon in text]
     return "<br>\n".join(lines)
 
 
@@ -1726,6 +1737,7 @@ def cards(built: list[Card]) -> str:
         legend("\n".join(body)),
         "",
         *body,
+        f"Models and how each was tested are on the [compatibility page]({PAGE_URL}). "
         f"Details per integration are in [docs/integrations.md]({INTEGRATIONS_URL}).",
         "",
         "</details>",
@@ -1787,7 +1799,7 @@ def check_sections(block: str, shown: str, data: Data, built: list[Card]) -> Non
     for href in LINK.findall(block) + LINK.findall(shown):
         target, _, fragment = href.partition("#")
         if href.startswith("#") or target == PAGE_URL:
-            if fragment not in here:
+            if fragment and fragment not in here:
                 dead.add(fragment)
         elif target in by_page:
             if fragment and fragment not in by_page[target]:

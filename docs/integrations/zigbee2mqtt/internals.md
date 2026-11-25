@@ -110,6 +110,46 @@ probed on Z2M:
 `moveToLevelWithOnOff` from off is untested on the Sengled. The `sengled` family holds no scope, so no feature is
 built for it, until a Sengled run.
 
+### `standard_lights`
+
+The table the `standard_light` class keys on (`classes.py`; the rule is last in `families/__init__.py`, after every
+family's, so a family keeps its own lights). Evidence: [the converter survey](../../research/2026-11-25-z2m-converter-survey.md).
+
+- **Membership.** A zigbee-herdsman-converters (ZHC) light definition (its resolved exposes hold a `light`), resolved
+  with ZHC's own `prepareDefinition`, as Z2M runs it, whose converter for every key DeviceSide publishes is ZHC's
+  standard one: `state` and `brightness` on `light_onoff_brightness` (`state` on `on_off` only for a light with
+  no brightness: `on_off` beside a brightness converter sends a plain On or Off, the departure ZHC fixed on Inovelli
+  and Legrand), `transition` on `ignore_transition`, `color` on `light_color` or `light_color_colortemp`,
+  `hue_move` on `light_hue_saturation_move`, `brightness_move` on `light_brightness_move`, and the generic
+  `command` and `read`. Its `meta` sets no flag but those that leave DeviceSide's calls alone
+  (`supportsHueAndSaturation`, `multiEndpoint`, `multiEndpointSkip`, `applyRedFix`, `disableActionGroup`,
+  `overrideHaDiscoveryPayload`, `thermostat`), so `turnsOffAtBrightness1` (the brightness floor), the option-field,
+  enhanced-hue and default-response flags keep a definition out, and so does a flag ZHC adds, until a maintainer has
+  read it. One exposing `color_hs` without `supportsHueAndSaturation` is out, as its saturation fade goes out as
+  `moveToColor`, not the call on record. A definition model is the key, with each white label that has a fingerprint
+  (Z2M publishes its model when the fingerprint matches); a model string two definitions publish is left out.
+- **The table** is the Zigbee catalog's `zigbee/standard_lights.py`, so another Zigbee integration can read it: between
+  its markers, generated, the ZHC release and `MODELS`, each member with the Zigbee strings ZHC matches it on (its
+  zigbeeModel IDs and its fingerprints' model ID and manufacturer), and `PAIRS`, each (model ID, manufacturer) key whose
+  every definition is a member and none a split-off, the one key another integration may use (the module docstring says
+  how); outside them, hand-kept, `EXCLUDED` (a split-off, its action and source, keyed on the definition model, as no
+  rule reads firmware) and `KEPT` (a departure a maintainer kept, with the reason). [The standard lights
+  page](standard-lights.md) is rendered from it.
+- **The bump**, the first item of each RC (the release skill): `scripts/zhc_table.py --pin <ZHC release>` clones and
+  builds ZHC at the tag, resolves its definitions (`scripts/zhc_table/resolve.mjs`), rewrites the table and the page,
+  and prints the bump PR's body: additions; departures, each **review** when the model was a member at the last full
+  release, else **leaves**; and trait changes on the families' definitions, flagged, never classifying, which builds
+  the previous pin too. Family is read off what a definition shows (its vendor, models, fingerprints and exposes, and
+  IKEA's Zigbee manufacturer string tried on IKEA's), so it is approximate. `--check`, in the Tests workflow, needs
+  no network. `scripts/check_audit.py` fails an RC cut from `main` whose pin hasn't moved since the previous RC
+  tag, unless its audit record says `ZHC bump skipped: <reason>`.
+- **The option fields.** ZHC's own light converters send `optionsMask` and `optionsOverride` 0/0; DeviceSide's
+  `set_attributes` builds a raw `command` with 1/1 (ExecuteIfOff), and `get_attributes` a raw `read`, which no
+  light flag touches. So those two aren't on Z2M's usage. They qualify as every known failure is visible to the
+  caller: a light that rejects the option fields answers MALFORMED_COMMAND, which raises; a write that doesn't land
+  fails the read-back (`not_stored`); an attribute the light lacks fails the read (UNSUPPORTED_ATTRIBUTE). The one
+  silent case, `disableDefaultResponse`, keeps a definition out.
+
 ### `color_modes`
 
 The Home Assistant override is set to `xy`, `hs` and, where present, `color_temp`, on lights
@@ -325,7 +365,12 @@ Z2M publishes no state after a raw command, so each written cluster is read back
 updates Z2M's and Home Assistant's state. Level and color temperature are compared (`not_stored` if they differ);
 color isn't, as the bulb clamps it to its gamut. A group is one groupcast per field, then every member is read.
 `min_brightness`/`max_brightness` alone clamp each member from its own level, so each gets its own commands; an off
-light is clamped from the brightness Z2M holds. On another brand's light (`other`, Labs) the call is the same: no
+light is clamped from the brightness Z2M holds. A level write is followed by Z2M's own kept-level payload,
+`{"state": null, "brightness", "transition"}`: after an off with a transition Z2M restores the level it kept on the next
+plain on, which a raw command doesn't replace. It is left out only for a level 1 written where every light it reaches
+is a lit Hue light (`families/hue` `RAW_BOTTOM`): the bulb has taken the raw write, and the payload, through the
+converter, moved a lit Hue bulb from level 1 to 2 (`fade`, the bottom). On
+another brand's light (`other`, Labs) the call is the same: no
 departure is reported among its vendors, and a bulb older than ZCL rev 7 rejects the override fields
 (MALFORMED_COMMAND), which raises ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
 
@@ -334,7 +379,7 @@ departure is reported among its vendors, and a bulb older than ZCL rev 7 rejects
 Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "deviceside_read"}}`, one cluster at a
 time, answered on the state topic:
 
-- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) is asked `onOff` alone: ZCL
+- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) and an Aqara light (`aqara`, whose bulb has no `onTime`: [probe](research/aqara/2026-11-25-agl003-probe.md), section 1) are asked `onOff` alone: ZCL
   doesn't require `onTime`, one unsupported attribute fails the whole cluster read (herdsman `Endpoint.read`), and no
   timer action serves `other` ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
 - `genLevelCtrl` (`currentLevel`), only when the light is on. An off light's brightness is Z2M's, from the state the
@@ -367,6 +412,99 @@ one, the longest.
 - A brightness or saturation fade's `transition` is at most the longest ZCL transition (`docs/internals.md`, Fades),
   with `clamped_to` when a longer one is cut; the prediction matches.
 - Hue: `hue_move` at `254 / sweep_time` steps per second (ZCL allows 1 to 254).
+- **The bottom: Z2M sends level 1 as 2 on a Hue light, measured.** zigbee-herdsman-converters'
+  `light_onoff_brightness` sends a brightness of 1 as level 2 on a definition with `turnsOffAtBrightness1`
+  ([toZigbee.ts L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), and on a group only when every member's definition has it
+  (`allEqual`, [L1258](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1258)). `philips.m.light` sets it by default
+  ([philips.ts L315](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L315)), as do 92 Innr definitions ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)) and 28 ADEO ones ([adeo.ts](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/adeo.ts)).
+  With `hue_native_control` off, every brightness publish through the converter rides it: a fade to a limit that
+  rounds to level 1, `set_attributes`' kept-level publish after a raw level 1, and raise's from-off `"brightness": 1`
+  (read from source; the fade that follows hides it). Rig run 2026-11-25, before the bypass below, an LTA009 (firmware
+  1.163.1) on Z2M 2.14.3, its level read live (`currentLevel`; [probe](research/hue/2026-11-25-brightness-floor-probe.md)):
+  - `lower_brightness` from 30 % to a 0.4 % limit published `{"brightness": 1, "transition": 1.5}`: Z2M reported
+    brightness 2, and the bulb read 2, 0.8 %. The same bulb on ZHA read 1 (`lower_to_the_lowest_level`).
+  - `set_attributes` at 0.4 % on the lit bulb, option off: the raw `moveToLevel` to 1, then the kept-level publish
+    3 ms later; three read-backs gave 2, so it was rejected `not_stored`. Option on: the same two publishes read back
+    1, confirmed. On ZHA it read 1 (`sets_the_lowest_level_while_lit`).
+  - `turn_on_for` at 0.4 % from off, a probe: `light.turn_on`'s `{"state": "ON", "brightness": 1}`, sent with the
+    option on (`native_control`), read 1 through the timer. Philips' native-control converter clamps a brightness to
+    1–254 ([philips.ts L420](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L420)); other paths with the option on weren't measured.
+
+  **The bypass.** A Hue bulb holds level 1, so a lower whose publish carries brightness 1 (a limit that rounds to
+  level 1) goes past the converter where every light it reaches is a Hue or an Aqara light (`families/hue` and
+  `families/aqara` `RAW_BOTTOM`, joined in `fade.py` `RAW_BOTTOM`; Hue by the run below, Aqara by the finding after
+  it), or, for a lower to 0.8 % or below (brightness 2 or less), a standard light, at level 2 (below), as a raw
+  `moveToLevel` through Z2M's `command` payload, the call `set_attributes` and ZHA's lower send:
+  `{"command": {"cluster": "genLevelCtrl", "command": "moveToLevel", "payload": {"level", "transtime", "optionsMask": 0, "optionsOverride": 0}}}`,
+  `level` 1, or 2 where a standard light is reached, and `transtime` the transition in tenths, as the converter's
+  ([toZigbee.ts L1403](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1403)).
+  Not the converter's `moveToLevelWithOnOff`: sent raw to level 1, it left the bulb off (below). A group goes raw only
+  when every member is a Hue, an Aqara or a standard light (a group of them included, at the highest level any
+  member's class declares), as the converter applies the flag to a group only when every member's definition
+  has it (`allEqual`, above): a group with another brand's light keeps the converter, which sends 1 unless that
+  light's definition is flagged too. A raw command draws no state from Z2M, so Home Assistant follows at the fade's
+  end read-back, or at a report from the bulb; `brightness_move: stop` halts it as it does the converter's, both ZCL
+  transitions. A raise from off keeps the converter's bottom, so it starts at level 2 before fading up, which the fade
+  hides. `set_attributes` leaves out its kept-level publish only for a level 1 on lit Hue lights (`set_attributes`).
+  Rig run 2026-11-25 ([research](research/hue/2026-11-25-move-to-level-bottom-rig.md)): the raw `moveToLevel` lower
+  to 0.4 % held the LTA009 lit at level 1 (`lower_to_the_lowest_level`), and, groupcast to an all-Hue group of three
+  with one member off, held the two lit ones at level 1 and left the off one off at its own level.
+
+  Rig probes 2026-11-25, the LTA009 above ([probe](research/hue/2026-11-25-raw-bottom-probe.md)), of the bypass's first call, `moveToLevelWithOnOff` to level 1: the
+  raw lower to 0.4 % ended with the bulb off. At the end read-back its `onOff` read off, so Z2M and Home Assistant
+  showed it off, while the level read 0.4 %, the brightness Z2M holds for an off light. Level 1 is the bulb's lowest,
+  and a with-On/Off command ending there sets OnOff off, likely ZCL's rule, which `turnsOffAtBrightness1` steps
+  around. The same level as `set_attributes`' raw `moveToLevel` stayed lit, as on ZHA, which sends `move_to_level`.
+
+  **Z2M's restore memory around a raw command**, from source (ZHC `03b37655`), and probed ([probe](research/hue/2026-11-25-raw-bottom-probe.md)). An off with a
+  transition, while Z2M's state is ON, stores that state's brightness and sets `turnedOffWithTransition`
+  ([L1320](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1320)–[L1329](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1329)); the next on with no brightness restores the stored level through the converter
+  ([L1336](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1336), [L1354](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1354)–[L1356](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1356)), and only a converter brightness set clears the flag ([L1382](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1382)–[L1384](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1384)).
+  A raw command touches neither. Measured with `hue_native_control` off, Z2M's default (with it on, nothing jumped):
+  - **Z2M's own group behavior.** A member soft-off at 40 %, then a group raise from off to 100 %, then a plain on to
+    that member: it went back to 40.2 %. The memory is per device, and a group's set doesn't clear a member's: plain
+    Home Assistant group commands, with no DeviceSide call, did the same.
+  - **The stale window after a raw lower: documented, not fixed** (Decision 10). A raw lower from 30 % to 0.4 %, then
+    an off with a transition 2 s later, before the end read-back: Z2M's state still held 30 %, which the off stored,
+    and the plain on restored 29.9 %. The window is the fade's length and about 1 s more (`END_READ_S`). The
+    converter's publish would have moved Z2M's state to the end level at once.
+  - An off with a transition after the read-back was probed only with the superseded `moveToLevelWithOnOff` bottom,
+    which had already left the bulb off, so nothing was stored and the plain on gave 0.4 %. With the `moveToLevel`
+    bottom the bulb stays lit at level 1, and that case isn't measured: from source its stored 1 would go through the
+    converter as 2
+    ([L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), 0.8 %.
+
+  **An unflagged light switches off at the converter's bottom** (a finding, Decision 11): a lower to 0.4 % on the Aqara
+  T2 bulb (`lumi.light.agl003`, unflagged) published `{"brightness": 1, "transition": 1.5}`, which the converter sends
+  as `moveToLevelWithOnOff` to level 1, and the bulb reported itself off 2 s later; the same level as a raw
+  `moveToLevel` (`set_attributes`) held it lit, read 1 (rig run 2026-11-25, 13:43, Z2M 2.14.3). With-On/Off to the
+  minimum sets OnOff off, as on the Hue bulb above. DeviceSide can't read the flag, which is ZHC's definition metadata,
+  so the raw bottom serves the classes a probe showed holding level 1 lit (`hue`, `aqara`), and standard lights at
+  level 2 (below); every other light keeps the converter, which switches an unflagged one off at a lower to 0.4 %, by
+  the ZCL rule that a command with On/Off (`moveToLevelWithOnOff`) to the minimum level sets OnOff off. Caveat
+  (Decision 11): ZHC flags 3 Aqara definitions (`turnsOffAtBrightness1`); the raw bottom serves the whole class on the T2's evidence, so a flagged
+  definition in it would get a raw level 1 untested. A group with an
+  `other` member keeps the converter whole, so its off members light at the lower (`moveToLevelWithOnOff`), an open
+  item in [deferred.md](../../deferred.md#the-raw-bottom-for-other-lights-on-zigbee2mqtt).
+
+  **A standard light's bottom is a raw level 2** (Decision 24). Every standard light is unflagged (a
+  `turnsOffAtBrightness1` definition is no member, `zigbee/standard_lights.py`), so the converter would send it
+  level 1 with On/Off, which by the rule above switches it off at a lower to 0.4 %, and level 2 with On/Off at 0.8 %,
+  which switches off one whose MinLevel is 2. A lower to 0.8 % or below sends it a raw `moveToLevel` to level 2
+  (`standard_lights.py` `BOTTOM_LEVEL`), 0.8 %: with no On/Off the command never sets OnOff, and below a light's
+  MinLevel it clamps to MinLevel (Zigbee Cluster Library specification, Level Control cluster, Move to Level command),
+  so it holds any MinLevel lit.
+  Level 2, not 1, as no standard light has been probed holding level 1 on the raw call. A group with Hue or Aqara
+  lights gets level 2 too, the highest its members' classes declare. Its evidence is the call's: `moveToLevel` is a
+  command every Zigbee 3.0 dimmable light must take, and a rejection reaches the caller (`docs/evidence.md`). The
+  result carries no `clamped_to`: a ramp's is the `sweep_time` used, and Z2M's own flagged bottom is unreported too.
+  Reopens on a probe of a standard light holding level 1 lit on the raw `moveToLevel`, which lowers its
+  `BOTTOM_LEVEL` to 1.
+
+  Other flagged lights keep Z2M's 2, so their lowest is 0.8 %: Innr's turn off at level 1 ([research](research/2026-11-24-other-brands-dimming.md), from Z2M #4035); ADEO's is read from the flag, not reported. IKEA (15 definitions),
+  Gledopto (3) and Aqara (3) carry the flag too (ZHC `03b37655`, counted in
+  [#610](https://github.com/DeviceSide/DeviceSide/pull/610)'s converter survey). A probe that shows one holds level 1 reopens
+  the bypass for its family.
 
 ### `stop`
 
@@ -460,6 +598,30 @@ Device strings and timers, 2026-11-14 on Z2M 2.14.3 (ZHC 26.125.0), Home Assista
   or whole seconds, from off or after a plain On, Z2M logs it invoked and the bulb doesn't change state. It has no
   `onTime` or `offWaitTime` (`UNSUPPORTED_ATTRIBUTE`). So `{"state": "ON", "on_time": 10}`, which the light
   converter sends as `0x42` alone, leaves it off.
+
+An Aqara T2 E27 color bulb (`lumi.light.agl003`, date code `20260605`), 2026-11-25 on Z2M 2.14.3 (ZHC 26.125.0), Home
+Assistant 2026.10.4, EmberZNet. Probe: [research/aqara/2026-11-25-agl003-probe.md](research/aqara/2026-11-25-agl003-probe.md).
+
+- **No hue or saturation.** ColorCapabilities reads 24 (xy and color temperature: bits 3 and 4). `CurrentHue`,
+  `EnhancedCurrentHue`, `CurrentSaturation` and `ColorLoopActive` read `UNSUPPORTED_ATTRIBUTE`, and `moveHue` and
+  `moveSaturation` (rate 30, 2.65 s, then stop) left CurrentX, CurrentY and ColorMode unchanged. Home Assistant
+  sends xy for an hs color, so the bulb stays in `xy` mode.
+- **No `OnTime` or `OffWaitTime`** (`UNSUPPORTED_ATTRIBUTE`; `StartUpOnOff` and `GlobalSceneControl` too), and
+  its discovery lists genOnOff commands 0, 1 and 2 only. `{"state": "ON", "on_time": N}` from off, which the
+  converter sends as `0x42`, never turned the bulb on: N 10, then 30 replaced by 10, then 0, each read every 1 s for
+  25 to 43 s, every read answered, Z2M logging nothing at `warning`. It also fades by its own 1.5 s
+  (`onOffTransitionTime` 15).
+- **`no genLevelCtrl reply` is a hung `moveToLevel`.** `light.turn_off`, then at once `set_attributes` (the rig's
+  put-back) timed out in 1 of 10 runs; the same after Home Assistant showed off (about 0.1 s), in 0 of 10. In both
+  series the write landed inside the bulb's 1.5 s off fade, and in the timeout run DeviceSide sent after Z2M published
+  OFF, so the trigger is unexplained. The bulb sent no default response within
+  herdsman's 10 s (`disableDefaultResponse: false`), the later `CurrentLevel` read was answered only 0.27 s after
+  the `moveToLevel` timed out, and a plain `turn_on` sent meanwhile took effect then too: requests after the hung
+  one waited behind it. Z2M's own kept-level `moveToLevel` (no override) was not held, and the color temperature
+  didn't land (the bulb came on in `xy`). In two other runs the read saw a level between the old and the written one
+  (the off fade and the 0.4 s write fade overlapping) and the 0.5 s retry read it right. Z2M's frame logging
+  (`log_debug_to_mqtt_frontend`) was off, so the frames, and whether the color temperature command was lost or held,
+  are not seen.
 
 Tuya's countdown, 2026-11-15 on the lab TS011F (`_TZ3000_0zfrhq4i`, `TS011F_plug_1`, build `0122052017`), Z2M 2.14.3
 (ZHC 26.125.0), Home Assistant 2026.10.4. Probe:

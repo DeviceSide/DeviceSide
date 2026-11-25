@@ -25,6 +25,7 @@ shared home named in parentheses.
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
 | A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
 | Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |
+| A generated device table any Zigbee integration may read | the catalog: `zigbee/standard_lights.py` (`scripts/zhc_table.py`) |
 | A refusal reason two Zigbee integrations share | `zigbee/<family>.py` for a family's, `zigbee/reasons.py` otherwise; each integration's `refusals.py` builds its own entry from it |
 | A name HA defines (entity domain, service, state, attribute, `ColorMode`) | HA's constant (`homeassistant.const`, `homeassistant.components.light`); not where DeviceSide's meaning differs (its `brightness` is a percent), nor from an integration's `const.py` that imports a vendor library |
 | A wire fact two integrations share (ZCL or Matter encodings) | `core/`, named for the encoding (`core/zcl.py`); never another integration's package |
@@ -53,7 +54,9 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 2. Probe before you build: when unsure how a device you can reach responds, run a cheap probe and record what it shows;
    with none at hand, build from a cited source to Labs.
 3. Verify, then trust: a verified fact stands across firmware, HA and code changes until evidence contradicts it.
-4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis.
+4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis. A
+   layer that changes what we send (a converter's rewrite, a quirk) is a finding for a maintainer, in `internals.md`,
+   never "by design".
 5. Proof follows the call and the class: code that sends the same call to the same class of device inherits its
    evidence; unit tests pin the call.
 6. Simplify relentlessly: a new guardrail needs evidence its failure happens; a new rule or guardrail names the
@@ -78,7 +81,8 @@ in it (`integrations/<x>/families/<family>/`, `tests/integrations/<x>/families/<
 `docs/integrations/<x>/research/<family>/`) belongs to the handles in its `Family.maintainers` as well, which may be
 none; a catalog file (`custom_components/deviceside/zigbee/<family>.py` and its test) to the maintainers of every
 family of that key and of those families' integrations. `zigbee/reasons.py` and its test belong to the maintainers of
-every integration with a family whose key has a catalog file, never to a family's.
+every integration with a family whose key has a catalog file, never to a family's; `zigbee/standard_lights.py` and its
+test, to those of every integration that imports it.
 
 A PR merges on one maintainer's approval or `/merge`, and green CI, when that maintainer owns every file it changes;
 a file none of them owns (`core/`, shared docs, `docs/models.yaml`) needs a repo maintainer. Regenerated output follows

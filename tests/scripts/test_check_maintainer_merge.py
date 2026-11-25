@@ -548,6 +548,26 @@ def test_a_family_named_for_a_shared_catalog_file_doesnt_hold_it(repo, monkeypat
     assert check("alice") == [owners.SHARED_CATALOG]
 
 
+@pytest.mark.parametrize(
+    "path", ["custom_components/deviceside/zigbee/standard_lights.py", "tests/zigbee/test_standard_lights.py"]
+)
+def test_an_imported_catalog_module_merges_for_an_importers_maintainer_never_a_family_maintainer_alone(
+    repo, monkeypatch, path
+):
+    """`acme` imports the table outside its `tuya` family, so tina can't change it alone."""
+    monkeypatch.chdir(repo.path)
+    repo.commit(INIT, init())
+    repo.commit(family_init(), family())
+    repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
+    repo.commit(PKG + "classes.py", "from ...zigbee.standard_lights import STANDARD_LIGHT\n")
+    repo.commit(path, 'STANDARD_LIGHT = "standard_light"\n')
+    repo.git("checkout", "-q", "-b", "pr")
+    repo.commit(path, 'STANDARD_LIGHT = "standard_light"\nMODELS = {}\n')
+    assert check("alice") == [owners.Package(None, module="standard_lights")]
+    for commenter in ("tina", "mallory"):
+        assert refused(commenter) == f"@{commenter} isn't a maintainer of an integration that imports it"
+
+
 def test_the_shared_zigbee_package_is_nobodys(families):
     path = "custom_components/deviceside/zigbee/__init__.py"
     families.commit(path, "x = 1\n")

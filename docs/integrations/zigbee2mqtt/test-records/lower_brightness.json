@@ -3,14 +3,28 @@
   "integration": "zigbee2mqtt",
   "action": "lower_brightness",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-25",
   "source": {
     "kind": "rig",
-    "commit": "a27779ef"
+    "commit": "b1ef5880"
   },
-  "calls": "02481ff56eb268374471b26dbaff0ac3ee9d825b",
+  "calls": "c0112e7ea9c0d584a2c3e9855df12dbfe5bae17f",
   "home_assistant": "2026.10.4",
   "tests": [
+    {
+      "id": "lower_to_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
     {
       "id": "lower_to_off[light_ct]",
       "domain": "light",
@@ -59,6 +73,20 @@
       "result": "pass",
       "devices": [
         {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
+      "id": "lower_to_a_limit[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
           "model": "LTA009",
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.163.1",
@@ -89,6 +117,34 @@
           "model": "LCA016",
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "lower_to_the_lowest_level[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
+      "id": "lower_to_the_lowest_level[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
           "class": "hue"
         }
       ]

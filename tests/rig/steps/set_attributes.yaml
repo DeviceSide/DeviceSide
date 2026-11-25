@@ -1,7 +1,7 @@
 # A room is written light by light, so on the group role the response and expect_state cover every member.
 # Color steps run on the light_color role, and the hs and xy ones on group_color too (a Z2M color groupcast).
 action: set_attributes
-rig_seconds: 130
+rig_seconds: 140
 tests:
   - name: sets_while_off
     roles: [light_ct, group]
@@ -87,6 +87,20 @@ tests:
       - call: {xy_color: [0.1, 0.8]}
       - expect_response: {status: expected, integration: self}
       - expect_state: {xy_color.0: {min: 0.16, max: 0.18}, xy_color.1: {min: 0.69, max: 0.71}, within: tol}
+
+  # 0.4 % is level 1, the lowest a light takes (docs/design.md), written to a lit light. The live read is in percent to
+  # 0.1, so level 1 reads 0.4 and level 2 0.8. With hue_native_control off, Z2M's converter
+  # rewrites the kept-level publish's brightness 1 to level 2 on a Hue light (zigbee2mqtt internals.md, fade).
+  - name: sets_the_lowest_level_while_lit
+    roles: [light_ct]
+    only: [zigbee2mqtt, zha]
+    steps:
+      - z2m_option: {hue_native_control: false}
+      - set: {state: on, brightness_pct: 30}
+      - wait: 1  # let the on's fade end before the write
+      - call: {brightness: 0.4}
+      - expect_response: {status: expected, integration: self}
+      - sample: {attribute: brightness, for: 1, expect: steady, min: 0.4, max: 0.4, source: deviceside}
 
   - name: min_brightness_raises
     roles: [light_ct]

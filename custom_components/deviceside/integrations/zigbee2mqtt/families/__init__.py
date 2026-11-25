@@ -8,12 +8,14 @@ device. It matters where a comment says so; elsewhere no device can match two gr
 tests/integrations/zigbee2mqtt/test_classification.py pins the devices each constraint is about.
 """
 
+import re
 from collections.abc import Collection, Sequence
 
-from . import gledopto, hue, ikea, sengled, sonoff, tuya
+from . import aqara, gledopto, hue, ikea, sengled, sonoff, tuya
 from ..rules import FIELDS, REGISTRY
 from ....core.rules import Rule, compose
 from ....core.scope import Family
+from ....zigbee.standard_lights import STANDARD_LIGHT, members
 
 FAMILIES: tuple[Family, ...] = (
     hue.FAMILY,
@@ -22,6 +24,7 @@ FAMILIES: tuple[Family, ...] = (
     sonoff.FAMILY,
     sengled.FAMILY,
     gledopto.FAMILY,
+    aqara.FAMILY,
 )
 
 RULES: tuple[Rule, ...] = compose(
@@ -38,8 +41,15 @@ RULES: tuple[Rule, ...] = compose(
     (sonoff.FAMILY, sonoff.RULES),
     (sengled.FAMILY, sengled.RULES),
     (gledopto.FAMILY, gledopto.RULES),
+    # On the Zigbee manufacturer string `Aqara`, which no Tuya device carries, so after Tuya's rules like the vendors'.
+    (aqara.FAMILY, aqara.RULES),
     # Last, as they only stand in for Tuya's rules on the Zigbee strings.
     (tuya.FAMILY, tuya.REGISTRY_RULES),
+) + (
+    # After every family's, so a family's light never lands here: the integration's own class (classes.py), on a
+    # definition model in the standard lights table (zigbee/standard_lights.py), out of `other`. Not a family's group,
+    # so outside `compose`; it reads one field of FIELDS.
+    Rule(STANDARD_LIGHT, {"definition_model": "|".join(map(re.escape, sorted(members())))}),
 )
 
 # The classes the registry alone places for good (classes.placed), so a device in one needn't wait for its Zigbee
