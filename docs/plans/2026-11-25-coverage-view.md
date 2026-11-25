@@ -74,6 +74,7 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 
 20. **Coverage in Settings (Jason, 2026-11-25):** one Settings form: its description holds the intro, legend and table; then all three options, Labs last with the "Turn on Labs: adds…" line (Decision 11) as its description. The `coverage` menu item and `coverage_view` step go; the progress wait (Decision 12) runs before Settings. The install success text reads "…open Configure, then Settings." Replaces Decision 1's menu item; its install-flow note stands (HA's `next_flow` takes only `FlowType.CONFIG_FLOW`, so the install can't open Configure).
 21. **The "Turn on Labs: adds…" sentence shows only while Labs is off (Jason, 2026-11-25),** closing audit report 2's Medium; with Labs on, the Labs description is the Settings form's own Labs text alone.
+22. **Controls first (Jason, 2026-11-25, live check):** the three options head the Settings form; the intro, legend and table follow in Labs's `data_description`, after the Labs text (HA renders a step's description above its fields, a section's description as plain text, and a field's `data_description` as Markdown). The intro drops "now": "DeviceSide runs {n} features on {m} of your devices." The Labs legend line says "above". Headings use `<center>`, as HA's Markdown sanitizer drops `align` from `div`.
 
 ## Steps
 
