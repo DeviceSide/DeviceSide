@@ -1,6 +1,6 @@
 # What tells a Zigbee2MQTT light takes the standard calls: a converter and issue survey (2026-11-25)
 
-Research for [the v0.2.0 plan](../plans/2026-11-25-v0.2.0-backlog.md), step 1. Question: what on a Zigbee2MQTT (or ZHA)
+Research for the v0.2.0 backlog plan (`docs/plans/2026-11-25-v0.2.0-backlog.md`, on `wt/v0.2.0-backlog`), step 1. Question: what on a Zigbee2MQTT (or ZHA)
 device tells that a light takes the standard ZCL calls DeviceSide sends, so step 2 can key a standard-call route to
 Documented on it (Decision 1) and split known failures off as `NotBuilt`. It extends, and does not redo,
 [other brands: dimming](../integrations/zigbee2mqtt/research/2026-11-24-other-brands-dimming.md),
