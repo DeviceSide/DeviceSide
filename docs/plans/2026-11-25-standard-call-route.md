@@ -170,12 +170,8 @@ it wasn't sure of. #613 must merge first (`Depends-on`); build on `main` and mer
 
 ## Handoff
 
-2026-11-25. **Done:** the step, its two plan reviews and three PR audits (report 3 CLEAN, delta). Decisions 17-22 are recorded above. #615 is marked ready and its body holds the summary and the counts. Branch `wt/standard-call-route`, worktree `/Users/jason/projects/ha/deviceside-wt/standard-call-route`.
+2026-11-25. **Done:** the step, its plan reviews, Decisions 17-24, and PR audits 1-5 (report 5 CLEAN, delta). `main` (#613, #614) is merged in. Decision 24 (a standard light's bottom is a raw level 2, at or below that level) was built after #613's merge, plan-reviewed (four findings, all taken), and audited (report 4's two Highs in `check_audit.py` fixed). #615 is ready. Branch `wt/standard-call-route`, worktree `/Users/jason/projects/ha/deviceside-wt/standard-call-route`.
 
-**Next:**
-1. Wait on #613 (`wait-pr 613`). When it merges, merge `origin/main` in (merge, never rebase). It overlaps on `docs/evidence.md`, the Z2M `index.md` and `internals.md`, `fade.py`, and the `raise_brightness` transcript. Then rerun `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check` and `scripts/zhc_table.py --check` (regenerate README and the compat page if needed), push, and run `audit-gate status` and the audit it asks for.
-2. The merge into `main` is Jason's unless the repo opts in to `merge-green` (check its header).
+**Next:** Jason merges #615 into `main`. A further move of `main` is resolved by merge, then the checks and `audit-gate status`.
 
-**Settled since:** audit report 1's M1, as Decision 23: reworded here, with a snapshot row. Overlaps: #614 (the
-same Aqara `index.md` paragraph and `families/aqara/__init__.py`; whichever merges second resolves) and #611
-(`core/registry.py`, `core/scope.py`).
+**Note for Jason (from brightness-floor):** #613's Decision 12 follow-up, scraping ZHC's flagged models, may be mostly covered by this PR's table; check before planning it.
