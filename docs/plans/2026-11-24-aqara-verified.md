@@ -95,25 +95,25 @@ hostnames in commits, docs or research files.
 
 ## Handoff
 
-2026-11-25 09:16, from the orchestrating session (context past 120k). Branch `wt/aqara-verified`, worktree
+2026-11-25 10:05, from the step 4 session (context past 120k). Branch `wt/aqara-verified`, worktree
 `deviceside-wt/aqara-verified`, PR #609 (draft).
 
-- **Done:** step 2 (HA-rig#108 merged: rows keyed by case and devices, carried only onto an identical transcript);
-  step 3 (`aqara` family in Labs, reviewed); step 6's research (committed; the `/grilling` with Jason is open);
-  step 1 (probe committed, rulings 7-9 above, built and reviewed; last commit carries the Plan review note).
-- **Next: step 4.** Jason said yes to steps 1 and 4 (2026-11-25), so the restricted run is authorized:
-  `DEVICE_SIDE_RIG_RESTRICTED=1 /Users/jason/projects/ha/ha-rig/scripts/rig.py --profile lab_aqara --integration zigbee2mqtt`
-  from this worktree (~35 min; it deploys this branch and first puts back the bulb state the 23:29 run's journal left).
-  The 09:12 dry run passed its device check. Then lift each action whose cases passed to `verified(...)` on `aqara`,
-  run the coverage check, plan-review, then step 5.
-- **Known gap:** get_attributes' Z2M record cites an older transcript, so its Aqara rows land only after a Hue `lab`
-  refresh (`--profile lab --action get_attributes`). That's blocked: the Hue bridge can't reach one lab roaming bulb
-  (power-cycle its lamp, then `rig.py --recover`), and the run moves three non-pre-authorized plugs (restricted).
-  Ask Jason; until then get_attributes stays Labs on `aqara`.
-- **Open for Jason:** Decision 5's DeviceSide-side fix (wait out the off fade) vs the recorded limit. The model name
-  "Aqara LED Bulb T2 E27" is right (Jason, 2026-11-25).
-- **Remind Jason, once the Aqara records are in (Decision 10's rerun done):** the Hue `lab` refresh
-  (`--profile lab --action get_attributes`), which brings get_attributes' Aqara rows.
+- **Done:** steps 1-3 and step 6's research (step 6's decision moved to #610, Decision 6). Step 4, first part: the
+  09:29 `lab_aqara` run; Aqara rows promoted into lower_brightness, raise_brightness and set_attributes records (Hue's
+  unchanged); set_attributes Verified on `aqara` (93d33abf). Decisions 10 and 11. ha-rig #109 (the not-built rule)
+  built, plan-reviewed, audited CLEAN twice (report 2's Medium: a call followed by `expect_error` naming the refusal is
+  skipped too; no profile hits it today; untracked per the audit rule), marked ready: **Jason merges it**.
+- **Next:** wait for #109 to merge (`wait-pr 109 -R jasonmx/HA-rig`), fast-forward ha-rig main, then add `class: aqara`
+  under the bulb in `/Users/jason/projects/ha/ha-rig/profiles/lab_aqara.yaml` (main before #109 rejects the key). Then,
+  with Jason's yes, `DEVICE_SIDE_RIG_RESTRICTED=1 /Users/jason/projects/ha/ha-rig/scripts/rig.py --profile lab_aqara
+  --integration zigbee2mqtt --action stop` from this worktree; promote if staged (it exits 1 if anything fails). Then lift
+  stop, raise_brightness and lower_brightness to `verified` on `aqara` (`families/aqara/__init__.py`; the move/stop
+  test in tests/core/test_scope.py must pass), regenerate, reword index.md's Aqara paragraph, plan-review step 4, then
+  step 5.
+- **Remind Jason, once the Aqara records are in:** the Hue `lab` refresh (`--profile lab --action get_attributes`).
+- **Open for Jason:** get_attributes' `keeps_and_reads_hs_while_off` on an xy-only bulb (deviceside step file vs a rig
+  rule on HA's supported_color_modes), Decision 11; Decision 5 (recommended: keep the recorded limit; or a probe with the
+  bulb's 1.5 s off transition set to 0, ~30 runs each). Model name settled.
 
 ## Verification
 
