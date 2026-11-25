@@ -48,14 +48,14 @@ Two principles Jason drew from #617, which this PR writes into the rules (step 1
 4. **Rides v0.2.0rc1.** Levels and classes change, calls don't, so no Hue rig rerun (tenet 9);
    `--transcripts=check` proves no call changed.
 5. **The Hue Smooth Dimming migration repair is unchanged.**
+6. **The reply on #617** is posted once Jason approves its text. If the reporter gives his lights' Manufacturer and
+   Model, they go in a `_manual.json` row crediting his report, as a follow-up, not a gate.
 7. **(2026-11-25, after step 1's review) `get_attributes` on a light whose `mirek_valid` is known wrong is split
    off, not worked around:** `get_attributes` promises the light's actual value, never a cache of DeviceSide's or HA's
    last write, so core's fix (PR #97263: track the last command on uncertified lights) is out. The Gledopto GL-C-008P
    (core #93459) gets a class of its own that `get_attributes` doesn't serve; every other `other` light keeps it. A
    user of that model reads HA's own light attributes.
 8. **(2026-11-25) Tenet 11 covers full releases, not RCs.**
-6. **The reply on #617** is posted once Jason approves its text. If the reporter gives his lights' Manufacturer and
-   Model, they go in a `_manual.json` row crediting his report, as a follow-up, not a gate.
 
 ## Steps
 
@@ -100,10 +100,10 @@ Touches: custom_components/deviceside/integrations/hue/**, tests/integrations/hu
 
 ## Handoff
 
-2026-11-25, planning done (the triage session, out of context).
+2026-11-25, step 1 done (the implementing session crashed after plan review 2; a successor finished it).
 
-- **Done:** root cause and Decisions; plan revised for every action outside Labs and the two principles.
-- **Next:** step 1 (A and B), then step 2. Post nothing on #617: its reply waits for Jason's yes (draft in #610's
-  planning session; he'll paste or approve it).
-- **Open decisions:** none. The evidence.md wording is the implementer's, reviewed by Jason in the PR.
+- **Done:** step 1 (A and B), three plan reviews; the last raised no must-fix.
+- **Next:** step 2. Post nothing on #617: its reply waits for Jason's yes. The reply should also ask for a GL-C-008P's
+  `product_data` on a Hue bridge, if anyone has one, as the split-off's strings are inferred (`internals.md`, Split off).
+- **Open decisions:** none.
 - **Branch / worktree / PR:** `wt/hue-other-brands`, `deviceside-wt/hue-other-brands`, #619 (draft).

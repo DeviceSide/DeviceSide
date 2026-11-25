@@ -189,7 +189,7 @@ per identity, the identity: a Zigbee2MQTT countdown plug's maker string with a r
 The classes split this way from one class, the rest of it among them, are **kin**: they get the same call on the same
 firmware family, and differ only in whose evidence they hold.
 
-- **Unknown is flagged, never Verified.** A device no rule matches gets the default class
+- **Unknown is never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
   name yet is refused ([below](#no-known-method-not-built-yet-in-labs)). As it spans vendors, the default class is
@@ -287,7 +287,7 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
-  harmed by (one it can't class, in Labs; Unknown is flagged, never Verified, above). The refusal is
+  harmed by (one it can't class, in Labs; Unknown is never Verified, above). The refusal is
   `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core
   applies it: `core/dispatcher.py`'s module docstring, Planning, and `AdapterScope.refusal`; when a device counts as
   placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue
@@ -360,7 +360,7 @@ other item behaves.
 An item ships unflagged once a real device has passed it or it qualifies as Documented ([Levels](#levels), tenet 10).
 The pass is the author's own test or a user's working report, on record; a maintainer judges whether it is enough. So
 an item tested before it merges ships unflagged, and one nobody can test and no route admits ships in Labs, untested,
-until someone with the device reports. No pass lifts the default class ([Unknown is flagged, never
+until someone with the device reports. No pass lifts the default class ([Unknown is never
 Verified](#device-classes)).
 
 Every new feature (action, integration, domain, capability or field) ships at the level its evidence gives: Verified for

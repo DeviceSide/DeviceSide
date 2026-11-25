@@ -22,8 +22,8 @@ survive it going offline, which is the point of auto-off.
 ## Device classes
 
 DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets. Lights of
-other brands can answer it differently, so DeviceSide tells them apart by the manufacturer the bridge reports for each
-light.
+other brands can answer it differently, so DeviceSide tells them apart by the manufacturer and model the bridge reports
+for each light.
 
 - A **scene** counts as its lights: one with a light of another brand counts as that brand's, or as other brands'
   when it holds lights of two such classes.
@@ -39,8 +39,8 @@ Signify's own lights (manufacturer `Signify Netherlands B.V.`), which the bridge
 
 Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get
 every feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same CLIP v2 light update a Hue light
-gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and a wrong
-result from any of these features shows at once and one tap fixes it ([internals](internals.md#device-classes)).
+gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and none of
+these features harms when it fails ([internals](internals.md#device-classes)).
 
 Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
 and color at a time, some come on when written while off, and some don't report color temperature mode as Hue lights do
