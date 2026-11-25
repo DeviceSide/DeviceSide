@@ -9,7 +9,8 @@ from .....core.scope import Family, FamilyScope, labs, verified
 AQARA = "aqara"
 
 # The device's own Zigbee manufacturer string, not Z2M's vendor: the vendor `Aqara` also covers devices whose string is
-# `LUMI`, which stay in `other`. Like IKEA's, it waits for bridge/devices (classes.py, placed).
+# `LUMI`, which fall to the rules after the families': `standard_light` when on its table, else `other`. Like IKEA's,
+# it waits for bridge/devices (classes.py, placed).
 RULES = (Rule(AQARA, {"zigbee_manufacturer": "Aqara"}),)
 
 # `other`'s actions for lights (classes.py): Level Control's moves and stop, which a Zigbee 3.0 dimmable light must

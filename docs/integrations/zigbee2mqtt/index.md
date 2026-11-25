@@ -216,8 +216,8 @@ On IKEA lights, lower brightness to off may stop at the lowest level instead of 
 ### Aqara
 
 Aqara's lights, placed by the Zigbee manufacturer string `Aqara`, which Zigbee2MQTT publishes as it connects (until
-then an Aqara light counts as another brand's). Lights that report `LUMI` stay with [other brands](#other-brands). The
-class starts from one bulb, the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights
+then an Aqara light counts as another brand's). Lights that report `LUMI` are [standard lights](#standard-lights) when
+their model is on that list, and otherwise stay with [other brands](#other-brands). The class starts from one bulb, the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights
 get: smooth dimming and stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light must take,
 and get and set attributes. On the rig it passed smooth dimming, stop and set attributes ([records](test-records/));
 get attributes has no record on it yet. Its other features

@@ -116,6 +116,11 @@ Numbered on from the parent plan's 16; made by Jason after the step's plan revie
     manufacturer) pair as a member only when every definition it can resolve to is a member and none is excluded,
     with `color_hs` only when all of them expose it; a pair touching a non-member or a split-off is out. No ZHC matcher
     is reproduced. A member with no Zigbee strings can't be keyed outside Zigbee2MQTT, and the table says so.
+23. **A `LUMI`-reporting Aqara light on the table is a standard light** (audit report 1's M1). The Aqara family's
+    rule reads the string `Aqara`, so a `LUMI` light falls past it to the class; the texts saying it stays with other
+    brands are reworded, and a snapshot row pins it. The Aqara T2's get_attributes Labs isn't contrary evidence: its
+    rig case `keeps_and_reads_hs_while_off` needs hs mode, which the bulb lacks. #614 limits that case to the hue
+    class and lifts the family's get_attributes, closing the gap between the two strings.
 
 ## Steps
 
@@ -156,4 +161,6 @@ it wasn't sure of. #613 must merge first (`Depends-on`); build on `main` and mer
 1. Wait on #613 (`wait-pr 613`). When it merges, merge `origin/main` in (merge, never rebase). It overlaps on `docs/evidence.md`, the Z2M `index.md` and `internals.md`, `fade.py`, and the `raise_brightness` transcript. Then rerun `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check` and `scripts/zhc_table.py --check` (regenerate README and the compat page if needed), push, and run `audit-gate status` and the audit it asks for.
 2. The merge into `main` is Jason's unless the repo opts in to `merge-green` (check its header).
 
-**Open for Jason:** audit report 1's M1. A `LUMI`-reporting Aqara light on the table lands in `standard_light`, but `index.md:219` and `families/aqara/__init__.py:11-12` say it stays with other brands. Choose: reword it here, leave it to #614 (which edits those files), or keep LUMI Aqara lights out of the class. Overlaps: #614 (Aqara files) and #611 (`core/registry.py`, `core/scope.py`).
+**Settled since:** audit report 1's M1, as Decision 23: reworded here, with a snapshot row. Overlaps: #614 (the
+same Aqara `index.md` paragraph and `families/aqara/__init__.py`; whichever merges second resolves) and #611
+(`core/registry.py`, `core/scope.py`).
