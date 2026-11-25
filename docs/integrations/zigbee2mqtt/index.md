@@ -251,8 +251,8 @@ not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug.
 
-The lowest brightness of most Innr lights, and of ADEO's, is 0.8 %: their Zigbee2MQTT definitions say they turn off at
-0.4 %, so Zigbee2MQTT sends 0.8 % in its place ([internals](internals.md#fade)).
+Innr and ADEO lights whose Zigbee2MQTT definitions say they turn off at 0.4 % have a lowest brightness of 0.8 %:
+Zigbee2MQTT sends 0.8 % in its place ([internals](internals.md#fade)).
 
 ## What DeviceSide changes in Zigbee2MQTT
 
