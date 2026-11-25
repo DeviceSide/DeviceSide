@@ -85,7 +85,7 @@ def target_of(hass, entity_id):
 
 
 def cell_of(hass, entity_id, feature=TIMER_OFF):
-    column = next(column for column in COLUMNS if column.feature == feature)
+    column = next(column for column in COLUMNS if column.features == (feature,))
     return coverage.cell(hass, get_runtime(hass).registry, target_of(hass, entity_id), column)
 
 
@@ -149,7 +149,7 @@ async def test_a_group_whose_member_takes_its_own_call_shows_the_members_mark(ha
 )
 async def test_a_feature_riding_several_actions_takes_its_weakest(hass, fake, entity_id, on_for, expected):
     add_fake_entity(hass, fake, entity_id)
-    column = coverage.Column("both timers", "Timers", "Both timers")
+    column = coverage.Column(("both timers",), "Timers")
 
     with (
         patch.dict(coverage.FEATURE_ACTIONS, {"both timers": ("turn_on_for", "turn_off_for")}),
@@ -204,18 +204,18 @@ async def test_the_rows_are_the_entities_a_call_could_reach(hass):
         ("switch.fake_group", True),
     ]
     by_id = {row.entity_id: row for row in found.rows}
-    assert {feature: cell.mark for feature, cell in by_id["switch.a"].cells.items()} == {
-        TIMER_ON: Mark.VERIFIED,
-        TIMER_OFF: Mark.VERIFIED,
+    assert {heading: cell.mark for heading, cell in by_id["switch.a"].cells.items()} == {
+        "Timed on": Mark.VERIFIED,
+        "Timed off": Mark.VERIFIED,
     }
-    assert {feature: cell.mark for feature, cell in by_id["light.a_lamp"].cells.items()} == {
-        "set without turning on": Mark.VERIFIED,
-        TIMER_ON: Mark.VERIFIED,
-        TIMER_OFF: Mark.VERIFIED,
+    assert {heading: cell.mark for heading, cell in by_id["light.a_lamp"].cells.items()} == {
+        "Set while off": Mark.VERIFIED,
+        "Timed on": Mark.VERIFIED,
+        "Timed off": Mark.VERIFIED,
     }
     # A group takes its weakest member's.
-    assert by_id["switch.fake_group"].cells[TIMER_OFF] == Cell(Mark.DOCUMENTED)
-    assert by_id["switch.d"].cells[TIMER_ON] == Cell(Mark.REFUSED, "It never switches on")
+    assert by_id["switch.fake_group"].cells["Timed off"] == Cell(Mark.DOCUMENTED)
+    assert by_id["switch.d"].cells["Timed on"] == Cell(Mark.REFUSED, "It never switches on")
 
 
 @pytest.mark.usefixtures("classed", "household")
@@ -258,14 +258,14 @@ async def test_the_table_has_a_column_per_feature_and_one_footnote_per_reason(ha
     text = coverage.table(hass, found)
 
     assert text.splitlines()[:3] == [
-        "| | " + " | ".join(f'<abbr title="{column.name}">{column.heading}</abbr>' for column in COLUMNS) + " |",
-        "|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|",
-        "| **Fake** | | | | | | | |",
+        "| | " + " | ".join(column.heading for column in COLUMNS) + " |",
+        "|---|:-:|:-:|:-:|:-:|:-:|:-:|",
+        "| **Fake** | | | | | | |",
     ]
-    assert f"| a{SWITCH} |  |  |  |  | 🟢 | 🟢 |  |" in text
-    assert f"| d{SWITCH} |  |  |  |  | 🔴¹ | 🔴¹ |  |" in text
-    assert f"| c{SWITCH} |  |  |  |  | ⚪ | ⚪ |  |" in text
-    assert f"| fake group{SWITCH} <small>Group</small> |  |  |  |  | 🟡 | 🟡 |  |" in text
+    assert f"| a{SWITCH} |  |  |  | 🟢 | 🟢 |  |" in text
+    assert f"| d{SWITCH} |  |  |  | 🔴¹ | 🔴¹ |  |" in text
+    assert f"| c{SWITCH} |  |  |  | ⚪ | ⚪ |  |" in text
+    assert f"| fake group{SWITCH} <small>Group</small> |  |  |  | 🟡 | 🟡 |  |" in text
     assert text.endswith("\n\n¹ It never switches on")
     assert text.count("¹ It never switches on") == 1
 
@@ -276,13 +276,8 @@ async def test_a_name_with_markup_is_shown_as_it_is(hass, fake):
     assert coverage._plain("A | <b>lamp</b> *1*") == "A \\| &lt;b&gt;lamp&lt;/b&gt; \\*1\\*"
 
 
-def test_the_legend_names_the_marks_and_each_column(hass):
-    assert coverage.legend().splitlines() == [
-        "🟢 Verified · 🟡 Documented · ⚪ Labs · 🔴 refused",
-        "",
-        "Dim: Smooth dimming · Saturation: Smooth saturation · Hue: Smooth hue · Preset: Set without turning on · "
-        "Timer on: Turn on with timer · Timer off: Turn off with timer · Auto-off: Auto-off/on",
-    ]
+def test_the_legend_names_the_marks():
+    assert coverage.legend() == "🟢 Verified · 🟡 Documented · ⚪ Labs · 🔴 Unsupported"
 
 
 # The Configure step

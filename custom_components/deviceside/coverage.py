@@ -46,21 +46,20 @@ _GROUPS_ON_COORDINATOR = frozenset({"zha"})
 
 @dataclass(frozen=True, slots=True)
 class Column:
-    """A feature's column: `feature` is its FEATURE_ACTIONS key, `heading` the short heading, `name` the full one."""
+    """A column: `features` are the FEATURE_ACTIONS keys it shows (the weakest of their cells), `heading` its plain-text
+    heading, and the key of Row.cells."""
 
-    feature: str
+    features: tuple[str, ...]
     heading: str
-    name: str
 
 
 COLUMNS = (
-    Column("smooth dimming", "Dim", "Smooth dimming"),
-    Column("smooth saturation", "Saturation", "Smooth saturation"),
-    Column("smooth hue", "Hue", "Smooth hue"),
-    Column("set without turning on", "Preset", "Set without turning on"),
-    Column("turn on with timer", "Timer on", "Turn on with timer"),
-    Column("turn off with timer", "Timer off", "Turn off with timer"),
-    Column("auto-off/on", "Auto-off", "Auto-off/on"),
+    Column(("smooth dimming",), "Smooth dimming"),
+    Column(("smooth saturation", "smooth hue"), "Smooth color"),
+    Column(("set without turning on",), "Set while off"),
+    Column(("turn on with timer",), "Timed on"),
+    Column(("turn off with timer",), "Timed off"),
+    Column(("auto-off/on",), "Auto off/on"),
 )
 
 
@@ -93,7 +92,7 @@ class Row:
     group: bool
     integration: str
     device: str  # The device's ID, else the entity's: what counts as one device.
-    cells: Mapping[str, Cell]  # By Column.feature; a feature with no cell isn't for the entity, or isn't built.
+    cells: Mapping[str, Cell]  # By Column.heading; a column with no cell isn't for the entity, or isn't built.
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,11 +139,18 @@ def minimal_request(hass: HomeAssistant, action: type[Action]) -> Request:
 
 
 def cell(hass: HomeAssistant, registry: AdapterRegistry, target: Target, column: Column) -> Cell | None:
+    """The target's cell for a column: the weakest, a refusal first, of its features' cells (None only where all are
+    None)."""
+    cells = [got for feature in column.features if (got := _feature_cell(hass, registry, target, feature)) is not None]
+    return min(cells, key=lambda got: _WEAKEST.index(got.mark), default=None)
+
+
+def _feature_cell(hass: HomeAssistant, registry: AdapterRegistry, target: Target, feature: str) -> Cell | None:
     """The target's cell for a feature, from dispatcher.judge with Labs off on each of the feature's actions: the
     weakest, a refusal first. None where the feature isn't for the target (an action of it has no adapter or domain
     there) or isn't built (not built yet, an empty group)."""
     judged = []
-    for key in FEATURE_ACTIONS[column.feature]:
+    for key in FEATURE_ACTIONS[feature]:
         action, adapter = registry.actions.get(key), registry.adapter(key, target.integration)
         if action is None or adapter is None or not {target.domain} <= action.domains & adapter.scope.domains.keys():
             return None
@@ -208,7 +214,7 @@ async def collect(hass: HomeAssistant) -> Coverage:
     icons = await _Icons.load(hass, {entry.platform for entry, _ in found})
     rows = []
     for entry, target in found:
-        cells = {column.feature: got for column in COLUMNS if (got := cell(hass, registry, target, column)) is not None}
+        cells = {column.heading: got for column in COLUMNS if (got := cell(hass, registry, target, column)) is not None}
         if cells:
             rows.append(
                 Row(
@@ -278,13 +284,14 @@ def _plain(text: str) -> str:
 
 
 def table(hass: HomeAssistant, coverage: Coverage) -> str:
-    """The matrix in Markdown (HA's flow Markdown keeps tables, `ha-icon` and `abbr`, and strips style and class): an
-    entity per row under its integration's title, a feature per column, a refusal as 🔴 with its footnote's number,
-    and the footnotes, one per distinct reason, under it. Empty with no rows."""
+    """The matrix in Markdown (HA's flow Markdown keeps tables and `ha-icon`, and strips style and class): an
+    entity per row under its integration's title, a column per feature (smooth
+    saturation and hue share one), a refusal as 🔴 with its footnote's number, and the footnotes, one per distinct
+    reason, under it. Empty with no rows."""
     if not coverage.rows:
         return ""
     registry = hass.data[DATA].registry
-    headings = " | ".join(f'<abbr title="{column.name}">{column.heading}</abbr>' for column in COLUMNS)
+    headings = " | ".join(column.heading for column in COLUMNS)
     lines = [f"| | {headings} |", "|---|" + ":-:|" * len(COLUMNS)]
     notes: dict[str, int] = {}
     shown = None
@@ -296,7 +303,7 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
         label = " <small>Group</small>" if row.group else ""
         cells = []
         for column in COLUMNS:
-            got = row.cells.get(column.feature)
+            got = row.cells.get(column.heading)
             if got is None:
                 cells.append("")
             elif got.mark is Mark.REFUSED:
@@ -310,8 +317,12 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
 
 
 def legend() -> str:
-    """The four marks, and each column's heading against its full name."""
-    marks = " · ".join(
-        (f"{Mark.VERIFIED} Verified", f"{Mark.DOCUMENTED} Documented", f"{Mark.LABS} Labs", f"{Mark.REFUSED} refused")
+    """The four marks."""
+    return " · ".join(
+        (
+            f"{Mark.VERIFIED} Verified",
+            f"{Mark.DOCUMENTED} Documented",
+            f"{Mark.LABS} Labs",
+            f"{Mark.REFUSED} Unsupported",
+        )
     )
-    return marks + "\n\n" + " · ".join(f"{column.heading}: {column.name}" for column in COLUMNS)

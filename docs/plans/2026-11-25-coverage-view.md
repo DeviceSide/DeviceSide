@@ -68,6 +68,8 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 14. **A native group held only by a member's Labs class** shows ⚪, the weakest of its members, though a call runs its
     Verified and Documented members: turning on Labs is what adds the rest.
 
+18. **Columns and legend, after the live check (Jason, 2026-11-25):** headings Smooth dimming, Smooth color (saturation and hue, the weaker), Set while off, Timed on, Timed off, Auto off/on, plain text; the legend's key line is gone and 🔴 reads Unsupported. Replaces Decision 6's headings and abbr, and Decision 8's key.
+
 ## Steps
 
 1. **Shared decision** (Decision 2): extract and route the dispatcher through it. Unit tests pin each outcome on a
