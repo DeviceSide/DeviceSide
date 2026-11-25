@@ -338,11 +338,10 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
     assert card.render().splitlines() == [
         "**ZHA** (Zigbee 3.0)",
         "",
-        f"- [native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
+        f"- [native groups]({URL}#native-groups): 🟢 turn on with timer",
         f"- [lights]({URL}#lights): 🟢 turn on with timer",
-        f"- [Hue lamp]({URL}#hue-lamp) ✔: 🟢 turn on with timer",
-        f"- [Plug]({URL}#plug) ✔: 🟢 stop",
-        f"- [Old plug]({URL}#old-plug): 🔴",
+        f"- [Hue lamp]({URL}#hue-lamp): 🟢 turn on with timer",
+        f"- [Plug]({URL}#plug): 🟢 stop",
     ]
 
 
@@ -425,15 +424,13 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
     )
     # One line per class, its features by status; stop rides the smooth move, so it isn't named. A relay, a light or a
     # switch, is named per domain, its timer at the switch domain's Documented level there. CCT, left out of the timer's
-    # scope, isn't built yet there: the card leaves the feature out. Lines sort alphabetically, devices.yaml's entry
-    # last, as it names no class or feature.
+    # scope, isn't built yet there: the card leaves the feature out. Lines sort alphabetically.
     assert card.lines == [
         f"[CCT controllers]({URL}#dimmers): ⚪ smooth dimming",
         f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
         f"[relays]({URL}#relays): 🟡 turn on with timer",
         f"[relays as lights]({URL}#relays): 🟢 turn on with timer, smooth dimming",
-        f"[Old plug]({URL}#old-plug): 🔴",
-    ]
+    ]  # devices.yaml's Old plug has no known method, which the README leaves to the page
     assert card.render().splitlines()[2:] == [f"- {line}" for line in card.lines]
 
 
@@ -758,21 +755,54 @@ def test_the_checked_in_readme_and_pages_match_the_real_records():
 def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
     text = gc.cards(gc.card_list(registry, data(registry)))
-    # The fixture's Old plug has no known method; nothing is tested, Documented, in Labs or caveated.
-    assert "🟢 works<br>\n🔴 no known command works on it\n\n**ZHA**" in text
+    # The fixture's Old plug has no known method, which the README leaves out; nothing else is Documented or caveated.
+    assert "🟢 Verified: works, tested on a real device\n\n**ZHA**" in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
-    assert gc.legend("🟢 ✔ 🟡 ⚪ 🔴 🔧 ⚠️") == (
-        "🟢 works · ✔ verified on automated rig<br>\n"
-        "🟡 should work: same call pattern as a tested device<br>\n"
-        "⚪ Labs: not yet passed on a real device. Enable Labs in Configure > Settings<br>\n"
-        "🔴 no known command works on it<br>\n"
+    assert gc.legend("🟢 🟡 ⚪ 🔧 ⚠️") == (
+        "🟢 Verified: works, tested on a real device<br>\n"
+        "🟡 Documented: should work, same call pattern as a tested device<br>\n"
+        "⚪ Labs: not yet passed on a real device. Turn on Labs in Configure > Settings to try it<br>\n"
         f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL})<br>\n"
         "⚠️ unmaintained: use at your own risk"
     )
 
 
+def test_a_readme_card_names_classes_with_marks_and_leaves_models_and_refusals_to_the_page(root):
+    """No ✔, no tested model and no 🔴 on a card (the refused entry's line and a refused class's part are gone), a
+    model line no class takes stays unmarked; the page's matrix and Not supported table keep them all."""
+    record2(root, "zha", "turn_on_for", ran("light", device("LTA009", "1", "Light")))
+    timer = AdapterScope(domains=verified("light"), capabilities=verified("Light") | documented("CCT") | labs("Switch"))
+    refusing = AdapterScope(
+        capabilities=verified("Light"), no_known_method={"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
+    )
+    adapters = (adapter("zha", "turn_on_for", timer), adapter("zha", "get_attributes", refusing))
+    registry = classed_registry(*adapters)
+    registry.integrations["zha"].classes["RGB"] = LIGHT
+    found = data(registry)
+    text = gc.cards(gc.card_list(registry, found))
+    assert "✔" not in text
+    assert "🔴" not in text
+    assert "Hue lamp" not in text
+    assert "Old plug" not in text
+    assert "RGB controllers" not in text
+    assert f"- [dimmers]({URL}#dimmers): 🟢 turn on with timer, get attributes" in text
+    assert f"[compatibility page]({gc.PAGE_URL})" in text
+    block, *_ = page_of(*adapters, registry=registry)
+    assert "([Hue lamp](#hue-lamp) ✔)" in block
+    assert "🔴 [why](#old-plug)" in block
+    assert '<a id="old-plug"></a>Old plug' in block
+
+
+def test_a_model_line_no_class_takes_keeps_its_models_without_the_rig_mark(root):
+    record(root, "zha", "turn_on_for", devices=[old_device("LTA009", "1")])
+    card = zha_card(adapter("zha", "turn_on_for"))
+    assert f"- [Hue lamp]({URL}#hue-lamp) ✔" not in card.render()
+    assert f"- [Hue lamp]({URL}#hue-lamp): 🟢 turn on with timer" in card.render()
+    assert card.tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]  # the evidence keeps the mark
+
+
 def test_every_action_has_a_card_name_from_the_feature_table():
-    """The cards' names come from the README table's rows, so an action can't be named on one and not the other."""
+    """The cards' names come from the feature table's rows, so an action can't be named on one and not the other."""
     assert set(gc.FEATURES) == {action.key for action in discover()}
     assert gc.FEATURES["raise_hue"] == "smooth hue"
     assert list(gc.FEATURES)[-1] == "stop" == gc.FEATURES["stop"]
@@ -1009,7 +1039,6 @@ def test_a_class_an_adapter_serves_in_neither_axis_shows_nothing_for_it(root):
     assert card.lines == [
         f"[CCT controllers, dimmers]({URL}#dimmers): 🟢 turn on with timer",
         f"[relays]({URL}#relays): 🟢 turn on with timer, turn off with timer, set without turning on",
-        f"[Old plug]({URL}#old-plug): 🔴",
     ]
 
 
@@ -1020,11 +1049,13 @@ def test_a_scopes_no_known_method_reaches_the_card_and_the_not_supported_table_w
     registry = classed_registry(*adapters)
     registry.integrations["zha"].classes["RGB"] = LIGHT
     found = data(registry, no_known_method=[])
-    # One entry per integration and entry, whichever adapters list it.
-    assert gc.card("zha", registry, list(adapters), found).lines == [
-        f"[relays]({URL}#relays): 🟢 turn on with timer, turn off with timer",
-        f"[RGB controllers]({URL}#dimmers): 🔴 turn on with timer, turn off with timer",
-    ]
+    # One entry per integration and entry, whichever adapters list it; the README card has no 🔴 line for it.
+    card = gc.card("zha", registry, list(adapters), found)
+    assert card.lines == [f"[relays]({URL}#relays): 🟢 turn on with timer, turn off with timer"]
+    assert [(line.name(card, "zha", found, set()), line.shape) for line in card.entries][-1] == (
+        f"[RGB controllers]({URL}#dimmers)",
+        (("no_known_method", ("turn on with timer", "turn off with timer")),),
+    )
     (row,) = gc.refusals(registry, found, [])
     assert (row.what, row.integrations, row.actions, row.refused) == (
         "Old plug",
@@ -1036,9 +1067,11 @@ def test_a_scopes_no_known_method_reaches_the_card_and_the_not_supported_table_w
     scope = AdapterScope(capabilities=verified("Switch"), no_known_method={"Hidden": broken["RGB"]})
     registry = classed_registry(adapter("zha", "turn_on_for", scope))
     registry.integrations["zha"].classes["Hidden"] = LIGHT
-    assert gc.card("zha", registry, list(registry._adapters), found).lines[0] == (
-        f"[Old plug]({URL}#old-plug): 🔴 turn on with timer"
-    )
+    card = gc.card("zha", registry, list(registry._adapters), found)
+    assert card.lines == [f"[relays]({URL}#relays): 🟢 turn on with timer"]
+    (refused,) = (line for line in card.entries if not line.claims)
+    assert refused.name(card, "zha", found, set()) == f"[Old plug]({URL}#old-plug)"
+    assert refused.shape == (("no_known_method", ("turn on with timer",)),)
 
 
 def test_a_harmful_not_built_entry_is_left_off_the_card_and_sourced_under_not_supported(root):
@@ -1106,12 +1139,13 @@ def test_a_declared_class_no_scope_holds_has_no_line(root):
     registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=verified("Light"))))
     registry.integrations["zha"].classes = {"Light": LIGHT, "Hidden": LIGHT}
     card = gc.card("zha", registry, list(registry._adapters), data(registry))
-    assert card.lines == [f"[dimmers]({URL}#dimmers): 🟢 stop", f"[Old plug]({URL}#old-plug): 🔴"]
+    assert card.lines == [f"[dimmers]({URL}#dimmers): 🟢 stop"]
 
 
 def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_it_on(root):
     """No line of models apart. A model goes on its class's line in the test's domain, else on its class's
-    line (a Shelly relay shown as a light), and rig-tested ones end ✔; native groups get a line of their own."""
+    line (a Shelly relay shown as a light), and native groups get a line of their own. The README names none of the
+    models, nor ✔ (the page's matrix does)."""
     record2(
         root,
         "zha",
@@ -1125,18 +1159,17 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     card = classed_card(adapter("zha", "turn_on_for", scope), adapter("zha", "raise_brightness", dimming))
     # Native groups first, then tested lines, then alphabetically.
     assert card.lines == [
-        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
-        f"[dimmers]({URL}#dimmers) ([Hue lamp]({URL}#hue-lamp) ✔): 🟢 turn on with timer, smooth dimming",
-        f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",
+        f"[native groups]({URL}#native-groups): 🟢 turn on with timer",
+        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer, smooth dimming",
+        f"[relays]({URL}#relays): 🟢 turn on with timer",
         f"[relays as lights]({URL}#relays): 🟢 turn on with timer · ⚪ smooth dimming",
-        f"[Old plug]({URL}#old-plug): 🔴",
     ]
     # A class named as its one model gives it once.
     capabilities = copy.deepcopy(DATA["capabilities"])
     capabilities["zha"]["Switch"] = {"phrase": "Plug", "section": "Plug"}
     relays = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | labs("Light"))
     card = classed_card(adapter("zha", "turn_on_for", relays), capabilities=capabilities)
-    assert card.lines[0] == f"[Plug]({URL}#plug) ✔: 🟢 turn on with timer"
+    assert card.lines[0] == f"[Plug]({URL}#plug): 🟢 turn on with timer"
 
 
 def test_a_feature_whose_actions_differ_in_status_names_its_parts():
@@ -1155,7 +1188,7 @@ def test_no_card_line_names_a_feature_twice():
     block = gc.README.read_text().split(gc.CARDS[0])[1].split(gc.CARDS[1])[0]
     lines = [line for line in block.splitlines() if line.startswith("- ")]
     assert lines
-    icons = {icon for _, icon, _ in gc.OUTCOMES}
+    icons = {icon for _, icon in gc.OUTCOMES}
     for line in lines:
         # A line's features follow its names, each part "<icon> <features>"; the fold's sit in a parenthesis per group.
         if line.startswith(f"- {gc.LABS} "):
@@ -1237,20 +1270,19 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
     card = gc.card("zha", registry, list(adapters), data(registry, capabilities=capabilities))
     # acme before Beta: brands sort case-insensitively.
     assert card.lines == [
-        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",  # native groups first
-        f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",  # acme's tested line first
+        f"[native groups]({URL}#native-groups): 🟢 turn on with timer",  # native groups first
+        f"[relays]({URL}#relays): 🟢 turn on with timer",  # acme's tested line first
         f"[RGB controllers]({URL}#dimmers): 🟡 turn on with timer",
         f"[other Acme lights]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
         f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · ⚪ smooth dimming",  # Beta
         f"[other brands]({URL}#lights): 🟡 turn on with timer · ⚪ smooth dimming",
-        f"[Old plug]({URL}#old-plug): 🔴",
     ]
 
 
 def test_a_models_variants_are_children_of_one_parent_line(root):
     """A section with `variants` is a parent line naming the model and what to check; each child names
-    its variants (", or " between two) with ✔ for a rig-tested model, never its name, and merges only with its own
-    section's classes."""
+    its variants (", or " between two), never a model's name, and merges only with its own section's classes. The
+    README has no ✔ for a rig-tested one."""
     record2(root, "zha", "turn_on_for", ran("switch", device("P1", "1", "Switch"), role="switch_plug"))
     timer = AdapterScope(
         domains=verified("light", "switch"), capabilities=verified("Switch") | labs("CCT", "RGB", "Light")
@@ -1265,13 +1297,13 @@ def test_a_models_variants_are_children_of_one_parent_line(root):
     card = gc.card("zha", registry, list(adapters), data(registry, capabilities=capabilities, sections=sections))
     assert card.lines[:2] == [
         f"[Plugs]({URL}#plug): check Manufacturer on its page\n"
-        f"  - [maker A]({URL}#plug) ✔: 🟢 turn on with timer\n"
+        f"  - [maker A]({URL}#plug): 🟢 turn on with timer\n"
         f"  - [maker B, or no setting]({URL}#plug): ⚪ turn on with timer",
         f"[dimmers]({URL}#dimmers): ⚪ turn on with timer",  # same features, another section: its own line
     ]
     assert card.render().splitlines()[2:5] == [
         f"- [Plugs]({URL}#plug): check Manufacturer on its page",
-        f"  - [maker A]({URL}#plug) ✔: 🟢 turn on with timer",
+        f"  - [maker A]({URL}#plug): 🟢 turn on with timer",
         f"  - [maker B, or no setting]({URL}#plug): ⚪ turn on with timer",
     ]
 
@@ -1334,10 +1366,8 @@ def timer_labs(*classes, **scope):
 def test_two_lines_that_show_only_labs_fold_into_one_last_line(root):
     dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
     card = labs_card(timer_labs("Light", "CCT"), dimming)
-    # CCT controllers and dimmers are one section but show different features, so two lines; the fold goes after
-    # devices.yaml's entry.
+    # CCT controllers and dimmers are one section but show different features, so two lines.
     assert card.lines == [
-        f"[Old plug]({URL}#old-plug): 🔴",
         f"⚪ [CCT controllers]({URL}#dimmers) (turn on with timer);"
         f" [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming)",
     ]
@@ -1345,7 +1375,7 @@ def test_two_lines_that_show_only_labs_fold_into_one_last_line(root):
 
 def test_one_labs_line_stays_as_it_is(root):
     card = labs_card(timer_labs("CCT"))
-    assert card.lines == [f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer", f"[Old plug]({URL}#old-plug): 🔴"]
+    assert card.lines == [f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer"]
 
 
 def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root):
@@ -1371,13 +1401,13 @@ def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_l
     )
 
 
-def test_a_no_known_method_part_stays_inside_its_parenthesis(root):
+def test_a_no_known_method_part_is_dropped_from_the_fold(root):
     broken = {"CCT": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     off = adapter("zha", "turn_off_for", AdapterScope(capabilities=labs("RGBCCT"), no_known_method=broken))
     card = labs_card(timer_labs("CCT", "RGBCCT"), off)
     assert card.lines[-1] == (
         f"⚪ [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
-        f" [CCT controllers]({URL}#dimmers) (turn on with timer · 🔴 turn off with timer)"
+        f" [CCT controllers]({URL}#dimmers) (turn on with timer)"
     )
 
 
