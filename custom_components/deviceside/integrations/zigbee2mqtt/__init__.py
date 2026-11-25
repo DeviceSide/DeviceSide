@@ -22,6 +22,7 @@ from .stop import Z2MStop
 from .turn_off_for import Z2MTurnOffFor
 from .turn_on_for import Z2MTurnOnFor
 from ...core.scope import IntegrationInfo
+from ...zigbee.standard_lights import STANDARD_LIGHT
 
 INTEGRATION = IntegrationInfo(
     key="zigbee2mqtt",
@@ -36,6 +37,7 @@ INTEGRATION = IntegrationInfo(
     classes=CLASSES,
     default_class=OTHER,
     families=FAMILIES,
+    own_classes=frozenset({STANDARD_LIGHT}),
     zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=Z2MCallResolver(),
     setup=lifecycle.setup,

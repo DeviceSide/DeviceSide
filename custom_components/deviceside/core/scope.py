@@ -38,8 +38,9 @@ class Level(IntEnum):
     # The Labs flag on one item, not yet passed on a real device or held back: refused unless the Labs option is on. A
     # maintainer lifts it once a pass is on record and they judge it enough (docs/evidence.md, The Labs flag).
     LABS = 0
-    # Reaches the same capability as a Verified item, differing only in addressing, or a read a certification tests on
-    # every certified device, its class keyed on a marker (docs/evidence.md, Levels); unit tests pin the payload.
+    # Reaches the same capability as a Verified item, differing only in addressing; a read a certification tests on
+    # every certified device, its class keyed on a marker; or a Zigbee2MQTT light's call through ZHC's standard
+    # converters, its class keyed on the definition (docs/evidence.md, Levels); unit tests pin the payload.
     DOCUMENTED = 10
     # A maintainer has verified the call on a real device.
     VERIFIED = 20
@@ -538,8 +539,12 @@ class IntegrationInfo:
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).
     default_class: str | None = None
     # The vendor families that hold its classes, each with its own maintainers; between them every class but the
-    # default one, each once (core/registry.py, check_families). Empty for an integration that has none.
+    # default one and `own_classes`, each once (core/registry.py, check_families). Empty for an integration that has
+    # none.
     families: tuple[Family, ...] = ()
+    # On an integration with families, the classes it holds itself beside the default one, in no family: a class that
+    # spans vendors as the default one does (Zigbee2MQTT's standard lights), so no family's maintainers own it.
+    own_classes: frozenset[str] = frozenset()
     # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.
     call_resolver: CallResolver | None = None
     # Starts what the integration keeps running while the entry is loaded (Z2M's bridge cache). Core runs it as the

@@ -9,7 +9,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import aqara
     ("zigbee_manufacturer", "matched"),
     [
         ("Aqara", True),  # the T2 bulbs' own Zigbee string
-        ("LUMI", False),  # Z2M's vendor `Aqara` also covers these, which stay in `other`
+        ("LUMI", False),  # Z2M's vendor `Aqara` also covers these, left to the rules after it
         ("Aqara Lighting", False),  # the whole string, not a prefix
     ],
 )

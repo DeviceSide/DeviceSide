@@ -17,6 +17,8 @@ TUYA_DIR = PKG + "families/tuya/"
 CATALOG = "custom_components/deviceside/zigbee/tuya.py"
 REASONS = "custom_components/deviceside/zigbee/reasons.py"
 REASONS_TEST = "tests/zigbee/test_reasons.py"
+STANDARD = "custom_components/deviceside/zigbee/standard_lights.py"
+STANDARD_TEST = "tests/zigbee/test_standard_lights.py"
 REPO = tuple(sorted(gen_codeowners.REPO_MAINTAINERS))
 
 ACME = ow.Package("acme")
@@ -30,6 +32,8 @@ CATALOG_ACME = ow.Group(SHARED, "acme", ("tina",), ("alice",))
 CATALOG_ZETA = ow.Group(SHARED, "zeta", ("zed",), ("zoe",))
 READS_ACME = ow.Group(ow.SHARED_CATALOG, "acme", ("alice",))
 READS_ZETA = ow.Group(ow.SHARED_CATALOG, "zeta", ("zoe",))
+IMPORTED = ow.Package(None, module="standard_lights")
+IMPORTS_ACME = ow.Group(IMPORTED, "acme", ("alice",))
 SHARED_CODE = ow.Group(None, None, REPO)
 
 
@@ -49,6 +53,10 @@ def build_tree(repo):
     repo.commit(ow.FAMILY_INIT.format(key="zeta", family="tuya"), family("tuya", ("zed",)))
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
     repo.commit(REASONS, 'OTHER_TIMER_REASON = "why"\n')
+    # A catalog module `acme` imports outside its families; `zeta` only names it.
+    repo.commit(STANDARD, 'STANDARD_LIGHT = "standard_light"\n')
+    repo.commit(PKG + "classes.py", "from ...zigbee.standard_lights import STANDARD_LIGHT\n")
+    repo.commit("custom_components/deviceside/integrations/zeta/notes.py", "# not standard_lights yet\n")
     # An integration whose families read no catalog file: one has no catalog file, the other a shared file's name.
     repo.commit(ow.INIT.format(key="newt"), integration("newt", ("nina",)))
     repo.commit(ow.FAMILY_INIT.format(key="newt", family="gledopto"), family("gledopto", ("gil",)))
@@ -75,6 +83,8 @@ def test_the_paths_match_gen_codeowners():
         gen_codeowners.FAMILY_PATHS,
         gen_codeowners.CATALOG_PATHS,
         gen_codeowners.SHARED_CATALOG_PATHS,
+        gen_codeowners.IMPORTED_CATALOG_PATHS,
+        gen_codeowners.IMPORTS,
     )
 
 
@@ -105,6 +115,9 @@ def test_a_path_with_a_trailing_newline_matches_no_file_template():
         # its `reasons` family included.
         (REASONS, [READS_ACME, READS_ZETA]),
         (REASONS_TEST, [READS_ACME, READS_ZETA]),
+        # A catalog module imported outside any family, and its test: every importing integration's, never a reader's.
+        (STANDARD, [IMPORTS_ACME]),
+        (STANDARD_TEST, [IMPORTS_ACME]),
         # Shared code, and an integration that isn't on the rev yet: the repo maintainers'.
         ("custom_components/deviceside/core/scope.py", [SHARED_CODE]),
         ("custom_components/deviceside/integrations/newint/bridge.py", [SHARED_CODE]),
@@ -163,6 +176,24 @@ def test_owners_are_read_at_the_rev_not_the_head(tree):
     assert list(ow.foreign("mallory", [PKG + "bridge.py"], ow.commit("pr"), PATHS)) == []
 
 
+def test_an_imported_catalog_module_no_integration_imports_is_shared_code(tree):
+    tree.commit(PKG + "classes.py", "STANDARD_LIGHT = 'standard_light'\n")
+    assert list(ow.owned([STANDARD], ow.commit("HEAD"), PATHS)) == [SHARED_CODE]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "from ....zigbee.standard_lights import members\n",
+        "from ...zigbee import (\n    reasons,\n    standard_lights,\n)\n",
+        "import custom_components.deviceside.zigbee.standard_lights\n",
+    ],
+)
+def test_each_import_form_makes_an_importer(tree, text):
+    tree.commit(PKG + "classes.py", text)
+    assert ow.importers(ow.commit("HEAD"), "standard_lights") == ("acme",)
+
+
 def test_a_route_labels_each_integration_and_assigns_the_direct_maintainers():
     assert ow.route([TUYA_GROUP, CATALOG_ZETA, ACME_GROUP]) == (
         ["integration:acme", "integration:zeta"],
@@ -185,6 +216,7 @@ def test_the_label_is_the_one_route_issue_writes():
         (TUYA, "acme/tuya", "`acme`'s `tuya` family"),
         (SHARED, "zigbee/tuya", "the `tuya` catalog"),
         (ow.SHARED_CATALOG, "zigbee", "the `zigbee/` catalog's shared files"),
+        (IMPORTED, "zigbee/standard_lights", "the catalog's `zigbee/standard_lights.py`"),
     ],
 )
 def test_a_package_names_itself(package, slug, text):

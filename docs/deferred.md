@@ -173,7 +173,7 @@ halted from one still moving, so the reads are the only signal a device report h
 
 ## The raw bottom for other lights on Zigbee2MQTT
 
-A lower to 0.4 % sends level 1 as a raw `moveToLevel` to Hue and Aqara lights alone
+A lower to 0.4 % sends level 1 as a raw `moveToLevel` to Hue and Aqara lights alone, and level 2 to standard lights
 ([internals](integrations/zigbee2mqtt/internals.md#fade)). An unflagged `other` light switches off at it, as
 Zigbee2MQTT's converter sends level 1 as `moveToLevelWithOnOff`; a flagged one stops at 0.8 %. Sending it raw to every
 light would fix the first and lowers the second to 0.4 %.
@@ -181,8 +181,9 @@ light would fix the first and lowers the second to 0.4 %.
 Open with it: a mixed group (a member of `other`) goes through the converter whole, so an off member lights at the
 lower (`moveToLevelWithOnOff`, which has On/Off), where a raw `moveToLevel` leaves it off.
 
-**Why not now:** the raw call is evidenced on two classes only; `other` has no record of holding level 1 on a raw
-`moveToLevel`, and Innr's lights are reported to turn off at level 1, which a raw call would not prevent.
+**Why not now:** `other` has no record of holding level 1 on a raw `moveToLevel`, and Innr's lights are reported to
+turn off at level 1, which a raw call would not prevent. Standard lights get it at level 2 on their membership (ZHC's
+standard converters, with no meta or override touching the call), which an `other` light lacks.
 
 **Revisit when:**
 - a probe of an unflagged `other` light holds level 1 lit on a raw `moveToLevel`;

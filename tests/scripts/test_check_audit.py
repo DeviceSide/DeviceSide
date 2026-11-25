@@ -197,3 +197,98 @@ def test_main(audited, capsys):
     head = record(repo, base=base, passes=[(base, end)])
     assert check_audit.main([RC, head], repo.path) == 0
     assert "no open Critical or High" in capsys.readouterr().out
+
+
+# The ZHC bump guard: an RC from main bumps the standard lights table's pin since the previous RC tag.
+
+
+def table(pin: str) -> str:
+    return f'"""The table."""\n\nZHC_RELEASE = "{pin}"\nMODELS = {{}}\n'
+
+
+def build_pinned(repo):
+    """v0.0.1, then v0.0.2rc1 with the table at v1, then a commit to audit."""
+    repo.commit()
+    repo.git("tag", "v0.0.1")
+    repo.commit(check_audit.ZHC_TABLE, table("v1"))
+    repo.git("tag", "v0.0.2rc1")
+    rc1 = repo.git("rev-parse", "v0.0.2rc1")
+    return rc1, repo.commit()
+
+
+@pytest.fixture
+def pinned(repo, tmp_path_factory):
+    """The previous RC tag holds the table at pin v1. Returns (repo, rc1 sha, audited sha)."""
+    return repo, *from_template(repo, build_pinned, tmp_path_factory)
+
+
+def rc2(repo, start, end, text="") -> str:
+    """Commit rc2's record, one pass from rc1 to end, with `text` in its body; return the head."""
+    data = {"rc": "v0.0.2rc2", "base": start, "passes": [{"from": start, "to": end}], "findings": []}
+    return repo.commit("docs/audits/v0.0.2rc2.md", f"---\n{yaml.safe_dump(data)}---\n\n# Audit\n{text}")
+
+
+def test_an_rc_whose_zhc_pin_has_not_moved_is_refused(pinned):
+    repo, rc1, end = pinned
+    [problem] = check_audit.errors(repo.path, "v0.0.2rc2", rc2(repo, rc1, end))
+    assert problem.startswith("the ZHC table is pinned to v1, as at v0.0.2rc1: bump it")
+
+
+def test_an_rc_with_a_bumped_zhc_pin_passes(pinned):
+    repo, rc1, _ = pinned
+    bumped = repo.commit(check_audit.ZHC_TABLE, table("v2"))
+    assert check_audit.errors(repo.path, "v0.0.2rc2", rc2(repo, rc1, bumped)) == []
+
+
+def test_a_skipped_bump_with_a_reason_passes(pinned):
+    repo, rc1, end = pinned
+    head = rc2(repo, rc1, end, "\nZHC bump skipped: no ZHC release since rc1\n")
+    assert check_audit.errors(repo.path, "v0.0.2rc2", head) == []
+
+
+def test_a_skip_line_without_a_reason_is_no_skip(pinned):
+    repo, rc1, end = pinned
+    head = rc2(repo, rc1, end, "\nZHC bump skipped: \n")
+    assert len(check_audit.errors(repo.path, "v0.0.2rc2", head)) == 1
+
+
+def test_a_fix_branch_needs_no_bump(pinned):
+    repo, rc1, end = pinned
+    assert check_audit.errors(repo.path, "v0.0.2rc2", rc2(repo, rc1, end), "release/v0.0.2") == []
+
+
+def test_with_no_previous_rc_no_bump_is_asked(repo):
+    root = repo.commit(check_audit.ZHC_TABLE, table("v1"))
+    end = repo.commit()
+    assert errors(repo, record(repo, rc="v0.0.1rc1", base=root, passes=[(root, end)]), "v0.0.1rc1") == []
+
+
+def test_main_takes_the_branch(pinned, capsys):
+    repo, rc1, end = pinned
+    head = rc2(repo, rc1, end)
+    assert check_audit.main(["v0.0.2rc2", head], repo=repo.path) == 1
+    assert check_audit.main(["v0.0.2rc2", head, "release/v0.0.2"], repo=repo.path) == 0
+
+
+def test_a_local_run_on_a_fix_branch_takes_the_checked_out_branch(pinned):
+    # rc-audit's local run passes no branch: on a release/ branch it is exempt, as CI's run with the branch is.
+    repo, rc1, end = pinned
+    head = rc2(repo, rc1, end)
+    repo.git("checkout", "-q", "-b", "release/v0.0.2")
+    assert check_audit.main(["v0.0.2rc2", head], repo=repo.path) == 0
+
+
+def test_a_table_whose_pin_doesnt_parse_is_refused(pinned):
+    repo, rc1, end = pinned
+    repo.commit(check_audit.ZHC_TABLE, "ZHC_RELEASE = v1\n")
+    with pytest.raises(ValueError, match="has no ZHC_RELEASE"):
+        check_audit.errors(repo.path, "v0.0.2rc2", rc2(repo, rc1, end))
+
+
+def test_a_previous_rc_with_no_table_asks_no_bump(repo):
+    repo.commit()
+    repo.git("tag", "v0.0.1")
+    repo.git("tag", "v0.0.2rc1")
+    rc1 = repo.git("rev-parse", "v0.0.2rc1")
+    end = repo.commit(check_audit.ZHC_TABLE, table("v1"))
+    assert check_audit.errors(repo.path, "v0.0.2rc2", rc2(repo, rc1, end)) == []

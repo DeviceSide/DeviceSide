@@ -8,6 +8,8 @@ read on the base branch by `scripts/owners.py`, the one owner lookup, so a PR ca
 - in the catalog (`CATALOG_PATHS`): the maintainers of every family of that key, and of those families' integrations;
 - in the catalog's shared files (`SHARED_CATALOG_PATHS`): the maintainers of every integration with a family of a key
   that has a catalog file, never a family's, so a family maintainer can't reword every family's refusals;
+- in a catalog module integrations import outside any family (`IMPORTED_CATALOG_PATHS`): the maintainers of every
+  integration that imports it;
 - elsewhere in an integration's package (`PATHS`), its `refusals.py` included: the integration's maintainers;
 - generated output that CI's `--check` proves (`GENERATED` in `scripts/owners.py`: `.github/CODEOWNERS` whole, the
   rest in the parts `BLOCKS` strips): anyone who owns the rest;

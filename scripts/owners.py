@@ -5,6 +5,8 @@ What holds a path, read at a rev (CLAUDE.md, Maintainers; the templates are `gen
 
 - in a family (`FAMILY_PATHS`), on the rev: that family;
 - in the catalog's shared files (`SHARED_CATALOG_PATHS`), read by a family on the rev: every integration that reads it;
+- in a catalog module an integration imports outside any family (`IMPORTED_CATALOG_PATHS`), imported on the rev: every
+  integration whose package imports it (`IMPORTS`);
 - in the catalog (`CATALOG_PATHS`), shared by a family of its key on the rev: that key's catalog;
 - elsewhere in an integration's package (`PATHS`): the integration (a family not on the rev is its integration's);
 - generated output (`GENERATED`): nothing, as it follows its inputs; the files generated only in part (`README.md`, the
@@ -165,24 +167,30 @@ def repo_maintainers(script: Path = CODEOWNERS_SCRIPT) -> frozenset[str]:
 
 
 class Templates(NamedTuple):
-    """The path templates of `gen_codeowners.py`: `PATHS`, `FAMILY_PATHS`, `CATALOG_PATHS` and
-    `SHARED_CATALOG_PATHS`."""
+    """The path templates of `gen_codeowners.py`: `PATHS`, `FAMILY_PATHS`, `CATALOG_PATHS`,
+    `SHARED_CATALOG_PATHS` and `IMPORTED_CATALOG_PATHS`, with `IMPORTS`, the pattern of an import of one."""
 
     integration: tuple[str, ...]
     family: tuple[str, ...]
     catalog: tuple[str, ...]
     shared: tuple[str, ...]
+    imported: dict[str, tuple[str, ...]] = {}
+    imports: str = ""
 
 
 @dataclass(frozen=True)
 class Package:
     """What holds a path: an integration's package (`key`), a family of it (`key` and `family`), the catalog file
-    of a family key (`family` alone), or, with neither, the catalog's shared files (`SHARED_CATALOG`)."""
+    of a family key (`family` alone), a catalog module integrations import (`module` alone), or, with none, the
+    catalog's shared files (`SHARED_CATALOG`)."""
 
     key: str | None
     family: str | None = None
+    module: str | None = None
 
     def __str__(self) -> str:
+        if self.module:
+            return f"the catalog's `zigbee/{self.module}.py`"
         if self.key is None:
             return f"the `{self.family}` catalog" if self.family else "the `zigbee/` catalog's shared files"
         return f"`{self.key}`" + (f"'s `{self.family}` family" if self.family else "")
@@ -191,12 +199,16 @@ class Package:
     def slug(self) -> str:
         """`control4`, `zigbee2mqtt/tuya`, or `zigbee/tuya` for the catalog (`zigbee` for its shared files): what an
         audit record's `owner` holds."""
+        if self.module:
+            return f"zigbee/{self.module}"
         if self.key is None:
             return f"zigbee/{self.family}" if self.family else "zigbee"
         return self.key + (f"/{self.family}" if self.family else "")
 
     def owned_by(self) -> str:
         """Whose maintainers own it, for a refusal."""
+        if self.module:
+            return "an integration that imports it"
         if self.key is None:
             return f"a `{self.family}` family or its integration" if self.family else "an integration that reads it"
         return f"`{self.key}`" + (f" or of {self}" if self.family else "")
@@ -217,7 +229,9 @@ def package_paths(script: Path = CODEOWNERS_SCRIPT) -> Templates:
             *(
                 tuple(ast.literal_eval(found[name]))
                 for name in ("PATHS", "FAMILY_PATHS", "CATALOG_PATHS", "SHARED_CATALOG_PATHS")
-            )
+            ),
+            {module: tuple(paths) for module, paths in ast.literal_eval(found["IMPORTED_CATALOG_PATHS"]).items()},
+            ast.literal_eval(found["IMPORTS"]),
         )
     except KeyError as err:
         raise SystemExit(f"no {err.args[0]} in {script}") from None
@@ -279,9 +293,30 @@ def catalog_readers(rev: str) -> tuple[str, ...]:
     keys = [
         found["family"]
         for path in listing.split("\0")
-        if path and path not in templates.shared and (found := match(path, templates.catalog[:1]))
+        if path
+        and path not in templates.shared
+        and not any(path in paths for paths in templates.imported.values())
+        and (found := match(path, templates.catalog[:1]))
     ]
     return tuple(sorted({key for family in keys for key in integrations_with(rev, family)}))
+
+
+@functools.cache
+def importers(rev: str, module: str) -> tuple[str, ...]:
+    """The integrations whose package imports the catalog module at `rev` (`IMPORTS`, read from the working tree as
+    the templates are)."""
+    pattern = re.compile(package_paths().imports.format(module=re.escape(module)))
+    listed = subprocess.run(
+        ["git", "grep", "-l", "-F", "-e", module, rev, "--", INTEGRATIONS], capture_output=True, text=True
+    )
+    if listed.returncode not in (0, 1):
+        raise SystemExit(f"git grep failed: {listed.stderr.strip()}")
+    keys = set()
+    for line in listed.stdout.splitlines():
+        path = line.split(":", 1)[1]
+        if path.endswith(".py") and pattern.search(show(rev, path)):
+            keys.add(path.removeprefix(INTEGRATIONS).split("/", 1)[0])
+    return tuple(sorted(keys))
 
 
 def package_of(path: str, rev: str, templates: Templates) -> Package | None:
@@ -294,6 +329,9 @@ def package_of(path: str, rev: str, templates: Templates) -> Package | None:
         return Package(found["key"])
     if match(path, templates.shared) is not None:
         return SHARED_CATALOG if catalog_readers(rev) else None
+    for module, paths in templates.imported.items():
+        if path in paths:
+            return Package(None, module=module) if importers(rev, module) else None
     if (found := match(path, templates.catalog)) and integrations_with(rev, found["family"]):
         return Package(None, found["family"])
     return None
@@ -342,7 +380,13 @@ def groups(package: Package | None, rev: str) -> tuple[Group, ...]:
     if package.key:
         keys: tuple[str, ...] = (package.key,)
     else:
-        keys = integrations_with(rev, package.family) if package.family else catalog_readers(rev)
+        keys = (
+            importers(rev, package.module)
+            if package.module
+            else integrations_with(rev, package.family)
+            if package.family
+            else catalog_readers(rev)
+        )
     for key in keys:
         if (theirs := maintainers(rev, key)) is None:
             raise NotOnRev(key)

@@ -26,13 +26,15 @@ from .classes import capability
 from .families.aqara import AQARA
 from ...core.models import Target
 from ...core.scope import OTHER
+from ...zigbee.standard_lights import STANDARD_LIGHT
 
 _LOGGER = logging.getLogger(__name__)
 
 # The classes asked no OnTime: ZCL doesn't require it, and one unsupported attribute fails the whole cluster read.
-# Another brand's light (`other`), and Aqara's, whose bulb has no OnTime (OnTime and OffWaitTime read
-# UNSUPPORTED_ATTRIBUTE: research/aqara/2026-11-25-agl003-probe.md, section 1; internals.md, get_attributes).
-_NO_ON_TIME = frozenset({OTHER, AQARA})
+# Another brand's light (`other`, and the standard lights out of it, which take `other`'s read), and Aqara's, whose
+# bulb has no OnTime (OnTime and OffWaitTime read UNSUPPORTED_ATTRIBUTE: research/aqara/2026-11-25-agl003-probe.md,
+# section 1; internals.md, get_attributes).
+_NO_ON_TIME = frozenset({OTHER, STANDARD_LIGHT, AQARA})
 
 READ_KEY = "deviceside_read"
 _FILTERED_CACHE = "filtered_cache"

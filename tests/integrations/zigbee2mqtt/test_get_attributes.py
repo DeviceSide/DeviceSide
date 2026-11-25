@@ -149,10 +149,12 @@ async def test_another_brands_light_is_read_in_labs_without_on_time(hass, broker
 
 
 @pytest.mark.parametrize(
-    ("device_class", "on_off"), [("other", ["onOff"]), ("aqara", ["onOff"]), ("hue", ["onOff", "onTime"])]
+    ("device_class", "on_off"),
+    [("other", ["onOff"]), ("standard_light", ["onOff"]), ("aqara", ["onOff"]), ("hue", ["onOff", "onTime"])],
 )
-def test_only_other_and_aqara_are_asked_no_on_time(device_class, on_off):
-    """`aqara` sends exactly `other`'s read: its bulb has no OnTime (research/aqara/2026-11-25-agl003-probe.md)."""
+def test_only_other_standard_lights_and_aqara_are_asked_no_on_time(device_class, on_off):
+    """`aqara` sends exactly `other`'s read: its bulb has no OnTime (research/aqara/2026-11-25-agl003-probe.md). So do
+    the standard lights, out of `other`, whose Documented read is `other`'s call."""
     target = SimpleNamespace(state=SimpleNamespace(attributes={"supported_color_modes": ["onoff"]}))
 
     assert read.clusters(target, device_class) == {"genOnOff": on_off}
