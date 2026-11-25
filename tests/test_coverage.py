@@ -158,6 +158,23 @@ async def test_a_feature_riding_several_actions_takes_its_weakest(hass, fake, en
         assert coverage.cell(hass, get_runtime(hass).registry, target_of(hass, entity_id), column) == expected
 
 
+@pytest.mark.parametrize(
+    ("saturation", "hue", "expected"),
+    [
+        pytest.param(Cell(Mark.VERIFIED), Cell(Mark.LABS), Cell(Mark.LABS), id="the weaker of the two"),
+        pytest.param(Cell(Mark.LABS), Cell(Mark.REFUSED, "No hue"), Cell(Mark.REFUSED, "No hue"), id="a refusal wins"),
+        pytest.param(None, Cell(Mark.DOCUMENTED), Cell(Mark.DOCUMENTED), id="one empty shows the other"),
+        pytest.param(None, None, None, id="both empty is empty"),
+    ],
+)
+def test_smooth_color_takes_the_weaker_of_saturation_and_hue(hass, saturation, hue, expected):
+    column = next(column for column in COLUMNS if column.heading == "Smooth color")
+    by_feature = {"smooth saturation": saturation, "smooth hue": hue}
+
+    with patch.object(coverage, "_feature_cell", lambda _hass, _registry, _target, feature: by_feature[feature]):
+        assert coverage.cell(hass, None, None, column) == expected
+
+
 def test_every_action_has_a_minimal_request(hass):
     for action in discover():
         request = coverage.minimal_request(hass, action)
