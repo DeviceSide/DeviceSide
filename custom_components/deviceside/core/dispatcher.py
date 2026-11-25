@@ -9,6 +9,7 @@ with fields_dropped, never refused. Then AdapterScope.refusal, in order: where t
 (AdapterScope.harms), or the adapter serves only own calls (own_calls_only, whose execute nothing reaches), an Unplaced
 or None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in not_built, or in
 neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the Labs gate (below).
+The refusal and the gate are one decision, gate(), which judge() gives for a target alone, as a call would class it.
 
 Native groups. One an adapter addresses as one takes its members' classes, from expand_group, and its weakest member's
 level for the gate; on an integration that names no classes it runs whole. An empty one (expand_group lists no members)
@@ -66,6 +67,7 @@ import asyncio
 import logging
 from collections import deque
 from dataclasses import dataclass, replace
+from enum import Enum
 
 from homeassistant.const import ATTR_ENTITY_ID, ENTITY_MATCH_ALL, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, State, split_entity_id
@@ -261,6 +263,148 @@ def _members_planned(members: list[Target], seen: set[str], by_device: ByDevice)
     ]
 
 
+def _members(hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, target: Target) -> list[Target] | None:
+    """A native group's members, as the integration's expand_group lists them; None, membership unknowable, when it
+    has no expand_group, or it answered None or raised, which is logged."""
+    if (expand := registry.integrations[adapter.integration].expand_group) is None:
+        return None
+    try:
+        return expand(hass, target)
+    except Exception:  # noqa: BLE001 - one group's listing must not abort the call
+        _LOGGER.exception(
+            "%s on %s: listing %s failed, so its members are unknown",
+            adapter.action,
+            adapter.integration,
+            target.reported_id,
+        )
+        return None
+
+
+def _listed(hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, target: Target) -> list[Target] | None:
+    """A native group's members, for an integration that names classes: what its classes come from and what it
+    falls back to. `[]` only for a group known to have no members; None when unknown, and for any other
+    target."""
+    if not target.is_group or registry.integrations[adapter.integration].capability is None:
+        return None
+    return _members(hass, registry, adapter, target)
+
+
+def _reached(
+    hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, target: Target, members: list[Target] | None
+) -> Reached:
+    """The target's class, or a native group's members' classes (`members`, as _listed gives them) beside each
+    member's reported_id, as IntegrationInfo.capability names them; no classes for an integration that names
+    none. A group whose members can't be listed, and a classifier that raised (logged), give (None,), which the
+    gate weighs as a Labs item, as an unknown device, and which, where the call harms a class, the scope refuses
+    (AdapterScope.refusal)."""
+    if (capability := registry.integrations[adapter.integration].capability) is None:
+        return Reached(())
+    listed = (members or []) if target.is_group else [target]
+    try:
+        # Keep each member's class as capability() returned it, in order, never deduplicated: an Unplaced class
+        # equals its plain class, so a set would merge it with a placed member's and lose the flag the harm check
+        # reads, and the order pairs each class with its member.
+        found: Classes = tuple(capability(hass, member) for member in listed)
+    except Exception:  # noqa: BLE001 - a classifier's bug must not abort the call: the class counts as unknown
+        _LOGGER.exception(
+            "%s on %s: classing %s failed, so it is treated as an unknown class",
+            adapter.action,
+            adapter.integration,
+            target.reported_id,
+        )
+        found = ()
+    _LOGGER.debug("%s on %s: %s is class %s", adapter.action, adapter.integration, target.reported_id, found or (None,))
+    if not found:
+        return Reached((None,))
+    # A member is credited only through its own entity, with a state to show the call reached it, as _fallback
+    # reaches only an available one; a stand-in has neither (zigbee2mqtt/members.py, _stand_in).
+    ids = (
+        tuple(member.reported_id if member.addressable and _available(member.state) else None for member in listed)
+        if target.is_group
+        else ()
+    )
+    return Reached(found, ids)
+
+
+class Outcome(Enum):
+    """What the gate decides for a call on a target (gate): it runs, it is held in Labs while the option is off, or
+    it is refused, as not built yet or for another reason."""
+
+    RUNS = "runs"
+    LABS = "labs"
+    REFUSED = "refused"
+    NOT_BUILT = "not_built"
+
+
+@dataclass(frozen=True, slots=True)
+class Gate:
+    """The gate's decision on one target (gate). `level`: the call's level, for one that runs or is held in Labs.
+    `reason` and `why`: what a refused one raises with, its reason key and its NoKnownMethod or NotBuilt entry's
+    reason, if any; labs_off for one held in Labs; None for one that runs. `by_class_alone`: one held in Labs would
+    pass but for its classes, neither its domain nor a field it carries being in Labs, so a native group's members
+    can run one by one."""
+
+    outcome: Outcome
+    level: Level | None = None
+    reason: str | None = None
+    why: str | None = None
+    by_class_alone: bool = False
+
+
+def _refused(adapter: Adapter, target: Target, classes: Classes, members: list[Target] | None) -> Gate | None:
+    """The scope's refusal of a target of these classes (AdapterScope.refusal; `members`: a native group's, as _listed
+    gives them, None for any other target), or None."""
+    refused = adapter.scope.refusal(
+        classes,
+        group=members is not None,
+        domain=target.domain,
+        failure_harms=adapter.failure_harms,
+        # A stand-in has no entity in the group's domain, so a domain-scoped entry judges it as elsewhere.
+        elsewhere=_stand_in_classes(classes, members),
+    )
+    if refused is None:
+        return None
+    reason, why = refused
+    return Gate(Outcome.NOT_BUILT if reason == Reason.NOT_BUILT else Outcome.REFUSED, reason=reason, why=why)
+
+
+def gate(
+    adapter: Adapter,
+    target: Target,
+    classes: Classes,
+    members: list[Target] | None,
+    fields: frozenset[str],
+    labs_on: bool,
+) -> Gate:
+    """The dispatcher's decision on a call of the adapter's action on a target, once supports() has passed and the
+    fields it lacks are dropped: `classes` as _reached gives them (a native group's: its members', `members` as
+    _listed gives them), `fields` those the call still carries. First the scope's refusal (AdapterScope.refusal),
+    then the Labs gate: the call's level is the weakest of its domain, classes and fields (AdapterScope.level), and
+    a Labs one is held while the option is off. The one place the option gates anything; adapters never read it
+    (docs/evidence.md). The dispatcher plans each target from it, a native group falling back to its members as the
+    module docstring says; judge gives it for a target alone."""
+    if (refused := _refused(adapter, target, classes, members)) is not None:
+        return refused
+    level = adapter.scope.level(target.domain, classes, fields)
+    if level is Level.LABS and not labs_on:
+        alone = adapter.scope.level(target.domain, (), fields) is not Level.LABS
+        return Gate(Outcome.LABS, level, LABS_OFF, by_class_alone=alone)
+    return Gate(Outcome.RUNS, level)
+
+
+def judge(
+    hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, target: Target, labs_on: bool
+) -> Gate | None:
+    """The gate on a call of the adapter's action, with no fields, on the target, classed as the dispatcher classes it
+    (a native group by its members); None for a group known to have no members, which a call skips silently. What
+    the dispatcher checks before the class (supports(), a target the integration can't address) is the caller's."""
+    members = _listed(hass, registry, adapter, target)
+    if members == []:
+        return None
+    classes = _reached(hass, registry, adapter, target, members).classes
+    return gate(adapter, target, classes, members, frozenset(), labs_on)
+
+
 class Dispatcher:
     def __init__(self, hass: HomeAssistant, registry: AdapterRegistry):
         self.hass = hass
@@ -433,25 +577,20 @@ class Dispatcher:
                 # an entity the caller didn't target (Target.addressable). Its class's refusal comes first, so a
                 # member whose class harms says so. It stands for its whole device, so the skip names the device
                 # (_device_of), with no address.
-                reason, why = adapter.scope.refusal(
-                    self._reached(adapter, target, None).classes,
-                    domain=target.domain,
-                    failure_harms=adapter.failure_harms,
-                ) or (
-                    Reason.NOT_ADDRESSABLE,
-                    None,
-                )
+                classes = _reached(self.hass, self.registry, adapter, target, None).classes
+                refused = _refused(adapter, target, classes, None)
+                reason, why = (refused.reason, refused.why) if refused else (Reason.NOT_ADDRESSABLE, None)
                 results += _skip(_device_of(target), target.named, reason, adapter.integration, why, title)
                 continue
             if reason := adapter.supports(self.hass, reduced, target):
                 results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)
                 continue
-            members = self._listed(adapter, target)
+            members = _listed(self.hass, self.registry, adapter, target)
             if members == []:
                 # Core's group expansion yields nothing for an empty group, so it is skipped silently.
                 results += _skip(target.reported_id, target.named, Reason.EMPTY_GROUP)
                 continue
-            reached[target.reported_id] = here = self._reached(adapter, target, members)
+            reached[target.reported_id] = here = _reached(self.hass, self.registry, adapter, target, members)
             found = here.classes
             dropped |= self._labs_off_drops(adapter, reduced, target, found, labs_on)
             reduced = request.without(dropped)
@@ -460,36 +599,23 @@ class Dispatcher:
                 results.append(
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
                 )
-            elif refused := adapter.scope.refusal(
-                found,
-                group=members is not None,
-                domain=target.domain,
-                failure_harms=adapter.failure_harms,
-                # A stand-in has no entity in the group's domain, so a domain-scoped entry judges it as elsewhere.
-                elsewhere=_stand_in_classes(found, members),
+            elif (decided := gate(adapter, target, found, members, reduced.fields_present(), labs_on)).outcome is (
+                Outcome.RUNS
             ):
-                # A native group falls back to its members, each judged alone: the good ones run, a refused one is
-                # skipped as indirect. So a group with one member not yet placed runs the rest, where the call harms
-                # a class, and one with a member that takes a call of its own gives each member its own; one of
-                # unknown membership can't fall back, and is refused whole.
-                if members is not None:
-                    fallen.append((target, members, *refused))
-                    pending.extend(self._fallback(adapter, target, members, seen, by_device, refused[0]))
-                else:
-                    results += _skip(
-                        target.reported_id, target.named, refused[0], adapter.integration, refused[1], title
-                    )
-            elif not labs_on and self._labs(adapter, reduced, target, found):
-                # A native group flagged only by a member's class falls back the same way: the members of Verified
-                # or Documented classes run, the flagged one is skipped (raised only if named on its own).
-                if members is not None and self._flagged_by_class_alone(adapter, reduced, target):
-                    fallen.append((target, members, LABS_OFF, None))
-                    pending.extend(self._fallback(adapter, target, members, seen, by_device, LABS_OFF))
-                else:
-                    results += _skip(target.reported_id, target.named, LABS_OFF, adapter.integration)
-            else:
                 answered.add(target.reported_id)
                 by_run.setdefault((dropped, adapter.scope.own_call(found)), []).append(target)
+            elif members is not None and (decided.outcome is not Outcome.LABS or decided.by_class_alone):
+                # A native group falls back to its members, each judged alone: the good ones run, a refused or
+                # flagged one is skipped as indirect (raised only if named on its own). So a group with one member
+                # not yet placed runs the rest, where the call harms a class; one with a member that takes a call of
+                # its own gives each member its own; and one flagged only by a member's class runs the members of
+                # Verified or Documented classes. One of unknown membership can't fall back, and is refused whole.
+                fallen.append((target, members, decided.reason, decided.why))
+                pending.extend(self._fallback(adapter, target, members, seen, by_device, decided.reason))
+            else:
+                results += _skip(
+                    target.reported_id, target.named, decided.reason, adapter.integration, decided.why, title
+                )
         results += _unanswered(adapter, fallen, answered, by_device, title, results)
         return [
             (adapter, request.without(dropped), ready, dropped, reached, own)
@@ -516,77 +642,6 @@ class Dispatcher:
             )
         return gated
 
-    def _labs(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
-        """Whether the call is in Labs: a Labs item it touches, its domain (an adapter flagged
-        whole has every domain in Labs), class (a native group's: its weakest member's) or a field it carries.
-        The one place the option gates anything; adapters never read it (docs/evidence.md)."""
-        return adapter.scope.level(target.domain, classes, request.fields_present()) is Level.LABS
-
-    def _flagged_by_class_alone(self, adapter: Adapter, request: Request, target: Target) -> bool:
-        """Whether a flagged call would pass but for its classes: neither its domain nor a field it carries is
-        in Labs, so a group's members can run one by one."""
-        return adapter.scope.level(target.domain, (), request.fields_present()) is not Level.LABS
-
-    def _listed(self, adapter: Adapter, target: Target) -> list[Target] | None:
-        """A native group's members, for an integration that names classes: what its classes come from and what it
-        falls back to. `[]` only for a group known to have no members; None when unknown, and for any other
-        target."""
-        if not target.is_group or self.registry.integrations[adapter.integration].capability is None:
-            return None
-        return self._members(adapter, target)
-
-    def _reached(self, adapter: Adapter, target: Target, members: list[Target] | None) -> Reached:
-        """The target's class, or a native group's members' classes (`members`, as _listed gives them) beside each
-        member's reported_id, as IntegrationInfo.capability names them; no classes for an integration that names
-        none. A group whose members can't be listed, and a classifier that raised (logged), give (None,), which the
-        gate weighs as a Labs item, as an unknown device, and which, where the call harms a class, the scope refuses
-        (AdapterScope.refusal)."""
-        if (capability := self.registry.integrations[adapter.integration].capability) is None:
-            return Reached(())
-        listed = (members or []) if target.is_group else [target]
-        try:
-            # Keep each member's class as capability() returned it, in order, never deduplicated: an Unplaced class
-            # equals its plain class, so a set would merge it with a placed member's and lose the flag the harm check
-            # reads, and the order pairs each class with its member.
-            found: Classes = tuple(capability(self.hass, member) for member in listed)
-        except Exception:  # noqa: BLE001 - a classifier's bug must not abort the call: the class counts as unknown
-            _LOGGER.exception(
-                "%s on %s: classing %s failed, so it is treated as an unknown class",
-                adapter.action,
-                adapter.integration,
-                target.reported_id,
-            )
-            found = ()
-        _LOGGER.debug(
-            "%s on %s: %s is class %s", adapter.action, adapter.integration, target.reported_id, found or (None,)
-        )
-        if not found:
-            return Reached((None,))
-        # A member is credited only through its own entity, with a state to show the call reached it, as _fallback
-        # reaches only an available one; a stand-in has neither (zigbee2mqtt/members.py, _stand_in).
-        ids = (
-            tuple(member.reported_id if member.addressable and _available(member.state) else None for member in listed)
-            if target.is_group
-            else ()
-        )
-        return Reached(found, ids)
-
-    def _members(self, adapter: Adapter, target: Target) -> list[Target] | None:
-        """A native group's members, as the integration's expand_group lists them; None, membership unknowable, when it
-        has no expand_group, or it answered None or raised, which is logged."""
-        if (expand := self.registry.integrations[adapter.integration].expand_group) is None:
-            return None
-        try:
-            return expand(self.hass, target)
-        except Exception:  # noqa: BLE001 - one group's listing must not abort the call
-            _LOGGER.exception(
-                "%s on %s: listing %s failed, so its members are unknown",
-                adapter.action,
-                adapter.integration,
-                target.reported_id,
-            )
-            return None
-
     @staticmethod
     def _fallback(
         adapter: Adapter, group: Target, members: list[Target], seen: set[str], by_device: ByDevice, reason: str
@@ -609,7 +664,7 @@ class Dispatcher:
         for target in bucket:
             if not target.is_group:
                 expanded.append(target)
-            elif (members := self._members(adapter, target)) is None:
+            elif (members := _members(self.hass, self.registry, adapter, target)) is None:
                 # No expand_group, or one that answered None or raised (logged): membership is unknowable here.
                 results += _skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
             else:
