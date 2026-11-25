@@ -13,11 +13,12 @@ AQARA = "aqara"
 # it waits for bridge/devices (classes.py, placed).
 RULES = (Rule(AQARA, {"zigbee_manufacturer": "Aqara"}),)
 
-# The classes whose lights a lower sends level 1 raw, as a moveToLevel (fade.py), joined with Hue's (families/hue,
-# RAW_BOTTOM). Z2M's converter sends a brightness of 1 as moveToLevelWithOnOff, which switched the unflagged T2 bulb
-# off at a lower to 0.4 %, while set_attributes' raw moveToLevel to level 1 held it lit
-# (rig run 2026-11-25, Decision 11; research/aqara, internals.md `fade`). set_attributes keeps Hue's set alone.
-RAW_BOTTOM: frozenset[str] = frozenset({AQARA})
+# The classes whose lights a lower to the lowest level sends a raw moveToLevel, each with the level sent: 1, the bulb's
+# lowest (fade.py, which joins it with the other classes' levels). Z2M's converter sends a brightness of 1 as
+# moveToLevelWithOnOff, which switched the unflagged T2 bulb off at a lower to 0.4 %, while set_attributes' raw
+# moveToLevel to level 1 held it lit (rig run 2026-11-25, Decision 11; research/aqara, internals.md `fade`).
+# set_attributes keeps Hue's set alone.
+RAW_BOTTOM: dict[str, int] = {AQARA: 1}
 
 # `other`'s actions for lights (classes.py): Level Control's moves and stop, which a Zigbee 3.0 dimmable light must
 # take, and raw ZCL reads and writes. Verified where an Aqara bulb's record passes; the moves with stop, which must

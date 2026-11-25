@@ -5,7 +5,7 @@ import pytest
 from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
-from .conftest import SENT, SET, bottom_target, call, commands, group, level_1, light
+from .conftest import SENT, SET, bottom_target, call, commands, group, light, move_to_level
 from ...conftest import result
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
@@ -60,16 +60,22 @@ async def test_a_group_gets_one_publish_and_a_prediction_per_member(hass, broker
 @pytest.mark.parametrize(
     ("kind", "payload"),
     [
-        pytest.param("hue_light", level_1(30), id="hue_light"),
-        pytest.param("hue_group", level_1(30), id="all_hue_group"),
-        pytest.param("aqara_light", level_1(30), id="aqara_light"),
-        pytest.param("aqara_hue_group", level_1(30), id="aqara_and_hue_group"),
+        pytest.param("hue_light", move_to_level(1, 30), id="hue_light"),
+        pytest.param("hue_group", move_to_level(1, 30), id="all_hue_group"),
+        pytest.param("aqara_light", move_to_level(1, 30), id="aqara_light"),
+        pytest.param("aqara_hue_group", move_to_level(1, 30), id="aqara_and_hue_group"),
+        # A standard light's bottom is level 2 (zigbee/standard_lights.py), and a group's the highest any member's.
+        pytest.param("standard_light", move_to_level(2, 30), id="standard_light"),
+        pytest.param("standard_hue_group", move_to_level(2, 30), id="standard_and_hue_group"),
         pytest.param("mixed_group", {"brightness": 1, "transition": 3.0}, id="hue_and_another_brand_group"),
         pytest.param("aqara_other_group", {"brightness": 1, "transition": 3.0}, id="aqara_and_another_brand_group"),
+        pytest.param(
+            "standard_other_group", {"brightness": 1, "transition": 3.0}, id="standard_and_another_brand_group"
+        ),
         pytest.param("other_light", {"brightness": 1, "transition": 3.0}, id="another_brand"),
     ],
 )
-async def test_to_the_bottom_goes_raw_to_hue_and_aqara_lights_alone(hass, broker, kind, payload):
+async def test_to_the_bottom_goes_raw_to_hue_aqara_and_standard_lights_alone(hass, broker, kind, payload):
     # From 60 % to 0.4 % of a 5 s sweep: 3 s, transtime 30.
     entity_id, to = bottom_target(hass, broker, kind)
 
@@ -87,4 +93,4 @@ async def test_to_the_bottom_on_a_hue_group_leaves_an_off_member_off(hass, broke
 
     assert response == {room: SENT}
     # From the lit member's 60 % to 0.4 % of a 5 s sweep: 3 s, transtime 30.
-    assert commands(broker) == [("zigbee2mqtt/7/set", level_1(30))]
+    assert commands(broker) == [("zigbee2mqtt/7/set", move_to_level(1, 30))]
