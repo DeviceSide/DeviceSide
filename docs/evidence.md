@@ -127,11 +127,12 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
   - **a bridge's one request:** on an action whose failure doesn't harm (`Action.failure_harms`), the integration sends
     the class, through a bridge, the same request a Verified class gets, and the bridge picks the call (Hue's CLIP v2).
     The evidence that this choice holds across brands is that request's use on every brand, by a predecessor's or
-    another integration's users, with no reported departure; it need not cover each action. A read that sends nothing
-    needs no such use, but a reported misread splits off its identity as a failing request does. A DeviceSide report, or
-    an upstream issue or PR, of a device failing the request splits off its identity (manufacturer and model) on the
-    report alone, citing it: a class of its own, not built yet on that action, or no known method. The bundle's
-    `internals.md` lists the departures known on other calls, which such a report would split off.
+    another integration's users, with no reported departure. The usage covers the request's fields, not each action: an
+    action whose request sends only fields the usage sent is admitted with it. A read that sends nothing needs no such
+    use, but a reported misread splits off its identity as a failing request does. A DeviceSide report, or an upstream
+    issue or PR, of a device failing the request splits off its identity (manufacturer and model) on the report alone,
+    citing it: a class of its own, not built yet on that action, or no known method. The bundle's `internals.md` lists
+    the departures known on other calls, which such a report would split off.
 - **Labs:** built on a sourced call that no real device has passed and no Documented route admits, or held back
   by a maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
 
@@ -167,9 +168,10 @@ bottom, DeviceSide's raw `moveToLevel`, which every Zigbee 3.0 dimmable light mu
 `get_attributes`, raw commands like it whose known failures all raise or fail the read-back; Paulmann's 924.70, reported
 failing a color read, stays in `other` ([the table and the bump](integrations/zigbee2mqtt/internals.md#standard_lights)).
 
-*Example:* Hue's `other`, every other maker's light on a Hue bridge, is Documented on every action: it gets the
-request `hue` gets, Hue Smooth Dimming sent every brand that request for its fades, stop, scenes and writes, and no
-Hue action's failure harms ([internals](integrations/hue/internals.md#device-classes)).
+*Example:* Hue's `other`, every other maker's light on a Hue bridge, is Documented on every action: it gets the request
+`hue` gets, Hue Smooth Dimming sent every brand that request for its fades, stop, scenes and writes, and no Hue action's
+failure harms (`Action.failure_harms`): a light that misses one stays on, or shows a wrong value, where the user sees it
+([internals](integrations/hue/internals.md#device-classes)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API

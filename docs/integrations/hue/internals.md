@@ -46,7 +46,8 @@ What decides a call's outcome on Hue (docs/evidence.md, key a class on what deci
   route nothing.
 
 So `other` holds every other maker's light. It is Documented on every action, on a bridge's one request
-(docs/evidence.md, Levels): it gets the request `hue` gets, and no Hue action's failure harms.
+(docs/evidence.md, Levels): it gets the request `hue` gets, and no Hue action's failure harms: a light that misses one
+stays on, or shows a wrong value, where the user sees it.
 
 - **Hue Smooth Dimming sent every brand the same calls,** with no branch on the light's maker: a target is any light
   entity of the hue integration on a v2 bridge (`_resolve_bridge`, `_iter_targets`,
