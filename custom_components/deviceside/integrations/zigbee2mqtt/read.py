@@ -30,8 +30,8 @@ from ...core.scope import OTHER
 _LOGGER = logging.getLogger(__name__)
 
 # The classes asked no OnTime: ZCL doesn't require it, and one unsupported attribute fails the whole cluster read.
-# Another brand's light (`other`) and Aqara's, which take other's calls until a probe shows the bulb takes the timer
-# (internals.md, get_attributes).
+# Another brand's light (`other`), and Aqara's, whose bulb has no OnTime (OnTime and OffWaitTime read
+# UNSUPPORTED_ATTRIBUTE: research/aqara/2026-11-25-agl003-probe.md, section 1; internals.md, get_attributes).
 _NO_ON_TIME = frozenset({OTHER, AQARA})
 
 READ_KEY = "deviceside_read"

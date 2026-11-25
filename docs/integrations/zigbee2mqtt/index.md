@@ -219,7 +219,16 @@ Aqara's lights, placed by the Zigbee manufacturer string `Aqara`, which Zigbee2M
 then an Aqara light counts as another brand's). Lights that report `LUMI` stay with [other brands](#other-brands). The
 class starts from one bulb, the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights
 get, in Labs: smooth dimming and stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light
-must take, and get and set attributes. Its other features aren't built yet, and DeviceSide refuses them, even with Labs on.
+must take, and get and set attributes. Its other features aren't built yet, and DeviceSide refuses them, even with Labs on:
+
+- **Hue and saturation:** the bulb reports xy and color temperature only (no hue or saturation attributes, and the
+  hue and saturation moves leave its color unchanged), so raise and lower hue and saturation aren't built on it. An
+  emulation from the host in xy is plausible, but nothing builds it yet ([probe](research/aqara/2026-11-25-agl003-probe.md), sections 1 and 2).
+- **Turn on with timer:** the bulb ignores the timer command, so from off it would never turn on, and isn't built
+  ([probe](research/aqara/2026-11-25-agl003-probe.md), section 3).
+- **A write while it fades off:** a set attributes sent within about 1.5 s of a turn off, while the bulb is still
+  fading out, can time out and not land (1 in 10 in the probe's tests, none in 10 after Home Assistant shows it off).
+  Wait for it to show off first ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
 
 ### Other brands
 

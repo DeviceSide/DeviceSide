@@ -334,7 +334,7 @@ departure is reported among its vendors, and a bulb older than ZCL rev 7 rejects
 Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "deviceside_read"}}`, one cluster at a
 time, answered on the state topic:
 
-- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) and an Aqara light (`aqara`, until a probe shows the bulb takes the timer) are asked `onOff` alone: ZCL
+- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) and an Aqara light (`aqara`, whose bulb has no `onTime`: [probe](research/aqara/2026-11-25-agl003-probe.md), section 1) are asked `onOff` alone: ZCL
   doesn't require `onTime`, one unsupported attribute fails the whole cluster read (herdsman `Endpoint.read`), and no
   timer action serves `other` ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
 - `genLevelCtrl` (`currentLevel`), only when the light is on. An off light's brightness is Z2M's, from the state the
@@ -460,6 +460,29 @@ Device strings and timers, 2026-11-14 on Z2M 2.14.3 (ZHC 26.125.0), Home Assista
   or whole seconds, from off or after a plain On, Z2M logs it invoked and the bulb doesn't change state. It has no
   `onTime` or `offWaitTime` (`UNSUPPORTED_ATTRIBUTE`). So `{"state": "ON", "on_time": 10}`, which the light
   converter sends as `0x42` alone, leaves it off.
+
+An Aqara T2 E27 color bulb (`lumi.light.agl003`, date code `20260605`), 2026-11-25 on Z2M 2.14.3 (ZHC 26.125.0), Home
+Assistant 2026.10.4, EmberZNet. Probe: [research/aqara/2026-11-25-agl003-probe.md](research/aqara/2026-11-25-agl003-probe.md).
+
+- **No hue or saturation.** ColorCapabilities reads 24 (xy and color temperature: bits 3 and 4). `CurrentHue`,
+  `EnhancedCurrentHue`, `CurrentSaturation` and `ColorLoopActive` read `UNSUPPORTED_ATTRIBUTE`, and `moveHue` and
+  `moveSaturation` (rate 30, 2.65 s, then stop) left CurrentX, CurrentY and ColorMode unchanged. Home Assistant
+  sends xy for an hs color, so the bulb stays in `xy` mode.
+- **No `OnTime` or `OffWaitTime`** (`UNSUPPORTED_ATTRIBUTE`; `StartUpOnOff` and `GlobalSceneControl` too), and
+  its discovery lists genOnOff commands 0, 1 and 2 only. `{"state": "ON", "on_time": N}` from off, which the
+  converter sends as `0x42`, never turned the bulb on: N 10, then 30 replaced by 10, then 0, each read every 1 s for
+  25 to 43 s, every read answered, Z2M logging nothing at `warning`. It also fades by its own 1.5 s
+  (`onOffTransitionTime` 15).
+- **`no genLevelCtrl reply` is a hung `moveToLevel`.** `light.turn_off`, then at once `set_attributes` (the rig's
+  put-back) timed out in 1 of 10 runs; the same after Home Assistant showed off, in 0 of 10. The bulb is on and
+  starting its 1.5 s off fade when the override `moveToLevel` arrives. It sent no default response within
+  herdsman's 10 s (`disableDefaultResponse: false`), the later `CurrentLevel` read was answered only 0.27 s after
+  the `moveToLevel` timed out, and a plain `turn_on` sent meanwhile took effect then too: requests after the hung
+  one waited behind it. Z2M's own kept-level `moveToLevel` (no override) was not held, and the color temperature
+  didn't land (the bulb came on in `xy`). In two other runs the read saw a level between the old and the written one
+  (the off fade and the 0.4 s write fade overlapping) and the 0.5 s retry read it right. Z2M's frame logging
+  (`log_debug_to_mqtt_frontend`) was off, so the frames, and whether the color temperature command was lost or held,
+  are not seen.
 
 Tuya's countdown, 2026-11-15 on the lab TS011F (`_TZ3000_0zfrhq4i`, `TS011F_plug_1`, build `0122052017`), Z2M 2.14.3
 (ZHC 26.125.0), Home Assistant 2026.10.4. Probe:

@@ -196,7 +196,7 @@ Fields proven less than their feature:
 
 | Devices | Integrations | Features | Why | Source |
 |---|---|---|---|---|
-| Aqara lights | Zigbee2MQTT | turn on with timer | Too few reports say its brand runs the timer, and some lights and most plugs turn on and never off, so it could stay on; DeviceSide's own off, which would serve it, isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
+| Aqara lights | Zigbee2MQTT | turn on with timer | Its bulb ignores the timer, so it would stay off | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/aqara/2026-11-25-agl003-probe.md) |
 | devices behind a Matter bridge | Matter | turn on with timer | A bridge's software answers the timer for its devices, which nothing found says it runs, so it could stay on, and DeviceSide's own off isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/internals.md#what-decides-the-call) |
 | Hue smart plugs | Zigbee2MQTT, ZHA | turn on with timer | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | <a id="hue-smart-scenes"></a>Hue smart scenes | Hue | set scene | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes) |

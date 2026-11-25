@@ -35,6 +35,19 @@ UNSUPPORTED_ATTRIBUTE); its timer behavior is unprobed; one unexplained `no genL
    a class spanning vendors is never Documented by a sibling's pass, and the sibling route needs the vendor's own docs
    giving the call identically.
 
+## Step 1 rulings (2026-11-25, from [the probe](../integrations/zigbee2mqtt/research/aqara/2026-11-25-agl003-probe.md))
+
+7. **Decision 1, Ignored:** ColorCapabilities 24 (xy and color temperature only), hue and saturation attributes
+   UNSUPPORTED_ATTRIBUTE, moveHue/moveSaturation leave CurrentX/Y unchanged. Hue and saturation actions not built on
+   `aqara`, said in index.md; no `NotBuilt` entry.
+8. **Decision 2, Fail:** `{"state":"ON","on_time":N}` from off never turned the bulb on (N 10, 30 then 10, 0); OnTime
+   and OffWaitTime unsupported. A `NotBuilt` entry for `aqara` turn_on_for citing the probe; get_attributes keeps
+   asking no OnTime, now on the probe.
+9. **Decision 5, Reproduces, limit recorded:** 1 in 10 when a while-off moveToLevel lands during the bulb's own 1.5 s
+   off fade (the rig's put-back: turn_off then set_attributes with no wait); 0 in 10 after HA shows off. Z2M's frame
+   logging was off, so no deeper root cause. Recorded in internals.md (mechanism, counts) and index.md (the user-facing
+   limit); not a blocker for Verified, as the test case's sequence never hit it.
+
 ## Steps
 
 **No rig run or write probe before 07:45 local on 2026-11-25** (Jason, 2026-11-24): work that needs no device (steps 2, 3, 6) goes first. Every rig run and every write probe needs Jason's yes (`DEVICE_SIDE_RIG_RESTRICTED=1`). Read-only probes run through
