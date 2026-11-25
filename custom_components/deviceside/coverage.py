@@ -1,4 +1,4 @@
-"""The Configure menu's Device coverage: per light and switch entity, which DeviceSide features run now (Verified,
+"""The coverage view in Configure > Settings: per light and switch entity, which DeviceSide features run now (Verified,
 Documented), and which need Labs (docs/design.md, Coverage view). A refused feature is an empty cell: blank is
 unsupported.
 

@@ -170,7 +170,7 @@ async def test_an_empty_cache_reads_fresh(hass, setup_production, broker, connec
     assert broker.topics == [GROUPS]
 
 
-async def test_the_coverage_view_waits_for_bridge_devices_until_it_arrives_and_again_after_a_disconnect(
+async def test_settings_waits_for_bridge_devices_until_it_arrives_and_again_after_a_disconnect(
     hass, setup_production, broker, connection, mqtt_up
 ):
     cache = await start(hass, setup_production)  # Z2M has published no devices yet

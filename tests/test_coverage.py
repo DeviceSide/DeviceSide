@@ -1,4 +1,5 @@
-"""The Device coverage view: each cell is the dispatcher's own decision (dispatcher.judge) on the entity, the rows are
+"""The coverage view in Settings: each cell is the dispatcher's own decision (dispatcher.judge) on the entity, the rows
+are
 the entities a call could reach, and the counts, the legend and the Labs line read the cells."""
 
 import asyncio
@@ -298,59 +299,54 @@ def test_the_legend_explains_each_mark():
     ]
 
 
-# The Configure step
+# The Settings step
 
 
 async def open_coverage(hass, entry):
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    return await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "coverage"})
+    return await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
 
 
 @pytest.mark.usefixtures("classed", "household")
-async def test_the_step_shows_the_matrix_with_the_labs_checkbox_under_it(hass, setup_integration):
+async def test_settings_shows_the_matrix_with_the_options_under_it(hass, setup_integration):
     result = await open_coverage(hass, setup_integration)
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "coverage_view"
+    assert result["step_id"] == "settings"
     holders = result["description_placeholders"]
     assert (holders["features"], holders["devices"]) == ("9", "4")
     assert holders["legend"] == coverage.legend()
     assert f"| {SWITCH}c |" in holders["table"]
-    assert result["data_schema"]({}) == {"labs": False}
+    assert result["data_schema"]({}) == {"predicted_state": True, "z2m_color_modes": True, "labs": False}
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())["options"]
-    step = strings["step"]["coverage_view"]
+    step = strings["step"]["settings"]
     assert step["description"].format(**holders).startswith("DeviceSide runs 9 features on 4 of your devices now.")
     assert step["data_description"]["labs"].format(**holders) == (
         "Turn on Labs: adds 2 features on 1 devices. "
-        "Labs features may misbehave, change or be withdrawn without notice."
+        "Try out new integrations, actions and action options, and unproven devices. "
+        "Labs features may misbehave, change or be withdrawn without notice. "
+        'Please report how they go with the "Report a device test result or bug" form.'
     )
-    assert strings["step"]["init"]["menu_options"]["coverage"] == "Device coverage"
+    assert "coverage" not in strings["step"]["init"]["menu_options"]
 
 
 @pytest.mark.usefixtures("classed", "household")
-async def test_submitting_saves_labs_and_reloads_only_when_it_changed(hass, setup_integration):
+async def test_submitting_saves_the_options_and_reloads_only_when_one_changed(hass, setup_integration):
+    saved = {"predicted_state": True, "z2m_color_modes": True}
+    hass.config_entries.async_update_entry(setup_integration, options={**saved, "labs": False})
     with patch.object(hass.config_entries, "async_schedule_reload") as reload:
         result = await open_coverage(hass, setup_integration)
-        result = await hass.config_entries.options.async_configure(result["flow_id"], {"labs": False})
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {**saved, "labs": False})
         assert result["type"] is FlowResultType.CREATE_ENTRY
         reload.assert_not_called()
 
         result = await open_coverage(hass, setup_integration)
-        result = await hass.config_entries.options.async_configure(result["flow_id"], {"labs": True})
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {**saved, "labs": True})
         reload.assert_called_once_with(setup_integration.entry_id)
-    assert setup_integration.options == {"labs": True}
+    assert setup_integration.options == {**saved, "labs": True}
 
     result = await open_coverage(hass, setup_integration)
-    assert result["data_schema"]({}) == {"labs": True}  # the current option is the default
-
-
-async def test_the_other_options_survive_a_save_here(hass, setup_integration):
-    hass.config_entries.async_update_entry(setup_integration, options={"predicted_state": False, "labs": False})
-    result = await open_coverage(hass, setup_integration)
-
-    await hass.config_entries.options.async_configure(result["flow_id"], {"labs": True})
-
-    assert setup_integration.options == {"predicted_state": False, "labs": True}
+    assert result["data_schema"]({}) == {**saved, "labs": True}  # the current option is the default
 
 
 @pytest.fixture
@@ -373,23 +369,24 @@ async def finish_progress(hass, flow_id):
 
 
 @pytest.mark.usefixtures("classed", "household")
-async def test_the_step_waits_while_an_integration_is_listing_its_devices(hass, setup_integration, listing):
+async def test_settings_waits_while_an_integration_is_listing_its_devices(hass, setup_integration, listing):
     result = await open_coverage(hass, setup_integration)
 
     assert result["type"] is FlowResultType.SHOW_PROGRESS
     assert result["progress_action"] == "waiting_for_devices"
-    assert result["step_id"] == "coverage"
+    assert result["step_id"] == "settings"
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())
     assert strings["options"]["progress"]["waiting_for_devices"] == "Waiting for Zigbee2MQTT to list its devices."
 
     listing.set()
     result = await finish_progress(hass, result["flow_id"])
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "coverage_view"
+    assert result["step_id"] == "settings"
+    assert result["description_placeholders"]["features"] == "9"
 
 
 @pytest.mark.usefixtures("classed", "household", "listing")
-async def test_the_step_waits_no_longer_than_the_bound_for_a_device_list_that_never_comes(
+async def test_settings_waits_no_longer_than_the_bound_for_a_device_list_that_never_comes(
     hass, setup_integration, monkeypatch
 ):
     monkeypatch.setattr(coverage, "WAIT_S", 0.05)
@@ -456,5 +453,17 @@ async def test_with_nothing_in_labs_the_labs_description_is_the_warning_alone(ha
     holders = result["description_placeholders"]
     assert holders["labs_adds"] == ""
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())
-    text = strings["options"]["step"]["coverage_view"]["data_description"]["labs"].format(**holders)
-    assert text == "Labs features may misbehave, change or be withdrawn without notice."
+    text = strings["options"]["step"]["settings"]["data_description"]["labs"].format(**holders)
+    assert text.startswith("Try out new integrations")
+
+
+@pytest.mark.usefixtures("classed", "household")
+async def test_labs_adds_is_said_only_while_labs_is_off(hass, setup_integration):
+    off = await open_coverage(hass, setup_integration)
+    assert off["description_placeholders"]["labs_adds"] == "Turn on Labs: adds 2 features on 1 devices. "
+    hass.config_entries.async_update_entry(setup_integration, options={"labs": True})
+
+    on = await open_coverage(hass, setup_integration)
+
+    assert on["description_placeholders"]["labs_adds"] == ""
+    assert on["description_placeholders"]["table"]  # the Labs cells are still shown

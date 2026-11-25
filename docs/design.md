@@ -231,12 +231,12 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 
 ### Coverage view
 
-Configure > Device coverage (`coverage.py`) shows, per light and switch entity, the features that run now (Verified,
+The Settings form in Configure (`coverage.py`) shows, above the options,, per light and switch entity, the features that run now (Verified,
 Documented), and those that need Labs; a refused feature is an empty cell, as a blank is unsupported, and an entity with no cell has no row. It reads `dispatcher.judge`, the per-target
 decision a call makes (supports(), the class, the refusal, then the Labs gate), on each action of a feature with Labs
 off, and never a copy of it, so a cell can't disagree with a call. A feature riding several actions takes its weakest;
 Smooth color is saturation and hue in one column, the weaker of the two, a refused one counting as empty. An integration whose classes wait on a report (Z2M's bridge/devices) says so through
-`IntegrationInfo.capability_ready`; the step waits on it for at most 10 s, then shows what it has. The features and
+`IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has. The features and
 their actions are `features.py`'s, which the README's cards read too; the integrations' order is `registry.CARD_ORDER`, a
 copy of the bundles' `column_order` that `tests/test_card_order.py` keeps equal.
 

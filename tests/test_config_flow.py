@@ -154,7 +154,7 @@ async def test_the_options_menu_offers_settings_and_the_issue_forms(hass: HomeAs
     entry = await load_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["settings", "coverage", "report_device", "propose_device"]
+    assert result["menu_options"] == ["settings", "report_device", "propose_device"]
 
 
 async def test_a_report_for_a_supported_light_lists_its_integration_product_model_and_firmware(
