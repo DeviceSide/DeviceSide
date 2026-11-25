@@ -18,10 +18,10 @@ from .families.hue import HUE
 from .families.ikea import IKEA, IKEA_TIMER_HARMED
 from .families.sonoff import SONOFF_INCHING, SONOFF_S60
 from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_INCHING, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
-from .standard_lights import STANDARD_LIGHT
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 from ...zigbee.ikea import TIMER_HARMED_REASON
 from ...zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
+from ...zigbee.standard_lights import STANDARD_LIGHT
 from ...zigbee.tuya import COUNTDOWN_HARMED_REASON
 
 # What the user reads after core's "can't take this action yet" (errors.py, the not_built key).

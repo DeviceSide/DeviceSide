@@ -19,6 +19,7 @@ def light(model="L1", vendor="Acme", *, meta=None, overrides=(), color_hs=False,
         "zigbee_models": [model],
         "fingerprinted": False,
         "fingerprint_manufacturers": [],
+        "fingerprints": [],
         "white_labels": list(white_labels),
         "meta": meta or {},
         "overrides": list(overrides),
@@ -57,7 +58,20 @@ def test_table_holds_members_and_their_fingerprinted_white_labels():
         "other_models": [],
     }
 
-    assert zt.table(resolved).members == {"L1": ("Acme", True), "W1": ("Other", True)}
+    assert zt.table(resolved).members == {"L1": ("Acme", True, ("L1",), ()), "W1": ("Other", True, (), ())}
+
+
+def test_a_white_label_takes_its_own_fingerprints_and_the_definition_the_rest():
+    labels = [{"model": "W1", "vendor": "Other", "fingerprinted": True, "fingerprints": [["TS0505B", "_TZ_w1"]]}]
+    row = light("L1", white_labels=labels) | {
+        "zigbee_models": [],
+        "fingerprints": [["TS0505B", "_TZ_l1"], ["TS0505B", "_TZ_w1"]],
+    }
+
+    assert zt.table({"lights": [row], "other_models": []}).members == {
+        "L1": ("Acme", False, (), (("TS0505B", "_TZ_l1"),)),
+        "W1": ("Other", False, (), (("TS0505B", "_TZ_w1"),)),
+    }
 
 
 def test_table_leaves_out_a_model_two_definitions_publish():
@@ -73,9 +87,22 @@ def test_table_leaves_out_a_model_two_definitions_publish():
     assert found.ambiguous == ["L1", "L2"]
 
 
+def row(vendor: str, color_hs: bool = False) -> tuple:
+    """A MODELS row with no Zigbee strings."""
+    return (vendor, color_hs, (), ())
+
+
 TABLE_TEXT = '''"""A table."""
 
 from dataclasses import dataclass
+from typing import NamedTuple
+
+
+class Light(NamedTuple):
+    vendor: str
+    color_hs: bool
+    zigbee_models: tuple[str, ...]
+    fingerprints: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,8 +115,7 @@ class Excluded:
 @dataclass(frozen=True, slots=True)
 class Kept:
     model: str
-    vendor: str
-    color_hs: bool
+    light: Light
     reason: str
 
 
@@ -102,7 +128,7 @@ KEPT: tuple[Kept, ...] = ({kept})
 
 
 def write_table(root: Path, models=None, excluded="", kept="", pin="v1.0.0") -> Path:
-    models = {"L1": ("Acme", False), "L2": ("Müller", True)} if models is None else models
+    models = {"L1": row("Acme", False), "L2": row("Müller", True)} if models is None else models
     path = root / zt.TABLE
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(TABLE_TEXT.format(block=zt.block(pin, models), excluded=excluded, kept=kept))
@@ -116,18 +142,18 @@ def test_rewrite_keeps_the_hand_kept_rows(tmp_path):
     excluded = 'Excluded("L1", "stop", "https://example.com/1"),'
     path = write_table(tmp_path, excluded=excluded)
 
-    text = zt.rewrite(path.read_text(), "v2.0.0", {"L3": ("Acme", False)})
+    text = zt.rewrite(path.read_text(), "v2.0.0", {"L3": row("Acme", False)})
 
     assert excluded in text
     module = zt.load(text)
-    assert (module.ZHC_RELEASE, module.MODELS) == ("v2.0.0", {"L3": ("Acme", False)})
+    assert (module.ZHC_RELEASE, module.MODELS) == ("v2.0.0", {"L3": row("Acme", False)})
 
 
 def test_members_less_excluded_plus_kept(tmp_path):
     path = write_table(
         tmp_path,
         excluded='Excluded("L1", "stop", "https://example.com/1"),',
-        kept='Kept("L9", "Acme", False, "reviewed"),',
+        kept='Kept("L9", Light("Acme", False, (), ()), "reviewed"),',
     )
 
     assert zt.members(zt.load(path.read_text())) == {"L2", "L9"}
@@ -148,11 +174,11 @@ def test_check_passes_a_current_table(tmp_path):
     [
         ('Excluded("L1", "stop", ""),', "", "EXCLUDED 'L1' has no https source"),
         ('Excluded("L1", "turn_on_for", "https://example.com/1"),', "", "not an action the class serves"),
-        ("", 'Kept("L9", "Acme", False, " "),', "KEPT 'L9' has no reason"),
-        ("", 'Kept("L1", "Acme", False, "reviewed"),', "KEPT 'L1' is a member again"),
+        ("", 'Kept("L9", Light("Acme", False, (), ()), " "),', "KEPT 'L9' has no reason"),
+        ("", 'Kept("L1", Light("Acme", False, (), ()), "reviewed"),', "KEPT 'L1' is a member again"),
         (
             'Excluded("L9", "stop", "https://example.com/1"),',
-            'Kept("L9", "Acme", False, "reviewed"),',
+            'Kept("L9", Light("Acme", False, (), ()), "reviewed"),',
             "both EXCLUDED and KEPT: ['L9']",
         ),
     ],
@@ -174,7 +200,7 @@ def test_page_lists_members_excluded_and_kept(tmp_path):
     path = write_table(
         tmp_path,
         excluded='Excluded("L1", "stop", "https://example.com/1"),',
-        kept='Kept("L9", "Acme", True, "reviewed"),',
+        kept='Kept("L9", Light("Acme", True, (), ()), "reviewed"),',
     )
 
     page = zt.page(zt.load(path.read_text()))
@@ -188,9 +214,9 @@ def test_page_lists_members_excluded_and_kept(tmp_path):
 
 
 def test_proposal_reviews_a_departure_that_shipped_outside_labs(tmp_path):
-    module = zt.load(write_table(tmp_path, kept='Kept("L5", "Acme", False, "reviewed"),').read_text())
-    old = {"L1": ("Acme", False), "L2": ("Acme", False), "L3": ("Acme", False)}
-    new = zt.Resolved({"L1": ("Acme", False), "L4": ("Acme", True), "L5": ("Acme", False)}, ["L6"], {})
+    module = zt.load(write_table(tmp_path, kept='Kept("L5", Light("Acme", False, (), ()), "reviewed"),').read_text())
+    old = {"L1": row("Acme", False), "L2": row("Acme", False), "L3": row("Acme", False)}
+    new = zt.Resolved({"L1": row("Acme", False), "L4": row("Acme", True), "L5": row("Acme", False)}, ["L6"], {})
 
     body = zt.proposal("v2", "v1", old, new, ("v0.2.0", frozenset({"L1", "L2"})), module, ["- `H1` (hue): x to y"])
 
@@ -206,7 +232,7 @@ def test_proposal_reviews_a_departure_that_shipped_outside_labs(tmp_path):
 def test_proposal_before_any_release_holds_the_table(tmp_path):
     module = zt.load(write_table(tmp_path).read_text())
 
-    body = zt.proposal("v2", "v1", {"L1": ("Acme", False)}, zt.Resolved({}, [], {}), (None, frozenset()), module)
+    body = zt.proposal("v2", "v1", {"L1": row("Acme", False)}, zt.Resolved({}, [], {}), (None, frozenset()), module)
 
     assert "every departure **leaves**" in body
     assert "- **leaves**: Acme `L1`" in body
@@ -215,11 +241,11 @@ def test_proposal_before_any_release_holds_the_table(tmp_path):
 def test_released_members_reads_the_last_full_release(repo: GitRepo):
     repo.commit()
     repo.git("tag", "v0.1.0")
-    write_table(repo.path, models={"L1": ("Acme", False)})
+    write_table(repo.path, models={"L1": row("Acme", False)})
     repo.git("add", "-A")
     repo.git("commit", "-q", "-m", "table")
     repo.git("tag", "v0.2.0")
-    write_table(repo.path, models={"L2": ("Acme", False)})
+    write_table(repo.path, models={"L2": row("Acme", False)})
     repo.git("add", "-A")
     repo.git("commit", "-q", "-m", "bump")
     repo.git("tag", "v0.3.0rc1")

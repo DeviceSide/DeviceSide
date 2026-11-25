@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Generate Zigbee2MQTT's standard lights table and its page: the zigbee-herdsman-converters (ZHC) light definitions on
-ZHC's standard converters, which the `standard_light` class keys on (docs/integrations/zigbee2mqtt/internals.md,
+"""Generate the standard lights table and its page: the zigbee-herdsman-converters (ZHC) light definitions on ZHC's
+standard converters, which Zigbee2MQTT's `standard_light` class keys on (docs/integrations/zigbee2mqtt/internals.md,
 Standard lights; docs/evidence.md, Documented).
 
-The table is `integrations/zigbee2mqtt/standard_lights.py`. Between its markers, generated: the ZHC release pinned and
-`MODELS`, a row per member definition model. Outside them, hand-kept and kept by every regeneration: `EXCLUDED` (the
-split-offs, each with its source) and `KEPT` (a departure a maintainer kept, with the reason). The page,
-docs/integrations/zigbee2mqtt/standard-lights.md, is rendered from it.
+The table is the Zigbee catalog's `zigbee/standard_lights.py`. Between its markers, generated: the ZHC release pinned
+and `MODELS`, a row per member definition model with the Zigbee strings ZHC matches it on (its zigbeeModel IDs and
+fingerprints; a fingerprinted white label's are its own), formatted by ruff. Outside them, hand-kept and kept by every
+regeneration: `EXCLUDED` (the split-offs, each with its source) and `KEPT` (a departure a maintainer kept, with the
+reason). The page, docs/integrations/zigbee2mqtt/standard-lights.md, is rendered from it.
 
 A member is a ZHC light definition, resolved with ZHC's own prepareDefinition (zhc_table/resolve.mjs), whose converter
 for every key DeviceSide publishes is ZHC's standard one, with no `meta` flag that could touch a DeviceSide call
@@ -36,7 +37,7 @@ from types import SimpleNamespace
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-TABLE = Path("custom_components/deviceside/integrations/zigbee2mqtt/standard_lights.py")
+TABLE = Path("custom_components/deviceside/zigbee/standard_lights.py")
 PAGE = Path("docs/integrations/zigbee2mqtt/standard-lights.md")
 RESOLVER = REPO / "scripts" / "zhc_table" / "resolve.mjs"
 ZHC = "https://github.com/Koenkk/zigbee-herdsman-converters"
@@ -89,33 +90,46 @@ def departures(row: Mapping) -> list[str]:
     return found
 
 
-def published(row: Mapping) -> list[tuple[str, str]]:
-    """The (model, vendor) pairs Zigbee2MQTT can publish a definition under: its own, and each white label with a
-    fingerprint, which Zigbee2MQTT names when the fingerprint matches (ZHC's findByDevice)."""
-    return [(row["model"], row["vendor"])] + [
-        (label["model"], label["vendor"]) for label in row["white_labels"] if label["fingerprinted"]
+# A member's row, as the table's `Light`: (vendor, color_hs, zigbee_models, fingerprints).
+Row = tuple[str, bool, tuple[str, ...], tuple[tuple[str, str], ...]]
+
+
+def _pairs(fingerprints: Iterable) -> tuple[tuple[str, str], ...]:
+    return tuple(dict.fromkeys((str(model), str(manufacturer)) for model, manufacturer in fingerprints))
+
+
+def published(row: Mapping) -> list[tuple[str, str, tuple[str, ...], tuple[tuple[str, str], ...]]]:
+    """The (model, vendor, zigbee_models, fingerprints) a definition can be published under: its own, and each white
+    label with a fingerprint, which Zigbee2MQTT names when the fingerprint matches (ZHC's findByDevice). A white label
+    takes its own fingerprints, and the definition keeps the rest."""
+    labels = [label for label in row["white_labels"] if label["fingerprinted"]]
+    theirs = {pair for label in labels for pair in _pairs(label.get("fingerprints", ()))}
+    own = tuple(pair for pair in _pairs(row.get("fingerprints", ())) if pair not in theirs)
+    return [(row["model"], row["vendor"], tuple(dict.fromkeys(row["zigbee_models"])), own)] + [
+        (label["model"], label["vendor"], (), _pairs(label.get("fingerprints", ()))) for label in labels
     ]
 
 
 @dataclass(frozen=True)
 class Resolved:
-    """A ZHC release's table: its members, by model, as (vendor, color_hs); the model strings dropped as ambiguous
+    """A ZHC release's table: its members, by model, as `Row`s; the model strings dropped as ambiguous
     (more than one definition publishes them, or a member's shares a model with a definition that isn't one); and
     each light definition's traits, by model, for the family check."""
 
-    members: dict[str, tuple[str, bool]]
+    members: dict[str, Row]
     ambiguous: list[str]
     traits: dict[str, tuple]
 
 
 def table(resolved: Mapping) -> Resolved:
     """The members of one resolved ZHC release (resolve.mjs's output)."""
-    seen: dict[str, list[tuple[tuple[str, bool] | None, tuple]]] = {}
+    seen: dict[str, list[tuple[Row | None, tuple]]] = {}
     for row in resolved["lights"]:
         member = not departures(row)
         traits = (tuple(departures(row)), row["color_hs"])
-        for model, vendor in published(row):
-            seen.setdefault(model, []).append(((vendor, row["color_hs"]) if member else None, traits))
+        for model, vendor, zigbee_models, fingerprints in published(row):
+            entry = (vendor, row["color_hs"], zigbee_models, fingerprints)
+            seen.setdefault(model, []).append((entry if member else None, traits))
     for model in resolved.get("other_models", ()):
         seen.setdefault(model, []).append((None, ()))
     members, ambiguous = {}, []
@@ -145,14 +159,14 @@ def members(module: SimpleNamespace) -> frozenset[str]:
     )
 
 
-def block(pin: str, models: Mapping[str, tuple[str, bool]]) -> str:
-    """The generated block, markers included."""
+def block(pin: str, models: Mapping[str, Row]) -> str:
+    """The generated block, markers included, one row a line (`pin` runs ruff format on the file after)."""
     lines = [
         BEGIN,
         f"ZHC_RELEASE = {_str(pin)}",
-        "# A member's definition model, with its vendor and whether its light exposes color_hs.",
-        "MODELS: dict[str, tuple[str, bool]] = {",
-        *(f"    {_str(model)}: ({_str(vendor)}, {hs!r})," for model, (vendor, hs) in sorted(models.items())),
+        "# A member's definition model, with its row (Light).",
+        "MODELS: dict[str, Light] = {",
+        *(f"    {_str(model)}: Light{_literal(tuple(row))}," for model, row in sorted(models.items())),
         "}",
         END,
     ]
@@ -164,7 +178,14 @@ def _str(text: str) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
-def rewrite(text: str, pin: str, models: Mapping[str, tuple[str, bool]]) -> str:
+def _literal(value) -> str:
+    """A str, bool or tuple of them as a Python literal, strings in double quotes."""
+    if isinstance(value, tuple):
+        return "(" + ", ".join(map(_literal, value)) + ("," if len(value) == 1 else "") + ")"
+    return _str(value) if isinstance(value, str) else repr(value)
+
+
+def rewrite(text: str, pin: str, models: Mapping[str, Row]) -> str:
     """The module text with its generated block replaced, the hand-kept text around it untouched."""
     start, end = text.index(BEGIN), text.index(END) + len(END)
     return text[:start] + block(pin, models) + text[end:]
@@ -179,7 +200,7 @@ def _cell(text: str) -> str:
 
 def page(module: SimpleNamespace) -> str:
     """docs/integrations/zigbee2mqtt/standard-lights.md, from the table."""
-    kept = {row.model: (row.vendor, row.color_hs) for row in module.KEPT}
+    kept = {row.model: row.light for row in module.KEPT}
     rows = {**module.MODELS, **kept}
     listed = sorted(members(module), key=lambda model: (rows[model][0].casefold(), model.casefold()))
     release = module.ZHC_RELEASE
@@ -187,7 +208,7 @@ def page(module: SimpleNamespace) -> str:
         "# Zigbee2MQTT's standard lights",
         "",
         "<!-- Generated by scripts/zhc_table.py from the table in"
-        " custom_components/deviceside/integrations/zigbee2mqtt/standard_lights.py: don't edit by hand. -->",
+        " custom_components/deviceside/zigbee/standard_lights.py: don't edit by hand. -->",
         "",
         f"From zigbee-herdsman-converters [{release}]({ZHC}/releases/tag/{release}).",
         "",
@@ -227,7 +248,7 @@ def page(module: SimpleNamespace) -> str:
             "",
             "| Vendor | Model | Reason |",
             "|---|---|---|",
-            *(f"| {_cell(row.vendor)} | {_cell(row.model)} | {_cell(row.reason)} |" for row in module.KEPT),
+            *(f"| {_cell(row.light[0])} | {_cell(row.model)} | {_cell(row.reason)} |" for row in module.KEPT),
         ]
     return "\n".join(lines) + "\n"
 
@@ -319,8 +340,8 @@ def family_models(resolved: Mapping) -> dict[str, str]:
     is tried with its vendor as one too, and IKEA's with IKEA's string."""
     from custom_components.deviceside.core.scope import OTHER  # noqa: PLC0415
     from custom_components.deviceside.integrations.zigbee2mqtt.classes import device_class  # noqa: PLC0415
-    from custom_components.deviceside.integrations.zigbee2mqtt.standard_lights import STANDARD_LIGHT  # noqa: PLC0415
     from custom_components.deviceside.zigbee.ikea import MANUFACTURER as IKEA_MANUFACTURER  # noqa: PLC0415
+    from custom_components.deviceside.zigbee.standard_lights import STANDARD_LIGHT  # noqa: PLC0415
 
     found = {}
     for row in resolved["lights"]:
@@ -344,7 +365,7 @@ def family_models(resolved: Mapping) -> dict[str, str]:
 def proposal(
     pin: str,
     previous: str,
-    old: Mapping[str, tuple[str, bool]],
+    old: Mapping[str, Row],
     new: Resolved,
     released: tuple[str | None, frozenset[str]],
     module: SimpleNamespace,
@@ -417,6 +438,7 @@ def pin(tag: str, repo: Path = REPO) -> str:
     changes = family_trait_changes(resolve(previous), resolved) if previous != tag else []
     body = proposal(tag, previous, module.MODELS, new, released_members(repo), module, changes)
     path.write_text(rewrite(text, tag, new.members))
+    subprocess.run([sys.executable, "-m", "ruff", "format", "-q", str(path)], check=True)
     (repo / PAGE).write_text(page(load(path.read_text())))
     return body
 

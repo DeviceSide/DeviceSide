@@ -30,7 +30,7 @@ from scripts.check_tag import RC, git, name, releases  # noqa: E402
 
 AUDITS = Path("docs") / "audits"
 # The standard lights table and the line its pin is on (scripts/zhc_table.py writes it).
-ZHC_TABLE = "custom_components/deviceside/integrations/zigbee2mqtt/standard_lights.py"
+ZHC_TABLE = "custom_components/deviceside/zigbee/standard_lights.py"
 ZHC_PIN = re.compile(r'^ZHC_RELEASE = "([^"]*)"$', re.MULTILINE)
 ZHC_SKIPPED = re.compile(r"^ZHC bump skipped: \S", re.MULTILINE)
 SEVERITIES = frozenset({"critical", "high"})

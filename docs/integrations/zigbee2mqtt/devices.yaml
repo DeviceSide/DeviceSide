@@ -54,7 +54,7 @@ capabilities:
   sengled: {phrase: Sengled bulbs, section: Sengled}
   gledopto: {phrase: Gledopto lights, section: Gledopto}
   aqara: {phrase: Aqara lights, section: Aqara}
-  # Other brands' lights on zigbee-herdsman-converters' standard converters (standard_lights.py), out of `other`.
+  # Other brands' lights on zigbee-herdsman-converters' standard converters (zigbee/standard_lights.py), out of `other`.
   standard_light: {phrase: "other brands' standard lights", section: Standard lights}
   other:
     phrase: other brands

@@ -43,7 +43,7 @@ repos:
     hooks:
       - id: codespell
         # The standard lights table and its page list vendors' model strings from zigbee-herdsman-converters.
-        exclude: ^(custom_components/deviceside/integrations/zigbee2mqtt/standard_lights\.py|docs/integrations/zigbee2mqtt/standard-lights\.md)$
+        exclude: ^(custom_components/deviceside/zigbee/standard_lights\.py|docs/integrations/zigbee2mqtt/standard-lights\.md)$
 
   # -------------------------
   # Secrets check

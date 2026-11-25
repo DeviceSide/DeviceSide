@@ -13,9 +13,9 @@ from collections.abc import Collection, Sequence
 
 from . import aqara, gledopto, hue, ikea, sengled, sonoff, tuya
 from ..rules import FIELDS, REGISTRY
-from ..standard_lights import STANDARD_LIGHT, members
 from ....core.rules import Rule, compose
 from ....core.scope import Family
+from ....zigbee.standard_lights import STANDARD_LIGHT, members
 
 FAMILIES: tuple[Family, ...] = (
     hue.FAMILY,
@@ -47,8 +47,8 @@ RULES: tuple[Rule, ...] = compose(
     (tuya.FAMILY, tuya.REGISTRY_RULES),
 ) + (
     # After every family's, so a family's light never lands here: the integration's own class (classes.py), on a
-    # definition model in the standard lights table (standard_lights.py), out of `other`. Not a family's group, so
-    # outside `compose`; it reads one field of FIELDS.
+    # definition model in the standard lights table (zigbee/standard_lights.py), out of `other`. Not a family's group,
+    # so outside `compose`; it reads one field of FIELDS.
     Rule(STANDARD_LIGHT, {"definition_model": "|".join(map(re.escape, sorted(members())))}),
 )
 

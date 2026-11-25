@@ -24,9 +24,9 @@ from .bridge import ensure_options, first_retained, publish, wait
 from .bridge_cache import cause, log_error
 from .classes import capability
 from .families.aqara import AQARA
-from .standard_lights import STANDARD_LIGHT
 from ...core.models import Target
 from ...core.scope import OTHER
+from ...zigbee.standard_lights import STANDARD_LIGHT
 
 _LOGGER = logging.getLogger(__name__)
 

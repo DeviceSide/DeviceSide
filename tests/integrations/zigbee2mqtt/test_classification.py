@@ -193,10 +193,10 @@ DEVICES = {
     # And after the vendor rules: a device a vendor rule and a Tuya registry rule both match is the vendor's.
     "vendor_against_registry_ts_model": (device(("Sengled", "TS0505B")), "sengled"),
     "vendor_against_registry_ts_model_listed": (listed(("Gledopto", "TS0505B"), ("GLEDOPTO", "GL-C-008")), "gledopto"),
-    # Other brands' standard lights (standard_lights.py): by the definition model alone, after every family's rules, so
-    # `other` until bridge/devices lists the definition. A member; a split-off, which stays in `other`; a definition
-    # with turnsOffAtBrightness1, no member; a family's light whose definition is a member, which its family keeps
-    # (`aqara_listed`'s T2_E27 is one too); and a Tuya light under a member's definition, which Tuya's rules keep.
+    # Other brands' standard lights (zigbee/standard_lights.py): by the definition model alone, after every family's
+    # rules, so `other` until bridge/devices lists the definition. A member; a split-off, which stays in `other`; a
+    # definition with turnsOffAtBrightness1, no member; a family's light whose definition is a member, which its family
+    # keeps (`aqara_listed`'s T2_E27 is one too); and a Tuya light under a member's definition, which Tuya's rules keep.
     "standard_light": (
         listed(("OSRAM", "4058075816718"), ("OSRAM", "Outdoor Lantern W RGBW OSRAM")),
         "standard_light",

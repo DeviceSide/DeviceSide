@@ -1,5 +1,6 @@
-"""Zigbee2MQTT's standard lights (standard_lights.py): which definitions the table holds and splits off, where the
-class lands, and its levels with the Labs option off (docs/evidence.md, Documented, a standard converter's call)."""
+"""Zigbee2MQTT's standard lights: where the class lands on the catalog's table (zigbee/standard_lights.py, whose own
+tests are tests/zigbee/test_standard_lights.py), and its levels with the Labs option off (docs/evidence.md,
+Documented, a standard converter's call)."""
 
 from types import SimpleNamespace
 
@@ -8,13 +9,8 @@ import pytest
 from custom_components.deviceside.core.scope import OTHER, Level
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, INTEGRATION
 from custom_components.deviceside.integrations.zigbee2mqtt.classes import device_class
-from custom_components.deviceside.integrations.zigbee2mqtt.standard_lights import (
-    EXCLUDED,
-    MODELS,
-    STANDARD_LIGHT,
-    members,
-)
 from custom_components.deviceside.zigbee.reasons import OTHER_TIMER_REASON
+from custom_components.deviceside.zigbee.standard_lights import STANDARD_LIGHT
 
 from .conftest import DEVICES, SENT, SET, call, commands, light, target
 from ...conftest import refusal, result
@@ -41,51 +37,6 @@ def _scopes() -> dict:
 def _defined(broker, model: str) -> None:
     """Give the last light() its definition's model in bridge/devices, as Zigbee2MQTT publishes it."""
     broker.retained[DEVICES][-1]["definition"]["model"] = model
-
-
-def test_the_members_hold_the_survey_s_examples():
-    assert MODELS[MEMBER[1]] == ("OSRAM", True)
-    assert MODELS[MEMBER_WITHOUT_HS[1]] == ("LEDVANCE", False)
-
-
-@pytest.mark.parametrize(
-    "model",
-    [
-        # omitOptionalLevelAndColorParams: the option fields rejected (survey, Part 4).
-        "NLG-CCT light",
-        "100.110.51",
-        "Ribag Air O",
-        "WDE002386",
-        # turnsOffAtBrightness1: #613 owns the floor.
-        "RB 285 C",
-        # A converter of their own for a key DeviceSide sends (survey, Part 1c).
-        "DD10Z",
-        "VB-FTW-A19",
-        "VB-RGBTW-A19",
-        "VZM30-SN",
-        "VZM31-SN",
-        "VZM32-SN",
-        "VZM36",
-        "067797",
-        "4256050-ZHAC",
-        "4257050-ZHAC",
-        "CTM_MBD_Dim",
-        "TI0001-dimmer",
-        "SAV-DL6IN-24V-12W",
-        "EBF_RGB_Zm",
-    ],
-)
-def test_a_flagged_or_overridden_definition_is_no_member(model):
-    assert model not in MODELS
-    assert model not in members()
-
-
-def test_every_split_off_is_out_of_the_class():
-    """Step 3's split-offs (survey, Part 4's rows no flag catches) are in MODELS, and out of the class."""
-    excluded = {row.model for row in EXCLUDED}
-    assert excluded <= MODELS.keys()
-    assert not excluded & members()
-    assert {"FLS-PP", "924.70", "404036/45327/45317/45328", "404065", "900024/12253", "5120.1100"} <= excluded
 
 
 @pytest.mark.parametrize(

@@ -74,6 +74,12 @@ function metaOf(definition) {
     return meta;
 }
 
+// A fingerprint list as [modelID, manufacturerName] pairs, "" where one is absent; its other fields (type, endpoints,
+// versions) are left out, as no DeviceSide integration reads them.
+function pairs(fingerprints) {
+    return (fingerprints ?? []).map((f) => [f.modelID ?? "", f.manufacturerName ?? ""]);
+}
+
 // Every model string a definition can be published under: its own, and each white label's.
 function modelsOf(definition) {
     return [definition.model, ...(definition.whiteLabel ?? []).map((w) => w.model)];
@@ -96,10 +102,12 @@ for (const original of all) {
         zigbee_models: original.zigbeeModel ?? [],
         fingerprinted: Boolean(original.fingerprint?.length),
         fingerprint_manufacturers: [...new Set((original.fingerprint ?? []).map((f) => f.manufacturerName).filter(Boolean))],
+        fingerprints: pairs(original.fingerprint),
         white_labels: (original.whiteLabel ?? []).map((w) => ({
             model: w.model,
             vendor: w.vendor ?? definition.vendor,
             fingerprinted: "fingerprint" in w && Boolean(w.fingerprint?.length),
+            fingerprints: pairs(w.fingerprint),
         })),
         meta: metaOf(definition),
         overrides: overrides(definition),

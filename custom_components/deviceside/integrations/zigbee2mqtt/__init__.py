@@ -17,11 +17,11 @@ from .raise_hue import Z2MRaiseHue
 from .raise_saturation import Z2MRaiseSaturation
 from .set_attributes import Z2MSetAttributes
 from .set_auto_off import Z2MSetAutoOff
-from .standard_lights import STANDARD_LIGHT
 from .stop import Z2MStop
 from .turn_off_for import Z2MTurnOffFor
 from .turn_on_for import Z2MTurnOnFor
 from ...core.scope import IntegrationInfo
+from ...zigbee.standard_lights import STANDARD_LIGHT
 
 INTEGRATION = IntegrationInfo(
     key="zigbee2mqtt",

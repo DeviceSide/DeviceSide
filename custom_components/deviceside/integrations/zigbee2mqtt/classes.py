@@ -41,11 +41,11 @@ from .addressing import device_base, z2m_address
 from .families import FAMILIES, REGISTRY_PLACED, RULES
 from .refusals import REFUSALS
 from .rules import ZIGBEE, definition_fields, zigbee_strings
-from .standard_lights import STANDARD_LIGHT
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
 from ...core.scope import OTHER, ClassDomains, ClassLevel, Unplaced, documented, labs
+from ...zigbee.standard_lights import STANDARD_LIGHT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,8 +91,8 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
 # The standard lights' level in each adapter's scope (index.md, Standard lights; docs/evidence.md, Documented, a
 # standard converter's call). Like `other`, the integration's own class (IntegrationInfo.own_classes), as it spans
 # vendors: other brands' lights whose definition sends DeviceSide's calls through ZHC's standard converters
-# (standard_lights.py), carved out of `other` by the rule after every family's (families/__init__.py). Documented on
-# Zigbee2MQTT's usage: its users send the fades, stop and the hue and saturation moves through the same converters. A
+# (zigbee/standard_lights.py), carved out of `other` by the rule after every family's (families/__init__.py). Documented
+# on Zigbee2MQTT's usage: its users send the fades, stop and the hue and saturation moves through the same converters. A
 # hue or saturation move reaches only a light exposing color_hs (fade.py). The raw reads and writes qualify as every
 # known failure is visible to the caller; on lights alone, as `other`'s.
 _STANDARD = documented(STANDARD_LIGHT)

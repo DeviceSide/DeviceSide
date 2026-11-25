@@ -19,7 +19,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import (
     sonoff,
     tuya,
 )
-from custom_components.deviceside.integrations.zigbee2mqtt.standard_lights import STANDARD_LIGHT
+from custom_components.deviceside.zigbee.standard_lights import STANDARD_LIGHT
 
 
 def test_the_integration_holds_the_seven_families_and_the_registry_s_checks_pass():
