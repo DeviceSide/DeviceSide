@@ -3,12 +3,12 @@
   "integration": "zigbee2mqtt",
   "action": "turn_on_for",
   "result": "pass",
-  "date": "2026-11-18",
+  "date": "2026-11-25",
   "source": {
     "kind": "rig",
-    "commit": "c05e6168"
+    "commit": "7f3c8610"
   },
-  "calls": "39bbbdbe97f41e46d50f4ff10f06f6a8616374b9",
+  "calls": "04509a132fac80506dd8f7d75c9332707234cdd4",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -34,7 +34,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_typdpbpg"
         }
       ]
@@ -48,7 +48,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_gznh2xla"
         }
       ]
@@ -207,7 +207,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_typdpbpg"
         }
       ]
@@ -221,7 +221,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_gznh2xla"
         }
       ]
@@ -263,7 +263,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_typdpbpg"
         }
       ]
@@ -277,7 +277,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_gznh2xla"
         }
       ]
@@ -319,7 +319,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_typdpbpg"
         }
       ]
@@ -333,7 +333,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": "tuya_countdown_tz3000_gznh2xla"
         }
       ]

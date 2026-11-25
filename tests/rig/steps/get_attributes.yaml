@@ -66,13 +66,21 @@ tests:
     roles: [light_color]
     only: [zigbee2mqtt]
     steps:
+      - call: {}  # learns the target's class for the selectors below
       - z2m_option: {hue_native_control: false}
+        classes: {zigbee2mqtt: [hue]}
       - set: {state: on, hs_color: [240, 90]}
+        classes: {zigbee2mqtt: [hue]}
       - expect_state: {color_mode: hs, within: 2 * tol}  # without both modes, HA drops it and stays in xy
+        classes: {zigbee2mqtt: [hue]}
       - z2m_option: {hue_native_control: true}
+        classes: {zigbee2mqtt: [hue]}
       - set: {state: off}
+        classes: {zigbee2mqtt: [hue]}
       - call: {}
+        classes: {zigbee2mqtt: [hue]}
       - expect_response: {attributes: {hs_color.0: {min: 235, max: 245}, hs_color.1: {min: 85, max: 95}}}
+        classes: {zigbee2mqtt: [hue]}
 
   # ZHA reads the bulb's color live, and the bulb keeps it while off; Hue reads the bridge, which keeps it too and
   # leaves color temperature out in color mode. Lists compare whole, so hs is read by index.
