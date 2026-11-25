@@ -58,7 +58,7 @@ hostnames in commits, docs or research files.
    `scripts/gen_codeowners.py`. Check: `.venv/bin/pytest -n auto --transcripts=check`.
 4. **Rig run → Verified** (after step 2 merges). `lab_aqara` restricted run, Labs on; records written. Lift each
    action whose cases passed to `verified(...)` on `aqara`, lights; the rest stay Labs or not built per step 1.
-   The coverage check (`docs/evidence.md`, The coverage check) must pass. Decision for this run: lifting the Labs flag.
+   The coverage check (`docs/evidence.md`, The coverage check) must pass. Decision for this run: lifting the Labs flag. The rig carries rows only onto an identical call transcript (HA-rig#108), and the Z2M records for get_attributes, lower_hue, lower_saturation and turn_on_for cite an older transcript than HEAD's: their Aqara rows land only after a Hue-profile rerun of those suites (Jason's yes), or the rig prints `Kept`.
 5. **Audit and ready**: `audit-gate` on the PR diff, `owner-findings`, then `gh pr ready` (default-branch PR: Jason
    merges).
 6. **Goal 2 research** (Decision 6), independent of steps 1-5: `/research` into what Zigbee vendors publish about their
