@@ -132,25 +132,12 @@ Touches: custom_components/deviceside/integrations/hue/**, tests/integrations/hu
 
 ## Handoff
 
-2026-11-25, second implementing session, out of context (~150k).
+2026-11-25, third implementing session: done. Decision 11 is in (9c31520d) with its plan-review fixes (f0484ed2; 2
+must-fix count errors and 1 dating slip fixed, the Handoff status updated here). PR audit report 2: CLEAN, 3 Lows
+tracked (classes.py docstring still says "and model ID"; the one-entry `_MAKERS` dict; a scene of two non-`hue`
+classes classed `other`). `owner-findings`: all in Jason's code. PR #619 marked ready.
 
-- **Done:** step 1, plus Decisions 9 and 10 (commits 0d51869e, 89e3ebfc, and a plan-review fix commit after them). Plan
-  review of 9-10: 0 must-fix; its findings 2-4 were fixed; its finding 1 (Müller Licht keyed on the maker on one report)
-  became Decision 11. The first PR audit (CLEAN, 2 Lows) is stale: it predates Decisions 9-11. The PR is back to
-  draft.
-- **Next:**
-  1. Implement Decision 11 with one Opus implementer. Remove the `muller_licht` class (classes.py, tests, the
-     transcripts' Müller Licht segments via `scripts/gen_transcripts.py`, devices.yaml, index.md's `### Müller Licht`,
-     regenerate with `scripts/gen_compat.py`). In `internals.md`, record Müller Licht as reported and unkeyed beside
-     Livarno. Write `docs/integrations/hue/research/2026-11-25-color-mode-misread.md` (dated, the two core issues'
-     reporters, models, firmware, the maintainer's findings, the disputed Hue-app claim, the Pro controller that
-     didn't show it) and cite it from the Gledopto split-off. Make the two `evidence.md` edits Decision 11 names.
-     Check: `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check`.
-  2. A fresh Opus `plan-reviewer` on the range from this Handoff's commit to HEAD, with Decisions 9-11.
-  3. `audit-gate brief pr`, an Opus auditor, `audit-gate record`, `audit-gate status`, then `owner-findings`.
-  4. Rewrite the PR body's summary for Decisions 9-11 (it still describes a GL-C-008P class), then `gh pr ready 619`.
-     Don't merge: Jason reviews the `evidence.md` route wording and merges.
-  Post nothing on #617. Its reply waits for Jason's yes, and should ask for the `product_data` of a GL-C-008P and of
-  a Müller Licht light on a Hue bridge.
+- **Next:** Jason reviews the `evidence.md` route wording and merges. Post nothing on #617 until Jason approves the
+  reply, which asks for the `product_data` of a GL-C-008P and of a Müller Licht light on a Hue bridge.
 - **Open decisions:** none.
 - **Branch / worktree / PR:** `wt/hue-other-brands`, `deviceside-wt/hue-other-brands`, #619.
