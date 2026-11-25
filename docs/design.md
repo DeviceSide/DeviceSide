@@ -131,7 +131,9 @@ Facts from HA core this rests on:
 - Schemas use `probatio` and reuse `light.const.LIGHT_TURN_ON_SCHEMA` entries, so ranges never drift from core,
   bar brightness: it is a percent in every action, as in Hue Smooth Dimming. `turn_on_for` converts it to 1–255 where
   it calls `light.turn_on`, never to 0, and never as `brightness_pct`, which core (`light/helper.py`) rounds to 0
-  below 0.2%.
+  below 0.2%. 0.4 % is level 1, the lowest a light takes, and every level 1–254 is reachable: no shared conversion
+  raises the floor. A device, or a layer below DeviceSide, that can't reach level 1 is a device fact in its bundle's
+  `internals.md` and a class limit in its `index.md`.
 
 ### core/
 

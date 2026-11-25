@@ -3,7 +3,15 @@ move. Each action's adapter is a Z2MRamp.
 
 Saturation is a color with no hue, which zigbee-herdsman-converters' light_color sends as MoveToSaturation: the stop of
 an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one halted by StopMoveStep doesn't
-(docs/integrations/zigbee2mqtt/internals.md, Tested behavior)."""
+(docs/integrations/zigbee2mqtt/internals.md, Tested behavior).
+
+A lower to level 1 goes raw to lights whose class holds it (families/hue and families/aqara, RAW_BOTTOM), every light
+it reaches, a group of Hue and Aqara lights included: the converter sends level 1 as 2 where every light's definition
+has turnsOffAtBrightness1 (a group only when all its members' do), and a Hue bulb holds 1; it sends it as
+moveToLevelWithOnOff, which switched an unflagged Aqara bulb off. A group with any other light keeps the converter.
+The raw call is a moveToLevel, not the converter's moveToLevelWithOnOff, which turns a light off at the minimum (rig
+probe 2026-11-25); it publishes no state, which the end read-back makes up. A raise from off keeps the converter's
+bottom, level 2, which the fade up hides (internals.md, `fade`)."""
 
 import logging
 from collections.abc import Coroutine
@@ -17,10 +25,12 @@ from homeassistant.helpers import entity_registry as er
 
 from .adapter import Z2MAdapter
 from .addressing import known_base, not_addressable, topic, z2m_address
-from .bridge import has_feature, publish, publish_set
-from .classes import class_scope
+from .bridge import LEVEL_CLUSTER, has_feature, publish, publish_set, raw_command
+from .classes import capability, class_scope
 from .color_refresh import refresh_color
+from .families.aqara import RAW_BOTTOM as AQARA_RAW_BOTTOM
 from .families.hue import NEED
+from .families.hue import RAW_BOTTOM as HUE_RAW_BOTTOM
 from .members import member_lights, unaddressable
 from .native_control import native_control
 from .set_check import checked
@@ -45,6 +55,9 @@ from ...core.zcl import HUE_STEPS
 from ...core.zcl_fade import brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
+
+# The classes a lower sends level 1 raw to, each family's own set with its evidence; set_attributes uses Hue's alone.
+RAW_BOTTOM = HUE_RAW_BOTTOM | AQARA_RAW_BOTTOM
 
 # Z2M reads a light back within 0.7 s of a stop, and once a fade has run its published end value is right.
 SETTLE_SECONDS = 2.0
@@ -185,7 +198,7 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
                 return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
             if await lacks_color(hass, request, lights):
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped")
-            if isinstance(outcome := plan(cache, request, target, lights), str):
+            if isinstance(outcome := plan(hass, cache, request, target, lights), str):
                 return self.result(target, Status.UNCHANGED, detail=outcome)
             try:
                 await start(hass, cache, target, lights, outcome, NEED.get(self.action))
@@ -200,10 +213,12 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
 type HueMove = tuple[int, float | None]  # hue_move's signed rate, and the sweep_time used where it was clamped
 
 
-def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | HueMove | str:
+def plan(
+    hass: HomeAssistant, cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]
+) -> Fade | HueMove | str:
     """The attribute's fade or hue move, or why it has none to make."""
     if request.attribute == BRIGHTNESS_FIELD:
-        return brightness_fade(cache, request, target, lights)
+        return brightness_fade(hass, cache, request, target, lights)
     if request.attribute == SATURATION:
         return saturation_fade(cache, request, target, lights)
     return hue_rate(request) if lit(cache, lights) else "off"
@@ -297,8 +312,11 @@ async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Ta
     )
 
 
-def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
-    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg)."""
+def brightness_fade(
+    hass: HomeAssistant, cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]
+) -> Fade | str:
+    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg); a lower to
+    level 1 raw where every light it reaches holds it (raw_bottom)."""
     if isinstance(leg := brightness_leg(cache, request, lights), str):
         return leg
     up, limit, lit_lights = request.up, leg.limit, leg.lit
@@ -311,8 +329,25 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
     before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
+    if not up:
+        payload = raw_bottom(hass, payload, lights)
     return Fade(
         BRIGHTNESS_FIELD, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before, leg.clamped_to
+    )
+
+
+def raw_bottom(hass: HomeAssistant, payload: dict, reached: list[Target]) -> dict:
+    """A lower's publish, or where it carries level 1 and every light it reaches is of a class that holds it
+    (RAW_BOTTOM: Hue and Aqara), a raw moveToLevel to level 1 with the converter's transtime and options: the
+    converter's moveToLevelWithOnOff would turn the light off at the minimum. A group reaches its members; one with
+    another brand's light keeps the converter."""
+    if payload.get("brightness") != 1 or not all(capability(hass, light) in RAW_BOTTOM for light in reached):
+        return payload
+    transtime = round(payload["transition"] * 10)  # the converter's: transition in tenths
+    return raw_command(
+        LEVEL_CLUSTER,
+        "moveToLevel",
+        {"level": 1, "transtime": transtime, "optionsMask": 0, "optionsOverride": 0},
     )
 
 

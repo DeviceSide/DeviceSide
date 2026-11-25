@@ -30,7 +30,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
-from ...conftest import Clock, leaked, unload_mock_entries
+from ...conftest import Clock, allow_labs, leaked, unload_mock_entries
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import (
     DEFAULT_BASE,
@@ -345,6 +345,40 @@ SET = f"zigbee2mqtt/{IEEE}/set"
 GET = f"zigbee2mqtt/{IEEE}/get"
 # An off light is put here first, so a fade from off starts at the bottom, not the level it kept.
 BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
+
+
+def level_1(transtime: int) -> dict:
+    """Level 1 as a lower sends it to Hue and Aqara lights alone: a raw moveToLevel, as the converter would send 2, and
+    its moveToLevelWithOnOff would turn the light off at the minimum (fade.raw_bottom)."""
+    return {
+        "command": {
+            "cluster": "genLevelCtrl",
+            "command": "moveToLevel",
+            "payload": {"level": 1, "transtime": transtime, "optionsMask": 0, "optionsOverride": 0},
+        }
+    }
+
+
+def bottom_target(hass, broker, kind: str, **options) -> tuple[str, str]:
+    """A fade's target at the bottom and the topic it publishes to: a Hue light, an Aqara light, a group of Hue lights,
+    a group of Aqara and Hue lights, a group with an Innr light (Hue and Innr, or Aqara and Innr), or an Innr light
+    alone (`other`, in Labs)."""
+    allow_labs(hass)
+    brands = {
+        "hue_group": ("Philips", "Philips"),
+        "aqara_hue_group": ("Aqara", "Philips"),
+        "mixed_group": ("Philips", "Innr"),
+        "aqara_other_group": ("Aqara", "Innr"),
+    }
+    if kind in brands:
+        one, two = brands[kind]
+        return (
+            group(hass, broker, one=options | {"manufacturer": one}, two=options | {"manufacturer": two}),
+            "zigbee2mqtt/7/set",
+        )
+    brand = {"other_light": "Innr", "aqara_light": "Aqara"}.get(kind, "Philips")
+    return light(hass, broker, manufacturer=brand, **options), SET
+
 
 # The inching families' shared test inputs: the composite and switch exposes Z2M lists, and the call's data and topic.
 COMPOSITE = {"type": "composite", "name": "inching_control_set", "property": "inching_control_set", "access": 2}

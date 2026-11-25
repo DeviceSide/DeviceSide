@@ -41,6 +41,9 @@ publishes as it connects.
 Signify's Hue devices (manufacturer `Philips`). A Hue smart plug gets no turn on with timer
 ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)).
 
+Smooth dimming lowers a Hue bulb to its lowest brightness, 0.4 %, by sending it directly, where Zigbee2MQTT alone
+stopped at 0.8 % in a test; sent directly, a bulb held 0.4 % lit in a test ([Lowest brightness](#lowest-brightness)).
+
 ### Tuya
 
 Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). Most run
@@ -229,6 +232,9 @@ other features aren't built yet, and DeviceSide refuses them, even with Labs on:
 - **Turn on with timer:** the bulb ignored a timed on from off and stayed off, so it isn't built
   ([probe](research/aqara/2026-11-25-agl003-probe.md), section 3).
 
+Smooth dimming lowers this bulb to 0.4 % directly, as it does a Hue bulb ([Lowest brightness](#lowest-brightness)). On the
+rig a lower to 0.4 % held it lit ([records](test-records/)), where Zigbee2MQTT's own command switched it off.
+
 Set attributes on this bulb can time out. In the probe, `set_attributes` sent at once after a turn off timed out in 1
 of 10 runs (the call failed with no reply from Zigbee2MQTT and the values didn't land), and sent after Home Assistant
 showed the bulb off, about 0.1 s later, in 0 of 10. The cause is unexplained ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
@@ -265,6 +271,8 @@ lights turn on and never off, and most plugs ignore the timer. If you try them, 
 not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug.
+
+Some Innr and ADEO lights stop at 0.8 % ([Lowest brightness](#lowest-brightness)).
 
 ## What DeviceSide changes in Zigbee2MQTT
 
@@ -327,6 +335,22 @@ nothing is read back.
 **Cancelling.** By Tuya's spec, turning the device on cancels the timer, as any change of its on/off state does, and a
 new timer replaces the old one. Turning off a device already off changes nothing on it, so Tuya's spec doesn't say it
 cancels the timer (untested).
+
+## Lowest brightness
+
+A light's lowest brightness is 0.4 %. Zigbee2MQTT sends 0.8 % in its place to a light whose definition says it turns
+off at 0.4 %, which every Hue bulb's does, and to a group only when every member's does
+([internals](internals.md#fade)):
+
+- **Hue and Aqara bulbs, and groups of them alone:** a lower sends 0.4 % directly, with the command Flash-free turn-on
+  uses. In a test it held a Hue bulb, and a Hue group's lit bulbs, at 0.4 %, and left a group's off bulb off; an Aqara
+  T2 bulb held 0.4 % lit the same way ([internals](internals.md#fade)).
+- **Other lights not so flagged:** a lower to 0.4 % switches them off, since Zigbee2MQTT sends the lowest level with
+  its on/off command and DeviceSide sends the raw command to Hue and Aqara bulbs alone ([internals](internals.md#fade)).
+- **A group that mixes them with other lights** gets what Zigbee2MQTT sends: 0.8 % when every member's definition is
+  flagged. Otherwise the on/off command to 0.4 % switches the group's lit lights off, and lights its off members.
+- **Other lights so flagged stop at 0.8 %:** some Innr, ADEO, IKEA, Gledopto and Aqara lights. Innr's are reported
+  to turn off at 0.4 %.
 
 ## Smooth color changes
 
