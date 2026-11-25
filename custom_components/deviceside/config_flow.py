@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from dataclasses import dataclass
 from urllib.parse import quote, urlencode
@@ -15,6 +16,7 @@ from homeassistant.helpers.selector import (
 )
 from homeassistant.loader import async_get_integration
 
+from . import coverage
 from .const import (
     CONF_LABS,
     CONF_PREDICTED_STATE,
@@ -265,10 +267,13 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_ids: list[str])
 
 
 class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
-    """A menu: the settings page, whose saving reloads the entry so the next action runs with them, and the issue
-    forms, each prefilled from the entities picked."""
+    """A menu: the settings page (with the device coverage), whose saving reloads the entry so the next action runs
+    with them, and the issue forms, each prefilled from the entities picked."""
 
     _issue_url: str = ""
+
+    _wait: asyncio.Task[None] | None = None
+    _waited = False
 
     async def async_step_init(self, user_input=None):
         return self.async_show_menu(step_id="init", menu_options=["settings", *_FORMS_BY_STEP])
@@ -306,21 +311,46 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
         )
 
     async def async_step_settings(self, user_input=None):
+        """What DeviceSide runs on each light and switch, above the options, Labs first. Saving reloads the entry
+        only if an option changed (OptionsFlowWithReload). First, while an integration is still listing its devices
+        (coverage.waiting), HA's progress spinner for at most coverage.WAIT_S."""
         if user_input is not None:
             return self.async_create_entry(data=user_input)
+        if not self._waited:
+            if self._wait is None and (pending := coverage.waiting(self.hass)):
+                self._wait = self.hass.async_create_task(coverage.settle(pending))
+            if self._wait is not None:
+                if not self._wait.done():
+                    return self.async_show_progress(
+                        step_id="settings", progress_action="waiting_for_devices", progress_task=self._wait
+                    )
+                self._waited = True
+                return self.async_show_progress_done(next_step_id="settings")
+            self._waited = True
 
         options = self.config_entry.options
+        labs = options.get(CONF_LABS, LABS_DEFAULT)
+        found = await coverage.collect(self.hass)
         return self.async_show_form(
             step_id="settings",
             data_schema=vol.Schema(
                 {
+                    vol.Required(CONF_LABS, default=labs): bool,
                     vol.Required(
                         CONF_PREDICTED_STATE, default=options.get(CONF_PREDICTED_STATE, PREDICTED_STATE_DEFAULT)
                     ): bool,
                     vol.Required(
                         CONF_Z2M_COLOR_MODES, default=options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
                     ): bool,
-                    vol.Required(CONF_LABS, default=options.get(CONF_LABS, LABS_DEFAULT)): bool,
                 }
             ),
+            description_placeholders={
+                "coverage": coverage.section(self.hass, found),
+                # What Labs would add: said only while Labs is off and something is in Labs.
+                "labs_adds": (
+                    f"Turn on Labs: adds {found.features_in_labs} features on {found.devices_in_labs} devices. "
+                    if not labs and found.features_in_labs
+                    else ""
+                ),
+            },
         )

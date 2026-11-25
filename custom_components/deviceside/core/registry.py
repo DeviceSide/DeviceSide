@@ -17,6 +17,10 @@ from .. import integrations as integrations_pkg
 _LOGGER = logging.getLogger(__name__)
 # A GitHub handle: alphanumerics and single inner hyphens, at most 39 characters, no leading @.
 HANDLE = re.compile(r"[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}")
+# The integrations in the order of the README's device cards and the feature table: each bundle's `column_order`
+# (docs/integrations/<x>/devices.yaml), which the coverage view lists them in at runtime, where the bundles aren't
+# shipped. tests/test_card_order.py keeps the two equal.
+CARD_ORDER = ("zigbee2mqtt", "zha", "shelly", "hue", "matter", "control4")
 # A family's key names its package (integrations/<x>/families/<key>/), so it is shaped like one.
 FAMILY_KEY = re.compile(r"[a-z][a-z0-9_]*")
 

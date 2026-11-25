@@ -63,9 +63,9 @@ jobs:
           }
           if [ "$README" = true ]; then
             comment '<!-- protected-files:readme -->' "❌ This pull request changes the hand-written text of \`README.md\`
-          (outside its generated feature table and device cards) alongside other files. Please revert that part here and
-          propose it in a separate pull request that changes only \`README.md\`. Regenerating the table and cards with
-          \`scripts/gen_features.py\` and \`scripts/gen_compat.py\` in this pull request is fine."
+          (outside its generated device cards) alongside other files. Please revert that part here and
+          propose it in a separate pull request that changes only \`README.md\`. Regenerating the cards with
+          \`scripts/gen_compat.py\` in this pull request is fine."
           fi
           if [ "$MANIFEST" = true ]; then
             comment '<!-- protected-files:manifest -->' "⚠️ This pull request changes

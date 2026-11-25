@@ -102,7 +102,7 @@ jobs:
       - name: Check the standard lights table and its page are current
         run: .venv/bin/python scripts/zhc_table.py --check
 
-      - name: Check the README feature table is current
+      - name: Check the feature table is current
         run: .venv/bin/python scripts/gen_features.py --check
 
       - name: Check CODEOWNERS and the device report dropdown are current
