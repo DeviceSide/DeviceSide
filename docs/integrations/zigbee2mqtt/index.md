@@ -233,9 +233,28 @@ Set attributes on this bulb can time out. In the probe, `set_attributes` sent at
 of 10 runs (the call failed with no reply from Zigbee2MQTT and the values didn't land), and sent after Home Assistant
 showed the bulb off, about 0.1 s later, in 0 of 10. The cause is unexplained ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
 
+### Standard lights
+
+Other brands' lights whose Zigbee2MQTT device definition sends DeviceSide's commands through the converters Zigbee2MQTT
+uses for most lights, with no change for that model: [the list](standard-lights.md), built from a
+zigbee-herdsman-converters release (the library that holds Zigbee2MQTT's device support). A light of a brand with a
+section of its own here, such as Hue, IKEA or Tuya, stays there. Zigbee2MQTT's own users send the same dimming, stop
+and color moves through the same converters, and no Zigbee2MQTT or zigbee-herdsman-converters report names one of these
+lights failing them, so that usage is their evidence, in place of a DeviceSide test run
+([survey](../../research/2026-11-25-z2m-converter-survey.md)). They get smooth dimming and stop, smooth color changes,
+and get and set attributes. Get and set attributes are DeviceSide's own commands, not Zigbee2MQTT's: they qualify as
+every failure reported for them shows as an error, never as a light quietly doing something else. Smooth hue and
+saturation changes need a light that exposes Zigbee2MQTT's `color_hs`; one without is left unchanged
+(`fields_dropped`), and the list's column says which do. Turn on with timer isn't built, as for other brands.
+
+To check a light, open its device page in Zigbee2MQTT and look for its **Model** in [the list](standard-lights.md). A
+light a report shows failing one of these commands is listed apart, with the report, and stays with
+[other brands](#other-brands).
+
 ### Other brands
 
-Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable
+Lights of every other brand, such as Innr, and their plugs and switches. Lights on the
+[standard lights](#standard-lights) list have their own section. A Zigbee 3.0 certified dimmable
 light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they get
 exactly as a Hue bulb does, so they take smooth dimming and stop. Their lights also take Get attributes and Set
 attributes in Labs: no other brand's light is reported to come on when written while off, an older bulb that rejects

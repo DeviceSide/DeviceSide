@@ -110,6 +110,45 @@ probed on Z2M:
 `moveToLevelWithOnOff` from off is untested on the Sengled. The `sengled` family holds no scope, so no feature is
 built for it, until a Sengled run.
 
+### `standard_lights`
+
+The table the `standard_light` class keys on (`classes.py`; the rule is last in `families/__init__.py`, after every
+family's, so a family keeps its own lights). Evidence: [the converter survey](../../research/2026-11-25-z2m-converter-survey.md).
+
+- **Membership.** A zigbee-herdsman-converters (ZHC) light definition (its resolved exposes hold a `light`), resolved
+  with ZHC's own `prepareDefinition`, as Z2M runs it, whose converter for every key DeviceSide publishes is ZHC's
+  standard one: `state` and `brightness` on `light_onoff_brightness` (`state` on `on_off` only for a light with
+  no brightness: `on_off` beside a brightness converter sends a plain On or Off, the departure ZHC fixed on Inovelli
+  and Legrand), `transition` on `ignore_transition`, `color` on `light_color` or `light_color_colortemp`,
+  `hue_move` on `light_hue_saturation_move`, `brightness_move` on `light_brightness_move`, and the generic
+  `command` and `read`. Its `meta` sets no flag but those that leave DeviceSide's calls alone
+  (`supportsHueAndSaturation`, `multiEndpoint`, `multiEndpointSkip`, `applyRedFix`, `disableActionGroup`,
+  `overrideHaDiscoveryPayload`, `thermostat`), so `turnsOffAtBrightness1` (the brightness floor), the option-field,
+  enhanced-hue and default-response flags keep a definition out, and so does a flag ZHC adds, until a maintainer has
+  read it. One exposing `color_hs` without `supportsHueAndSaturation` is out, as its saturation fade goes out as
+  `moveToColor`, not the call on record. A definition model is the key, with each white label that has a fingerprint
+  (Z2M publishes its model when the fingerprint matches); a model string two definitions publish is left out.
+- **The table** is `standard_lights.py`: between its markers, generated, the ZHC release and `MODELS`; outside them,
+  hand-kept, `EXCLUDED` (a split-off, its action and source, keyed on the definition model, as no rule reads
+  firmware) and `KEPT` (a departure a maintainer kept, with the reason). `docs/integrations/zigbee2mqtt/standard-lights.md`
+  is rendered from it. At ZHC v26.137.0: 778 model strings in the class; of `other`'s 851 light definitions (by
+  DeviceSide's rules on what a definition shows), 639 are members and 625 after the split-offs, against the survey's
+  642 of 848 (by vendor string).
+- **The bump**, the first item of each RC (the release skill): `scripts/zhc_table.py --pin <ZHC release>` clones and
+  builds ZHC at the tag, resolves its definitions (`scripts/zhc_table/resolve.mjs`), rewrites the table and the page,
+  and prints the bump PR's body: additions; departures, each **review** when the model was a member at the last full
+  release, else **leaves**; and trait changes on the families' definitions, flagged, never classifying, which builds
+  the previous pin too. Family is read off what a definition shows (its vendor, models, fingerprints and exposes, and
+  IKEA's Zigbee manufacturer string tried on IKEA's), so it is approximate. `--check`, in the Tests workflow, needs
+  no network. `scripts/check_audit.py` fails an RC cut from `main` whose pin hasn't moved since the previous RC
+  tag, unless its audit record says `ZHC bump skipped: <reason>`.
+- **The option fields.** ZHC's own light converters send `optionsMask` and `optionsOverride` 0/0; DeviceSide's
+  `set_attributes` builds a raw `command` with 1/1 (ExecuteIfOff), and `get_attributes` a raw `read`, which no
+  light flag touches. So those two aren't on Z2M's usage. They qualify as every known failure is visible to the
+  caller: a light that rejects the option fields answers MALFORMED_COMMAND, which raises; a write that doesn't land
+  fails the read-back (`not_stored`); an attribute the light lacks fails the read (UNSUPPORTED_ATTRIBUTE). The one
+  silent case, `disableDefaultResponse`, keeps a definition out.
+
 ### `color_modes`
 
 The Home Assistant override is set to `xy`, `hs` and, where present, `color_temp`, on lights
