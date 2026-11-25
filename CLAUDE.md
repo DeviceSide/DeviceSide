@@ -78,7 +78,8 @@ in it (`integrations/<x>/families/<family>/`, `tests/integrations/<x>/families/<
 `docs/integrations/<x>/research/<family>/`) belongs to the handles in its `Family.maintainers` as well, which may be
 none; a catalog file (`custom_components/deviceside/zigbee/<family>.py` and its test) to the maintainers of every
 family of that key and of those families' integrations. `zigbee/reasons.py` and its test belong to the maintainers of
-every integration with a family whose key has a catalog file, never to a family's.
+every integration with a family whose key has a catalog file, never to a family's; `zigbee/standard_lights.py` and its
+test, to those of every integration that imports it.
 
 A PR merges on one maintainer's approval or `/merge`, and green CI, when that maintainer owns every file it changes;
 a file none of them owns (`core/`, shared docs, `docs/models.yaml`) needs a repo maintainer. Regenerated output follows

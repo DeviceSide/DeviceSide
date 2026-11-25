@@ -10,10 +10,11 @@ line, so the per-integration lines must follow `*`.
 
 A family (`IntegrationInfo.families`) with maintainers of its own gets its paths after its integration's: its package,
 its tests and its research folder, to its maintainers, then the integration's, then the repo's. A catalog file, which
-the stacks' families of one key share, goes to those families' maintainers and their integrations'. The catalog's
-shared files go to the maintainers of every integration that reads the catalog (has a family of a key with a catalog
-file), never a family's: they word what every such family's devices are told. Their lines
-follow the catalog's, so they win over a family keyed for one. Each of these lines is written only when it names an
+the stacks' families of one key share, goes to those families' maintainers and their integrations'. The catalog's shared
+files go to the maintainers of every integration that reads the catalog (has a family of a key with a catalog file),
+never a family's: they word what every such family's devices are told. Their lines follow the catalog's, so they win
+over a family keyed for one. A catalog module an integration imports outside any family (`IMPORTED_CATALOG_PATHS`) goes
+to the maintainers of every integration whose package imports it. Each of these lines is written only when it names an
 owner the line enclosing it doesn't, so a family with `maintainers=()` adds none.
 
 `REPO_MAINTAINERS` also has to match `manifest.json`'s `codeowners`, which HA shows as the integration's owners; the
@@ -72,6 +73,16 @@ SHARED_CATALOG_PATHS = (
     "custom_components/deviceside/zigbee/reasons.py",
     "tests/zigbee/test_reasons.py",
 )
+# The catalog's modules an integration imports outside any family, by name, with their paths: each goes to the
+# maintainers of every integration whose package imports it (`IMPORTS`), never a family's.
+IMPORTED_CATALOG_PATHS = {
+    "standard_lights": (
+        "custom_components/deviceside/zigbee/standard_lights.py",
+        "tests/zigbee/test_standard_lights.py",
+    ),
+}
+# An import of catalog module `{module}` in an integration's code: `zigbee.<module>`, or `zigbee import ... <module>`.
+IMPORTS = r"\bzigbee(?:\.{module}\b|\s+import\s+\(?[\w\s,]*?\b{module}\b)"
 
 
 def owners(*maintainers: str) -> str:
@@ -125,7 +136,24 @@ def generate(registry: AdapterRegistry, repo: Path = REPO) -> str:
         for line in lines_for(CATALOG_PATHS, [*theirs, *integrations], (), repo, family=family)
     ] + lines_for(SHARED_CATALOG_PATHS, readers, (), repo):
         lines += ["", *shared_lines]
+    if imported_lines := [
+        line
+        for module, paths in IMPORTED_CATALOG_PATHS.items()
+        for line in lines_for(paths, importers(registry, module, repo), (), repo)
+    ]:
+        lines += ["", *imported_lines]
     return "\n".join(lines) + "\n"
+
+
+def importers(registry: AdapterRegistry, module: str, repo: Path = REPO) -> list[str]:
+    """The maintainers of each integration whose package imports the catalog module."""
+    pattern = re.compile(IMPORTS.format(module=re.escape(module)))
+    return [
+        handle
+        for key in sorted(registry.integrations)
+        if any(pattern.search(path.read_text()) for path in (repo / PATHS[0].format(key=key)).rglob("*.py"))
+        for handle in registry.integrations[key].maintainers
+    ]
 
 
 def plain_title(info) -> str:
