@@ -49,7 +49,7 @@ hostnames in commits, docs or research files.
    a record holds cases run on different profiles is a design call. Check: the rig's own pytest, and a dry staging of
    the 23:29 run's results showing Hue's group rows kept and the Aqara rows added. Add it to Coordination's Depends-on.
 3. **`aqara` family** (Decision 3), in Labs first. `families/aqara/__init__.py` on the `sengled` pattern
-   (`Family(key="aqara", maintainers=(), classes={AQARA: {Platform.LIGHT}})`, a `Rule` on `manufacturer: Aqara`);
+   (`Family(key="aqara", maintainers=(), classes={AQARA: {Platform.LIGHT}})`, a `Rule` on `zigbee_manufacturer: Aqara`, as Z2M's vendor `Aqara` also covers `LUMI`-string lights);
    added to `FAMILIES` and `RULES` in `families/__init__.py` after Tuya's Zigbee rules, with the order comment;
    `labs(...)` on the actions `other` takes today, plus whatever step 1 admits; refusal entries per Decision 2 in
    `refusals.py` (integration path, integration maintainer). Classification test and snapshot
