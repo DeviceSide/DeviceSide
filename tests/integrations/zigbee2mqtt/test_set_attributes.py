@@ -135,6 +135,23 @@ async def test_a_level_also_replaces_the_level_z2m_keeps(hass, broker):
     assert published == [level(102), mireds(370), keep(102)]
 
 
+@pytest.mark.parametrize(
+    ("on", "published"),
+    [
+        pytest.param(False, [level(1), keep(1)], id="off_replaces_the_kept_level"),
+        # The raw write has moved a lit bulb: through Z2M's converter, a Hue bulb's level 1 would go out as 2.
+        pytest.param(True, [level(1)], id="lit_sends_the_write_alone"),
+    ],
+)
+async def test_the_kept_level_is_replaced_only_on_a_light_that_is_off(hass, broker, on, published):
+    bulb(hass, broker, modes=DIMMABLE, on=on)
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 0.4})
+
+    assert response == {"light.lamp": CONFIRMED}
+    assert [p["payload"] for p in broker.published if p["topic"] == SET and "read" not in p["payload"]] == published
+
+
 async def test_no_level_keeps_nothing(hass, broker):
     bulb(hass, broker, modes=CT, on=False)
 
@@ -330,12 +347,26 @@ async def test_a_group_is_one_groupcast_read_back_from_every_member(hass, broker
 
     assert response == {"light.room": CONFIRMED}
     assert sent(broker) == [(GROUP_SET, level(102)), (GROUP_SET, mireds(370))]
-    assert kept(broker) == [(GROUP_SET, keep(102))]
+    assert kept(broker) == [(GROUP_SET, keep(102))]  # light.two is off
     assert reads(broker) == [
         ("zigbee2mqtt/0x01/set", "genLevelCtrl", ["currentLevel"]),
         ("zigbee2mqtt/0x01/set", "lightingColorCtrl", ["colorMode", "colorTemperature"]),
         ("zigbee2mqtt/0x02/set", "genLevelCtrl", ["currentLevel"]),  # no color temperature: not read
     ]
+
+
+async def test_a_group_whose_members_are_all_lit_keeps_no_level(hass, broker):
+    bulb(hass, broker, "light.one", ieee="0x01", modes=DIMMABLE)
+    bulb(hass, broker, "light.two", ieee="0x02", modes=DIMMABLE)
+    add_z2m_group(hass, hass.config_entries.async_entries("mqtt")[0], "light.room", group_id=7, name="room")
+    hass.states.async_set("light.room", "on", {"supported_color_modes": DIMMABLE})
+    broker.retained[GROUPS] = [{"id": 7, "members": [{"ieee_address": "0x01"}, {"ieee_address": "0x02"}]}]
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.room", "brightness": 40})
+
+    assert response == {"light.room": CONFIRMED}
+    assert sent(broker) == [(GROUP_SET, level(102))]
+    assert kept(broker) == []
 
 
 async def test_a_group_with_a_member_that_ignores_the_override_is_rejected(hass, broker):

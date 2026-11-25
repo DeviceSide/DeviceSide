@@ -1276,7 +1276,7 @@
      "mqtt.async_publish",
      [
       "zigbee2mqtt/0x00124b0012345678/set",
-      "{\"state\": \"ON\", \"brightness\": 1, \"transition\": 0}"
+      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevelWithOnOff\", \"payload\": {\"level\": 1, \"transtime\": 0, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
      ],
      {}
     ],
@@ -1577,6 +1577,356 @@
    },
    "targets": [
     [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"ON\", \"brightness\": 1, \"transition\": 0}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"ON\", \"brightness\": 254, \"transition\": 5.0}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue",
+     "other"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "zigbee2mqtt",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "other"
+    },
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/groups"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"id\": 7, \"members\": [{\"ieee_address\": \"0x01\"}, {\"ieee_address\": \"0x02\"}]}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/groups"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/groups"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"id\": 7, \"members\": [{\"ieee_address\": \"0x01\"}, {\"ieee_address\": \"0x02\"}]}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/groups"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/response/group/options"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/info"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}, \"0x01\": {}, \"0x02\": {}}, \"groups\": {}}}",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/info"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevelWithOnOff\", \"payload\": {\"level\": 1, \"transtime\": 0, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/7/set",
+      "{\"state\": \"ON\", \"brightness\": 254, \"transition\": 1.0}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue",
+     "other"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "zigbee2mqtt",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "other"
+    },
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/groups"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"id\": 7, \"members\": [{\"ieee_address\": \"0x01\"}, {\"ieee_address\": \"0x02\"}]}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/groups"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/groups"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"id\": 7, \"members\": [{\"ieee_address\": \"0x01\"}, {\"ieee_address\": \"0x02\"}]}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/groups"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/response/group/options"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/info"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}, \"0x01\": {}, \"0x02\": {}}, \"groups\": {}}}",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/info"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/7/set",
+      "{\"state\": \"ON\", \"brightness\": 1, \"transition\": 0}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/7/set",
+      "{\"state\": \"ON\", \"brightness\": 254, \"transition\": 5.0}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
      "light.room",
      "light.room",
      true
@@ -1688,7 +2038,7 @@
      "mqtt.async_publish",
      [
       "zigbee2mqtt/0x02/set",
-      "{\"state\": \"ON\", \"brightness\": 1, \"transition\": 0}"
+      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevelWithOnOff\", \"payload\": {\"level\": 1, \"transtime\": 0, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
      ],
      {}
     ],
@@ -1833,7 +2183,7 @@
      "mqtt.async_publish",
      [
       "zigbee2mqtt/7/set",
-      "{\"state\": \"ON\", \"brightness\": 1, \"transition\": 0}"
+      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevelWithOnOff\", \"payload\": {\"level\": 1, \"transtime\": 0, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
      ],
      {}
     ],

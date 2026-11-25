@@ -346,6 +346,22 @@ GET = f"zigbee2mqtt/{IEEE}/get"
 # An off light is put here first, so a fade from off starts at the bottom, not the level it kept.
 BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
+
+def level_1(transtime: int) -> dict:
+    """Level 1 as a fade sends it to Hue lights alone: the converter's moveToLevelWithOnOff, raw, as the converter would
+    send 2 (fade.raw_bottom)."""
+    return {
+        "command": {
+            "cluster": "genLevelCtrl",
+            "command": "moveToLevelWithOnOff",
+            "payload": {"level": 1, "transtime": transtime, "optionsMask": 0, "optionsOverride": 0},
+        }
+    }
+
+
+# BOTTOM, to Hue lights alone.
+RAW_BOTTOM = level_1(0)
+
 # The inching families' shared test inputs: the composite and switch exposes Z2M lists, and the call's data and topic.
 COMPOSITE = {"type": "composite", "name": "inching_control_set", "property": "inching_control_set", "access": 2}
 STATE = {"type": "switch", "features": [{"name": "state", "property": "state"}]}

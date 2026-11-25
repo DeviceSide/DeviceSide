@@ -3,7 +3,12 @@ move. Each action's adapter is a Z2MRamp.
 
 Saturation is a color with no hue, which zigbee-herdsman-converters' light_color sends as MoveToSaturation: the stop of
 an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one halted by StopMoveStep doesn't
-(docs/integrations/zigbee2mqtt/internals.md, Tested behavior)."""
+(docs/integrations/zigbee2mqtt/internals.md, Tested behavior).
+
+A brightness publish that carries level 1 goes raw to lights whose class holds it (families/hue, RAW_BOTTOM), every
+light it reaches: the converter sends level 1 as 2 where every light's definition has turnsOffAtBrightness1 (a group
+only when all its members' do), and a Hue bulb holds 1 (internals.md, `fade`). The raw command is the converter's
+own call with level 1 kept, and publishes no state, which the end read-back makes up."""
 
 import logging
 from collections.abc import Coroutine
@@ -17,10 +22,10 @@ from homeassistant.helpers import entity_registry as er
 
 from .adapter import Z2MAdapter
 from .addressing import known_base, not_addressable, topic, z2m_address
-from .bridge import has_feature, publish, publish_set
-from .classes import class_scope
+from .bridge import LEVEL_CLUSTER, has_feature, publish, publish_set, raw_command
+from .classes import capability, class_scope
 from .color_refresh import refresh_color
-from .families.hue import NEED
+from .families.hue import NEED, RAW_BOTTOM
 from .members import member_lights, unaddressable
 from .native_control import native_control
 from .set_check import checked
@@ -185,7 +190,7 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
                 return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
             if await lacks_color(hass, request, lights):
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped")
-            if isinstance(outcome := plan(cache, request, target, lights), str):
+            if isinstance(outcome := plan(hass, cache, request, target, lights), str):
                 return self.result(target, Status.UNCHANGED, detail=outcome)
             try:
                 await start(hass, cache, target, lights, outcome, NEED.get(self.action))
@@ -200,10 +205,12 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
 type HueMove = tuple[int, float | None]  # hue_move's signed rate, and the sweep_time used where it was clamped
 
 
-def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | HueMove | str:
+def plan(
+    hass: HomeAssistant, cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]
+) -> Fade | HueMove | str:
     """The attribute's fade or hue move, or why it has none to make."""
     if request.attribute == BRIGHTNESS_FIELD:
-        return brightness_fade(cache, request, target, lights)
+        return brightness_fade(hass, cache, request, target, lights)
     if request.attribute == SATURATION:
         return saturation_fade(cache, request, target, lights)
     return hue_rate(request) if lit(cache, lights) else "off"
@@ -297,8 +304,11 @@ async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Ta
     )
 
 
-def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
-    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg)."""
+def brightness_fade(
+    hass: HomeAssistant, cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]
+) -> Fade | str:
+    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg); each publish
+    at level 1 raw where every light it reaches holds it (raw_bottom)."""
     if isinstance(leg := brightness_leg(cache, request, lights), str):
         return leg
     up, limit, lit_lights = request.up, leg.limit, leg.lit
@@ -310,9 +320,27 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
         payload = {"state": "ON", **payload} if up else payload
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
-    before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
+    before = tuple(
+        (to, raw_bottom(hass, AT_THE_BOTTOM, lights if to is target else [to]))
+        for to in ([target] if off == lights else off)
+    )
+    payload = raw_bottom(hass, payload, lights)
     return Fade(
         BRIGHTNESS_FIELD, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before, leg.clamped_to
+    )
+
+
+def raw_bottom(hass: HomeAssistant, payload: dict, reached: list[Target]) -> dict:
+    """The brightness publish, or where it carries level 1 and every light it reaches is of a class that holds it
+    (families/hue, RAW_BOTTOM), the converter's own call as a raw command: moveToLevelWithOnOff with its transtime
+    and options, and level 1 kept. A group reaches its members; one with another brand's light keeps the converter."""
+    if payload.get("brightness") != 1 or not all(capability(hass, light) in RAW_BOTTOM for light in reached):
+        return payload
+    transtime = round(payload["transition"] * 10)  # the converter's: transition in tenths
+    return raw_command(
+        LEVEL_CLUSTER,
+        "moveToLevelWithOnOff",
+        {"level": 1, "transtime": transtime, "optionsMask": 0, "optionsOverride": 0},
     )
 
 

@@ -5,8 +5,8 @@ import pytest
 from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
-from .conftest import BOTTOM, GET, SENT, SET, call, commands, group, light
-from ...conftest import advance, result, wall_clock_now
+from .conftest import BOTTOM, GET, RAW_BOTTOM, SENT, SET, call, commands, group, light
+from ...conftest import advance, allow_labs, result, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -54,7 +54,7 @@ async def test_from_off_starts_at_the_bottom(hass, broker):
 
     await call(hass, "raise_brightness", {"entity_id": entity_id})
 
-    assert commands(broker) == [(SET, BOTTOM), (SET, {"state": "ON", "brightness": 254, "transition": 5.0})]
+    assert commands(broker) == [(SET, RAW_BOTTOM), (SET, {"state": "ON", "brightness": 254, "transition": 5.0})]
 
 
 async def test_a_group_with_an_off_member_moves_it_up_from_the_bottom(hass, broker, clock):
@@ -64,7 +64,7 @@ async def test_a_group_with_an_off_member_moves_it_up_from_the_bottom(hass, brok
 
     # From the lit member's 80 %: 1 s. Only the off member is put at the bottom first.
     assert commands(broker) == [
-        ("zigbee2mqtt/0x02/set", BOTTOM),
+        ("zigbee2mqtt/0x02/set", RAW_BOTTOM),
         ("zigbee2mqtt/7/set", {"state": "ON", "brightness": 254, "transition": 1.0}),
     ]
     clock.now += 0.5
@@ -77,7 +77,7 @@ async def test_a_group_all_off_is_put_at_the_bottom_with_one_publish(hass, broke
     await call(hass, "raise_brightness", {"entity_id": room})
 
     assert commands(broker) == [
-        ("zigbee2mqtt/7/set", BOTTOM),
+        ("zigbee2mqtt/7/set", RAW_BOTTOM),
         ("zigbee2mqtt/7/set", {"state": "ON", "brightness": 254, "transition": 5.0}),
     ]
 
@@ -104,4 +104,48 @@ async def test_a_group_is_read_back_member_by_member(hass, broker):
     assert commands(broker)[1:] == [
         ("zigbee2mqtt/0x01/get", {"state": "", "brightness": ""}),
         ("zigbee2mqtt/0x02/get", {"state": "", "brightness": ""}),
+    ]
+
+
+def bottom_target(hass, broker, kind: str, **options) -> tuple[str, str]:
+    """A fade's target at the bottom and the topic it publishes to: a Hue light, a group of Hue lights, a group with an
+    Innr light, or an Innr light alone (`other`, in Labs)."""
+    allow_labs(hass)
+    if kind.endswith("group"):
+        two = options | ({"manufacturer": "Innr"} if kind == "mixed_group" else {})
+        return group(hass, broker, one=options, two=two), "zigbee2mqtt/7/set"
+    return light(hass, broker, manufacturer="Innr" if kind == "other_light" else "Philips", **options), SET
+
+
+@pytest.mark.parametrize(
+    ("kind", "bottom"),
+    [
+        # Z2M's converter would send level 1 as 2 to Philips' definitions (turnsOffAtBrightness1); a Hue bulb holds 1.
+        pytest.param("hue_light", RAW_BOTTOM, id="hue_light"),
+        pytest.param("hue_group", RAW_BOTTOM, id="all_hue_group"),
+        # The converter rewrites a group only when every member's definition is flagged (allEqual): 1 goes out as 1.
+        pytest.param("mixed_group", BOTTOM, id="group_with_another_brand"),
+        pytest.param("other_light", BOTTOM, id="another_brand"),
+    ],
+)
+async def test_from_off_the_bottom_goes_raw_to_hue_lights_alone(hass, broker, kind, bottom):
+    # A raise's lowest limit is 1 %, level 3: the bottom it starts from is the only level 1 it sends.
+    entity_id, to = bottom_target(hass, broker, kind, state="off")
+
+    response = await call(hass, "raise_brightness", {"entity_id": entity_id})
+
+    assert response == {entity_id: SENT}
+    assert commands(broker) == [(to, bottom), (to, {"state": "ON", "brightness": 254, "transition": 5.0})]
+
+
+async def test_a_hue_member_off_in_a_group_with_another_brand_is_put_at_the_bottom_raw(hass, broker):
+    allow_labs(hass)
+    room = group(hass, broker, one={"state": "off"}, two={"brightness": 204, "manufacturer": "Innr"})
+
+    await call(hass, "raise_brightness", {"entity_id": room})
+
+    # The off member's own publish reaches a Hue light alone; the group's carries no level 1.
+    assert commands(broker) == [
+        ("zigbee2mqtt/0x01/set", RAW_BOTTOM),
+        ("zigbee2mqtt/7/set", {"state": "ON", "brightness": 254, "transition": 1.0}),
     ]
