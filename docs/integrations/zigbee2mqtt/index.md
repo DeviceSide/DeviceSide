@@ -41,9 +41,8 @@ publishes as it connects.
 Signify's Hue devices (manufacturer `Philips`). A Hue smart plug gets no turn on with timer
 ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)).
 
-For now, smooth dimming's lowest brightness on a Hue bulb is 0.8 %, not 0.4 %: Zigbee2MQTT sends the lowest level as
-the one above it, by its source, not yet measured ([internals](internals.md#fade)). Sending the lowest level to Hue
-bulbs directly is planned.
+Smooth dimming reaches a Hue bulb's lowest brightness, 0.4 %, where Zigbee2MQTT alone would stop at 0.8 %
+([Lowest brightness](#lowest-brightness)).
 
 ### Tuya
 
@@ -251,8 +250,7 @@ not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug.
 
-Innr and ADEO lights whose Zigbee2MQTT definitions say they turn off at 0.4 % have a lowest brightness of 0.8 %:
-Zigbee2MQTT sends 0.8 % in its place ([internals](internals.md#fade)).
+Some Innr and ADEO lights stop at 0.8 % ([Lowest brightness](#lowest-brightness)).
 
 ## What DeviceSide changes in Zigbee2MQTT
 
@@ -315,6 +313,18 @@ nothing is read back.
 **Cancelling.** By Tuya's spec, turning the device on cancels the timer, as any change of its on/off state does, and a
 new timer replaces the old one. Turning off a device already off changes nothing on it, so Tuya's spec doesn't say it
 cancels the timer (untested).
+
+## Lowest brightness
+
+A light's lowest brightness is 0.4 %. Zigbee2MQTT sends 0.8 % in its place to a light whose definition says it turns
+off at 0.4 %, which every Hue bulb's does, and to a group only when every member's does
+([internals](internals.md#fade)):
+
+- **Hue bulbs, and groups of Hue bulbs alone:** smooth dimming sends 0.4 % directly, since a Hue bulb holds it. A
+  group that mixes Hue bulbs with other lights gets what Zigbee2MQTT sends: 0.8 % when every member's definition is
+  flagged, else 0.4 %.
+- **Other lights so flagged stop at 0.8 %:** some Innr, ADEO, IKEA, Gledopto and Aqara lights. Innr's are reported
+  to turn off at 0.4 %.
 
 ## Smooth color changes
 
