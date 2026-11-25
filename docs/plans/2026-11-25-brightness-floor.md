@@ -75,6 +75,17 @@ wire, and no rig case touches the bottom (lowest limit 30 %; the raise-from-off 
     end read-back, so an off with a transition inside it makes the next plain on return to the pre-fade level. A known
     narrow case in Z2M `internals.md`. (a) is Z2M's own group behavior, recorded there.
 
+11. **(2026-11-25, after step 4's Aqara run) The raw `moveToLevel` bottom goes by evidence: Hue and Aqara.** The
+    Aqara bulb (unflagged, so the converter sends it `moveToLevelWithOnOff` to level 1) reported itself off at the end
+    of `lower_to_the_lowest_level`, and held level 1 lit on `set_attributes`' raw `moveToLevel`: the with-On/Off
+    rule, not a Hue trait. DeviceSide can't read `turnsOffAtBrightness1` (ZHC definition metadata, neither on the bulb
+    nor in Z2M's API), so the rule goes by class. A lower's raw bottom serves every reached light of class `hue` or
+    `aqara`, a mixed Hue and Aqara group included; each family says why its class is in it, and a class joins with its own
+    probe. `set_attributes`' kept-level skip stays Hue's alone (Decision 7: the converter rewrites level 1 only there).
+    `other` keeps the converter, a finding in Z2M `internals.md` (an unflagged light switches off at a lower to
+    0.4 %) with a `docs/deferred.md` line. Caveat: ZHC flags 3 Aqara definitions; one in the `aqara` class would get a
+    raw level 1 untested. Retest: Z2M `lower_brightness` on the Aqara bulb.
+
 The 2026-11-24 research note's aside ("DeviceSide should treat minimum staged level as 2, or skip") is superseded by
 Decision 1; research files aren't edited.
 

@@ -432,6 +432,14 @@ one, the longest.
     converter as 2
     ([L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), 0.8 %.
 
+  **An unflagged light switches off at the converter's bottom** (a finding, Decision 11): a lower to 0.4 % on the Aqara
+  T2 bulb (`lumi.light.agl003`, unflagged) published `{"brightness": 1, "transition": 1.5}`, which the converter sends
+  as `moveToLevelWithOnOff` to level 1, and the bulb reported itself off 2 s later; the same level as a raw
+  `moveToLevel` (`set_attributes`) held it lit, read 1 (rig run 2026-11-25, 13:43, Z2M 2.14.3). With-On/Off to the
+  minimum sets OnOff off, as on the Hue bulb above. DeviceSide can't read the flag, which is ZHC's definition metadata,
+  so the raw bottom serves the classes a probe showed holding level 1 lit (`hue`, `aqara`); every other light keeps
+  the converter, which switches it off at a lower to 0.4 % when its definition isn't flagged.
+
   Other flagged lights keep Z2M's 2, so their lowest is 0.8 %: Innr's turn off at level 1 ([research](research/2026-11-24-other-brands-dimming.md), from Z2M #4035); ADEO's is read from the flag, not reported. IKEA (15 definitions),
   Gledopto (3) and Aqara (3) carry the flag too (ZHC `03b37655`, counted in
   [#610](https://github.com/DeviceSide/DeviceSide/pull/610)'s converter survey). A probe that shows one holds level 1 reopens
