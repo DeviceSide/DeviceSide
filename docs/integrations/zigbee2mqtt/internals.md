@@ -439,9 +439,9 @@ one, the longest.
   minimum sets OnOff off, as on the Hue bulb above. DeviceSide can't read the flag, which is ZHC's definition metadata,
   so the raw bottom serves the classes a probe showed holding level 1 lit (`hue`, `aqara`); every other light keeps
   the converter, which switches an unflagged one off at a lower to 0.4 %, by the ZCL rule that a command with On/Off
-  (`moveToLevelWithOnOff`) to the minimum level sets OnOff off. Caveat: ZHC flags 3 Aqara definitions
-  (`turnsOffAtBrightness1`), not necessarily the T2's; the raw bottom serves the class on the one bulb's evidence
-  (Decision 11), and a flagged Aqara light would hold level 1 lit through it only as the T2 did. A group with an
+  (`moveToLevelWithOnOff`) to the minimum level sets OnOff off. Caveat (Decision 11): ZHC flags 3
+  Aqara definitions (`turnsOffAtBrightness1`); the raw bottom serves the whole class on the T2's evidence, so a flagged
+  definition in it would get a raw level 1 untested. A group with an
   `other` member keeps the converter whole, so its off members light at the lower (`moveToLevelWithOnOff`), an open
   item in [deferred.md](../../deferred.md#the-raw-bottom-for-other-lights-on-zigbee2mqtt).
 

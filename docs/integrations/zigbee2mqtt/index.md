@@ -231,8 +231,8 @@ aren't built yet, and DeviceSide refuses them, even with Labs on:
 - **Turn on with timer:** the bulb ignored a timed on from off and stayed off, so it isn't built
   ([probe](research/aqara/2026-11-25-agl003-probe.md), section 3).
 
-Smooth dimming lowers this bulb to 0.4 % directly, as it does a Hue bulb ([Lowest brightness](#lowest-brightness)): through
-Zigbee2MQTT's own command it switched off there in a test.
+Smooth dimming lowers this bulb to 0.4 % directly, as it does a Hue bulb ([Lowest brightness](#lowest-brightness)). In a
+test the same raw command, sent by set attributes, held it lit at 0.4 %, where Zigbee2MQTT's own command switched it off.
 
 Set attributes on this bulb can time out. In the probe, `set_attributes` sent at once after a turn off timed out in 1
 of 10 runs (the call failed with no reply from Zigbee2MQTT and the values didn't land), and sent after Home Assistant
@@ -324,11 +324,11 @@ off at 0.4 %, which every Hue bulb's does, and to a group only when every member
 
 - **Hue and Aqara bulbs, and groups of them alone:** a lower sends 0.4 % directly, with the command Flash-free turn-on
   uses. In a test it held a Hue bulb, and a Hue group's lit bulbs, at 0.4 %, and left a group's off bulb off; an Aqara
-  T2 bulb held 0.4 % lit the same way ([internals](internals.md#fade)). A
-  group that mixes them with other lights gets what Zigbee2MQTT sends: 0.8 % when every member's definition is
-  flagged, else 0.4 %.
+  T2 bulb held 0.4 % lit on the same command, sent by set attributes ([internals](internals.md#fade)).
 - **Other lights not so flagged:** a lower to 0.4 % switches them off, since Zigbee2MQTT sends the lowest level with
-  its on/off command and DeviceSide sends it to Hue and Aqara bulbs alone ([internals](internals.md#fade)).
+  its on/off command and DeviceSide sends the raw command to Hue and Aqara bulbs alone ([internals](internals.md#fade)).
+- **A group that mixes them with other lights** gets what Zigbee2MQTT sends: 0.8 % when every member's definition is
+  flagged. Otherwise the on/off command to 0.4 % switches the group's lit lights off, and lights its off members.
 - **Other lights so flagged stop at 0.8 %:** some Innr, ADEO, IKEA, Gledopto and Aqara lights. Innr's are reported
   to turn off at 0.4 %.
 

@@ -181,7 +181,7 @@ light would fix the first and lowers the second to 0.4 %.
 Open with it: a mixed group (a member of `other`) goes through the converter whole, so an off member lights at the
 lower (`moveToLevelWithOnOff`, which has On/Off), where a raw `moveToLevel` leaves it off.
 
-**Why not now:** the raw call is evidenced on two classes only; a class has no record of holding level 1 on a raw
+**Why not now:** the raw call is evidenced on two classes only; `other` has no record of holding level 1 on a raw
 `moveToLevel`, and Innr's lights are reported to turn off at level 1, which a raw call would not prevent.
 
 **Revisit when:**
