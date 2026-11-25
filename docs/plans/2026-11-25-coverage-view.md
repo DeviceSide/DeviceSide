@@ -7,12 +7,14 @@ from step 4's prototype (`spike/coverage-view`: `scripts/prototype_coverage_view
 ## Coordination
 
 Intent: The Configure Settings form shows, per light and switch entity, which DeviceSide features run now
-(Verified, Documented), which need Labs, and which are refused and why, read from the scopes the dispatcher uses.
+(Verified, Documented) and which need Labs, read from the scopes the dispatcher uses; the README's cards share its
+legend and leave models and refusals to the compatibility page.
 Touches: custom_components/deviceside/config_flow.py, custom_components/deviceside/coverage.py,
 custom_components/deviceside/core/dispatcher.py, custom_components/deviceside/core/scope.py,
 custom_components/deviceside/core/registry.py, custom_components/deviceside/features.py, scripts/gen_features.py,
 custom_components/deviceside/translations/en.json, custom_components/deviceside/integrations/zigbee2mqtt/**,
-tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
+tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md, scripts/gen_compat.py,
+docs/device-compatibility.md
 
 ## Decisions
 
@@ -78,6 +80,17 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 23. **Collapsed above the options (Jason, 2026-11-25, live check):** Decision 22's table under Labs still rendered the options last, and HA has no description below a step's fields, so the Settings description is a `<details>` whose summary is the intro sentence, holding the legend and table; Labs's description is its own text again, and the legend says "below". Replaces Decision 22's placement.
 24. **A call to action, built in code (Jason, 2026-11-25, live check):** the summary reads "See your devices: DeviceSide runs {n} features on {m} of them." `coverage.section()` builds the whole `<details>` block, as HA's frontend formatter (formatjs) reads tags in a translation string as its own markup and fails; the Settings description is `{coverage}`.
 25. **Static table, Labs first (Jason, 2026-11-25, live check):** the collapsing section goes, as users will scroll: the Settings description (`coverage.section()`, still built in code) is the intro "DeviceSide runs {n} features on {m} of your devices.", the legend and the table, above the options; Labs is the first option. Replaces Decisions 23-24 and Decision 20's Labs-last.
+26. **README cards shrink to classes (Jason, 2026-11-25, README follow-up):** a card line names its classes (or a
+    model line no class takes, such as Matter's WiZ Smart Plug, and native groups) with their marks, no tested models
+    in parentheses and no ✔: the compatibility page lists the models and how each was tested. The README block links
+    docs/device-compatibility.md for them. The page's matrix and Tested devices are unchanged.
+27. **No 🔴 in the README (Decision 19, applied to the cards):** a card drops its 🔴 parts, its 🔴-only lines and
+    the refused-entry lines; the compatibility page keeps them. A line left with no mark goes.
+28. **One legend source:** `coverage.py` holds the three marks' entries (mark, name, meaning); the view's legend and
+    gen_compat's both render them, each with its own Labs pointer ("Turn on Labs below to try it" in the view,
+    "Turn on Labs in Configure > Settings to try it" in the README). The README's 🔧 and ⚠️ entries stay gen_compat's.
+29. **"Will it work with my device?"** leads with the view (install, open Configure → Settings, see each light and
+    switch marked Verified, Documented or Labs), then the screenshot, then the cards as the answer before installing.
 
 ## Steps
 
@@ -87,6 +100,13 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
    menu item, the progress step, the form, the Labs field; `en.json`: the strings above). Decisions 1, 3-12.
 3. **Docs:** `docs/design.md` gets a short Coverage view section (it reads the dispatcher's decision, never a copy);
    the README's Configure description gets the menu item after the code lands, if it lists the menu.
+4. **README follow-up** (Decisions 26-29): `scripts/gen_compat.py`'s cards per Decisions 26-27 (the README render
+   only: `show`/`Line.name`/`fold`/`cards`; the page's matrix, Tested devices and Not supported stay as they
+   are), its legend from `coverage.py` (Decision 28), its docstring's **Cards** and **The fold** paragraphs and its
+   "README feature order" / "README table" comments reworded (the feature order is the feature table's, now on the
+   compatibility page); `tests/scripts/test_gen_compat.py` and `tests/test_coverage.py` follow; the README's "Will it
+   work with my device?" prose (Decision 29) and docs/device-compatibility.md's hand-written intro under the feature
+   table, which still points at "the README's cards"; regenerate with `scripts/gen_compat.py`.
 
 ## Verification
 
@@ -102,15 +122,6 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 
 ## Handoff
 
-2026-11-25, after Jason approved the final Settings form live (`cd4c3499`, Decision 25).
-
-- **Done:** steps 1-3 and their plan review; Decisions 20-25 from the live-check rounds, built and deployed; Decisions 20-21 plan-reviewed (`3c260f93`'s note). Jason approved the form: the intro, legend and static table above the options, Labs first. Audit report 2 (CLEAN at `18ff1021`) is stale.
-- **Next, in order:**
-  1. **Mockup for the README screenshot** (Jason asked, now the form is approved): a static HTML page in the scratchpad that looks like HA's options dialog (title "DeviceSide options", the coverage block, then the three options, Labs first, with their en.json labels and descriptions), filled from `coverage.section()`'s real Markdown shape (legend, centred headings, integration rows, `ha-icon` rendered as a plain mdi glyph or emoji) with made-up generic names (e.g. Desk lamp, Hallway plug, Kitchen spots group); never household names. Render the Markdown with any local tool, serve it with a dev web server awaited with a short timeout so it runs in the background, and give Jason the URL. Nothing of it is committed.
-  2. **Audit gate** on #611's whole diff: `audit-gate brief pr`, spawn the Agent it prints (opus: the diff touches rule text in docs/design.md), `audit-gate record <report>`, `audit-gate status`; then the `owner-findings` skill. Fix Criticals and Highs.
-  3. `gh pr ready 611`, then backgrounded `merge-green 611 --squash --delete-branch` (Jason's PRs into main: check merge-green's header that this repo opts in; else ask Jason).
-  4. Then the README follow-up below, in a new `wt/` worktree and PR.
-- **Deploys:** `/Users/jason/projects/ha/ha-rig/scripts/rig.py --deploy-only` from this worktree restarts HA; other sessions clobber it, so redeploy when Jason asks. After a deploy, Jason hard-refreshes for new translations.
-- **Learned:** HA's frontend formats translation strings with formatjs, which reads HTML tags in them as its markup and fails; tags go in placeholders. HA renders a step's description above its fields only; a section's description is plain text; a field's `data_description` is Markdown.
-- **Follow-up PR after #611 merges (Jason agreed, 2026-11-25): README coverage.** (1) "Will it work with my device?" leads with the view: install, open Configure → Settings, see your lights and switches marked Verified, Documented or Labs. (2) gen_compat's collapsed block shrinks to integration plus device class with marks, linking docs/device-compatibility.md for models. (3) README legend shares the view's wording and marks from one source (gen_compat and coverage.legend()); 🔴 leaves the README for the compatibility page (Decision 19). (4) Done in #611 at Jason's ask: `docs/images/coverage-view.png` under "Will it work with my device?", from a generic mockup whose marks follow the README matrix.
-- **Branch / worktree / PR:** `wt/coverage-view`, `/Users/jason/projects/ha/deviceside-wt/coverage-view`, #611 (draft).
+2026-11-25, step 4 done on `wt/readme-coverage` (#616): README cards name classes only (no models, ✔ or 🔴), one
+legend source in `coverage.py`, view-first "Will it work with my device?" prose, compatibility page intro reworded,
+`docs/evidence.md`'s card wording moved to the page. Plan review: no must-fix. Next: the PR audit, then ready.

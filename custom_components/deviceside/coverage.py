@@ -308,12 +308,23 @@ def section(hass: HomeAssistant, coverage: Coverage) -> str:
     )
 
 
+# Each mark's legend entry: (mark, name, meaning). The README's legend (scripts/gen_compat.py) renders the same entries.
+LEGEND = (
+    (Mark.VERIFIED, "Verified", "works, tested on a real device"),
+    (Mark.DOCUMENTED, "Documented", "should work, same call pattern as a tested device"),
+    (Mark.LABS, "Labs", "not yet passed on a real device"),
+)
+LABS_BELOW = "Turn on Labs below to try it"
+
+
+def legend_entries(labs_pointer: str) -> list[tuple[Mark, str]]:
+    """Each mark with its legend line, the Labs line ending in the pointer for where the reader is."""
+    return [
+        (mark, f"{mark} {name}: {meaning}" + (f". {labs_pointer}" if mark is Mark.LABS else ""))
+        for mark, name, meaning in LEGEND
+    ]
+
+
 def legend() -> str:
-    """What each mark means, a paragraph each, worded from the README's legend."""
-    return "\n\n".join(
-        (
-            f"{Mark.VERIFIED} Verified: works, tested on a real device",
-            f"{Mark.DOCUMENTED} Documented: should work, same call pattern as a tested device",
-            f"{Mark.LABS} Labs: not yet passed on a real device. Turn on Labs below to try it",
-        )
-    )
+    """What each mark means, a paragraph each."""
+    return "\n\n".join(line for _, line in legend_entries(LABS_BELOW))

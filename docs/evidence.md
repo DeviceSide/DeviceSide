@@ -121,7 +121,7 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
 
 A field can be in Labs on some classes alone (`labs_fields(...)`, `AdapterScope.class_labs`) while it keeps its level in
 `fields` on the rest. With the Labs option off it is dropped on those classes (`fields_dropped`), not refused; with it
-on, the call is Labs. A pass on such a class credits no model on its card for that action, as a record doesn't say which
+on, the call is Labs. A pass on such a class credits no model in the compatibility page's matrix for that action, as a record doesn't say which
 fields a test sent.
 
 A sign-off covers only what was exercised; it never signs off untested code.
@@ -219,8 +219,8 @@ supported, where DeviceSide can't do the action for the class, each named for wh
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
   tells users not to ask DeviceSide to build. A method is a call that does what was asked and fails without harm, so
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
-  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
-  it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
+  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the compatibility
+  page marks it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
   class not admitted to Labs (below), as research predicts most of it fails the default call or no source admits it,
   while another call is known or plausible. The integration names it, and the adapter's
@@ -297,13 +297,13 @@ On an integration that names classes, every class an adapter's scope holds as Ve
 test in that domain (a manual row names no domain, so it covers each). A record names the class each test's devices
 reached, and a manual row each device's. A native group's test credits each member's class, from its members' entries
 (the response's `member_capabilities`, [action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one
-call reached each member (a null one credits none; the cards add "native groups", never the members' models). A group
-with a null-class member is on no card, as "native groups" needs every member's class named and unflagged, while its
+call reached each member (a null one credits none; the cards and the page add "native groups", never the members' models). A group
+with a null-class member is on no card or page line, as "native groups" needs every member's class named and unflagged, while its
 named members still count here; a manual row credits every class it lists to every action it passed, so a row whose
 actions reached different classes is split. A manual row may carry `group`, as a rig group test does: its devices are
-the members, credited as a group test's are; the evidence table shows it as "group, by hand", and the card "native
+the members, credited as a group test's are; the evidence table shows it as "group, by hand", and the page "native
 groups", with no ✔ from it. A scene's test is a group's, its members the scene's lights. A null class credits none, here
-or on the cards, as does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer
+or on the page, as does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer
 sees it early, and names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
 `scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
 checks that evidence exists, not that it suffices (tenet 7).
@@ -364,12 +364,12 @@ maintainer's `_manual.json` sign-off carrying them (`reports`, [Sign-off format]
 item, which the compatibility page shows "by report". The maintainer judges how many are enough (tenet 7); nothing
 counts them in code.
 
-The cards never credit a tested model from a pass on a flagged item while its flag stands, and fold two or more
-top-level Labs lines on a card (⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) into one ⚪ line
+The compatibility page's matrix never credits a tested model from a pass on a flagged item while its flag stands, and the
+README's cards fold two or more top-level Labs lines on a card (⚪ with no 🟢 or 🟡) into one ⚪ line
 (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `labs("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model in the page's matrix and
 lets a Shelly maintainer lift the flag, once they judge that pass enough: their PR makes it `verified("Light")`.
 
 *Example:* Zigbee2MQTT's set auto-off and clear auto-off on Tuya and Sonoff inching switches are in Labs, untested.
@@ -431,7 +431,7 @@ which `--transcripts` enforces: without one, a change to what it does on a group
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual row is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
-  no separate level: the cards keep their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
+  no separate level: the compatibility page keeps its ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
   or manual) for the RC audit.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration with a changed
   action that has no sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others

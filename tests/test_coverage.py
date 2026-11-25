@@ -290,6 +290,18 @@ async def test_a_name_with_markup_is_shown_as_it_is(hass, fake):
     assert coverage._plain("A | <b>lamp</b> *1*") == "A \\| &lt;b&gt;lamp&lt;/b&gt; \\*1\\*"
 
 
+def test_the_legend_entries_are_shared_with_the_readme_whose_labs_pointer_differs():
+    """scripts/gen_compat.py renders these entries too, with its own pointer to where Labs is turned on."""
+    assert coverage.legend_entries("Turn on Labs in Configure > Settings to try it") == [
+        (coverage.Mark.VERIFIED, "🟢 Verified: works, tested on a real device"),
+        (coverage.Mark.DOCUMENTED, "🟡 Documented: should work, same call pattern as a tested device"),
+        (
+            coverage.Mark.LABS,
+            "⚪ Labs: not yet passed on a real device. Turn on Labs in Configure > Settings to try it",
+        ),
+    ]
+
+
 def test_the_legend_explains_each_mark():
     assert coverage.legend().split("\n\n") == [
         "🟢 Verified: works, tested on a real device",
