@@ -46,7 +46,7 @@ DeviceSide's calls on it. No device was touched for this note (Part 5).
   **642 (75.7%; 870 strings, 79.7%) are plain** on every DeviceSide call; per action the share is higher (Part 3).
 - **Certification can't key a class.** No field carries it, and the CSA listing is per SKU and firmware
   ([vendor call documentation](2026-11-25-vendor-call-documentation.md), Part 2). Read off the wire, the nearest thing
-  is the cluster revision (Part 5): untried.
+  is the cluster revision (Part 5): a partial probe got no revision from any light.
 - **DeviceSide's `set_attributes` and `get_attributes` bypass every flag.** Z2M's generic `command` and `read`
   converters are prepended to every definition and honor no light flag; `command` passes only
   `disableDefaultResponse` ([toZigbee.ts L217-L248](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L217;
@@ -104,7 +104,7 @@ The full list of `meta` keys found on the 1,743. Defs: all lights / `other`.
 
 | Flag | What it does to DeviceSide's calls (run on the converters) | Defs |
 |---|---|---|
-| `turnsOffAtBrightness1` | `raise_brightness`'s first step from off, brightness 1, goes out as level **2** ([toZigbee.ts L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)); ZHC's fix for lights that turn off at 1 | 738 / 132 (Innr 92, ADEO 28) |
+| `turnsOffAtBrightness1` | `raise_brightness`'s first step from off, brightness 1, goes out as level **2** ([toZigbee.ts L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)); ZHC's fix for lights that turn off at 1, since 2020: [a87ed9095](https://github.com/Koenkk/zigbee-herdsman-converters/commit/a87ed90956a2eebd5b6e3d9f11934499c05bd518) (2020-08-10) narrowed the flag to brightness 1 and sent it as 0 (off); [97d0f072b](https://github.com/Koenkk/zigbee-herdsman-converters/commit/97d0f072b7214e658241da6dec4326ab8e571bca) (2020-08-20, [Z2M #1348](https://github.com/Koenkk/zigbee2mqtt/issues/1348)) made it 2, and the 2022 rewrite ([ZHC #4211](https://github.com/Koenkk/zigbee-herdsman-converters/pull/4211)) kept it | 738 / 132 (Innr 92, ADEO 28) |
 | `omitOptionalLevelAndColorParams` | drops `optionsMask`/`optionsOverride` from ZHC's own light converters ([toZigbee.ts L68](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L68) and on); **not from `command`**, so `set_attributes` still sends them | 11 / 11 (Paul Neuhaus 9, RIBAG Air O, Schneider WDE002386) |
 | `supportsEnhancedHue` | `{hue, saturation}` goes out as `enhancedMoveToHueAndSaturation`; a saturation-only color and `hue_move` are unchanged | 360 / 45 (Innr 17, Müller Licht 4) |
 | `disableDefaultResponse` | the light sends no default response to ZHC's commands, **`command` included**, so a refused `set_attributes` write shows only in the read-back ([utils.ts L530](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/utils.ts#L530)) | 18 / 11 |
@@ -218,18 +218,29 @@ and how they are keyed (definition model, vendor, or a flag read off ZHC).
 |---|---|---|---|---|
 | 1. A ZHC definition on the standard converters with no flag touching the action's call | the definition model, from a table built off a pinned ZHC | 642 of 848 definitions on every call; up to 823 if only failing flags exclude | DeviceSide sends exactly the call Z2M sends Hue, per action; ZHC's own fixes split known failures off | a missing flag is unreported, not tested; a ZHC bump can change a row, so the table needs regenerating and a check; generated definitions are plain only because nobody wrote one |
 | 2. Certification (Zigbee 3.0 listing) | a CSA model and firmware list | unknown: the CSA search wasn't queried | the test spec runs DeviceSide's ExecuteIfOff call | no field carries it; per SKU and firmware; certified lights depart in the field (vendor note) |
-| 3. A device field read off the wire | Level Control and Color Control ClusterRevision (0xFFFD) of 2 or more, or the Options attribute (0x000F) answering; Basic ZCLVersion | unknown: not read on any device | the ZCL 8 revision history ties Options and the option fields to cluster revision 2 (ExecuteIfOff note, Part 1.1), the exact cause of the MALFORMED failures | self-declared; untried; a read per device at placement; says nothing about fades or reads |
+| 3. A device field read off the wire | Level Control and Color Control ClusterRevision (0xFFFD) of 2 or more, or the Options attribute (0x000F) answering; Basic ZCLVersion | unknown: not read on any device | the ZCL 8 revision history ties Options and the option fields to cluster revision 2 (ExecuteIfOff note, Part 1.1), the exact cause of the MALFORMED failures | self-declared; no light gave its revision in the partial probe (below); a read per device at placement; says nothing about fades or reads |
 | 4. Per-vendor classes | a vendor whose definitions are all plain | LEDVANCE, OSRAM, Sylvania: 107 definitions (127 strings), all plain | small, and the three vendors with most of the Zigbee 3.0 PICS on file (vendor note) | no vendor publishes its calls (route (a) needs it); Innr, the largest vendor, is 2 of 108 plain |
 | 5. The standard call plus N passing vendors | the call, with records on N vendors | all of `other` | tenet 5's "same call, same class" | a class spanning vendors is never Documented by another's pass today |
 
 Options 1 and 3 combine: the definition says DeviceSide's call is the standard one, and the cluster revision says the
 light knows the option fields that `set_attributes` sends.
 
-**Device fields not yet tried.** The plan asked for a read-only try through ha-rig's HAClient. The run was refused by the
-session's permission layer, as it reads the rig's HA token, so it is for a maintainer to run: a script reading, per
-Z2M and ZHA light, Basic ZCLVersion, StackVersion and AppVersion, Level and Color Control ClusterRevision, Options and
-ColorCapabilities (ZCL reads only, one attribute per read), and ZHA's endpoint profile and device type. Its results
-would go here anonymized, as counts per value.
+**Device fields: a partial probe** (2026-11-25, run by a maintainer through ha-rig's HAClient; a script, not
+committed). Per Z2M and ZHA light it read Basic ZCLVersion, StackVersion and AppVersion, Level and Color Control
+ClusterRevision, Level Options and ColorCapabilities: ZCL reads only, one attribute per read, 10 s for an answer.
+
+| Light | ZCLVersion | StackVersion | AppVersion | Level ClusterRevision | Level Options | Color ClusterRevision | ColorCapabilities |
+|---|---|---|---|---|---|---|---|
+| Aqara T2 E27 (`lumi.light.agl003`, family `aqara`) | 3 | 27 | 31 | not read | 0 | not read | 24 (xy, color temperature) |
+| Linkind ZL1000100-CCT-US-V1A02, firmware 2.2 (`other`), two | no answer | no answer | no answer | no answer | no answer | no answer | no answer |
+
+- **ClusterRevision went unread on every light:** Z2M's generic `read` took it by name, `clusterRevision`, and
+  returned nothing, the Aqara bulb included, which answered its other reads. A read by ID (0xFFFD) is untried, so option 3
+  is still untested, not refuted.
+- The Aqara bulb answers Options, the attribute ZCL ties to cluster revision 2 or more; a ZCLVersion of 3 is the Basic
+  cluster's own field and doesn't say which revision its Level and Color Control clusters are.
+- The two Linkind bulbs answered nothing, Basic included, so this says nothing about them beyond that.
+- **ZHA:** the ZHA half timed out before it read any light. No ZHA row.
 
 ## Part 6: Which classes pass the calls today
 
@@ -242,7 +253,7 @@ passes are evidence for the ZCL call, not for ZHC's standard converters.
 ## Not confirmed
 
 - That a plain definition accepts DeviceSide's calls on hardware: no record, only no report.
-- Device fields (Part 5): not read.
+- Device fields (Part 5): ClusterRevision not read on any light (by name, through Z2M); no ZHA light read.
 - Transitive dependency versions in the Part A build, and whether a Z2M release matches the master lines cited.
 - Fixes for [ZHC #11872](https://github.com/Koenkk/zigbee-herdsman-converters/issues/11872), [ZHC #12937](https://github.com/Koenkk/zigbee-herdsman-converters/issues/12937) and [Z2M #20528](https://github.com/Koenkk/zigbee2mqtt/issues/20528); the device in [Z2M #27743](https://github.com/Koenkk/zigbee2mqtt/issues/27743); Sonoff's support reply in
   [Z2M #33106](https://github.com/Koenkk/zigbee2mqtt/issues/33106).
