@@ -173,7 +173,7 @@ halted from one still moving, so the reads are the only signal a device report h
 
 ## The raw bottom for other lights on Zigbee2MQTT
 
-A lower to 0.4 % sends level 1 as a raw `moveToLevel` to Hue and Aqara lights alone
+A lower to 0.4 % sends level 1 as a raw `moveToLevel` to Hue and Aqara lights alone, and level 2 to standard lights
 ([internals](integrations/zigbee2mqtt/internals.md#fade)). An unflagged `other` light switches off at it, as
 Zigbee2MQTT's converter sends level 1 as `moveToLevelWithOnOff`; a flagged one stops at 0.8 %. Sending it raw to every
 light would fix the first and lowers the second to 0.4 %.

@@ -251,7 +251,8 @@ lights failing them, so that usage is their evidence, in place of a DeviceSide t
 and get and set attributes. Get and set attributes are DeviceSide's own commands, not Zigbee2MQTT's: they qualify as
 every failure reported for them shows as an error, never as a light quietly doing something else. Smooth hue and
 saturation changes need a light that exposes Zigbee2MQTT's `color_hs`; one without is left unchanged
-(`fields_dropped`), and the list's column says which do. Turn on with timer isn't built, as for other brands.
+(`fields_dropped`), and the list's column says which do. A lower to the lowest brightness stops at 0.8 %
+([lowest brightness](#lowest-brightness)). Turn on with timer isn't built, as for other brands.
 
 To check a light, open its device page in Zigbee2MQTT and look for its **Model** in [the list](standard-lights.md). A
 light a report shows failing one of these commands is listed apart, with the report, and stays with
@@ -345,10 +346,15 @@ off at 0.4 %, which every Hue bulb's does, and to a group only when every member
 - **Hue and Aqara bulbs, and groups of them alone:** a lower sends 0.4 % directly, with the command Flash-free turn-on
   uses. In a test it held a Hue bulb, and a Hue group's lit bulbs, at 0.4 %, and left a group's off bulb off; an Aqara
   T2 bulb held 0.4 % lit the same way ([internals](internals.md#fade)).
+- **Standard lights stop at 0.8 %:** a lower to 0.4 % sends them 0.8 % directly, with the same command, so they stay
+  lit; a group of them with Hue and Aqara bulbs alone gets 0.8 % the same way. DeviceSide sends 0.8 % until a test
+  shows one holds 0.4 % lit ([internals](internals.md#fade)).
 - **Other lights not so flagged:** a lower to 0.4 % switches them off, since Zigbee2MQTT sends the lowest level with
-  its on/off command and DeviceSide sends the raw command to Hue and Aqara bulbs alone ([internals](internals.md#fade)).
-- **A group that mixes them with other lights** gets what Zigbee2MQTT sends: 0.8 % when every member's definition is
-  flagged. Otherwise the on/off command to 0.4 % switches the group's lit lights off, and lights its off members.
+  its on/off command and DeviceSide sends the raw command to Hue, Aqara and standard lights alone
+  ([internals](internals.md#fade)).
+- **A group that mixes any of these with other lights** gets what Zigbee2MQTT sends: 0.8 % when every member's
+  definition is flagged. Otherwise the on/off command to 0.4 % switches the group's lit lights off, and lights its off
+  members.
 - **Other lights so flagged stop at 0.8 %:** some Innr, ADEO, IKEA, Gledopto and Aqara lights. Innr's are reported
   to turn off at 0.4 %.
 
