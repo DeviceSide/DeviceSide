@@ -75,6 +75,20 @@ Two principles Jason drew from #617, which this PR writes into the rules (step 1
     The Hue example says what a failure looks like: a light that misses one stays on, or shows a wrong value, where the
     user sees it. Livarno stays recorded, unkeyed.
 
+11. **(2026-11-25, after a debate of three keyings) Müller Licht is recorded, not keyed; Gledopto keeps its maker key.**
+    Supersedes Decision 9's Müller Licht class. One report of one product (#62497's "tint loris") gives no identity the
+    bridge reports: ZHC's candidate panel ("RGB-CCT", 404028/44435) matches on model string alone, with no `MLI`
+    fingerprint, and 44435 names a second definition, so a narrow key would rest on two guesses, and a maker key
+    breaks contrary evidence's "a vendor is not normally refused whole on a single report". So Müller Licht is
+    recorded in `internals.md` like Livarno, keeping `get_attributes` until a report gives its strings (a Hue
+    diagnostics `product_data`, or a second Müller Licht report on another model, which earns a maker key). Gledopto's
+    maker key is backed by a dated research file on #62497 and #93459 (several reporters, three models, Pro and
+    non-Pro), as "a rule keyed on a vendor needs research". The route's "splits off its identity (manufacturer and
+    model)" becomes "splits off its identity, the narrowest one a class rule can key on (contrary evidence)". The
+    `evidence.md` Hue example drops the harm clause Decision 10 added, as `internals.md` holds it: it keeps "no Hue
+    action's failure harms (`Action.failure_harms`)" and its link. The #617 reply also asks for a Müller Licht light's
+    `product_data` on a Hue bridge.
+
 ## Steps
 
 1. **Build** (opus implementer: binding-rule text and public docs; Opus `plan-reviewer`).
@@ -118,10 +132,25 @@ Touches: custom_components/deviceside/integrations/hue/**, tests/integrations/hu
 
 ## Handoff
 
-2026-11-25, step 1 done (the implementing session crashed after plan review 2; a successor finished it).
+2026-11-25, second implementing session, out of context (~150k).
 
-- **Done:** step 1 (A and B), three plan reviews; the last raised no must-fix.
-- **Next:** Decision 9 (step 1 rework), its plan review, a re-audit, then ready again. Post nothing on #617: its reply waits for Jason's yes. The reply should also ask for a GL-C-008P's
-  `product_data` on a Hue bridge, if anyone has one, as the split-off's strings are inferred (`internals.md`, Split off).
+- **Done:** step 1, plus Decisions 9 and 10 (commits 0d51869e, 89e3ebfc, and a plan-review fix commit after them). Plan
+  review of 9-10: 0 must-fix; its findings 2-4 were fixed; its finding 1 (Müller Licht keyed on the maker on one report)
+  became Decision 11. The first PR audit (CLEAN, 2 Lows) is stale: it predates Decisions 9-11. The PR is back to
+  draft.
+- **Next:**
+  1. Implement Decision 11 with one Opus implementer. Remove the `muller_licht` class (classes.py, tests, the
+     transcripts' Müller Licht segments via `scripts/gen_transcripts.py`, devices.yaml, index.md's `### Müller Licht`,
+     regenerate with `scripts/gen_compat.py`). In `internals.md`, record Müller Licht as reported and unkeyed beside
+     Livarno. Write `docs/integrations/hue/research/2026-11-25-color-mode-misread.md` (dated, the two core issues'
+     reporters, models, firmware, the maintainer's findings, the disputed Hue-app claim, the Pro controller that
+     didn't show it) and cite it from the Gledopto split-off. Make the two `evidence.md` edits Decision 11 names.
+     Check: `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check`.
+  2. A fresh Opus `plan-reviewer` on the range from this Handoff's commit to HEAD, with Decisions 9-11.
+  3. `audit-gate brief pr`, an Opus auditor, `audit-gate record`, `audit-gate status`, then `owner-findings`.
+  4. Rewrite the PR body's summary for Decisions 9-11 (it still describes a GL-C-008P class), then `gh pr ready 619`.
+     Don't merge: Jason reviews the `evidence.md` route wording and merges.
+  Post nothing on #617. Its reply waits for Jason's yes, and should ask for the `product_data` of a GL-C-008P and of
+  a Müller Licht light on a Hue bridge.
 - **Open decisions:** none.
-- **Branch / worktree / PR:** `wt/hue-other-brands`, `deviceside-wt/hue-other-brands`, #619 (draft).
+- **Branch / worktree / PR:** `wt/hue-other-brands`, `deviceside-wt/hue-other-brands`, #619.
