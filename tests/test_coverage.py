@@ -288,14 +288,16 @@ async def test_the_step_shows_the_matrix_with_the_labs_checkbox_under_it(hass, s
     assert result["step_id"] == "coverage_view"
     holders = result["description_placeholders"]
     assert (holders["features"], holders["devices"]) == ("9", "4")
-    assert (holders["labs_features"], holders["labs_devices"]) == ("2", "1")
     assert holders["legend"] == coverage.legend()
     assert f"| d{SWITCH} |" in holders["table"]
     assert result["data_schema"]({}) == {"labs": False}
     strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())["options"]
     step = strings["step"]["coverage_view"]
     assert step["description"].format(**holders).startswith("DeviceSide runs 9 features on 4 of your devices now.")
-    assert step["data_description"]["labs"].format(**holders).startswith("Turn on Labs: adds 2 features on 1 devices. ")
+    assert step["data_description"]["labs"].format(**holders) == (
+        "Turn on Labs: adds 2 features on 1 devices. "
+        "Labs features may misbehave, change or be withdrawn without notice."
+    )
     assert strings["step"]["init"]["menu_options"]["coverage"] == "Device coverage"
 
 
@@ -419,3 +421,14 @@ def test_an_integrations_icon_for_the_translation_key_comes_before_the_domains()
     plain = SimpleNamespace(**{**vars(keyed), "translation_key": None})
 
     assert (icons.of(keyed), icons.of(plain)) == ("mdi:sofa", "mdi:lightbulb")
+
+
+async def test_with_nothing_in_labs_the_labs_description_is_the_warning_alone(hass, setup_integration, fake):
+    add_fake_entity(hass, fake, "switch.lonely")  # no class named, no Labs item anywhere
+    result = await open_coverage(hass, setup_integration)
+
+    holders = result["description_placeholders"]
+    assert holders["labs_adds"] == ""
+    strings = json.loads((Path(coverage.__file__).parent / "translations" / "en.json").read_text())
+    text = strings["options"]["step"]["coverage_view"]["data_description"]["labs"].format(**holders)
+    assert text == "Labs features may misbehave, change or be withdrawn without notice."

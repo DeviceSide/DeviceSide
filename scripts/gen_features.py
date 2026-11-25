@@ -7,7 +7,7 @@ Each icon links to the docs: a cell's to its integration's page, `docs/integrati
 feature's section when it has one), a prohibited sign's to the section of docs/integrations.md that says why, a legend
 entry's to the heading that explains it.
 
-The columns come from each integration's bundle: `column` (the README label) in
+The columns come from each integration's bundle: `column` (the README label) and `column_order` in
 `docs/integrations/<integration>/devices.yaml`. An integration without one is an error naming the file to add.
 
 What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Labs option
@@ -32,7 +32,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
-from custom_components.deviceside.core.registry import CARD_ORDER, AdapterRegistry, served_domains  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
 from custom_components.deviceside.features import FEATURE_ACTIONS  # noqa: E402
 from scripts.check_release import BUNDLES, adapters  # noqa: E402
@@ -165,15 +165,14 @@ def page(integration: str) -> str:
 
 
 def columns(integrations: Iterable[str]) -> dict[str, str]:
-    """Integration -> its README column label (each bundle's `column`), in the cards' order (registry.CARD_ORDER)."""
+    """Integration -> its README column label, in `column_order`, from each bundle."""
     found = {}
     for key in integrations:
-        label = bundle(key).get("column")
-        if not isinstance(label, str) or not label:
-            raise SystemExit(f"docs/integrations/{key}/devices.yaml needs a column")
-        if key not in CARD_ORDER:
-            raise SystemExit(f"{key} is in no place in CARD_ORDER (core/registry.py); add it")
-        found[key] = (CARD_ORDER.index(key), label)
+        data = bundle(key)
+        label, order = data.get("column"), data.get("column_order")
+        if not isinstance(label, str) or not label or not isinstance(order, int) or isinstance(order, bool):
+            raise SystemExit(f"docs/integrations/{key}/devices.yaml needs a column and a column_order")
+        found[key] = (order, label)
     return {key: label for key, (_, label) in sorted(found.items(), key=lambda item: item[1])}
 
 

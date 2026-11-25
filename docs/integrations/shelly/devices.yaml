@@ -2,6 +2,7 @@
 # scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
 
 column: Shelly
+column_order: 3
 requires: Gen2+
 capabilities:
   Switch: {phrase: relays and plugs, section: Relays and plugs}

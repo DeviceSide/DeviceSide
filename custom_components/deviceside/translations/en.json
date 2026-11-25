@@ -48,7 +48,7 @@
           "labs": "Labs"
         },
         "data_description": {
-          "labs": "Turn on Labs: adds {labs_features} features on {labs_devices} devices. Labs features may misbehave, change or be withdrawn without notice."
+          "labs": "{labs_adds}Labs features may misbehave, change or be withdrawn without notice."
         }
       },
       "report_device": {

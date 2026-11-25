@@ -307,8 +307,12 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
                 "devices": str(found.devices_now),
                 "legend": coverage.legend(),
                 "table": coverage.table(self.hass, found),
-                "labs_features": str(found.features_in_labs),
-                "labs_devices": str(found.devices_in_labs),
+                # The sentence about what Labs adds, left out when nothing is in Labs.
+                "labs_adds": (
+                    f"Turn on Labs: adds {found.features_in_labs} features on {found.devices_in_labs} devices. "
+                    if found.features_in_labs
+                    else ""
+                ),
             },
         )
 

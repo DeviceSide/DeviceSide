@@ -554,13 +554,12 @@ def test_a_class_the_card_lists_without_an_entry_is_an_error(root):
 BUNDLE = {
     "zha": {
         "column": "ZHA",
+        "column_order": 1,
         "requires": "Zigbee 3.0",
         "capabilities": DATA["capabilities"]["zha"],
         "no_known_method": [{"what": "Old plug", "reason": "No timer", "source": "https://x.y/z"}],
     },
-    "hue": {
-        "column": "Hue",
-    },
+    "hue": {"column": "Hue", "column_order": 2},
 }
 
 
@@ -667,30 +666,30 @@ def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
     [
         ({"zha": BUNDLE["zha"]}, None, "no docs/integrations/hue/devices.yaml; add the hue bundle"),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "bogus": []}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "bogus": []}},
             None,
             "hue/devices.yaml: unknown key bogus",
         ),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "models": {"a": 1}}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": {"a": 1}}},
             None,
             "hue/devices.yaml: models must be a list",
         ),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "models": [DATA["models"][0]]}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [DATA["models"][0]]}},
             None,
             "is listed twice",
         ),
         (BUNDLE, {"models": [], "capabilities": {}}, "docs/models.yaml: unknown key capabilities"),
         (BUNDLE, {"models": {"a": 1}}, "docs/models.yaml: models must be a list"),
-        ({**BUNDLE, "hue": {"column": "Hue", "requires": ""}}, None, "hue/devices.yaml needs a req"),
+        ({**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "requires": ""}}, None, "hue/devices.yaml needs a req"),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "no_known_method": [DATA["no_known_method"][0]]}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "no_known_method": [DATA["no_known_method"][0]]}},
             None,
             "a no_known_method entry is hue's own; drop its integrations",
         ),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "no_known_method": {"a": 1}}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "no_known_method": {"a": 1}}},
             None,
             "hue/devices.yaml: no_known_method must",
         ),
@@ -704,7 +703,7 @@ def test_a_missing_bundle_or_a_misplaced_key_fails_naming_the_file(root, monkeyp
 
 def test_a_bundles_own_model_is_loaded_and_credits_a_device(root, monkeypatch):
     own = {"name": "Own lamp", "ids": ["OWN1"], "type": DATA["models"][0]["type"]}
-    bundles = {**BUNDLE, "hue": {"column": "Hue", "models": [own]}}
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [own]}}
     data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
     record(root, "hue", "stop", devices=[old_device("OWN1", "1")])
     gc.check_models(FakeRegistry(), data)  # a record naming it passes
@@ -715,7 +714,7 @@ def test_a_bundles_own_model_is_loaded_and_credits_a_device(root, monkeypatch):
 
 def test_a_record_naming_another_bundles_model_fails(root, monkeypatch):
     own = {"name": "Own lamp", "ids": ["OWN1"], "type": DATA["models"][0]["type"]}
-    bundles = {**BUNDLE, "hue": {"column": "Hue", "models": [own]}}
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [own]}}
     data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
     record(root, "zha", "stop", devices=[old_device("OWN1", "1")])
     with pytest.raises(SystemExit, match="'OWN1' is in docs/integrations/hue/devices.yaml; a model two integrations"):
@@ -723,7 +722,7 @@ def test_a_record_naming_another_bundles_model_fails(root, monkeypatch):
 
 
 def test_a_model_in_both_files_fails_naming_them(root, monkeypatch):
-    bundles = {**BUNDLE, "hue": {"column": "Hue", "models": [{**DATA["models"][0], "name": "Dup"}]}}
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [{**DATA["models"][0], "name": "Dup"}]}}
     with pytest.raises(SystemExit, match="listed twice: in docs/models.yaml and docs/integrations/hue/devices.yaml"):
         gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
 
