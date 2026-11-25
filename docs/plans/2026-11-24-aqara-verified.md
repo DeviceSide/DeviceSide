@@ -104,8 +104,10 @@ hostnames in commits, docs or research files.
   refresh (`--profile lab --action get_attributes`). That's blocked: the Hue bridge can't reach one lab roaming bulb
   (power-cycle its lamp, then `rig.py --recover`), and the run moves three non-pre-authorized plugs (restricted).
   Ask Jason; until then get_attributes stays Labs on `aqara`.
-- **Open for Jason:** Decision 5's DeviceSide-side fix (wait out the off fade) vs the recorded limit; the step 6
-  `/grilling`; the `docs/models.yaml` model name "Aqara LED Bulb T2 E27".
+- **Open for Jason:** Decision 5's DeviceSide-side fix (wait out the off fade) vs the recorded limit. The model name
+  "Aqara LED Bulb T2 E27" is right (Jason, 2026-11-25).
+- **Remind Jason, once the Aqara records are in (Decision 10's rerun done):** the Hue `lab` refresh
+  (`--profile lab --action get_attributes`), which brings get_attributes' Aqara rows.
 
 ## Verification
 
