@@ -239,10 +239,10 @@ GATED = AdapterScope(
 
 
 def judged(hass, entity_id, labs_on=False):
-    """The gate on a turn_off_for call on the entity, as judge gives it for a target alone."""
+    """The gate on a turn_off_for call of 5 s on the entity, as judge gives it for a target alone."""
     registry = get_runtime(hass).registry
     target = resolve(hass, registry, entity_id, None)
-    return judge(hass, registry, registry.adapter("turn_off_for", "fake"), target, labs_on)
+    return judge(hass, registry, registry.adapter("turn_off_for", "fake"), target, TimedRequest(duration_s=5), labs_on)
 
 
 @pytest.mark.usefixtures("classed")
@@ -320,6 +320,24 @@ async def test_the_gate_has_no_decision_on_an_empty_native_group(hass, fake, res
 
     with patch.object(FakeTurnOffFor, "scope", GATED):
         assert judged(hass, "switch.fake_group") is None
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_judgment_on_a_member_it_cant_address_is_its_classs_refusal_else_not_addressable(
+    hass, fake, reset_script
+):
+    registry = get_runtime(hass).registry
+    adapter = registry.adapter("turn_off_for", "fake")
+    for entity_id in ("switch.a", "switch.d"):
+        add_fake_entity(hass, fake, entity_id)
+
+    with patch.object(FakeTurnOffFor, "scope", GATED):
+        for entity_id, decided in (
+            ("switch.a", Gate(Outcome.REFUSED, reason="not_addressable")),
+            ("switch.d", Gate(Outcome.REFUSED, reason="no_known_method", why="It never switches on")),
+        ):
+            member = replace(resolve(hass, registry, entity_id, None), addressable=False)
+            assert judge(hass, registry, adapter, member, TimedRequest(duration_s=5), False) == decided
 
 
 @pytest.mark.usefixtures("classed", "harmless")

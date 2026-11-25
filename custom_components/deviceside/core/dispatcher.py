@@ -9,7 +9,7 @@ with fields_dropped, never refused. Then AdapterScope.refusal, in order: where t
 (AdapterScope.harms), or the adapter serves only own calls (own_calls_only, whose execute nothing reaches), an Unplaced
 or None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in not_built, or in
 neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the Labs gate (below).
-The refusal and the gate are one decision, gate(), which judge() gives for a target alone, as a call would class it.
+Each target is planned by _judge, and the refusal and the gate are one decision, gate(); judge() gives a target's alone.
 
 Native groups. One an adapter addresses as one takes its members' classes, from expand_group, and its weakest member's
 level for the gate; on an integration that names no classes it runs whole. An empty one (expand_group lists no members)
@@ -362,9 +362,11 @@ def _refused(adapter: Adapter, target: Target, classes: Classes, members: list[T
         # A stand-in has no entity in the group's domain, so a domain-scoped entry judges it as elsewhere.
         elsewhere=_stand_in_classes(classes, members),
     )
-    if refused is None:
-        return None
-    reason, why = refused
+    return None if refused is None else _refusal(*refused)
+
+
+def _refusal(reason: str, why: str | None) -> Gate:
+    """A refusal as a Gate: not built yet, or refused for any other reason."""
     return Gate(Outcome.NOT_BUILT if reason == Reason.NOT_BUILT else Outcome.REFUSED, reason=reason, why=why)
 
 
@@ -392,17 +394,77 @@ def gate(
     return Gate(Outcome.RUNS, level)
 
 
-def judge(
-    hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, target: Target, labs_on: bool
-) -> Gate | None:
-    """The gate on a call of the adapter's action, with no fields, on the target, classed as the dispatcher classes it
-    (a native group by its members); None for a group known to have no members, which a call skips silently. What
-    the dispatcher checks before the class (supports(), a target the integration can't address) is the caller's."""
+def _labs_off_drops(
+    adapter: Adapter, request: Request, target: Target, classes: Classes, labs_on: bool
+) -> frozenset[str]:
+    """The fields the call carries that are in Labs on the target's class (AdapterScope.class_labs), which, with the
+    option off, are dropped as a lacked field is, so the call runs without them. None on a native group, which
+    keeps them: the gate falls back to its members, each judged alone; and none with the option on."""
+    if labs_on or target.is_group:
+        return frozenset()
+    if gated := adapter.scope.class_labs_fields(classes) & request.fields_present():
+        _LOGGER.debug(
+            "%s on %s: %s drops %s, in Labs on class %s",
+            adapter.action,
+            adapter.integration,
+            target.reported_id,
+            sorted(gated),
+            ", ".join(map(str, classes)),
+        )
+    return gated
+
+
+@dataclass(frozen=True, slots=True)
+class _Judged:
+    """One target's planning (_judge), for the dispatcher to act on. `gate`: its decision; None for an empty group,
+    skipped silently, and for a call left nothing to send (`unchanged`). `dropped`: the fields dropped from the call.
+    `members` and `reached`: as _listed and _reached give them, once supports() has passed. `device`: a member the
+    integration can't address on its own, refused for its whole device."""
+
+    gate: Gate | None
+    dropped: frozenset[str] = frozenset()
+    members: list[Target] | None = None
+    reached: Reached | None = None
+    unchanged: bool = False
+    device: bool = False
+
+
+def _judge(
+    hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, request: Request, target: Target, labs_on: bool
+) -> _Judged:
+    """Plan one target, as the module docstring's Planning says: the fields it lacks and the scope's drops dropped,
+    then a member the integration can't address on its own refused (its class's refusal first, so a member whose
+    class harms says so, else not_addressable), then supports() on what is left, then its class and the fields in
+    Labs on it, a call left nothing to send, and last the gate."""
+    dropped = lacking(target, request, adapter.scope.unlisted) | (request.fields_present() & adapter.scope.drops)
+    reduced = request.without(dropped)
+    if not target.addressable:
+        # The call could reach an entity the caller didn't target (Target.addressable).
+        classes = _reached(hass, registry, adapter, target, None).classes
+        refused = _refused(adapter, target, classes, None) or Gate(Outcome.REFUSED, reason=Reason.NOT_ADDRESSABLE)
+        return _Judged(refused, dropped, device=True)
+    if reason := adapter.supports(hass, reduced, target):
+        return _Judged(None if reason == Reason.EMPTY_GROUP else _refusal(reason, None), dropped)
     members = _listed(hass, registry, adapter, target)
     if members == []:
-        return None
-    classes = _reached(hass, registry, adapter, target, members).classes
-    return gate(adapter, target, classes, members, frozenset(), labs_on)
+        return _Judged(None, dropped)
+    here = _reached(hass, registry, adapter, target, members)
+    dropped |= _labs_off_drops(adapter, reduced, target, here.classes, labs_on)
+    reduced = request.without(dropped)
+    if reduced.nothing_to_do():
+        return _Judged(None, dropped, members, here, unchanged=True)
+    return _Judged(
+        gate(adapter, target, here.classes, members, reduced.fields_present(), labs_on), dropped, members, here
+    )
+
+
+def judge(
+    hass: HomeAssistant, registry: AdapterRegistry, adapter: Adapter, target: Target, request: Request, labs_on: bool
+) -> Gate | None:
+    """What a call of the adapter's action carrying `request` does on the target, judged by the dispatcher's own
+    planning (_judge): supports() and a member it can't address first, then its class, then the gate. None for an
+    empty group, which a call skips silently, and for a call left nothing to send, which is unchanged."""
+    return _judge(hass, registry, adapter, request, target, labs_on).gate
 
 
 class Dispatcher:
@@ -568,50 +630,37 @@ class Dispatcher:
         title = self.registry.integrations[adapter.integration].title
         while pending:
             target = pending.popleft()
-            dropped = lacking(target, request, adapter.scope.unlisted) | (
-                request.fields_present() & adapter.scope.drops
-            )
-            reduced = request.without(dropped)
-            if not target.addressable:
-                # A member a group fell back to that the integration can't address on its own: the call could reach
-                # an entity the caller didn't target (Target.addressable). Its class's refusal comes first, so a
-                # member whose class harms says so. It stands for its whole device, so the skip names the device
-                # (_device_of), with no address.
-                classes = _reached(self.hass, self.registry, adapter, target, None).classes
-                refused = _refused(adapter, target, classes, None)
-                reason, why = (refused.reason, refused.why) if refused else (Reason.NOT_ADDRESSABLE, None)
-                results += _skip(_device_of(target), target.named, reason, adapter.integration, why, title)
-                continue
-            if reason := adapter.supports(self.hass, reduced, target):
-                results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)
-                continue
-            members = _listed(self.hass, self.registry, adapter, target)
-            if members == []:
-                # Core's group expansion yields nothing for an empty group, so it is skipped silently.
-                results += _skip(target.reported_id, target.named, Reason.EMPTY_GROUP)
-                continue
-            reached[target.reported_id] = here = _reached(self.hass, self.registry, adapter, target, members)
-            found = here.classes
-            dropped |= self._labs_off_drops(adapter, reduced, target, found, labs_on)
-            reduced = request.without(dropped)
-            if reduced.nothing_to_do():
+            judged = _judge(self.hass, self.registry, adapter, request, target, labs_on)
+            decided = judged.gate
+            if judged.reached is not None:
+                reached[target.reported_id] = judged.reached
+            if decided is None:
+                if judged.unchanged and judged.reached is not None:
+                    answered.add(target.reported_id)
+                    results.append(
+                        _classed(
+                            adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, judged.reached
+                        )
+                    )
+                # Else an empty group, skipped silently, as core's group expansion yields nothing for one.
+            elif decided.outcome is Outcome.RUNS and judged.reached is not None:
                 answered.add(target.reported_id)
-                results.append(
-                    _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
+                own = adapter.scope.own_call(judged.reached.classes)
+                by_run.setdefault((judged.dropped, own), []).append(target)
+            elif judged.device:
+                # A member the integration can't address on its own stands for its whole device, so the skip names
+                # the device (_device_of), with no address.
+                results += _skip(
+                    _device_of(target), target.named, decided.reason, adapter.integration, decided.why, title
                 )
-            elif (decided := gate(adapter, target, found, members, reduced.fields_present(), labs_on)).outcome is (
-                Outcome.RUNS
-            ):
-                answered.add(target.reported_id)
-                by_run.setdefault((dropped, adapter.scope.own_call(found)), []).append(target)
-            elif members is not None and (decided.outcome is not Outcome.LABS or decided.by_class_alone):
+            elif judged.members is not None and (decided.outcome is not Outcome.LABS or decided.by_class_alone):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused or
                 # flagged one is skipped as indirect (raised only if named on its own). So a group with one member
                 # not yet placed runs the rest, where the call harms a class; one with a member that takes a call of
                 # its own gives each member its own; and one flagged only by a member's class runs the members of
                 # Verified or Documented classes. One of unknown membership can't fall back, and is refused whole.
-                fallen.append((target, members, decided.reason, decided.why))
-                pending.extend(self._fallback(adapter, target, members, seen, by_device, decided.reason))
+                fallen.append((target, judged.members, decided.reason, decided.why))
+                pending.extend(self._fallback(adapter, target, judged.members, seen, by_device, decided.reason))
             else:
                 results += _skip(
                     target.reported_id, target.named, decided.reason, adapter.integration, decided.why, title
@@ -621,26 +670,6 @@ class Dispatcher:
             (adapter, request.without(dropped), ready, dropped, reached, own)
             for (dropped, own), ready in by_run.items()
         ]
-
-    @staticmethod
-    def _labs_off_drops(
-        adapter: Adapter, request: Request, target: Target, classes: Classes, labs_on: bool
-    ) -> frozenset[str]:
-        """The fields the call carries that are in Labs on the target's class (AdapterScope.class_labs), which, with the
-        option off, are dropped as a lacked field is, so the call runs without them. None on a native group, which
-        keeps them: the gate falls back to its members, each judged alone; and none with the option on."""
-        if labs_on or target.is_group:
-            return frozenset()
-        if gated := adapter.scope.class_labs_fields(classes) & request.fields_present():
-            _LOGGER.debug(
-                "%s on %s: %s drops %s, in Labs on class %s",
-                adapter.action,
-                adapter.integration,
-                target.reported_id,
-                sorted(gated),
-                ", ".join(map(str, classes)),
-            )
-        return gated
 
     @staticmethod
     def _fallback(
