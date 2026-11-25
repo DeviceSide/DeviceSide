@@ -79,6 +79,7 @@ docs/device-compatibility.md
 22. **Controls first (Jason, 2026-11-25, live check):** the three options head the Settings form; the intro, legend and table follow in Labs's `data_description`, after the Labs text (HA renders a step's description above its fields, a section's description as plain text, and a field's `data_description` as Markdown). The intro drops "now": "DeviceSide runs {n} features on {m} of your devices." The Labs legend line says "above". Headings use `<center>`, as HA's Markdown sanitizer drops `align` from `div`.
 23. **Collapsed above the options (Jason, 2026-11-25, live check):** Decision 22's table under Labs still rendered the options last, and HA has no description below a step's fields, so the Settings description is a `<details>` whose summary is the intro sentence, holding the legend and table; Labs's description is its own text again, and the legend says "below". Replaces Decision 22's placement.
 24. **A call to action, built in code (Jason, 2026-11-25, live check):** the summary reads "See your devices: DeviceSide runs {n} features on {m} of them." `coverage.section()` builds the whole `<details>` block, as HA's frontend formatter (formatjs) reads tags in a translation string as its own markup and fails; the Settings description is `{coverage}`.
+25. **Static table, Labs first (Jason, 2026-11-25, live check):** the collapsing section goes, as users will scroll: the Settings description (`coverage.section()`, still built in code) is the intro "DeviceSide runs {n} features on {m} of your devices.", the legend and the table, above the options; Labs is the first option. Replaces Decisions 23-24 and Decision 20's Labs-last.
 26. **README cards shrink to classes (Jason, 2026-11-25, README follow-up):** a card line names its classes (or a
     model line no class takes, such as Matter's WiZ Smart Plug, and native groups) with their marks, no tested models
     in parentheses and no ✔: the compatibility page lists the models and how each was tested. The README block links
@@ -90,8 +91,6 @@ docs/device-compatibility.md
     "Turn on Labs in Configure > Settings to try it" in the README). The README's 🔧 and ⚠️ entries stay gen_compat's.
 29. **"Will it work with my device?"** leads with the view (install, open Configure → Settings, see each light and
     switch marked Verified, Documented or Labs), then the screenshot, then the cards as the answer before installing.
-
-25. **Static table, Labs first (Jason, 2026-11-25, live check):** the collapsing section goes, as users will scroll: the Settings description (`coverage.section()`, still built in code) is the intro "DeviceSide runs {n} features on {m} of your devices.", the legend and the table, above the options; Labs is the first option. Replaces Decisions 23-24 and Decision 20's Labs-last.
 
 ## Steps
 

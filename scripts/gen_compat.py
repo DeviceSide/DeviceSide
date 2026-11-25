@@ -189,13 +189,13 @@ REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=devic
 # Device types, in a card's order for a line's tested models.
 TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 # A line's statuses, in its order: (key, icon). Not built yet has none: a card leaves those out.
+REFUSED = "no_known_method"
 OUTCOMES = (
     ("works", "🟢"),
     ("should", "🟡"),
     ("labs", "⚪"),
-    ("no_known_method", "🔴"),
+    (REFUSED, "🔴"),
 )
-REFUSED = "no_known_method"
 LABS = next(icon for key, icon in OUTCOMES if key == "labs")
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.LABS: "labs"}
 VERIFIED = "✔"
@@ -804,7 +804,7 @@ def status_cell(
             actions = feature_actions(feature, label)
             # A class with no model of its own on the action (a scene is classed by its lights) takes the integration's.
             links = record_links(proofs(held, actions) or proofs(everything, actions), part_named=label != feature)
-        elif status == "no_known_method":
+        elif status == REFUSED:
             refused = [
                 card.broken[(name, action)]
                 for name, _ in line.items
@@ -838,7 +838,7 @@ def matrix_rows(card: Card, columns: list[str], data: Data, ids: dict, icons: di
             rows.append([cell(("&emsp;" if entry.note is not None else "") + name), *(cell(x) for x in cells)])
     for entry in card.refused:
         key = (entry["what"], entry["reason"], entry["source"])
-        link = f"{icons['no_known_method']} [why](#{ids[key]})" if key in ids else icons["no_known_method"]
+        link = f"{icons[REFUSED]} [why](#{ids[key]})" if key in ids else icons[REFUSED]
         name = anchor(card.short(entry["what"]), data.url(card.key, entry["section"]))
         rows.append([cell(name), *[link] * len(columns)])
     return rows
@@ -1134,7 +1134,7 @@ def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[It
             for name in [*names, *scope.no_known_method]:
                 for domain in reached(class_domains, name, scope):
                     if name in scope.no_known_method:
-                        held.append(((name, domain), "no_known_method"))
+                        held.append(((name, domain), REFUSED))
                     else:
                         held.append(((name, domain), TIER[scope.level(domain, [name])]))
         for item, status in held:

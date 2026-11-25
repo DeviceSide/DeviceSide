@@ -121,7 +121,7 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
 
 A field can be in Labs on some classes alone (`labs_fields(...)`, `AdapterScope.class_labs`) while it keeps its level in
 `fields` on the rest. With the Labs option off it is dropped on those classes (`fields_dropped`), not refused; with it
-on, the call is Labs. A pass on such a class credits no model on the compatibility page for that action, as a record doesn't say which
+on, the call is Labs. A pass on such a class credits no model in the compatibility page's matrix for that action, as a record doesn't say which
 fields a test sent.
 
 A sign-off covers only what was exercised; it never signs off untested code.
@@ -364,12 +364,12 @@ maintainer's `_manual.json` sign-off carrying them (`reports`, [Sign-off format]
 item, which the compatibility page shows "by report". The maintainer judges how many are enough (tenet 7); nothing
 counts them in code.
 
-The compatibility page never credits a tested model from a pass on a flagged item while its flag stands, and the
+The compatibility page's matrix never credits a tested model from a pass on a flagged item while its flag stands, and the
 README's cards fold two or more top-level Labs lines on a card (⚪ with no 🟢 or 🟡) into one ⚪ line
 (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `labs("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the page and
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model in the page's matrix and
 lets a Shelly maintainer lift the flag, once they judge that pass enough: their PR makes it `verified("Light")`.
 
 *Example:* Zigbee2MQTT's set auto-off and clear auto-off on Tuya and Sonoff inching switches are in Labs, untested.

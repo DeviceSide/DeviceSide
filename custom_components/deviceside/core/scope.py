@@ -115,7 +115,7 @@ class NoKnownMethod:
     """A class with no known method, a device limit as far as anyone knows (docs/evidence.md, No known method): no
     known call works on it, or the only one known is unsafe, and the reason says which. What the card names, why, and
     the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it as `no_known_method`,
-    raising with the reason; the card marks it 🔴.
+    raising with the reason; the compatibility page marks it 🔴.
 
     Whether the call harms the class is the action's (Action.failure_harms), not the entry's: on an action whose
     failure harms, the entry also makes the scope refuse a target that could still be in it (AdapterScope.harms).
