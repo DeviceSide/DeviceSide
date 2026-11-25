@@ -57,6 +57,14 @@ wire, and no rig case touches the bottom (lowest limit 30 %; the raise-from-off 
    definitions carry `turnsOffAtBrightness1` (ZHC `03b37655`, per PR #610's count). Like Decision 4: no bypass, and
    their lowest is 0.8 %, said in the Z2M `index.md` and `internals.md`. Reopens when a probe shows one holds level 1.
 
+7. **(2026-11-25, after step 3) `set_attributes` skips the kept-level publish only for a level-1 write to a lit
+   Hue-family light**, the one case the converter rewrites; every other write keeps it, so Z2M's stored level stays
+   current.
+8. **(2026-11-25, after step 3) Z2M's restore-after-soft-off memory is probed, not coded around.** Record in Z2M
+   `internals.md`, read from source: (a) a group raise lights an off Hue member raw, leaving that member's memory set;
+   (b) a raw lower to 0.4 % then an off with a transition before the end read-back. Step 4's retest runs both; a
+   failure reopens a fix in this PR.
+
 The 2026-11-24 research note's aside ("DeviceSide should treat minimum staged level as 2, or skip") is superseded by
 Decision 1; research files aren't edited.
 
