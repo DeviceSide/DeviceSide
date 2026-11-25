@@ -60,10 +60,13 @@ wire, and no rig case touches the bottom (lowest limit 30 %; the raise-from-off 
 7. **(2026-11-25, after step 3) `set_attributes` skips the kept-level publish only for a level-1 write to a lit
    Hue-family light**, the one case the converter rewrites; every other write keeps it, so Z2M's stored level stays
    current.
-8. **(2026-11-25, after step 3) Z2M's restore-after-soft-off memory is probed, not coded around.** Record in Z2M
-   `internals.md`, read from source: (a) a group raise lights an off Hue member raw, leaving that member's memory set;
-   (b) a raw lower to 0.4 % then an off with a transition before the end read-back. Step 4's retest runs both; a
-   failure reopens a fix in this PR.
+8. **(2026-11-25, after step 3) Z2M's restore-after-soft-off memory is probed, not coded around.** Probed on the rig
+   in step 4 ([research](../integrations/zigbee2mqtt/research/hue/2026-11-25-raw-bottom-probe.md)), with
+   `hue_native_control` off: (a) a member soft-off at 40 %, a group raise from off to 100 %, then a plain on to that
+   member: it went back to 40.2 %, and plain HA group commands with no DeviceSide call did the same, so the memory is
+   Z2M's own; (b) a raw lower from 30 % to 0.4 %, then an off with a transition before the end read-back: the plain
+   on came back at 29.9 %. With the option on, neither jumped. The probes also showed the raw lower's
+   `moveToLevelWithOnOff` to level 1 leaves the bulb off. A failure reopens a fix in this PR: open, for Jason.
 
 The 2026-11-24 research note's aside ("DeviceSide should treat minimum staged level as 2, or skip") is superseded by
 Decision 1; research files aren't edited.

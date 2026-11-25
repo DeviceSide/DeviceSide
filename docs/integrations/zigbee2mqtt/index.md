@@ -42,7 +42,7 @@ Signify's Hue devices (manufacturer `Philips`). A Hue smart plug gets no turn on
 ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)).
 
 Smooth dimming sends a Hue bulb's lowest brightness, 0.4 %, directly, where Zigbee2MQTT alone stopped at 0.8 % in a
-test; the direct send hasn't been measured yet ([Lowest brightness](#lowest-brightness)).
+test. In a test the direct send reached 0.4 % but left the bulb off ([Lowest brightness](#lowest-brightness)).
 
 ### Tuya
 
@@ -319,7 +319,8 @@ A light's lowest brightness is 0.4 %. Zigbee2MQTT sends 0.8 % in its place to a 
 off at 0.4 %, which every Hue bulb's does, and to a group only when every member's does
 ([internals](internals.md#fade)):
 
-- **Hue bulbs, and groups of Hue bulbs alone:** smooth dimming sends 0.4 % directly, since a Hue bulb holds it. A
+- **Hue bulbs, and groups of Hue bulbs alone:** smooth dimming sends 0.4 % directly. In a test, a lower to it left
+  the bulb off, where Flash-free turn-on's 0.4 % stayed lit ([internals](internals.md#fade)). A
   group that mixes Hue bulbs with other lights gets what Zigbee2MQTT sends: 0.8 % when every member's definition is
   flagged, else 0.4 %.
 - **Other lights so flagged stop at 0.8 %:** some Innr, ADEO, IKEA, Gledopto and Aqara lights. Innr's are reported
