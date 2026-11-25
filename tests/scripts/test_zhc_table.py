@@ -1,0 +1,241 @@
+"""scripts/zhc_table.py: the membership predicate, the table's rows, its regeneration and check, and the bump's
+proposal."""
+
+import shutil
+from pathlib import Path
+
+import pytest
+
+from scripts import zhc_table as zt
+
+from .conftest import GitRepo
+
+
+def light(model="L1", vendor="Acme", *, meta=None, overrides=(), color_hs=False, white_labels=()) -> dict:
+    """A resolved light definition, as resolve.mjs prints it."""
+    return {
+        "model": model,
+        "vendor": vendor,
+        "zigbee_models": [model],
+        "fingerprinted": False,
+        "fingerprint_manufacturers": [],
+        "white_labels": list(white_labels),
+        "meta": meta or {},
+        "overrides": list(overrides),
+        "color_hs": color_hs,
+        "exposes": [],
+    }
+
+
+@pytest.mark.parametrize(
+    ("row", "why"),
+    [
+        (light(), []),
+        (light(meta={"supportsHueAndSaturation": True}, color_hs=True), []),
+        (light(meta={"multiEndpoint": True, "applyRedFix": True}), []),
+        (light(meta={"disableDefaultResponse": False}), []),
+        (light(meta={"turnsOffAtBrightness1": True}), ["meta turnsOffAtBrightness1"]),
+        (light(meta={"omitOptionalLevelAndColorParams": True}), ["meta omitOptionalLevelAndColorParams"]),
+        (light(meta={"supportsEnhancedHue": "function"}), ["meta supportsEnhancedHue"]),
+        # A flag ZHC adds keeps a definition out until a maintainer has read it.
+        (light(meta={"aNewFlag": True}), ["meta aNewFlag"]),
+        (light(overrides=["state", "brightness"]), ["state converter overridden", "brightness converter overridden"]),
+        (light(color_hs=True), ["color_hs without supportsHueAndSaturation"]),
+    ],
+)
+def test_departures(row, why):
+    assert zt.departures(row) == why
+
+
+def test_table_holds_members_and_their_fingerprinted_white_labels():
+    labels = [
+        {"model": "W1", "vendor": "Other", "fingerprinted": True},
+        {"model": "W2", "vendor": "Other", "fingerprinted": False},
+    ]
+    resolved = {
+        "lights": [light("L1", white_labels=labels, color_hs=True, meta={"supportsHueAndSaturation": True})],
+        "other_models": [],
+    }
+
+    assert zt.table(resolved).members == {"L1": ("Acme", True), "W1": ("Other", True)}
+
+
+def test_table_leaves_out_a_model_two_definitions_publish():
+    resolved = {
+        "lights": [light("L1"), light("L1", vendor="Else"), light("L2"), light("L3", overrides=["color"])],
+        "other_models": ["L2", "L3"],
+    }
+
+    found = zt.table(resolved)
+
+    assert found.members == {}
+    # L3 is no member under either definition, so isn't ambiguous.
+    assert found.ambiguous == ["L1", "L2"]
+
+
+TABLE_TEXT = '''"""A table."""
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class Excluded:
+    model: str
+    action: str
+    source: str
+
+
+@dataclass(frozen=True, slots=True)
+class Kept:
+    model: str
+    vendor: str
+    color_hs: bool
+    reason: str
+
+
+{block}
+
+EXCLUDED: tuple[Excluded, ...] = ({excluded})
+
+KEPT: tuple[Kept, ...] = ({kept})
+'''
+
+
+def write_table(root: Path, models=None, excluded="", kept="", pin="v1.0.0") -> Path:
+    models = {"L1": ("Acme", False), "L2": ("Müller", True)} if models is None else models
+    path = root / zt.TABLE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(TABLE_TEXT.format(block=zt.block(pin, models), excluded=excluded, kept=kept))
+    page = root / zt.PAGE
+    page.parent.mkdir(parents=True, exist_ok=True)
+    page.write_text(zt.page(zt.load(path.read_text())))
+    return path
+
+
+def test_rewrite_keeps_the_hand_kept_rows(tmp_path):
+    excluded = 'Excluded("L1", "stop", "https://example.com/1"),'
+    path = write_table(tmp_path, excluded=excluded)
+
+    text = zt.rewrite(path.read_text(), "v2.0.0", {"L3": ("Acme", False)})
+
+    assert excluded in text
+    module = zt.load(text)
+    assert (module.ZHC_RELEASE, module.MODELS) == ("v2.0.0", {"L3": ("Acme", False)})
+
+
+def test_members_less_excluded_plus_kept(tmp_path):
+    path = write_table(
+        tmp_path,
+        excluded='Excluded("L1", "stop", "https://example.com/1"),',
+        kept='Kept("L9", "Acme", False, "reviewed"),',
+    )
+
+    assert zt.members(zt.load(path.read_text())) == {"L2", "L9"}
+
+
+def test_the_committed_table_and_page_pass():
+    assert zt.check() == []
+
+
+def test_check_passes_a_current_table(tmp_path):
+    write_table(tmp_path, excluded='Excluded("L1", "stop", "https://example.com/1"),')
+
+    assert zt.check(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    ("excluded", "kept", "problem"),
+    [
+        ('Excluded("L1", "stop", ""),', "", "EXCLUDED 'L1' has no https source"),
+        ('Excluded("L1", "turn_on_for", "https://example.com/1"),', "", "not an action the class serves"),
+        ("", 'Kept("L9", "Acme", False, " "),', "KEPT 'L9' has no reason"),
+        ("", 'Kept("L1", "Acme", False, "reviewed"),', "KEPT 'L1' is a member again"),
+        (
+            'Excluded("L9", "stop", "https://example.com/1"),',
+            'Kept("L9", "Acme", False, "reviewed"),',
+            "both EXCLUDED and KEPT: ['L9']",
+        ),
+    ],
+)
+def test_check_fails_a_bad_row(tmp_path, excluded, kept, problem):
+    write_table(tmp_path, excluded=excluded, kept=kept)
+
+    assert any(problem in found for found in zt.check(tmp_path))
+
+
+def test_check_fails_a_stale_page(tmp_path):
+    write_table(tmp_path)
+    (tmp_path / zt.PAGE).write_text("old\n")
+
+    assert zt.check(tmp_path) == [f"{zt.PAGE} is stale; run scripts/zhc_table.py --check --write"]
+
+
+def test_page_lists_members_excluded_and_kept(tmp_path):
+    path = write_table(
+        tmp_path,
+        excluded='Excluded("L1", "stop", "https://example.com/1"),',
+        kept='Kept("L9", "Acme", True, "reviewed"),',
+    )
+
+    page = zt.page(zt.load(path.read_text()))
+
+    assert "## Members (2)" in page
+    assert "| Müller | L2 | yes |" in page
+    assert "| Acme | L9 | yes |" in page
+    assert "| Acme | L1 | `stop` | <https://example.com/1> |" in page
+    assert "| Acme | L9 | reviewed |" in page
+    assert "[v1.0.0](https://github.com/Koenkk/zigbee-herdsman-converters/releases/tag/v1.0.0)" in page
+
+
+def test_proposal_reviews_a_departure_that_shipped_outside_labs(tmp_path):
+    module = zt.load(write_table(tmp_path, kept='Kept("L5", "Acme", False, "reviewed"),').read_text())
+    old = {"L1": ("Acme", False), "L2": ("Acme", False), "L3": ("Acme", False)}
+    new = zt.Resolved({"L1": ("Acme", False), "L4": ("Acme", True), "L5": ("Acme", False)}, ["L6"], {})
+
+    body = zt.proposal("v2", "v1", old, new, ("v0.2.0", frozenset({"L1", "L2"})), module, ["- `H1` (hue): x to y"])
+
+    assert "Members: 3 (was 3); 2 added, 2 departing." in body
+    assert "- Acme `L4`" in body
+    assert "- **review**: Acme `L2`" in body
+    assert "- **leaves**: Acme `L3`" in body
+    assert "- `H1` (hue): x to y" in body
+    assert "### Left out as ambiguous\n\n- `L6`" in body
+    assert "drop their KEPT rows)\n\n- `L5`" in body
+
+
+def test_proposal_before_any_release_holds_the_table(tmp_path):
+    module = zt.load(write_table(tmp_path).read_text())
+
+    body = zt.proposal("v2", "v1", {"L1": ("Acme", False)}, zt.Resolved({}, [], {}), (None, frozenset()), module)
+
+    assert "every departure **leaves**" in body
+    assert "- **leaves**: Acme `L1`" in body
+
+
+def test_released_members_reads_the_last_full_release(repo: GitRepo):
+    repo.commit()
+    repo.git("tag", "v0.1.0")
+    write_table(repo.path, models={"L1": ("Acme", False)})
+    repo.git("add", "-A")
+    repo.git("commit", "-q", "-m", "table")
+    repo.git("tag", "v0.2.0")
+    write_table(repo.path, models={"L2": ("Acme", False)})
+    repo.git("add", "-A")
+    repo.git("commit", "-q", "-m", "bump")
+    repo.git("tag", "v0.3.0rc1")
+
+    assert zt.released_members(repo.path) == ("v0.2.0", frozenset({"L1"}))
+
+
+def test_released_members_before_the_table_existed(repo: GitRepo):
+    repo.commit()
+    repo.git("tag", "v0.1.0")
+
+    assert zt.released_members(repo.path) == ("v0.1.0", frozenset())
+
+
+def test_main_check_write_renders_the_page(tmp_path, capsys):
+    shutil.copytree(zt.REPO / zt.TABLE.parent, tmp_path / zt.TABLE.parent, dirs_exist_ok=True)
+
+    assert zt.main(["--check", "--write"], repo=tmp_path) == 0
+    assert (tmp_path / zt.PAGE).read_text() == (zt.REPO / zt.PAGE).read_text()
