@@ -348,8 +348,8 @@ BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
 
 def level_1(transtime: int) -> dict:
-    """Level 1 as a lower sends it to Hue lights alone: a raw moveToLevel, as the converter would send 2, and its
-    moveToLevelWithOnOff would turn the light off at the minimum (fade.raw_bottom)."""
+    """Level 1 as a lower sends it to Hue and Aqara lights alone: a raw moveToLevel, as the converter would send 2, and
+    its moveToLevelWithOnOff would turn the light off at the minimum (fade.raw_bottom)."""
     return {
         "command": {
             "cluster": "genLevelCtrl",
@@ -360,13 +360,24 @@ def level_1(transtime: int) -> dict:
 
 
 def bottom_target(hass, broker, kind: str, **options) -> tuple[str, str]:
-    """A fade's target at the bottom and the topic it publishes to: a Hue light, a group of Hue lights, a group with an
-    Innr light, or an Innr light alone (`other`, in Labs)."""
+    """A fade's target at the bottom and the topic it publishes to: a Hue light, an Aqara light, a group of Hue lights,
+    a group of Aqara and Hue lights, a group with an Innr light (Hue and Innr, or Aqara and Innr), or an Innr light
+    alone (`other`, in Labs)."""
     allow_labs(hass)
-    if kind.endswith("group"):
-        two = options | ({"manufacturer": "Innr"} if kind == "mixed_group" else {})
-        return group(hass, broker, one=options, two=two), "zigbee2mqtt/7/set"
-    return light(hass, broker, manufacturer="Innr" if kind == "other_light" else "Philips", **options), SET
+    brands = {
+        "hue_group": ("Philips", "Philips"),
+        "aqara_hue_group": ("Aqara", "Philips"),
+        "mixed_group": ("Philips", "Innr"),
+        "aqara_other_group": ("Aqara", "Innr"),
+    }
+    if kind in brands:
+        one, two = brands[kind]
+        return (
+            group(hass, broker, one=options | {"manufacturer": one}, two=options | {"manufacturer": two}),
+            "zigbee2mqtt/7/set",
+        )
+    brand = {"other_light": "Innr", "aqara_light": "Aqara"}.get(kind, "Philips")
+    return light(hass, broker, manufacturer=brand, **options), SET
 
 
 # The inching families' shared test inputs: the composite and switch exposes Z2M lists, and the call's data and topic.

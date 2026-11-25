@@ -5,11 +5,13 @@ Saturation is a color with no hue, which zigbee-herdsman-converters' light_color
 an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one halted by StopMoveStep doesn't
 (docs/integrations/zigbee2mqtt/internals.md, Tested behavior).
 
-A lower to level 1 goes raw to lights whose class holds it (families/hue, RAW_BOTTOM), every light it reaches: the
-converter sends level 1 as 2 where every light's definition has turnsOffAtBrightness1 (a group only when all its
-members' do), and a Hue bulb holds 1. It is a moveToLevel, not the converter's moveToLevelWithOnOff, which turns a
-light off at the minimum (rig probe 2026-11-25); it publishes no state, which the end read-back makes up. A raise from
-off keeps the converter's bottom, level 2, which the fade up hides (internals.md, `fade`)."""
+A lower to level 1 goes raw to lights whose class holds it (families/hue and families/aqara, RAW_BOTTOM), every light
+it reaches, a group of Hue and Aqara lights included: the converter sends level 1 as 2 where every light's definition
+has turnsOffAtBrightness1 (a group only when all its members' do), and a Hue bulb holds 1; it sends it as
+moveToLevelWithOnOff, which switched an unflagged Aqara bulb off. A group with any other light keeps the converter.
+The raw call is a moveToLevel, not the converter's moveToLevelWithOnOff, which turns a light off at the minimum (rig
+probe 2026-11-25); it publishes no state, which the end read-back makes up. A raise from off keeps the converter's
+bottom, level 2, which the fade up hides (internals.md, `fade`)."""
 
 import logging
 from collections.abc import Coroutine
@@ -26,7 +28,9 @@ from .addressing import known_base, not_addressable, topic, z2m_address
 from .bridge import LEVEL_CLUSTER, has_feature, publish, publish_set, raw_command
 from .classes import capability, class_scope
 from .color_refresh import refresh_color
-from .families.hue import NEED, RAW_BOTTOM
+from .families.aqara import RAW_BOTTOM as AQARA_RAW_BOTTOM
+from .families.hue import NEED
+from .families.hue import RAW_BOTTOM as HUE_RAW_BOTTOM
 from .members import member_lights, unaddressable
 from .native_control import native_control
 from .set_check import checked
@@ -51,6 +55,9 @@ from ...core.zcl import HUE_STEPS
 from ...core.zcl_fade import brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
+
+# The classes a lower sends level 1 raw to, each family's own set with its evidence; set_attributes uses Hue's alone.
+RAW_BOTTOM = HUE_RAW_BOTTOM | AQARA_RAW_BOTTOM
 
 # Z2M reads a light back within 0.7 s of a stop, and once a fade has run its published end value is right.
 SETTLE_SECONDS = 2.0
@@ -331,7 +338,7 @@ def brightness_fade(
 
 def raw_bottom(hass: HomeAssistant, payload: dict, reached: list[Target]) -> dict:
     """A lower's publish, or where it carries level 1 and every light it reaches is of a class that holds it
-    (families/hue, RAW_BOTTOM), a raw moveToLevel to level 1 with the converter's transtime and options: the
+    (RAW_BOTTOM: Hue and Aqara), a raw moveToLevel to level 1 with the converter's transtime and options: the
     converter's moveToLevelWithOnOff would turn the light off at the minimum. A group reaches its members; one with
     another brand's light keeps the converter."""
     if payload.get("brightness") != 1 or not all(capability(hass, light) in RAW_BOTTOM for light in reached):

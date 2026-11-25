@@ -391,14 +391,14 @@ one, the longest.
     1–254 ([philips.ts L420](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L420)); other paths with the option on weren't measured.
 
   **The bypass.** A Hue bulb holds level 1, so a lower whose publish carries brightness 1 (a limit that rounds to
-  level 1) goes past the converter where every light it reaches is a Hue light (`families/hue` `RAW_BOTTOM`,
-  `fade.py` `raw_bottom`), as a raw `moveToLevel` through Z2M's `command` payload, the call `set_attributes` and
+  level 1) goes past the converter where every light it reaches is a Hue or an Aqara light (`families/hue` and
+  `families/aqara` `RAW_BOTTOM`, unioned in `fade.py` `raw_bottom`; Hue by the run below, Aqara by the finding after it), as a raw `moveToLevel` through Z2M's `command` payload, the call `set_attributes` and
   ZHA's lower send:
   `{"command": {"cluster": "genLevelCtrl", "command": "moveToLevel", "payload": {"level": 1, "transtime", "optionsMask": 0, "optionsOverride": 0}}}`,
   `transtime` the transition in tenths, as the converter's
   ([toZigbee.ts L1403](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1403)).
   Not the converter's `moveToLevelWithOnOff`: sent raw to level 1, it left the bulb off (below). A group goes raw only
-  when every member is a Hue light, as the converter applies the flag to a group only when every member's definition
+  when every member is a Hue or an Aqara light (a group of both included), as the converter applies the flag to a group only when every member's definition
   has it (`allEqual`, above): a group with another brand's light keeps the converter, which sends 1 unless that
   light's definition is flagged too. A raw command draws no state from Z2M, so Home Assistant follows at the fade's
   end read-back, or at a report from the bulb; `brightness_move: stop` halts it as it does the converter's, both ZCL
@@ -438,7 +438,12 @@ one, the longest.
   `moveToLevel` (`set_attributes`) held it lit, read 1 (rig run 2026-11-25, 13:43, Z2M 2.14.3). With-On/Off to the
   minimum sets OnOff off, as on the Hue bulb above. DeviceSide can't read the flag, which is ZHC's definition metadata,
   so the raw bottom serves the classes a probe showed holding level 1 lit (`hue`, `aqara`); every other light keeps
-  the converter, which switches it off at a lower to 0.4 % when its definition isn't flagged.
+  the converter, which switches an unflagged one off at a lower to 0.4 %, by the ZCL rule that a command with On/Off
+  (`moveToLevelWithOnOff`) to the minimum level sets OnOff off. Caveat: ZHC flags 3 Aqara definitions
+  (`turnsOffAtBrightness1`), not necessarily the T2's; the raw bottom serves the class on the one bulb's evidence
+  (Decision 11), and a flagged Aqara light would hold level 1 lit through it only as the T2 did. A group with an
+  `other` member keeps the converter whole, so its off members light at the lower (`moveToLevelWithOnOff`), an open
+  item in [deferred.md](../../deferred.md#the-raw-bottom-for-other-lights-on-zigbee2mqtt).
 
   Other flagged lights keep Z2M's 2, so their lowest is 0.8 %: Innr's turn off at level 1 ([research](research/2026-11-24-other-brands-dimming.md), from Z2M #4035); ADEO's is read from the flag, not reported. IKEA (15 definitions),
   Gledopto (3) and Aqara (3) carry the flag too (ZHC `03b37655`, counted in

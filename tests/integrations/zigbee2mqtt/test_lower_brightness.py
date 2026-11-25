@@ -62,11 +62,14 @@ async def test_a_group_gets_one_publish_and_a_prediction_per_member(hass, broker
     [
         pytest.param("hue_light", level_1(30), id="hue_light"),
         pytest.param("hue_group", level_1(30), id="all_hue_group"),
-        pytest.param("mixed_group", {"brightness": 1, "transition": 3.0}, id="group_with_another_brand"),
+        pytest.param("aqara_light", level_1(30), id="aqara_light"),
+        pytest.param("aqara_hue_group", level_1(30), id="aqara_and_hue_group"),
+        pytest.param("mixed_group", {"brightness": 1, "transition": 3.0}, id="hue_and_another_brand_group"),
+        pytest.param("aqara_other_group", {"brightness": 1, "transition": 3.0}, id="aqara_and_another_brand_group"),
         pytest.param("other_light", {"brightness": 1, "transition": 3.0}, id="another_brand"),
     ],
 )
-async def test_to_the_bottom_goes_raw_to_hue_lights_alone(hass, broker, kind, payload):
+async def test_to_the_bottom_goes_raw_to_hue_and_aqara_lights_alone(hass, broker, kind, payload):
     # From 60 % to 0.4 % of a 5 s sweep: 3 s, transtime 30.
     entity_id, to = bottom_target(hass, broker, kind)
 

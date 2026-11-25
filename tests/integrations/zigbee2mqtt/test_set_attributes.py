@@ -150,6 +150,8 @@ async def test_a_level_also_replaces_the_level_z2m_keeps(hass, broker):
         pytest.param({}, 0.4, [level(1)], id="lit_hue_at_level_1_sends_the_write_alone"),
         pytest.param({}, 40, [level(102), keep(102)], id="lit_hue_at_40"),
         pytest.param({"manufacturer": "Innr"}, 0.4, [level(1), keep(1)], id="lit_other_brand_at_level_1"),
+        # Decision 7: the skip is Hue's alone, though a lower sends level 1 raw to Aqara too.
+        pytest.param({"manufacturer": "Aqara"}, 0.4, [level(1), keep(1)], id="lit_aqara_at_level_1"),
         pytest.param({"on": False}, 0.4, [level(1), keep(1)], id="off_hue_at_level_1"),
     ],
 )
