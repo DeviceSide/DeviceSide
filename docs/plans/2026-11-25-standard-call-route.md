@@ -112,6 +112,10 @@ Numbered on from the parent plan's 16; made by Jason after the step's plan revie
     Its owners are the maintainers of every integration that imports it, as `zigbee/reasons.py`'s are of the
     integrations using it: `CLAUDE.md`'s Maintainers, `scripts/owners.py` and CODEOWNERS follow.
     The member count lives in the PR body, not `internals.md` (it changes each bump).
+22. **Another integration keys on a Zigbee pair, decided per pair.** The generator emits each (model ID,
+    manufacturer) pair as a member only when every definition it can resolve to is a member and none is excluded,
+    with `color_hs` only when all of them expose it; a pair touching a non-member or a split-off is out. No ZHC matcher
+    is reproduced. A member with no Zigbee strings can't be keyed outside Zigbee2MQTT, and the table says so.
 
 ## Steps
 
