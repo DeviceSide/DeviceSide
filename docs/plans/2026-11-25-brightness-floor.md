@@ -53,6 +53,10 @@ wire, and no rig case touches the bottom (lowest limit 30 %; the raise-from-off 
    set brightness 0.4 %, lit; each asserts level 1 exactly. What it catches that nothing else does: the wire level
    under Z2M's converter and the bulb's own answer, which unit tests can't see.
 
+6. **(2026-11-25, after step 2) Other families' flagged lights keep Z2M's 2 too.** IKEA (15), Gledopto (3) and Aqara (3)
+   definitions carry `turnsOffAtBrightness1` (ZHC `03b37655`, per PR #610's count). Like Decision 4: no bypass, and
+   their lowest is 0.8 %, said in the Z2M `index.md` and `internals.md`. Reopens when a probe shows one holds level 1.
+
 The 2026-11-24 research note's aside ("DeviceSide should treat minimum staged level as 2, or skip") is superseded by
 Decision 1; research files aren't edited.
 
