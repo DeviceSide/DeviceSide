@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from homeassistant.const import Platform
 
 from .docs import RESEARCH
+from .families.aqara import AQARA
 from .families.hue import HUE
 from .families.ikea import IKEA, IKEA_TIMER_HARMED
 from .families.sonoff import SONOFF_INCHING, SONOFF_S60
@@ -69,11 +70,17 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
         # plain On (timed-on call patterns); the call that would serve most is the datapoint countdown (its research
         # note), addressed per endpoint.
         TUYA_MCU: NotBuilt(reason=_STAYS_ON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
-        # Sonoff's classes, which left `other` for inching: the same entry, as no pass or research says Sonoff's
-        # firmware takes the timer (families/sonoff).
+        # Sonoff's classes, which left `other` for inching: the same entry, as no pass or research says their firmware
+        # takes the timer (families/sonoff).
         **dict.fromkeys(
             (SONOFF_INCHING, SONOFF_S60),
             NotBuilt(reason=OTHER_TIMER_REASON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
+        ),
+        # Measured on the T2 E27: from off, `on_time` (0x42) never turned the bulb on, and it has no OnTime or
+        # OffWaitTime (families/aqara; the probe, section 3).
+        AQARA: NotBuilt(
+            reason="Its bulb ignored a timed on from off and stayed off",
+            source=RESEARCH + "aqara/2026-11-25-agl003-probe.md",
         ),
         # Reported failing the countdown with harm (plan Decisions 35 and 41).
         TUYA_COUNTDOWN_HARMED: NotBuilt(

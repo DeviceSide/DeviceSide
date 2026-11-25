@@ -46,6 +46,14 @@ Bulb. Model IDs: `LTA009`, `9290024684`.
 | [ZHA](#zha) | [turn on with timer](integrations/zha/test-records/turn_on_for.json)<br>smooth dimming: [up](integrations/zha/test-records/raise_brightness.json) [down](integrations/zha/test-records/lower_brightness.json)<br>[set without turning on](integrations/zha/test-records/set_attributes.json)<br>[get attributes](integrations/zha/test-records/get_attributes.json)<br>[stop](integrations/zha/test-records/stop.json) | `0x01002a00` | ✔ rig |
 | [Hue](#hue) | smooth dimming: [up predicted state](integrations/hue/test-records/raise_brightness-predicted_state.json) [up](integrations/hue/test-records/raise_brightness.json) [down predicted state](integrations/hue/test-records/lower_brightness-predicted_state.json) [down](integrations/hue/test-records/lower_brightness.json)<br>[set without turning on](integrations/hue/test-records/set_attributes.json)<br>[get attributes](integrations/hue/test-records/get_attributes.json)<br>stop: [predicted state](integrations/hue/test-records/stop-predicted_state.json) [record](integrations/hue/test-records/stop.json) | `1.163.1` | ✔ rig |
 
+### Aqara
+
+Bulb. Model IDs: `lumi.light.agl003`, `T2_E27`.
+
+| Integration | Features tested | Firmware | How |
+|---|---|---|---|
+| [Zigbee2MQTT](#zigbee2mqtt) | smooth dimming: [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json)<br>[set without turning on](integrations/zigbee2mqtt/test-records/set_attributes.json)<br>[get attributes](integrations/zigbee2mqtt/test-records/get_attributes.json)<br>[stop](integrations/zigbee2mqtt/test-records/stop.json) | | ✔ rig |
+
 ### Hue Essential White and Color Ambiance A60
 
 Bulb. Model IDs: `LCA016`, `8720169392182`.
@@ -103,7 +111,7 @@ Plug. Model IDs: `TS011F`, `TS011F_plug_1`.
 
 | Integration | Features tested | Firmware | How |
 |---|---|---|---|
-| [Zigbee2MQTT](#zigbee2mqtt) | [turn on with timer](integrations/zigbee2mqtt/test-records/turn_on_for.json)<br>[get attributes](integrations/zigbee2mqtt/test-records/get_attributes.json) | `0122052017`<br>`Zigbee2MQTT 2.14.3`<br>`500+TZSKT31BS102` | ✔ rig |
+| [Zigbee2MQTT](#zigbee2mqtt) | [turn on with timer](integrations/zigbee2mqtt/test-records/turn_on_for.json)<br>[get attributes](integrations/zigbee2mqtt/test-records/get_attributes.json) | `0122052017`<br>`500+TZSKT31BS102` | ✔ rig |
 
 ### WiZ Smart Plug
 
@@ -131,6 +139,7 @@ Each mark links its proof: 🟢 its records, 🟡 and ⚪ the class's section on
 | Class | turn on with timer | turn off with timer | auto-off/on | smooth dimming | smooth saturation | smooth hue | set without turning on | get attributes | stop |
 |---|---|---|---|---|---|---|---|---|---|
 | [native groups](#native-groups) ✔ | 🟢 [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) | | | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_saturation.json) [down](integrations/zigbee2mqtt/test-records/lower_saturation.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_hue.json) [down](integrations/zigbee2mqtt/test-records/lower_hue.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/set_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/get_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/stop.json) |
+| [Aqara lights](integrations/zigbee2mqtt/index.md#aqara) ([Aqara LED Bulb T2 E27](#aqara) ✔) | | | | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json) | | | 🟢 [record](integrations/zigbee2mqtt/test-records/set_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/get_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | [Hue lights](integrations/zigbee2mqtt/index.md#hue) ([Hue White Ambiance E27 1100lm](#hue-white-ambiance-e27-1100lm) ✔, [Hue Essential White and Color Ambiance A60](#hue-essential-white-and-color-ambiance-a60) ✔, [Hue White A60 B22](#hue-white-a60-b22) ✔) | 🟢 [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) | | | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_brightness.json) [down](integrations/zigbee2mqtt/test-records/lower_brightness.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_saturation.json) [down](integrations/zigbee2mqtt/test-records/lower_saturation.json) | 🟢 [up](integrations/zigbee2mqtt/test-records/raise_hue.json) [down](integrations/zigbee2mqtt/test-records/lower_hue.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/set_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/get_attributes.json) | 🟢 [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](integrations/zigbee2mqtt/index.md#ikea) | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) | | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) |
 | [IKEA lights](integrations/zigbee2mqtt/index.md#ikea) | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) | | | | | ⚪ [why](integrations/zigbee2mqtt/index.md#ikea) |
@@ -195,6 +204,7 @@ Fields proven less than their feature:
 
 | Devices | Integrations | Features | Why | Source |
 |---|---|---|---|---|
+| Aqara lights | Zigbee2MQTT | turn on with timer | Its bulb ignored a timed on from off and stayed off | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/aqara/2026-11-25-agl003-probe.md) |
 | devices behind a Matter bridge | Matter | turn on with timer | A bridge's software answers the timer for its devices, which nothing found says it runs, so it could stay on, and DeviceSide's own off isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/internals.md#what-decides-the-call) |
 | Hue smart plugs | Zigbee2MQTT, ZHA | turn on with timer | Most plugs and switches ignore the timer or read it as a delayed toggle, so it could stay on, and the calls that would serve them, DeviceSide's own off or the plug's auto-off, aren't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | <a id="hue-smart-scenes"></a>Hue smart scenes | Hue | set scene | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes) |

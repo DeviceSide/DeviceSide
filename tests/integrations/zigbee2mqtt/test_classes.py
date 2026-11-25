@@ -159,6 +159,9 @@ CERTIFIED = {"raise_brightness", "lower_brightness", "stop"}
         ("tuya_mcu", {"turn_on_for"}, ALL, set()),
         ("sengled", set(), ALL, set()),
         ("gledopto", set(), ALL, set()),
+        # `other`'s actions for lights, in Labs: Level Control's moves, stop, and raw reads and writes. turn_on_for is
+        # refused with its own entry: the bulb ignores on_time (research/aqara/2026-11-25-agl003-probe.md).
+        ("aqara", {"turn_on_for"}, ALL - CERTIFIED - {"get_attributes", "set_attributes"}, set()),
         # In Labs on Level Control's moves and, on lights, turn_on_for; its outlets refused there with an entry.
         ("ikea", {"turn_on_for"}, ALL - CERTIFIED - {"turn_on_for"}, set()),
         # Reported to stay on with the timer (Zigbee2MQTT #29158).
