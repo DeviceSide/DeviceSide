@@ -58,6 +58,12 @@ UNSUPPORTED_ATTRIBUTE); its timer behavior is unprobed; one unexplained `no genL
     DeviceSide doesn't build those moves on; its own ha-rig PR, then a restricted `--action stop` rerun, then stop and
     the brightness moves Verified here.
 
+11. **The rig's not-built rule** (ha-rig #109, 2026-11-25): a case skips as not applying when the checkout's scope
+    refuses one of its target's calls on the profile's declared class (`not_built` or `no_known_method`), so on
+    `aqara` turn_on_for's bulb cases and get_attributes' `reads_a_running_timer[light_dimmable]` skip too: kept, per
+    Decision 8 (no timer on `aqara`, get_attributes asks no OnTime). `keeps_and_reads_hs_while_off` (no hs color mode
+    on the bulb) isn't under it, so get_attributes still can't record on lab_aqara: open for Jason.
+
 ## Steps
 
 **No rig run or write probe before 07:45 local on 2026-11-25** (Jason, 2026-11-24): work that needs no device (steps 2, 3, 6) goes first. Every rig run and every write probe needs Jason's yes (`DEVICE_SIDE_RIG_RESTRICTED=1`). Read-only probes run through
@@ -121,4 +127,4 @@ hostnames in commits, docs or research files.
 
 Intent: Aqara color bulbs Verified on Zigbee2MQTT as a new `aqara` class, on probes and rig records.
 Touches: custom_components/deviceside/integrations/zigbee2mqtt/families/aqara/**, custom_components/deviceside/integrations/zigbee2mqtt/families/__init__.py, custom_components/deviceside/integrations/zigbee2mqtt/refusals.py, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, docs/models.yaml, docs/device-compatibility.md, docs/research/**, README.md, .github/CODEOWNERS
-Depends-on: jasonmx/HA-rig#108
+Depends-on: jasonmx/HA-rig#108, jasonmx/HA-rig#109
