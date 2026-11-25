@@ -9,7 +9,7 @@ Jason and is recorded there as a numbered Decision. Evidence: [the converter sur
 Intent: A new Zigbee2MQTT class, other brands' standard lights, keyed on a committed table of ZHC light definitions on
 the standard converters, is Documented on nine light actions with Labs off; evidence.md gains the route; a ZHC bump
 becomes the first step of each RC.
-Touches: docs/evidence.md, docs/design.md, CLAUDE.md, docs/plans/2026-11-25-standard-call-route.md, docs/research/2026-11-25-z2m-converter-survey.md, custom_components/deviceside/core/scope.py, custom_components/deviceside/core/registry.py, tests/core/test_registry.py, custom_components/deviceside/zigbee/standard_lights.py, tests/zigbee/**, scripts/owners.py, scripts/gen_codeowners.py, .github/CODEOWNERS, .pre-commit-config.yaml, custom_components/deviceside/integrations/zigbee2mqtt/**, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, scripts/zhc_table.py, scripts/zhc_table/**, scripts/check_audit.py, tests/scripts/**, .github/workflows/tests.yml, .github/workflows/cut-release-candidate.yml, .claude/skills/release/SKILL.md, docs/device-compatibility.md, README.md
+Touches: docs/evidence.md, docs/design.md, CLAUDE.md, CONTRIBUTING.md, scripts/check_maintainer_merge.py, tests/scripts/**, docs/plans/2026-11-25-standard-call-route.md, docs/research/2026-11-25-z2m-converter-survey.md, custom_components/deviceside/core/scope.py, custom_components/deviceside/core/registry.py, tests/core/test_registry.py, custom_components/deviceside/zigbee/standard_lights.py, tests/zigbee/**, scripts/owners.py, scripts/gen_codeowners.py, .github/CODEOWNERS, .pre-commit-config.yaml, custom_components/deviceside/integrations/zigbee2mqtt/**, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, scripts/zhc_table.py, scripts/zhc_table/**, scripts/check_audit.py, tests/scripts/**, .github/workflows/tests.yml, .github/workflows/cut-release-candidate.yml, .claude/skills/release/SKILL.md, docs/device-compatibility.md, README.md
 Depends-on: #613
 
 ## What is settled
@@ -32,10 +32,10 @@ Depends-on: #613
   levels. ZHA is untouched.
 - **Hue and saturation**: `zigbee2mqtt/fade.py`'s `color_hs` check already answers `unchanged` with
   `fields_dropped` for a light without it; a unit test pins that for the new class. No second class.
-- **The table** is a generated Python module, `integrations/zigbee2mqtt/standard_lights.py`, loaded at import with no
-  file I/O:
+- **The table** is a generated Python module, `zigbee/standard_lights.py` in the Zigbee catalog (Decision 21), loaded
+  at import with no file I/O:
   - generated, between markers: the ZHC release tag pinned, and `MODELS`, one entry per definition model (vendor,
-    whether it exposes `color_hs`);
+    whether it exposes `color_hs`, its Zigbee model IDs and fingerprints);
   - hand-kept, outside the markers, preserved by every regeneration: `EXCLUDED`, one row per split-off (the identity:
     a definition model by default, or Zigbee manufacturer and model ID, plus firmware where the report narrows it; the
     action the report concerns; its source), and `KEPT`, a departure a maintainer kept, with the reason
