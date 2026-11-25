@@ -7,7 +7,8 @@ from step 4's prototype (`spike/coverage-view`: `scripts/prototype_coverage_view
 ## Coordination
 
 Intent: The Configure Settings form shows, per light and switch entity, which DeviceSide features run now
-(Verified, Documented), which need Labs, and which are refused and why, read from the scopes the dispatcher uses.
+(Verified, Documented) and which need Labs, read from the scopes the dispatcher uses; the README's cards share its
+legend and leave models and refusals to the compatibility page.
 Touches: custom_components/deviceside/config_flow.py, custom_components/deviceside/coverage.py,
 custom_components/deviceside/core/dispatcher.py, custom_components/deviceside/core/scope.py,
 custom_components/deviceside/core/registry.py, custom_components/deviceside/features.py, scripts/gen_features.py,
@@ -122,14 +123,6 @@ docs/device-compatibility.md
 
 ## Handoff
 
-2026-11-25, after #611 merged (`1e9b843a`, audit report 6 CLEAN). Next session: the README follow-up, in `wt/readme-coverage`.
-
-- **Done in #611 beyond steps 1-3:** at Jason's ask, a README screenshot of the view under "Will it work with my device?" (`docs/images/coverage-view.png`, a generic mockup whose marks follow the feature table, 600 px shown at 300), and the generated feature table moved from the README to the top of `docs/device-compatibility.md` (`scripts/gen_features.py`; the README's Key Features ends with a link to it).
-- **Next: README coverage follow-up** (Jason agreed 2026-11-25; items as agreed, less what's done):
-  1. "Will it work with my device?" leads with the view: install, open Configure → Settings, see your lights and switches marked Verified, Documented or Labs. One sentence and the screenshot are there now; finish the wording.
-  2. gen_compat's collapsed README block shrinks to integration plus device class with marks, linking docs/device-compatibility.md for models.
-  3. The README legend shares the view's wording and marks from one source (gen_compat and `coverage.legend()`); 🔴 leaves the README for the compatibility page (Decision 19).
-  4. While there: `docs/device-compatibility.md`'s intro ("The README's cards give the short answer…") now sits under the feature table; reword it. gen_compat's comments still say "README feature order" / "README table" (scripts/gen_compat.py ~77, ~82, ~879, ~1063, ~1096; tests/scripts/test_gen_compat.py ~775).
-- **Open:** report 6's Medium (tests/test_coverage.py:471, a Labs-on assertion that can't fail) and 13 Lows stay untracked per the audit rule.
-- **Mockup:** regenerate from the session's approach if the view changes: a static HTML page in the scratchpad from `coverage.section()`'s Markdown shape, made-up names, served locally; Jason screenshots it. Nothing of it committed.
-- **Branch / worktree / PR:** `wt/readme-coverage`, `/Users/jason/projects/ha/deviceside-wt/readme-coverage`; its draft PR is opened by `pr-draft` below. The old `coverage-view` worktree is left with an untracked `.playwright-mcp/` only; it can be removed.
+2026-11-25, step 4 done on `wt/readme-coverage` (#616): README cards name classes only (no models, ✔ or 🔴), one
+legend source in `coverage.py`, view-first "Will it work with my device?" prose, compatibility page intro reworded,
+`docs/evidence.md`'s card wording moved to the page. Plan review: no must-fix. Next: the PR audit, then ready.

@@ -204,8 +204,8 @@ supported, where DeviceSide can't do the action for the class, each named for wh
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
   tells users not to ask DeviceSide to build. A method is a call that does what was asked and fails without harm, so
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
-  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
-  it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
+  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the compatibility
+  page marks it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
   class not admitted to Labs (below), as research predicts most of it fails the default call or no source admits it,
   while another call is known or plausible. The integration names it, and the adapter's
@@ -349,8 +349,8 @@ maintainer's `_manual.json` sign-off carrying them (`reports`, [Sign-off format]
 item, which the compatibility page shows "by report". The maintainer judges how many are enough (tenet 7); nothing
 counts them in code.
 
-The cards never credit a tested model from a pass on a flagged item while its flag stands, and fold two or more
-top-level Labs lines on a card (⚪ with no 🟢 or 🟡, though 🔴 may sit beside it) into one ⚪ line
+The compatibility page never credits a tested model from a pass on a flagged item while its flag stands, and the
+README's cards fold two or more top-level Labs lines on a card (⚪ with no 🟢 or 🟡) into one ⚪ line
 (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `labs("Light")`: a user's report of a Gen3 Dimmer jumping on
@@ -416,7 +416,7 @@ which `--transcripts` enforces: without one, a change to what it does on a group
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual row is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
-  no separate level: the cards keep their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
+  no separate level: the compatibility page keeps its ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
   or manual) for the RC audit.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration with a changed
   action that has no sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others
