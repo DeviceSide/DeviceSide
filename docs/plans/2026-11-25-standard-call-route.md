@@ -147,3 +147,13 @@ it wasn't sure of. #613 must merge first (`Depends-on`); build on `main` and mer
 - The README's Zigbee2MQTT card shows "other brands' standard lights" on its own 🟡 line, and other brands' lights
   still in the ⚪ fold.
 - No hardware run: the route is Documented on evidence, and step 6's full Z2M run is the release's (tenet 8).
+
+## Handoff
+
+2026-11-25. **Done:** the step, its two plan reviews and three PR audits (report 3 CLEAN, delta). Decisions 17-22 are recorded above. #615 is marked ready and its body holds the summary and the counts. Branch `wt/standard-call-route`, worktree `/Users/jason/projects/ha/deviceside-wt/standard-call-route`.
+
+**Next:**
+1. Wait on #613 (`wait-pr 613`). When it merges, merge `origin/main` in (merge, never rebase). It overlaps on `docs/evidence.md`, the Z2M `index.md` and `internals.md`, `fade.py`, and the `raise_brightness` transcript. Then rerun `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check` and `scripts/zhc_table.py --check` (regenerate README and the compat page if needed), push, and run `audit-gate status` and the audit it asks for.
+2. The merge into `main` is Jason's unless the repo opts in to `merge-green` (check its header).
+
+**Open for Jason:** audit report 1's M1. A `LUMI`-reporting Aqara light on the table lands in `standard_light`, but `index.md:219` and `families/aqara/__init__.py:11-12` say it stays with other brands. Choose: reword it here, leave it to #614 (which edits those files), or keep LUMI Aqara lights out of the class. Overlaps: #614 (Aqara files) and #611 (`core/registry.py`, `core/scope.py`).
