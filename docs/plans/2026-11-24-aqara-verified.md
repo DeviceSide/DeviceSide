@@ -95,25 +95,16 @@ hostnames in commits, docs or research files.
 
 ## Handoff
 
-2026-11-25 10:05, from the step 4 session (context past 120k). Branch `wt/aqara-verified`, worktree
-`deviceside-wt/aqara-verified`, PR #609 (draft).
+2026-11-25 10:30, from the step 5 session. Branch `wt/aqara-verified`, worktree `deviceside-wt/aqara-verified`, PR #609.
 
-- **Done:** steps 1-3 and step 6's research (step 6's decision moved to #610, Decision 6). Step 4, first part: the
-  09:29 `lab_aqara` run; Aqara rows promoted into lower_brightness, raise_brightness and set_attributes records (Hue's
-  unchanged); set_attributes Verified on `aqara` (93d33abf). Decisions 10 and 11. ha-rig #109 (the not-built rule)
-  built, plan-reviewed, audited CLEAN twice (report 2's Medium: a call followed by `expect_error` naming the refusal is
-  skipped too; no profile hits it today; untracked per the audit rule), marked ready: **Jason merges it**.
-- **Next:** wait for #109 to merge (`wait-pr 109 -R jasonmx/HA-rig`), fast-forward ha-rig main, then add `class: aqara`
-  under the bulb in `/Users/jason/projects/ha/ha-rig/profiles/lab_aqara.yaml` (main before #109 rejects the key). Then,
-  with Jason's yes, `DEVICE_SIDE_RIG_RESTRICTED=1 /Users/jason/projects/ha/ha-rig/scripts/rig.py --profile lab_aqara
-  --integration zigbee2mqtt --action stop` from this worktree; promote if staged (it exits 1 if anything fails). Then lift
-  stop, raise_brightness and lower_brightness to `verified` on `aqara` (`families/aqara/__init__.py`; the move/stop
-  test in tests/core/test_scope.py must pass), regenerate, reword index.md's Aqara paragraph, plan-review step 4, then
-  step 5.
+- **Done:** steps 1-4 and step 6's research. ha-rig #109 merged (3ceb00b); `class: aqara` in `lab_aqara.yaml`; the
+  restricted `--action stop` rerun passed its three dimming cases, rows promoted; stop, raise_brightness and
+  lower_brightness Verified on `aqara`, the card regenerated, index.md's Aqara paragraph reworded. Step 4 plan-reviewed:
+  0 must-fix; the owner's call and both optionals taken.
+- **Next:** step 5 (audit, owner-findings, `gh pr ready`; Jason merges).
 - **Remind Jason, once the Aqara records are in:** the Hue `lab` refresh (`--profile lab --action get_attributes`).
-- **Open for Jason:** get_attributes' `keeps_and_reads_hs_while_off` on an xy-only bulb (deviceside step file vs a rig
-  rule on HA's supported_color_modes), Decision 11; Decision 5 (recommended: keep the recorded limit; or a probe with the
-  bulb's 1.5 s off transition set to 0, ~30 runs each). Model name settled.
+- **Open for Jason:** get_attributes' `keeps_and_reads_hs_while_off` on an xy-only bulb (Decision 11); Decision 5
+  (recommended: keep the recorded limit).
 
 ## Verification
 
