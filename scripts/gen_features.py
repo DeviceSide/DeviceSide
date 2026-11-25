@@ -7,7 +7,7 @@ Each icon links to the docs: a cell's to its integration's page, `docs/integrati
 feature's section when it has one), a prohibited sign's to the section of docs/integrations.md that says why, a legend
 entry's to the heading that explains it.
 
-The columns come from each integration's bundle: `column` (the README label) and `column_order` in
+The columns come from each integration's bundle: `column` (the README label) in
 `docs/integrations/<integration>/devices.yaml`. An integration without one is an error naming the file to add.
 
 What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Labs option
@@ -32,8 +32,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
-from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
+from custom_components.deviceside.core.registry import CARD_ORDER, AdapterRegistry, served_domains  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
+from custom_components.deviceside.features import FEATURE_ACTIONS  # noqa: E402
 from scripts.check_release import BUNDLES, adapters  # noqa: E402
 
 README = REPO / "README.md"
@@ -54,45 +55,63 @@ ICONS = {"light": "light", "switch": "switch", "group": "native group", "scene":
 # to the section of the integration's page, or to the page when it has none. The device cards (gen_compat) name each
 # action's feature by its row's card name.
 FEATURES = (
-    ("Turn on with timer", "turn-on-with-timer", "Turn on with timer", "turn on with timer", ("turn_on_for",)),
-    ("Turn off with timer", "turn-off-with-timer", "Turn off with timer", "turn off with timer", ("turn_off_for",)),
+    (
+        "Turn on with timer",
+        "turn-on-with-timer",
+        "Turn on with timer",
+        "turn on with timer",
+        FEATURE_ACTIONS["turn on with timer"],
+    ),
+    (
+        "Turn off with timer",
+        "turn-off-with-timer",
+        "Turn off with timer",
+        "turn off with timer",
+        FEATURE_ACTIONS["turn off with timer"],
+    ),
     (
         "Auto-off/on (aka inching)",
         "auto-off-aka-inching-and-auto-on",
         "Auto-off/on",
         "auto-off/on",
-        ("set_auto_off", "set_auto_on", "clear_auto_off", "clear_auto_on"),
+        FEATURE_ACTIONS["auto-off/on"],
     ),
     (
         "Smooth dimming",
         "smooth-dimming",
         "Smooth dimming",
         "smooth dimming",
-        ("raise_brightness", "lower_brightness", "stop"),
+        FEATURE_ACTIONS["smooth dimming"],
     ),
     (
         "Smooth saturation change",
         "smooth-color-changes",
         "Smooth color changes",
         "smooth saturation",
-        ("raise_saturation", "lower_saturation", "stop"),
+        FEATURE_ACTIONS["smooth saturation"],
     ),
     (
         "Smooth hue change",
         "smooth-color-changes",
         "Smooth color changes",
         "smooth hue",
-        ("raise_hue", "lower_hue", "stop"),
+        FEATURE_ACTIONS["smooth hue"],
     ),
     (
         "Set brightness, color or CT<br>without turning on",
         "set-brightness-color-temperature-or-color-without-turning-on",
         "Flash-free turn-on",
         "set without turning on",
-        ("set_attributes",),
+        FEATURE_ACTIONS["set without turning on"],
     ),
-    ("Set scene without turning on", "set-scene-without-turning-on", "Flash-free turn-on", "set scene", ("set_scene",)),
-    ("Get attributes", "get-attributes", "Get attributes", "get attributes", ("get_attributes",)),
+    (
+        "Set scene without turning on",
+        "set-scene-without-turning-on",
+        "Flash-free turn-on",
+        "set scene",
+        FEATURE_ACTIONS["set scene"],
+    ),
+    ("Get attributes", "get-attributes", "Get attributes", "get attributes", FEATURE_ACTIONS["get attributes"]),
 )
 # (icons, alt text, label, file, anchor): the legend, in order. Each icon links to the heading that explains it; a
 # README heading links within the page.
@@ -146,14 +165,15 @@ def page(integration: str) -> str:
 
 
 def columns(integrations: Iterable[str]) -> dict[str, str]:
-    """Integration -> its README column label, in `column_order`, from each bundle."""
+    """Integration -> its README column label (each bundle's `column`), in the cards' order (registry.CARD_ORDER)."""
     found = {}
     for key in integrations:
-        data = bundle(key)
-        label, order = data.get("column"), data.get("column_order")
-        if not isinstance(label, str) or not label or not isinstance(order, int) or isinstance(order, bool):
-            raise SystemExit(f"docs/integrations/{key}/devices.yaml needs a column and a column_order")
-        found[key] = (order, label)
+        label = bundle(key).get("column")
+        if not isinstance(label, str) or not label:
+            raise SystemExit(f"docs/integrations/{key}/devices.yaml needs a column")
+        if key not in CARD_ORDER:
+            raise SystemExit(f"{key} is in no place in CARD_ORDER (core/registry.py); add it")
+        found[key] = (CARD_ORDER.index(key), label)
     return {key: label for key, (_, label) in sorted(found.items(), key=lambda item: item[1])}
 
 

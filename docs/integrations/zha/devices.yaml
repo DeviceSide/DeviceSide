@@ -2,7 +2,6 @@
 # scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
 
 column: ZHA
-column_order: 2
 capabilities:
   # The classes integrations/zha/families/ name, each a card line (or, when its domains show different features,
   # one per domain, by `domains`), so each phrase says what sets the class apart from its neighbors.

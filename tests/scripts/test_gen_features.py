@@ -210,15 +210,18 @@ def test_an_integration_without_a_bundle_fails_naming_the_file(no_blockers):
         gf.generate(FakeRegistry(*every_row(), adapter("tuya", "stop")))
 
 
-def test_columns_follow_their_order_and_need_a_label_and_an_order(tmp_path, monkeypatch):
+def test_columns_follow_the_card_order_and_need_a_label_and_a_place_in_it(tmp_path, monkeypatch):
     monkeypatch.setattr(gf, "BUNDLES", tmp_path)
-    for key, text in (("b", "column: B\ncolumn_order: 1\n"), ("a", "column: A\ncolumn_order: 2\n"), ("c", "x: 1\n")):
+    monkeypatch.setattr(gf, "CARD_ORDER", ("b", "a", "c"))
+    for key, text in (("b", "column: B\n"), ("a", "column: A\n"), ("c", "x: 1\n"), ("d", "column: D\n")):
         (tmp_path / key).mkdir()
         (tmp_path / key / "devices.yaml").write_text(text)
     assert gf.columns(["a", "b"]) == {"b": "B", "a": "A"}
     assert list(gf.columns(["a", "b"])) == ["b", "a"]
-    with pytest.raises(SystemExit, match="needs a column and a column_order"):
+    with pytest.raises(SystemExit, match="needs a column"):
         gf.columns(["c"])
+    with pytest.raises(SystemExit, match="d is in no place in CARD_ORDER"):
+        gf.columns(["d"])
 
 
 def test_the_readme_needs_its_markers(tmp_path, no_blockers):
@@ -307,9 +310,9 @@ def test_a_missing_why_section_fails(monkeypatch, no_blockers):
 
 def test_an_integration_without_a_user_page_fails(tmp_path, monkeypatch, no_blockers):
     monkeypatch.setattr(gf, "BUNDLES", tmp_path)
-    for order, key in enumerate(KEYS):
+    for key in KEYS:
         (tmp_path / key).mkdir()
-        (tmp_path / key / "devices.yaml").write_text(f"column: {key}\ncolumn_order: {order}\n")
+        (tmp_path / key / "devices.yaml").write_text(f"column: {key}\n")
     monkeypatch.setattr(gf, "page", lambda key: f"docs/integrations/{key}/missing.md")
     with pytest.raises(
         SystemExit, match="no docs/integrations/zigbee2mqtt/missing.md; add the zigbee2mqtt bundle's user page"

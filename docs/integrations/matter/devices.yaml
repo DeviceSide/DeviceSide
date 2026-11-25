@@ -2,7 +2,6 @@
 # scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
 
 column: Matter
-column_order: 5
 capabilities:
   # The classes integrations/matter/classes.py names.
   wiz_plug: {phrase: WiZ Smart Plug, section: WiZ Smart Plug}

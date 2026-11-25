@@ -2,7 +2,6 @@
 # scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
 
 column: Control4
-column_order: 6
 capabilities:
   # The classes integrations/control4/classes.py names.
   other:

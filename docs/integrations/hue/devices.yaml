@@ -2,7 +2,6 @@
 # scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
 
 column: Hue
-column_order: 4
 requires: Bridge v2/Pro
 capabilities:
   # The classes integrations/hue/classes.py names, but smart_scene: a no known method entry in code (NoKnownMethod),

@@ -103,8 +103,9 @@ integrations, `type`, optional `section`: the model's heading on the generated p
 only one integration names is in its bundle's devices.yaml), and `no_known_method` and `not_built` entries that name
 their `integrations` (`what`, `reason`, `source`, optional `section`: the anchor id of its Not supported row, its
 `what` by default), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as
-an unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
-`column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
+an unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` (the
+README feature table's, read by gen_features; their order is registry.CARD_ORDER), `requires` (shown after the card's
+name),
 `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `section` is a heading of the integration's page, which a
 Documented or Labs class must have; `domains`, a phrase per entity domain, for a class the card splits), `sections`
@@ -213,7 +214,6 @@ INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/inte
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
 BUNDLE_KEYS = {
     "column",
-    "column_order",
     "requires",
     "capabilities",
     "sections",

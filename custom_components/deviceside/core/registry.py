@@ -17,6 +17,9 @@ from .. import integrations as integrations_pkg
 _LOGGER = logging.getLogger(__name__)
 # A GitHub handle: alphanumerics and single inner hyphens, at most 39 characters, no leading @.
 HANDLE = re.compile(r"[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}")
+# The integrations in the order of the README's device cards and feature table (scripts/gen_features.py), which the
+# coverage view lists them in too. A new integration is added here: gen_features fails until it is.
+CARD_ORDER = ("zigbee2mqtt", "zha", "shelly", "hue", "matter", "control4")
 # A family's key names its package (integrations/<x>/families/<key>/), so it is shaped like one.
 FAMILY_KEY = re.compile(r"[a-z][a-z0-9_]*")
 
