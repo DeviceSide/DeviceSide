@@ -30,7 +30,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
-from ...conftest import Clock, leaked, unload_mock_entries
+from ...conftest import Clock, allow_labs, leaked, unload_mock_entries
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import (
     DEFAULT_BASE,
@@ -361,6 +361,17 @@ def level_1(transtime: int) -> dict:
 
 # BOTTOM, to Hue lights alone.
 RAW_BOTTOM = level_1(0)
+
+
+def bottom_target(hass, broker, kind: str, **options) -> tuple[str, str]:
+    """A fade's target at the bottom and the topic it publishes to: a Hue light, a group of Hue lights, a group with an
+    Innr light, or an Innr light alone (`other`, in Labs)."""
+    allow_labs(hass)
+    if kind.endswith("group"):
+        two = options | ({"manufacturer": "Innr"} if kind == "mixed_group" else {})
+        return group(hass, broker, one=options, two=two), "zigbee2mqtt/7/set"
+    return light(hass, broker, manufacturer="Innr" if kind == "other_light" else "Philips", **options), SET
+
 
 # The inching families' shared test inputs: the composite and switch exposes Z2M lists, and the call's data and topic.
 COMPOSITE = {"type": "composite", "name": "inching_control_set", "property": "inching_control_set", "access": 2}

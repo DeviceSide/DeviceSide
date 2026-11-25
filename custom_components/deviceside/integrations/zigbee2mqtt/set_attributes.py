@@ -19,7 +19,8 @@ from homeassistant.core import HomeAssistant
 from .adapter import Z2MAdapter
 from .addressing import not_addressable
 from .bridge import LEVEL_CLUSTER, publish_set, raw_command
-from .classes import class_scope
+from .classes import capability, class_scope
+from .families.hue import RAW_BOTTOM
 from .members import member_lights, unaddressable
 from .read import Reader, reader
 from .set_check import checked
@@ -80,10 +81,16 @@ def _kept_level(level: int) -> dict:
     After an off with a transition, Z2M keeps the level from before it and restores it on the next on that carries no
     brightness; a raw command doesn't touch what it keeps. This payload replaces the kept level and sends a MoveToLevel
     without the override, which a light that is off ignores, so it stays off (probe 13j, either hue_native_control).
-    Only where a light it reaches is off: on a lit one the raw write has moved the bulb already, and this publish,
-    through Z2M's converter, would move a flagged one from level 1 to 2 (internals.md, `set_attributes`).
+    Left out for a level 1 written where every light it reaches is a lit Hue light (families/hue, RAW_BOTTOM): the raw
+    write has moved the bulb already, and this publish, through Z2M's converter, would move it to 2 (internals.md,
+    `set_attributes`). Every other write keeps it, so the level Z2M stores stays current.
     """
     return {"state": None, "brightness": level, "transition": WRITE_FADE_TENTHS / 10}
+
+
+def _lit_hue(hass: HomeAssistant, light: Target) -> bool:
+    """Whether the light is on and of a class whose level 1 Z2M's converter would rewrite to 2 (families/hue)."""
+    return light.state is not None and light.state.state == STATE_ON and capability(hass, light) in RAW_BOTTOM
 
 
 def _modes(target: Target) -> set[str]:
@@ -208,8 +215,8 @@ class Z2MSetAttributes(Z2MAdapter[SetAttributesRequest]):
     async def _send(
         self, hass: HomeAssistant, reading: Reader, request: SetAttributesRequest, to: Target, reached: list[Target]
     ) -> tuple[list[Command], bool]:
-        """Publish to `to` the commands for its own state, and the kept level unless every light it reaches is lit
-        (_kept_level); returns what was sent and whether a field was dropped."""
+        """Publish to `to` the commands for its own state, and the kept level (_kept_level) unless it writes level 1
+        to lit Hue lights alone; returns what was sent and whether a field was dropped."""
         modes = _modes(to)
         current_level = None
         if wants_level(request, modes) and (current_level := await reading.level(to)) is None:
@@ -219,8 +226,6 @@ class Z2MSetAttributes(Z2MAdapter[SetAttributesRequest]):
         for command in sent:
             await publish_set(hass, to, _wire(command))
         level = next((c.level for c in sent if isinstance(c, MoveToLevel)), None)
-        if level is not None and not all(
-            light.state is not None and light.state.state == STATE_ON for light in reached
-        ):
+        if level is not None and not (level == 1 and all(_lit_hue(hass, light) for light in reached)):
             await publish_set(hass, to, _kept_level(level))
         return sent, dropped

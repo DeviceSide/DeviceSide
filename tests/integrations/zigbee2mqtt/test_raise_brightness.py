@@ -5,7 +5,7 @@ import pytest
 from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
-from .conftest import BOTTOM, GET, RAW_BOTTOM, SENT, SET, call, commands, group, light
+from .conftest import BOTTOM, GET, RAW_BOTTOM, SENT, SET, bottom_target, call, commands, group, light
 from ...conftest import advance, allow_labs, result, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
@@ -105,16 +105,6 @@ async def test_a_group_is_read_back_member_by_member(hass, broker):
         ("zigbee2mqtt/0x01/get", {"state": "", "brightness": ""}),
         ("zigbee2mqtt/0x02/get", {"state": "", "brightness": ""}),
     ]
-
-
-def bottom_target(hass, broker, kind: str, **options) -> tuple[str, str]:
-    """A fade's target at the bottom and the topic it publishes to: a Hue light, a group of Hue lights, a group with an
-    Innr light, or an Innr light alone (`other`, in Labs)."""
-    allow_labs(hass)
-    if kind.endswith("group"):
-        two = options | ({"manufacturer": "Innr"} if kind == "mixed_group" else {})
-        return group(hass, broker, one=options, two=two), "zigbee2mqtt/7/set"
-    return light(hass, broker, manufacturer="Innr" if kind == "other_light" else "Philips", **options), SET
 
 
 @pytest.mark.parametrize(

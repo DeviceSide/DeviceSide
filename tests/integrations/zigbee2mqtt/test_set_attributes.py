@@ -7,7 +7,7 @@ from homeassistant.util.color import color_RGB_to_xy, color_xy_to_hs
 from custom_components.deviceside.integrations.zigbee2mqtt import set_attributes
 
 from .conftest import call
-from ...conftest import refusal, result
+from ...conftest import allow_labs, refusal, result
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -30,7 +30,13 @@ BULB = {
 
 
 def bulb(
-    hass, broker, entity_id: str = "light.lamp", ieee: str = IEEE, modes: list | None = None, on: bool = True
+    hass,
+    broker,
+    entity_id: str = "light.lamp",
+    ieee: str = IEEE,
+    modes: list | None = None,
+    on: bool = True,
+    manufacturer: str = "Philips",
 ) -> str:
     """A Z2M light that answers reads with BULB and stores the MoveTo commands it is sent."""
     name = entity_id.split(".")[1]
@@ -38,7 +44,9 @@ def bulb(
     entry = entries[0] if entries else z2m_entry(hass)
     attributes = {"supported_color_modes": COLOR if modes is None else modes, **RANGE}
     state = "on" if on else "off"
-    add_z2m_entity(hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes, name=name)
+    add_z2m_entity(
+        hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes, name=name, manufacturer=manufacturer
+    )
     clusters = {cluster: dict(values) for cluster, values in BULB.items()}
     clusters["genOnOff"]["onOff"] = int(on)
     broker.devices[ieee] = (name, clusters)
@@ -136,17 +144,22 @@ async def test_a_level_also_replaces_the_level_z2m_keeps(hass, broker):
 
 
 @pytest.mark.parametrize(
-    ("on", "published"),
+    ("options", "brightness", "published"),
     [
-        pytest.param(False, [level(1), keep(1)], id="off_replaces_the_kept_level"),
-        # The raw write has moved a lit bulb: through Z2M's converter, a Hue bulb's level 1 would go out as 2.
-        pytest.param(True, [level(1)], id="lit_sends_the_write_alone"),
+        # The raw write has moved a lit Hue bulb: through Z2M's converter, its level 1 would go out as 2.
+        pytest.param({}, 0.4, [level(1)], id="lit_hue_at_level_1_sends_the_write_alone"),
+        pytest.param({}, 40, [level(102), keep(102)], id="lit_hue_at_40"),
+        pytest.param({"manufacturer": "Innr"}, 0.4, [level(1), keep(1)], id="lit_other_brand_at_level_1"),
+        pytest.param({"on": False}, 0.4, [level(1), keep(1)], id="off_hue_at_level_1"),
     ],
 )
-async def test_the_kept_level_is_replaced_only_on_a_light_that_is_off(hass, broker, on, published):
-    bulb(hass, broker, modes=DIMMABLE, on=on)
+async def test_the_kept_level_is_left_out_only_for_level_1_on_a_lit_hue_light(
+    hass, broker, options, brightness, published
+):
+    allow_labs(hass)
+    bulb(hass, broker, modes=DIMMABLE, **options)
 
-    response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 0.4})
+    response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": brightness})
 
     assert response == {"light.lamp": CONFIRMED}
     assert [p["payload"] for p in broker.published if p["topic"] == SET and "read" not in p["payload"]] == published
@@ -355,17 +368,17 @@ async def test_a_group_is_one_groupcast_read_back_from_every_member(hass, broker
     ]
 
 
-async def test_a_group_whose_members_are_all_lit_keeps_no_level(hass, broker):
+async def test_a_group_of_lit_hue_lights_at_level_1_keeps_no_level(hass, broker):
     bulb(hass, broker, "light.one", ieee="0x01", modes=DIMMABLE)
     bulb(hass, broker, "light.two", ieee="0x02", modes=DIMMABLE)
     add_z2m_group(hass, hass.config_entries.async_entries("mqtt")[0], "light.room", group_id=7, name="room")
     hass.states.async_set("light.room", "on", {"supported_color_modes": DIMMABLE})
     broker.retained[GROUPS] = [{"id": 7, "members": [{"ieee_address": "0x01"}, {"ieee_address": "0x02"}]}]
 
-    response = await call(hass, "set_attributes", {"entity_id": "light.room", "brightness": 40})
+    response = await call(hass, "set_attributes", {"entity_id": "light.room", "brightness": 0.4})
 
     assert response == {"light.room": CONFIRMED}
-    assert sent(broker) == [(GROUP_SET, level(102))]
+    assert sent(broker) == [(GROUP_SET, level(1))]
     assert kept(broker) == []
 
 
