@@ -374,15 +374,16 @@ one, the longest.
   ([philips.ts L315](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L315)), as do 92 Innr definitions ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)) and 28 ADEO ones ([adeo.ts](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/adeo.ts)).
   With `hue_native_control` off, every brightness publish rides it: a fade to a limit that rounds to level 1,
   `set_attributes`' kept-level publish after a raw level 1, and raise's from-off `"brightness": 1` (read from source;
-  the fade that follows hides it). Philips' native-control converter doesn't rewrite it. Rig run 2026-11-25, an LTA009
-  (firmware 1.163.1) on Z2M 2.14.3, its level read live (`currentLevel`):
+  the fade that follows hides it). Rig run 2026-11-25, an LTA009 (firmware 1.163.1) on Z2M 2.14.3, its level read live
+  (`currentLevel`; [probe](research/hue/2026-11-25-brightness-floor-probe.md)):
   - `lower_brightness` from 30 % to a 0.4 % limit published `{"brightness": 1, "transition": 1.5}`: Z2M reported
     brightness 2, and the bulb read 2, 0.8 %. The same bulb on ZHA read 1 (`lower_to_the_lowest_level`).
   - `set_attributes` at 0.4 % on the lit bulb, option off: the raw `moveToLevel` to 1, then the kept-level publish
     3 ms later; three read-backs gave 2, so it was rejected `not_stored`. Option on: the same two publishes read back
     1, confirmed. On ZHA it read 1 (`sets_the_lowest_level_while_lit`).
   - `turn_on_for` at 0.4 % from off, a probe: `light.turn_on`'s `{"state": "ON", "brightness": 1}`, sent with the
-    option on (`native_control`), read 1 through the timer.
+    option on (`native_control`), read 1 through the timer. Philips' native-control converter clamps a brightness to
+    1–254 ([philips.ts L420](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L420)); other paths with the option on weren't measured.
 
   A Hue bulb holds level 1, so for Hue lights, and a group whose members all are, the bottom is to bypass the
   converter: a raw `genLevelCtrl` `moveToLevelWithOnOff` through Z2M's `command` payload, as `set_attributes`

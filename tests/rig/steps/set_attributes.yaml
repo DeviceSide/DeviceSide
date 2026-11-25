@@ -89,7 +89,7 @@ tests:
       - expect_state: {xy_color.0: {min: 0.16, max: 0.18}, xy_color.1: {min: 0.69, max: 0.71}, within: tol}
 
   # 0.4 % is level 1, the lowest a light takes (docs/design.md), written to a lit light. The live read is in percent to
-  # 0.1, so level 1 reads 0.4 and level 2 0.8. hue_native_control off, Zigbee2MQTT's default, is where Z2M's converter
+  # 0.1, so level 1 reads 0.4 and level 2 0.8. With hue_native_control off, Z2M's converter
   # rewrites the kept-level publish's brightness 1 to level 2 on a Hue light (zigbee2mqtt internals.md, fade).
   - name: sets_the_lowest_level_while_lit
     roles: [light_ct]
