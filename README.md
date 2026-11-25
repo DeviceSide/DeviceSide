@@ -18,8 +18,6 @@ It's the successor to [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth
 
 * **Zero setup:** Connects to your devices automatically via the core integrations
 
-Which features run on which integration: the [feature table](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md).
-
 ### Why DeviceSide exists
 
 Many lights, plugs and switches can run timers and smooth fades on their own. Until now, using these on HA meant hunting forum threads for YAML recipes and adapting them to your device.
