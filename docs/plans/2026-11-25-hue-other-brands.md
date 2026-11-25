@@ -48,6 +48,12 @@ Two principles Jason drew from #617, which this PR writes into the rules (step 1
 4. **Rides v0.2.0rc1.** Levels and classes change, calls don't, so no Hue rig rerun (tenet 9);
    `--transcripts=check` proves no call changed.
 5. **The Hue Smooth Dimming migration repair is unchanged.**
+7. **(2026-11-25, after step 1's review) `get_attributes` on a light whose `mirek_valid` is known wrong is split
+   off, not worked around:** `get_attributes` promises the light's actual value, never a cache of DeviceSide's or HA's
+   last write, so core's fix (PR #97263: track the last command on uncertified lights) is out. The Gledopto GL-C-008P
+   (core #93459) gets a class of its own that `get_attributes` doesn't serve; every other `other` light keeps it. A
+   user of that model reads HA's own light attributes.
+8. **(2026-11-25) Tenet 11 covers full releases, not RCs.**
 6. **The reply on #617** is posted once Jason approves its text. If the reporter gives his lights' Manufacturer and
    Model, they go in a `_manual.json` row crediting his report, as a follow-up, not a gate.
 
