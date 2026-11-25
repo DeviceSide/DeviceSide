@@ -41,6 +41,10 @@ publishes as it connects.
 Signify's Hue devices (manufacturer `Philips`). A Hue smart plug gets no turn on with timer
 ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)).
 
+For now, smooth dimming's lowest brightness on a Hue bulb is 0.8 %, not 0.4 %: Zigbee2MQTT sends the lowest level as
+the one above it, by its source, not yet measured ([internals](internals.md#fade)). Sending the lowest level to Hue
+bulbs directly is planned.
+
 ### Tuya
 
 Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). Most run
@@ -246,6 +250,9 @@ lights turn on and never off, and most plugs ignore the timer. If you try them, 
 not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug.
+
+The lowest brightness of most Innr lights, and of ADEO's, is 0.8 %: their Zigbee2MQTT definitions say they turn off at
+0.4 %, so Zigbee2MQTT sends 0.8 % in its place ([internals](internals.md#fade)).
 
 ## What DeviceSide changes in Zigbee2MQTT
 

@@ -367,6 +367,18 @@ one, the longest.
 - A brightness or saturation fade's `transition` is at most the longest ZCL transition (`docs/internals.md`, Fades),
   with `clamped_to` when a longer one is cut; the prediction matches.
 - Hue: `hue_move` at `254 / sweep_time` steps per second (ZCL allows 1 to 254).
+- **The bottom, read from source and not measured yet.** zigbee-herdsman-converters' `light_onoff_brightness` sends a
+  brightness of 1 as level 2 on a definition with `turnsOffAtBrightness1`
+  ([toZigbee.ts L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), and on a group only when every member's definition has it
+  (`allEqual`, [L1258](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1258)). `philips.m.light` sets it by default
+  ([philips.ts L315](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L315)), as do 92 Innr and 28 ADEO definitions (PR #610's converter survey).
+  With `hue_native_control` held off, every brightness publish rides it: raise's from-off `"brightness": 1` and a
+  fade to a limit that rounds to level 1 reach a Hue bulb as level 2, 0.8 %, and `set_attributes`' kept-level
+  publish after a raw level 1 would go out as a `moveToLevel` to 2. A Hue bulb holds level 1 (ZHA sends it raw,
+  [ZHA internals](../zha/internals.md), `lower_brightness`), so for Hue lights, and a group whose members all are, the
+  bottom is to bypass the converter: a raw `genLevelCtrl` `moveToLevelWithOnOff` through Z2M's `command` payload,
+  as `set_attributes` sends, with the same `transtime`. Planned, not built yet. Other flagged lights (Innr, ADEO) turn
+  off at 1, by ZHC's reports, and keep Z2M's 2: their lowest is 0.8 %.
 
 ### `stop`
 
