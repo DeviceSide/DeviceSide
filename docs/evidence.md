@@ -104,6 +104,15 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
     a marker certified devices carry and known uncertified ones don't, and on the one part the test runs on. A write
     never qualifies, as the test's field values are its own. The PR names the marker and what slips past it
     ([Matter](integrations/matter/internals.md#what-decides-the-call)).
+  - **a standard converter's call:** on Zigbee2MQTT lights alone, as a light write's failure is low harm and Z2M's
+    usage is the evidence (ZHA's isn't). The class keys on a zigbee-herdsman-converters (ZHC) definition whose
+    converters for the action are ZHC's standard ones, with no flag or override touching the call, from a committed
+    table naming the ZHC release it was built from: Z2M's users send the same call through the same converters. An
+    action DeviceSide builds as a raw command qualifies only where every known failure is visible to the caller.
+    Split-offs, each at the narrowest identity the report supports: a ZHC flag or override takes a model out at the
+    next bump; a Z2M or ZHC issue or PR reporting a device failing DeviceSide's call excludes it on the report alone,
+    citing it; a DeviceSide report follows contrary evidence (below). A bump's departure of a model whose features
+    shipped outside Labs in a full release needs a maintainer's review: kept with a reason, or excluded with a source.
 - **Labs:** built on a sourced call and untested, as no real device has passed it yet, or tested and held back by a
   maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
 
@@ -132,6 +141,11 @@ A sign-off covers only what was exercised; it never signs off untested code.
 *Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet. Z2M
 #25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, a different call, so it is no evidence
 against the device: it keeps `tuya_countdown`'s level, in Labs, until a pass on its maker string.
+
+*Example:* Zigbee2MQTT's `standard_light`, other brands' lights whose ZHC definition is on the standard converters, is
+Documented on the brightness and color fades and stop (Z2M sends them through those converters) and on `set_attributes`
+and `get_attributes`, raw commands whose known failures all raise or fail the read-back; Paulmann's 924.70, reported
+failing a color read, stays in `other` ([the table and the bump](integrations/zigbee2mqtt/internals.md#standard_lights)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
