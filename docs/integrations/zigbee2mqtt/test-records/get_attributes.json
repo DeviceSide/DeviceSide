@@ -3,12 +3,12 @@
   "integration": "zigbee2mqtt",
   "action": "get_attributes",
   "result": "pass",
-  "date": "2026-11-18",
+  "date": "2026-11-25",
   "source": {
     "kind": "rig",
-    "commit": "c05e6168"
+    "commit": "7f3c8610"
   },
-  "calls": "f0116de9bc61efe2520f25cdaab2b72ddd52eb6c",
+  "calls": "111afab46d8cf0a5da3205241424745bbb2b1113",
   "home_assistant": "2026.10.4",
   "tests": [
     {
@@ -103,7 +103,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": null
         }
       ]
@@ -117,7 +117,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": null
         }
       ]
@@ -173,7 +173,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_typdpbpg",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": null
         }
       ]
@@ -187,7 +187,7 @@
         {
           "model": "TS011F",
           "manufacturer": "_TZ3000_gznh2xla",
-          "firmware": "Zigbee2MQTT 2.14.3",
+          "firmware": null,
           "class": null
         }
       ]

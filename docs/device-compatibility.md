@@ -111,7 +111,7 @@ Plug. Model IDs: `TS011F`, `TS011F_plug_1`.
 
 | Integration | Features tested | Firmware | How |
 |---|---|---|---|
-| [Zigbee2MQTT](#zigbee2mqtt) | [turn on with timer](integrations/zigbee2mqtt/test-records/turn_on_for.json)<br>[get attributes](integrations/zigbee2mqtt/test-records/get_attributes.json) | `0122052017`<br>`Zigbee2MQTT 2.14.3`<br>`500+TZSKT31BS102` | ✔ rig |
+| [Zigbee2MQTT](#zigbee2mqtt) | [turn on with timer](integrations/zigbee2mqtt/test-records/turn_on_for.json)<br>[get attributes](integrations/zigbee2mqtt/test-records/get_attributes.json) | `0122052017`<br>`500+TZSKT31BS102` | ✔ rig |
 
 ### WiZ Smart Plug
 
