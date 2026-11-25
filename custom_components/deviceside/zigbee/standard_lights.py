@@ -45,7 +45,7 @@ class Light(NamedTuple):
 @dataclass(frozen=True, slots=True)
 class Excluded:
     """A split-off: a definition model a Zigbee2MQTT or ZHC issue or PR reports failing a call DeviceSide sends
-    (`action`), excluded on the report alone (`source`, an https URL). It stays in `other`, in Labs, on every action.
+    (`action`), excluded on the report alone (`source`, an https URL). It stays in `other`, at its levels.
     The identity is the definition model, the narrowest the rules read: a report that narrows it to firmware still
     excludes the model."""
 

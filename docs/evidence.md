@@ -109,7 +109,7 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
     converters for the action are ZHC's standard ones, with no flag or override touching the call, from a committed
     table naming the ZHC release it was built from: Z2M's users send the same call through the same converters. An
     action DeviceSide builds as a raw command qualifies only where every known failure is visible to the caller.
-    Split-offs, each at the narrowest identity the report supports: a ZHC flag or override takes a model out at the
+    Split-offs, each at the narrowest identity a class rule can key on: a ZHC flag or override takes a model out at the
     next bump; a Z2M or ZHC issue or PR reporting a device failing DeviceSide's call excludes it on the report alone,
     citing it; a DeviceSide report follows contrary evidence (below). A bump's departure of a model whose features
     shipped outside Labs in a full release needs a maintainer's review: kept with a reason, or excluded with a source.

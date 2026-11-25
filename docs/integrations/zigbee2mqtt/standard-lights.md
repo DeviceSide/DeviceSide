@@ -800,7 +800,7 @@ Lights whose definition qualifies, but whose family takes them first: they get t
 
 ## Excluded
 
-Lights a report shows failing one of DeviceSide's calls. They stay with other brands' lights, behind the Labs option, on every action.
+Lights a report shows failing one of DeviceSide's calls. They stay with [other brands' lights](index.md#other-brands), at that class's levels.
 
 | Vendor | Model | Action | Source |
 |---|---|---|---|

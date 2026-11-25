@@ -39,7 +39,7 @@ Depends-on: #613
   - hand-kept, outside the markers, preserved by every regeneration: `EXCLUDED`, one row per split-off (the identity:
     a definition model by default, or Zigbee manufacturer and model ID, plus firmware where the report narrows it; the
     action the report concerns; its source), and `KEPT`, a departure a maintainer kept, with the reason
-    (Decisions 10-12). An excluded model stays in `other`, in Labs, on every action.
+    (Decisions 10-12). An excluded model stays in `other`, at its levels.
   The implementer may pick another committed format if a reason comes up (an import-time cost, a check that can't read
   it); it reports the reason.
 - **Step 3's split-offs** (Decision 10, survey Part 4's rows no flag catches), each in `EXCLUDED` with its source:
