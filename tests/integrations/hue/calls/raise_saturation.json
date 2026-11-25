@@ -546,6 +546,130 @@
    },
    "targets": [
     [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.144,
+         "y": 0.198
+        }
+       },
+       "dynamics": {
+        "duration": 2549
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue",
+     "other"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "other"
+    },
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/grouped_light/grouped-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.144,
+         "y": 0.198
+        }
+       },
+       "dynamics": {
+        "duration": 2549
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
      "light.room",
      "light.room",
      true

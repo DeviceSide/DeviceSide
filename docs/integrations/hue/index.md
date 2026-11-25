@@ -21,14 +21,13 @@ survive it going offline, which is the point of auto-off.
 
 ## Device classes
 
-The bridge sends each light its own commands, and lights of other brands can answer them differently, so a test on a
-Hue light proves nothing about another brand's. DeviceSide tells them apart by the manufacturer the bridge reports for
-each light.
+DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets. Lights of
+other brands can answer it differently, so DeviceSide tells them apart by the manufacturer the bridge reports for each
+light.
 
-- A **scene** counts as its lights: one with a light of another brand counts as that brand's, so it is refused.
-- A **room or zone** gets only what all its lights get. One with a light of another brand falls back to its
-  lights, each on its own, so the Hue lights still run and the other brand's is refused. A light the bridge has in the
-  room but Home Assistant has no light entity for still counts, as the room's command reaches it.
+- A **scene** counts as its lights: one with a light of another brand counts as that brand's.
+- A **room or zone** counts as all its lights, a light the bridge has in the room but Home Assistant has no light
+  entity for included, as the room's command reaches it.
 
 ### Hue lights
 
@@ -36,12 +35,16 @@ Signify's own lights (manufacturer `Signify Netherlands B.V.`), which the bridge
 
 ### Other brands
 
-Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get no
-feature yet, even with Labs on. The Hue lights' tests don't prove them, as other brands are known to
-answer the same Zigbee commands differently: some fade only one of brightness and color at a time, some come on when
-written while off, and some don't report color temperature as Hue lights do
-([internals](internals.md#device-classes)). Nothing predicts which of the bridge's commands they take. A contributor's
-passing run on one adds a class for its brand ([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)).
+Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get
+every feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same request a Hue light
+does, the one Hue Smooth Dimming sent every brand, and a wrong result from any of these features shows at once and one
+tap fixes it ([internals](internals.md#device-classes)).
+
+Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
+and color at a time, some come on when written while off, and some don't report color temperature as Hue lights do,
+so `get_attributes` may leave it out. If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
+with its manufacturer and model (on its device page in Home Assistant): DeviceSide then refuses that model the action
+it fails, saying why, and every other light keeps it.
 
 ## Smooth dimming
 

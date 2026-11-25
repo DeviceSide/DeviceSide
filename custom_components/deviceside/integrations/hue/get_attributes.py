@@ -35,8 +35,9 @@ def light_row(cache: HueTransitionCache, light: Light) -> dict:
 def in_color_temp_mode(light: Light) -> bool:
     """Whether the light is in color temperature mode, as core's hue integration decides it for a certified light
     (v2/light.py, color_temp_active; internals.md, Device classes): its `mirek_valid`. Never with no mirek, or 0, which
-    core treats as no value (and which would divide by zero). Only Signify's lights are served, and they are
-    certified; a non-certified light's mode is core's own last command, which no served class needs."""
+    core treats as no value (and which would divide by zero). A non-certified light may not set `mirek_valid`
+    reliably, where core reads its mode from its own last command instead: a known departure on `other`
+    (internals.md, Device classes)."""
     if not (feature := light.color_temperature) or not feature.mirek:
         return False
     return feature.mirek_valid

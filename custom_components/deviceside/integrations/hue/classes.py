@@ -18,8 +18,8 @@ Assistant included. Home Assistant registers every bridge device with its produc
 device is placed once it has an entity: nothing is provisional (no Unplaced), and as no Hue action's failure harms
 (none is timed) nothing needs to be.
 
-Every adapter's scope holds LEVELS; why `other` sits where it does is in internals.md (Device classes), index.md
-(Other brands) and the step 8 PR body.
+Every adapter's scope holds LEVELS; why `other` is Documented is in internals.md (Device classes) and index.md (Other
+brands).
 """
 
 from aiohue.v2.models.resource import ResourceTypes
@@ -30,7 +30,7 @@ from homeassistant.helpers import device_registry as dr
 from .bridge import bridge_api, light_device, resource_id
 from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import OTHER, NoKnownMethod, verified
+from ...core.scope import OTHER, NoKnownMethod, documented, verified
 
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
@@ -46,10 +46,10 @@ CLASSES = {
     SMART_SCENE: frozenset({Platform.SCENE}),
 }
 
-# Every adapter's levels: Verified on Hue, whose lights every record ran on. `other` is not built on every action
-# (docs/evidence.md, In Labs): no pass or research predicts other brands take the calls the bridge picks, and they
-# are known to depart from the calls it plausibly sends (internals.md, Device classes; the step 8 PR body).
-LEVELS = verified(HUE)
+# Every adapter's levels: Verified on Hue, whose lights every record ran on; Documented on `other`, on a bridge's one
+# request (docs/evidence.md, Levels): DeviceSide sends every light the same CLIP v2 request, as Hue Smooth Dimming did,
+# and no Hue action's failure harms (internals.md, Device classes).
+LEVELS = verified(HUE) | documented(OTHER)
 
 _PAGE = DOCS_URL + "docs/integrations/hue/index.md"
 SET_SCENE_NO_KNOWN_METHOD = {

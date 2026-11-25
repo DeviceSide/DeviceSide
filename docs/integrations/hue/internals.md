@@ -45,8 +45,26 @@ What decides a call's outcome on Hue (docs/evidence.md, key a class on what deci
   (`fields_dropped`, `not_dimmable`). None needs a class. `product_archetype`, `min_dim_level`, `dynamics` and `mode`
   route nothing.
 
-So `other` holds every other maker's light, and no action is Documented on it, as each depends on what the bridge
-sends and known brands depart from the commands it plausibly sends:
+So `other` holds every other maker's light. It is Documented on every action, on a bridge's one request
+(docs/evidence.md, Levels): it gets the request `hue` gets, and no Hue action's failure harms.
+
+- **Hue Smooth Dimming sent every brand the same calls,** with no branch on the light's maker: a target is any light
+  entity of the hue integration on a v2 bridge (`_resolve_bridge`, `_iter_targets`,
+  [`bridge.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/bridge.py#L21-L75)). Its set attributes and set scene write each light with aiohue's
+  `lights.set_state` (`_write_light`, [`bridge.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/bridge.py#L134-L143);
+  [`scenes.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/scenes.py#L35-L49)), its raise and lower send `set_state(on, brightness, transition_time)` and
+  its stop `set_dimming_delta` ([`transitions.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/transitions.py#L90-L108)), and its get attributes reads
+  aiohue's cache, sending nothing ([`bridge.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/bridge.py#L94-L111)). DeviceSide sends the same requests
+  (`bridge.set_state`; `stop`'s `{"dimming_delta": {"action": "stop"}}` through `bridge.put`, the body
+  `set_dimming_delta` builds). A user's report has another
+  brand's Zigbee Light Link dimmers running its set attributes and set scene
+  ([#617](https://github.com/DeviceSide/DeviceSide/issues/617); set scene's request:
+  [jasonmx/hue-smooth-dimming#22](https://github.com/jasonmx/hue-smooth-dimming/issues/22)).
+- **What DeviceSide adds to those calls:** the saturation fades, one `set_state` with an xy and a duration, the two
+  fields Hue Smooth Dimming sent apart; and `stop`'s xy halt and soft-off cut, writes mid-transition measured only on
+  Hue bulbs (Modules, `stop`).
+
+**Known departures**, which a failing report on an `other` light would split off at its manufacturer and model:
 
 - **Writes while off** (`set_attributes`, `set_scene`): a Sengled E11-G13 jumps to full on `MoveToLevel` while off
   ([ZHA internals](../zha/internals.md)); a Gledopto turns on when its color is set while off
@@ -54,13 +72,13 @@ sends and known brands depart from the commands it plausibly sends:
   one attribute at a time (Zigbee2MQTT's
   [LED1624G9 page](https://github.com/Koenkk/zigbee2mqtt.io/blob/master/docs/devices/LED1624G9.md), read 2026-11-14).
 - **Soft off and fades** (`lower_brightness`, `raise_brightness`, `stop`): IKEA firmware may not turn off
-  mid-transition (the LED1624G9 page). Stop's xy halt and its
-  soft-off cut are writes mid-transition, measured only on Hue bulbs.
-- **Color fades** (`raise_saturation`, `lower_saturation`): the payload differs where a light reports no gamut.
+  mid-transition (the LED1624G9 page).
+- **Color fades** (`raise_saturation`, `lower_saturation`): DeviceSide sends the xy unclamped where a light reports
+  no gamut (above), leaving the bridge to fit it.
 - **`get_attributes`**: a non-certified light doesn't set `mirek_valid` reliably (above;
-  [core PR #97263](https://github.com/home-assistant/core/pull/97263)), and core reads such a light's color temperature
-  mode from its own last command. DeviceSide reads only `mirek_valid`, as `other` isn't served; a reopened `other`
-  would need that read back.
+  [core PR #97263](https://github.com/home-assistant/core/pull/97263)), where core reads its color temperature mode
+  from its own last command. DeviceSide reads only `mirek_valid`, so such a light may read no color temperature, or a
+  stale one in color mode.
 
 ## Modules
 
