@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Guard the two files contributors leave alone: README.md, outside its generated blocks, and manifest.json.
 
-The README is the repo maintainers' writing, bar the blocks `gen_features.py` and `gen_compat.py` regenerate, which
-any PR may refresh. A PR from anyone else that changes the text outside those blocks fails unless README.md is all it
+The README is the repo maintainers' writing, bar the block `gen_compat.py` regenerates (the device cards), which
+any PR may refresh. A PR from anyone else that changes the text outside that block fails unless README.md is all it
 changes: a typo fix stands alone and is easy to review, while a code PR can't slip prose in. (Hand edits inside the
 blocks fail the generators' `--check` in tests.yml, so this doesn't look at them.) manifest.json changes by
 exception (a core domain in `after_dependencies` slows HA's startup), so a change from anyone else is flagged for the

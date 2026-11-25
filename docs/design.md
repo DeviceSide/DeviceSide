@@ -97,7 +97,7 @@ built:
 
 ## Scope
 
-Which integrations have which actions: the README feature table (`scripts/gen_features.py`); each integration's page:
+Which integrations have which actions: the feature table on docs/device-compatibility.md (`scripts/gen_features.py`); each integration's page:
 [integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`,
 explained to users in [integrations.md](integrations.md#what-cant-be-done-and-why). Per device class:
 [device-compatibility.md](device-compatibility.md). Each adapter's `AdapterScope` says what it covers.

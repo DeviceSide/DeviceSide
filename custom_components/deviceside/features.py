@@ -1,4 +1,4 @@
-"""The features the README's table, the device cards and the coverage view name, each with the actions it rides, so
+"""The features the feature table, the device cards and the coverage view name, each with the actions it rides, so
 the three read one map. A feature is built on an integration only where every one of its actions is
 (scripts/gen_features.py); a smooth move rides `stop` too, as it is unusable without it. Keyed by the name a card gives
 the feature."""

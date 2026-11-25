@@ -104,7 +104,7 @@ only one integration names is in its bundle's devices.yaml), and `no_known_metho
 their `integrations` (`what`, `reason`, `source`, optional `section`: the anchor id of its Not supported row, its
 `what` by default), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as
 an unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
-`column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
+`column_order` (the feature table's, read by gen_features), `requires` (shown after the card's name),
 `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `section` is a heading of the integration's page, which a
 Documented or Labs class must have; `domains`, a phrase per entity domain, for a class the card splits), `sections`
@@ -231,7 +231,7 @@ OTHER_BRANDS = "Other brands"  # the devices.yaml section of other brands' class
 
 
 def card_features() -> dict[str, str]:
-    """Each action's feature, as a card names it, in the README feature table's order (gen_features.FEATURES). An
+    """Each action's feature, as a card names it, in the feature table's order (gen_features.FEATURES). An
     action in more than one row (`stop`, riding every smooth move) is named by itself, last, so a card names it only
     when nothing else is."""
     rows = [action for *_, actions in TABLE_FEATURES for action in actions]
@@ -677,7 +677,7 @@ def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
 
 
 def by_integration(registry: AdapterRegistry) -> dict[str, list]:
-    """The adapters per integration, in the README feature table's column order, so the cards read across as it does."""
+    """The adapters per integration, in the feature table's column order, so the cards read across as it does."""
     grouped: dict[str, list] = {}
     for _, adapter in adapters(registry):
         grouped.setdefault(adapter.integration, []).append(adapter)
