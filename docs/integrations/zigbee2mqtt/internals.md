@@ -367,19 +367,27 @@ one, the longest.
 - A brightness or saturation fade's `transition` is at most the longest ZCL transition (`docs/internals.md`, Fades),
   with `clamped_to` when a longer one is cut; the prediction matches.
 - Hue: `hue_move` at `254 / sweep_time` steps per second (ZCL allows 1 to 254).
-- **The bottom, read from source and not measured yet.** zigbee-herdsman-converters' `light_onoff_brightness` sends a
-  brightness of 1 as level 2 on a definition with `turnsOffAtBrightness1`
+- **The bottom: Z2M sends level 1 as 2 on a Hue light, measured.** zigbee-herdsman-converters'
+  `light_onoff_brightness` sends a brightness of 1 as level 2 on a definition with `turnsOffAtBrightness1`
   ([toZigbee.ts L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), and on a group only when every member's definition has it
   (`allEqual`, [L1258](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1258)). `philips.m.light` sets it by default
   ([philips.ts L315](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L315)), as do 92 Innr definitions ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)) and 28 ADEO ones ([adeo.ts](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/adeo.ts)).
-  With `hue_native_control` held off, every brightness publish rides it: raise's from-off `"brightness": 1` and a
-  fade to a limit that rounds to level 1 reach a Hue bulb as level 2, 0.8 %, and `set_attributes`' kept-level
-  publish after a raw level 1 would go out as a `moveToLevel` to 2. A Hue bulb holds level 1 (ZHA sends it raw,
-  [ZHA internals](../zha/internals.md), `lower_brightness`), so for Hue lights, and a group whose members all are, the
-  bottom is to bypass the converter: a raw `genLevelCtrl` `moveToLevelWithOnOff` through Z2M's `command` payload,
-  as `set_attributes` sends, with the same `transtime`. Planned, not built yet. Other flagged lights keep Z2M's 2, so their
-  lowest is 0.8 %: Innr's turn off at level 1 ([research](research/2026-11-24-other-brands-dimming.md), from Z2M #4035);
-  ADEO's is read from the flag, not reported.
+  With `hue_native_control` off, every brightness publish rides it: a fade to a limit that rounds to level 1,
+  `set_attributes`' kept-level publish after a raw level 1, and raise's from-off `"brightness": 1` (read from source;
+  the fade that follows hides it). Philips' native-control converter doesn't rewrite it. Rig run 2026-11-25, an LTA009
+  (firmware 1.163.1) on Z2M 2.14.3, its level read live (`currentLevel`):
+  - `lower_brightness` from 30 % to a 0.4 % limit published `{"brightness": 1, "transition": 1.5}`: Z2M reported
+    brightness 2, and the bulb read 2, 0.8 %. The same bulb on ZHA read 1 (`lower_to_the_lowest_level`).
+  - `set_attributes` at 0.4 % on the lit bulb, option off: the raw `moveToLevel` to 1, then the kept-level publish
+    3 ms later; three read-backs gave 2, so it was rejected `not_stored`. Option on: the same two publishes read back
+    1, confirmed. On ZHA it read 1 (`sets_the_lowest_level_while_lit`).
+  - `turn_on_for` at 0.4 % from off, a probe: `light.turn_on`'s `{"state": "ON", "brightness": 1}`, sent with the
+    option on (`native_control`), read 1 through the timer.
+
+  A Hue bulb holds level 1, so for Hue lights, and a group whose members all are, the bottom is to bypass the
+  converter: a raw `genLevelCtrl` `moveToLevelWithOnOff` through Z2M's `command` payload, as `set_attributes`
+  sends, with the same `transtime`. Planned, not built yet. Other flagged lights keep Z2M's 2, so their lowest is
+  0.8 %: Innr's turn off at level 1 ([research](research/2026-11-24-other-brands-dimming.md), from Z2M #4035); ADEO's is read from the flag, not reported.
 
 ### `stop`
 
