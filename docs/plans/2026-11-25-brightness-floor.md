@@ -137,8 +137,12 @@ rows promoted and committed (`f2d972d0`); `lower_brightness` failed `lower_to_th
 so Jason chose **Decision 11** (above). The finding is in Z2M `internals.md` (`fade`). Its run's logs:
 `/var/folders/wk/kszxz30j6wd2vmmnd02c5bfc0000gn/T/deviceside-rig/rig-run-2026-11-25-134322.{ha,z2m}.log` (may be cleared).
 
+**Update, 2026-11-25 (third session):** Next 1 and 2 are done: Decision 11 built (`50123dc7`, review fixes `eecace5d`),
+the transcript regenerated (3 added segments), and `lower_brightness.json` rerun whole at it: `lab_aqara` (restricted)
+and `lab_hue` `--fresh`, 9/9. Next is 3.
+
 **Next:**
-1. Build Decision 11 (one implementer, `sonnet`; then a `plan-reviewer`, `opus`, since it changes a wire call on a
+1. (Done) Build Decision 11 (one implementer, `sonnet`; then a `plan-reviewer`, `opus`, since it changes a wire call on a
    Verified class). `fade.py`'s raw bottom serves classes `hue` and `aqara`: each family says why its class is in it
    (`families/hue` and `families/aqara` each export their own set; `fade.py` unions them), and `set_attributes.py`
    keeps Hue's kept-level skip alone (Decision 7). Unit tests pin as literals the raw payload for an Aqara light, an
@@ -149,7 +153,7 @@ so Jason chose **Decision 11** (above). The finding is in Z2M `internals.md` (`f
    open item: mixed groups through the converter light an off member (`moveToLevelWithOnOff`); put it in that section.
    Check: `.venv/bin/pytest -n auto --transcripts=check` (the transcript changes on purpose: `docs/evidence.md`,
    Release gate) and the generators' `--check`.
-2. Retest on the rig (tenet 9): `lab_aqara`, restricted with Jason's yes for that run, `--integration zigbee2mqtt
+2. (Done) Retest on the rig (tenet 9): `lab_aqara`, restricted with Jason's yes for that run, `--integration zigbee2mqtt
    --action lower_brightness`. The Aqara bulb shares a fixture with the Hue A60: ask Jason to swap it in first, and
    tell him when it's done. Run from this worktree: `../../ha-rig/scripts/rig.py` (absolute
    `/Users/jason/projects/ha/ha-rig/scripts/rig.py`). Hue's records need no rerun if `check_release.py --signoffs
