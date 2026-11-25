@@ -70,6 +70,11 @@ Two principles Jason drew from #617, which this PR writes into the rules (step 1
    converter could claim), and a read that sends nothing needs no usage evidence but splits off on a reported misread
    like a failing request.
 
+10. **(2026-11-25) The route's two other clauses.** "It need not cover each action" becomes: the usage covers the
+    request's fields, not each action, so an action whose request sends only fields the usage sent is admitted with it.
+    The Hue example says what a failure looks like: a light that misses one stays on, or shows a wrong value, where the
+    user sees it. Livarno stays recorded, unkeyed.
+
 ## Steps
 
 1. **Build** (opus implementer: binding-rule text and public docs; Opus `plan-reviewer`).
