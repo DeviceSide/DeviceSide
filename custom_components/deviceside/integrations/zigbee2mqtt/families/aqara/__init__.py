@@ -28,6 +28,6 @@ FAMILY = Family(
         "set_attributes": _LABS,
     },
     # Not in the other scopes: not built there. Hue and saturation actions are not built, as the bulb has xy and color
-    # temperature only, and turn_on_for is a refusal entry (refusals.py), as the bulb ignores on_time; both in index.md
-    # (Aqara) and research/aqara/2026-11-25-agl003-probe.md.
+    # temperature only, and turn_on_for is a refusal entry (refusals.py), as the bulb ignored a timed on from off; both
+    # in index.md (Aqara) and research/aqara/2026-11-25-agl003-probe.md.
 )

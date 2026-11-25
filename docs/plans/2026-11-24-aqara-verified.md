@@ -82,6 +82,26 @@ hostnames in commits, docs or research files.
    `docs/evidence.md` with a call-pattern route, or a narrower route) via `/grilling`; an amendment is a binding-rule
    change with its own plan and an opus auditor.
 
+## Handoff
+
+2026-11-25 09:16, from the orchestrating session (context past 120k). Branch `wt/aqara-verified`, worktree
+`deviceside-wt/aqara-verified`, PR #609 (draft).
+
+- **Done:** step 2 (HA-rig#108 merged: rows keyed by case and devices, carried only onto an identical transcript);
+  step 3 (`aqara` family in Labs, reviewed); step 6's research (committed; the `/grilling` with Jason is open);
+  step 1 (probe committed, rulings 7-9 above, built and reviewed; last commit carries the Plan review note).
+- **Next: step 4.** Jason said yes to steps 1 and 4 (2026-11-25), so the restricted run is authorized:
+  `DEVICE_SIDE_RIG_RESTRICTED=1 /Users/jason/projects/ha/ha-rig/scripts/rig.py --profile lab_aqara --integration zigbee2mqtt`
+  from this worktree (~35 min; it deploys this branch and first puts back the bulb state the 23:29 run's journal left).
+  The 09:12 dry run passed its device check. Then lift each action whose cases passed to `verified(...)` on `aqara`,
+  run the coverage check, plan-review, then step 5.
+- **Known gap:** get_attributes' Z2M record cites an older transcript, so its Aqara rows land only after a Hue `lab`
+  refresh (`--profile lab --action get_attributes`). That's blocked: the Hue bridge can't reach one lab roaming bulb
+  (power-cycle its lamp, then `rig.py --recover`), and the run moves three non-pre-authorized plugs (restricted).
+  Ask Jason; until then get_attributes stays Labs on `aqara`.
+- **Open for Jason:** Decision 5's DeviceSide-side fix (wait out the off fade) vs the recorded limit; the step 6
+  `/grilling`; the `docs/models.yaml` model name "Aqara LED Bulb T2 E27".
+
 ## Verification
 
 - Unit: `.venv/bin/pytest -n auto --transcripts=check`; the classification test places agl003's strings in `aqara`
