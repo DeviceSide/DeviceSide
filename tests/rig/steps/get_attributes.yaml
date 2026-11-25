@@ -66,6 +66,7 @@ tests:
     roles: [light_color]
     only: [zigbee2mqtt]
     steps:
+      - call: {}  # learns the target's class for the selectors below
       - z2m_option: {hue_native_control: false}
         classes: {zigbee2mqtt: [hue]}
       - set: {state: on, hs_color: [240, 90]}
