@@ -83,7 +83,8 @@ async def scene(
         pytest.param({"one": classes.SIGNIFY, "two": classes.SIGNIFY}, "hue", id="hue"),
         pytest.param({"one": classes.SIGNIFY, "two": IKEA}, "other", id="one_other"),
         pytest.param({"one": classes.SIGNIFY, "two": GLEDOPTO}, "gledopto", id="one_gledopto"),
-        pytest.param({"one": IKEA, "two": GLEDOPTO}, "other", id="two_others"),
+        pytest.param({"one": IKEA, "two": GLEDOPTO}, "gledopto", id="split_off_before_other"),
+        pytest.param({"one": IKEA, "two": IKEA}, "other", id="two_others"),
         pytest.param({}, "hue", id="writes_none"),
     ],
 )

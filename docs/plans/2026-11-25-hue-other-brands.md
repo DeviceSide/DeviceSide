@@ -133,9 +133,9 @@ Touches: custom_components/deviceside/integrations/hue/**, tests/integrations/hu
 ## Handoff
 
 2026-11-25, third implementing session: done. Decision 11 is in (9c31520d) with its plan-review fixes (f0484ed2; 2
-must-fix count errors and 1 dating slip fixed, the Handoff status updated here). PR audit report 2: CLEAN, 3 Lows
-tracked (classes.py docstring still says "and model ID"; the one-entry `_MAKERS` dict; a scene of two non-`hue`
-classes classed `other`). `owner-findings`: all in Jason's code. PR #619 marked ready.
+must-fix count errors and 1 dating slip fixed, the Handoff status updated here). PR audit report 2: CLEAN, 3 Lows,
+all fixed at Jason's ask (classes.py's docstring; the one-entry `_MAKERS` dict dropped; a scene takes the weakest of
+its lights' classes on set_scene, a split-off before `other` on a tie). `owner-findings`: all in Jason's code. PR #619 marked ready.
 
 - **Next:** Jason reviews the `evidence.md` route wording and merges. Post nothing on #617 until Jason approves the
   reply, which asks for the `product_data` of a GL-C-008P and of a Müller Licht light on a Hue bridge.

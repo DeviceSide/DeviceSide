@@ -2,8 +2,8 @@
 
 DeviceSide sends the bridge the same CLIP v2 request for every light; the bridge picks the Zigbee call, and nothing in
 CLIP v2 shows which one it picked or routes a light by any field DeviceSide could read (internals.md, Device
-classes). So the class keys on the device's identity, the manufacturer and model ID core's hue integration registers
-from the bridge's `product_data`:
+classes). So the class keys on the device's identity, the manufacturer core's hue integration registers from the
+bridge's `product_data` (a model ID too, once a split-off needs one):
 
 - `hue`: Signify's own lights, which every record ran on.
 - `other`, the default class: every other maker's light the bridge has paired, Friends of Hue certified ones
@@ -12,10 +12,11 @@ from the bridge's `product_data`:
   wrong, so get_attributes doesn't serve them (internals.md, Device classes; research/2026-11-25-color-mode-misread.md).
 - `smart_scene`: an All-Day scene, which has no fixed settings to write (set_scene's no known method entry).
 
-A scene is classed by the lights it writes: the one class other than `hue` among them, `other` when they hold more,
-else `hue`, as set_scene's call reaches each light; one that writes none, or that the bridge no longer lists
-(set_scene rejects it), is `hue`, as no light is reached. A room or zone is no device of its own: the dispatcher
-classes it by its members (bridge.expand_group), a light with no entity in Home Assistant included. Home Assistant
+A scene is classed by the lights it writes: the weakest of their classes on set_scene (LEVELS), a split-off before
+`other` on a tie, as its refusals reach the scene too, since set_scene's call reaches each light; one that writes
+none, or that the bridge no longer lists (set_scene rejects it), is `hue`, as no light is reached. A room or zone is
+no device of its own: the dispatcher classes it by its members (bridge.expand_group), a light with no entity in Home
+Assistant included. Home Assistant
 registers every bridge device with its product data when the entry loads, so a device is placed once it has an entity:
 nothing is provisional (no Unplaced), and as no Hue action's failure harms (none is timed) nothing needs to be.
 
@@ -31,7 +32,7 @@ from homeassistant.helpers import device_registry as dr
 from .bridge import bridge_api, light_device, resource_id
 from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import OTHER, NoKnownMethod, documented, verified
+from ...core.scope import OTHER, Level, NoKnownMethod, OnDomains, documented, verified
 
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
@@ -41,8 +42,7 @@ GLEDOPTO = "gledopto"
 SMART_SCENE = "smart_scene"
 # The split-off makers, by the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`,
 # casefolded and matched in any case, as Zigbee2MQTT's Gledopto rule does: Gledopto's `GLEDOPTO` (src/devices/
-# gledopto.ts, zigbee-herdsman-converters at the commit internals.md, Device classes, cites).
-_MAKERS = {"gledopto": GLEDOPTO}
+# gledopto.ts, zigbee-herdsman-converters at the commit internals.md, Device classes, cites). The class is named for it.
 # Each class's domains (IntegrationInfo.classes): a light, Hue's smart plug included, which the bridge shows as one,
 # and a scene, classed by the lights it writes; a smart scene is a scene alone.
 CLASSES = {
@@ -78,7 +78,7 @@ def device_class(device: dr.DeviceEntry) -> str:
     """A light's class by its registry device: `hue` for Signify's, a split-off maker's own, else the default."""
     if device.manufacturer == SIGNIFY:
         return HUE
-    return _MAKERS.get((device.manufacturer or "").casefold(), OTHER)
+    return GLEDOPTO if (device.manufacturer or "").casefold() == GLEDOPTO else OTHER
 
 
 def capability(hass: HomeAssistant, target: Target) -> str | None:
@@ -105,7 +105,12 @@ def _scene_class(hass: HomeAssistant, target: Target) -> str | None:
         if (device := light_device(hass, target, light)) is None:
             return None
         found.add(device_class(device))
-    others = found - {HUE}
-    if len(others) == 1:
-        return others.pop()
-    return OTHER if others else HUE
+    return min(found, key=lambda name: (_scene_level(name), name == OTHER, name), default=HUE)
+
+
+def _scene_level(name: str) -> Level:
+    # A class's set_scene level, as AdapterScope.class_level reads it: Labs where LEVELS has no entry for scenes.
+    entry = LEVELS.get(name)
+    if isinstance(entry, OnDomains):
+        return entry.level if Platform.SCENE in entry.domains else Level.LABS
+    return Level.LABS if entry is None else entry
