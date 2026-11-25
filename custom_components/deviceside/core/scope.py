@@ -35,8 +35,8 @@ class Level(IntEnum):
     """How well a scope item is proven, weakest first (docs/evidence.md). A call's level is the weakest among the
     in-scope items it touches."""
 
-    # The Labs flag on one item, not yet passed on a real device or held back: refused unless the Labs option is on. A
-    # maintainer lifts it once a pass is on record and they judge it enough (docs/evidence.md, The Labs flag).
+    # The Labs flag on one item no pass or Documented route admits yet, or held back: refused unless the Labs option is
+    # on. A maintainer lifts it once a pass is on record and they judge it enough (docs/evidence.md, The Labs flag).
     LABS = 0
     # Reaches the same capability as a Verified item, differing only in addressing; a read a certification tests on
     # every certified device, its class keyed on a marker; or a Zigbee2MQTT light's call through ZHC's standard

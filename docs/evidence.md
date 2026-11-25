@@ -124,12 +124,13 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
     next bump; a Z2M or ZHC issue or PR reporting a device failing DeviceSide's call excludes it on the report alone,
     citing it; a DeviceSide report follows contrary evidence (below). A bump's departure of a model whose features
     shipped outside Labs is a withdrawal (tenet 11): a maintainer keeps it with a reason, or excludes it with a source.
-  - **a bridge's one request:** on an action whose failure doesn't harm (`Action.failure_harms`), where the
-    integration sends the same request for every light and the bridge picks the Zigbee call (Hue's CLIP v2), so the
-    class gets what a Verified class gets. An upstream integration's users sending every brand the same call, with no
-    reported departure, are the evidence; a read that sends nothing qualifies outright. A DeviceSide report of a device
-    failing the request splits off its identity (manufacturer and model) on the report alone, citing it; the bundle's
-    `internals.md` lists the departures known on other calls, which such a report would split off.
+  - **a bridge's one request:** on an action whose failure doesn't harm (`Action.failure_harms`), the integration
+    sends the class the same request a Verified class gets, and the bridge picks the Zigbee call (Hue's CLIP v2). The
+    evidence that the bridge's choice holds across brands is that request's use on every brand, by a predecessor's or
+    another integration's users, with no reported departure; it need not cover each action. A read that sends nothing
+    qualifies outright. A DeviceSide report of a device failing the request splits off its identity (manufacturer and
+    model) on the report alone, citing it: a class of its own, not built yet on that action, or no known method. The
+    bundle's `internals.md` lists the departures known on other calls, which such a report would split off.
 - **Labs:** built on a sourced call that no real device has passed and no Documented route admits, or held back
   by a maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
 
@@ -166,8 +167,8 @@ bottom, DeviceSide's raw `moveToLevel`, which every Zigbee 3.0 dimmable light mu
 failing a color read, stays in `other` ([the table and the bump](integrations/zigbee2mqtt/internals.md#standard_lights)).
 
 *Example:* Hue's `other`, every other maker's light on a Hue bridge, is Documented on every action: it gets the
-request `hue` gets, Hue Smooth Dimming sent every brand that request, and no Hue action's failure harms
-([internals](integrations/hue/internals.md#device-classes)).
+request `hue` gets, Hue Smooth Dimming sent every brand that request for its fades, stop, scenes and writes, and no
+Hue action's failure harms ([internals](integrations/hue/internals.md#device-classes)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API

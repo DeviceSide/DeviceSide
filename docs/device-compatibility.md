@@ -32,10 +32,11 @@ same command differently ([the rules](evidence.md#levels)).
 - 🟢 **Verified:** a maintainer tested it on a real device, or signed off on users' working reports of it. ✔ marks a
   run on the automated rig, "by hand" a maintainer's own test, and "by report" users' reports, each linking its issue.
 - 🟡 **Documented:** no device of the class has been tested, but it gets the same call as a Verified device of the
-  same maker's firmware, or certification tests the same read on every device of the class.
-- ⚪ **Labs:** built, but not yet passed on a real device, or held back by a maintainer to soak. It stays off until you
-  turn on **Labs** in **Configure > Settings**, and may be withdrawn if it fails and isn't fixed
-  ([the Labs flag](evidence.md#the-labs-flag)).
+  same maker's firmware, certification tests the same read on every device of the class, or other users already send
+  the same call to every device of the class with no reported failure.
+- ⚪ **Labs:** built, but not yet shown to work (no device has passed it and no rule above covers it), or held back
+  by a maintainer to soak. It stays off until you turn on **Labs** in **Configure > Settings**, and may be withdrawn if
+  it fails and isn't fixed ([the Labs flag](evidence.md#the-labs-flag)).
 - 🔴 **Not supported:** no known command works on it, or it isn't built yet. DeviceSide refuses it rather than leave
   the device doing something you didn't ask for. Where it isn't built yet, a contributor's pull request can build it
   ([how to help](../CONTRIBUTING.md#how-to-help)).

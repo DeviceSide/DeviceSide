@@ -312,7 +312,7 @@ def section(hass: HomeAssistant, coverage: Coverage) -> str:
 LEGEND = (
     (Mark.VERIFIED, "Verified", "works, tested on a real device"),
     (Mark.DOCUMENTED, "Documented", "should work, same call pattern as a tested device"),
-    (Mark.LABS, "Labs", "not yet passed on a real device"),
+    (Mark.LABS, "Labs", "built, but not yet shown to work"),
 )
 LABS_BELOW = "Turn on Labs below to try it"
 

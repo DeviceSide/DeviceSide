@@ -36,15 +36,16 @@ Signify's own lights (manufacturer `Signify Netherlands B.V.`), which the bridge
 ### Other brands
 
 Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get
-every feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same request a Hue light
-does, the one Hue Smooth Dimming sent every brand, and a wrong result from any of these features shows at once and one
-tap fixes it ([internals](internals.md#device-classes)).
+every feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same CLIP v2 light update a Hue light
+gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and a wrong
+result from any of these features shows at once and one tap fixes it ([internals](internals.md#device-classes)).
 
 Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
 and color at a time, some come on when written while off, and some don't report color temperature as Hue lights do,
 so `get_attributes` may leave it out. If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
-with its manufacturer and model (on its device page in Home Assistant): DeviceSide then refuses that model the action
-it fails, saying why, and every other light keeps it.
+with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model a class of its
+own and refuses it the action it fails (`not_built`, or `no_known_method` with why, where no command is known to
+work), and every other light keeps it.
 
 ## Smooth dimming
 

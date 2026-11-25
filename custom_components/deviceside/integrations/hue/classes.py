@@ -47,8 +47,9 @@ CLASSES = {
 }
 
 # Every adapter's levels: Verified on Hue, whose lights every record ran on; Documented on `other`, on a bridge's one
-# request (docs/evidence.md, Levels): DeviceSide sends every light the same CLIP v2 request, as Hue Smooth Dimming did,
-# and no Hue action's failure harms (internals.md, Device classes).
+# request (docs/evidence.md, Levels): DeviceSide sends every light the same CLIP v2 light update, which Hue Smooth
+# Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and no Hue action's failure harms
+# (internals.md, Device classes).
 LEVELS = verified(HUE) | documented(OTHER)
 
 _PAGE = DOCS_URL + "docs/integrations/hue/index.md"

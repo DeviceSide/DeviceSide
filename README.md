@@ -42,7 +42,7 @@ Before installing, the cards below answer the same question by integration and d
 
 🟢 Verified: works, tested on a real device<br>
 🟡 Documented: should work, same call pattern as a tested device<br>
-⚪ Labs: not yet passed on a real device. Turn on Labs in Configure > Settings to try it
+⚪ Labs: built, but not yet shown to work. Turn on Labs in Configure > Settings to try it
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
 
