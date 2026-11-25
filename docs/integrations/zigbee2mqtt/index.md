@@ -220,7 +220,7 @@ then an Aqara light counts as another brand's). Lights that report `LUMI` stay w
 class starts from one bulb, the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights
 get: smooth dimming and stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light must take,
 and get and set attributes. On the rig it passed smooth dimming, stop and set attributes ([records](test-records/));
-get attributes' rig run also reads hue and saturation, which it can't pass, so that has no record on it yet. Its other features
+get attributes has no record on it yet. Its other features
 aren't built yet, and DeviceSide refuses them, even with Labs on:
 
 - **Hue and saturation:** the bulb reports xy and color temperature only (no hue or saturation attributes, and the

@@ -14,8 +14,8 @@ RULES = (Rule(AQARA, {"zigbee_manufacturer": "Aqara"}),)
 
 # `other`'s actions for lights (classes.py): Level Control's moves and stop, which a Zigbee 3.0 dimmable light must
 # take, and raw ZCL reads and writes. Verified where an Aqara bulb's record passes; the moves with stop, which must
-# halt them (tests/core/test_scope.py). get_attributes stays in Labs, as its record also runs a hue case this bulb
-# can't pass, so the rig writes no Aqara rows for it.
+# halt them (tests/core/test_scope.py). get_attributes stays in Labs, as its record also runs an hs color mode case
+# (keeps_and_reads_hs_while_off) this bulb can't pass, so the rig writes no Aqara rows for it.
 _LABS = FamilyScope(capabilities=labs(AQARA))
 _VERIFIED = FamilyScope(capabilities=verified(AQARA))
 
