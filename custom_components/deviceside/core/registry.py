@@ -38,9 +38,10 @@ def _check_handles(owner: str, maintainers: tuple[str, ...]) -> None:
 def check_families(info: IntegrationInfo) -> None:
     """An integration's families split its classes between them: each key once and shaped like a package name, each
     maintainer a GitHub handle (none is fine: the integration's own them too), and every class the integration
-    declares in exactly one family, with the domains the family gives it, but the default class, which stays the
-    integration's. A family's scopes name only its own classes, so no family sets another's level or own call. No
-    family holds a refusal entry: those are the integration's, in its `refusals.py` (core/scope.py, FamilyScope)."""
+    declares in exactly one family, with the domains the family gives it, but the default class and `own_classes`,
+    which stay the integration's. A family's scopes name only its own classes, so no family sets another's level or own
+    call. No family holds a refusal entry: those are the integration's, in its `refusals.py` (core/scope.py,
+    FamilyScope)."""
     owners: dict[str, str] = {}
     for family in info.families:
         name = f"{info.key}: family {family.key!r}"
@@ -57,9 +58,11 @@ def check_families(info: IntegrationInfo) -> None:
         _check_declared(info, family, name)
         if info.default_class in family.classes:
             raise ValueError(f"{name} holds the default class {info.default_class!r}, which is the integration's")
+        if own := sorted(family.classes.keys() & info.own_classes):
+            raise ValueError(f"{name} holds classes the integration holds itself (own_classes): {own}")
         if foreign := sorted(_scoped(family) - family.classes.keys()):
             raise ValueError(f"{name}: its scopes name classes that aren't its own: {foreign}")
-    if unowned := sorted(info.classes.keys() - owners.keys() - {info.default_class}):
+    if unowned := sorted(info.classes.keys() - owners.keys() - {info.default_class} - info.own_classes):
         raise ValueError(f"{info.key}: classes {unowned} are in no family")
 
 
@@ -105,6 +108,12 @@ def check_integration(info: IntegrationInfo) -> None:
         if not isinstance(domains, frozenset) or not domains or not all(isinstance(d, Platform) for d in domains)
     ):
         raise ValueError(f"{info.key}: classes {bare} name no entity domains (a non-empty frozenset of them)")
+    if info.own_classes and not info.families:
+        raise ValueError(f"{info.key}: own_classes is for an integration with families; one without holds every class")
+    if undeclared := sorted(info.own_classes - info.classes.keys()):
+        raise ValueError(f"{info.key}: own_classes {undeclared} are none of its classes")
+    if info.default_class in info.own_classes:
+        raise ValueError(f"{info.key}: own_classes holds the default class {info.default_class!r}")
     if info.families:
         check_families(info)
 

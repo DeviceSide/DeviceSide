@@ -4,7 +4,8 @@ On Zigbee the call and the firmware family decide the result together, so one ca
 (research/2026-11-14-timed-on-call-patterns.md). Each vendor's classes, rules and levels are its family's
 (families/<family>/); a class is named by the families' rules in the integration's order (families/__init__.py, the
 home for the rule order), the first match winning, and `other`, the default class, for a device none places. This
-module holds what is the integration's: `other` and its levels, `capability`, and when a device is placed.
+module holds what is the integration's: `other` and the standard lights with their levels, `capability`, and when a
+device is placed.
 
 The registry fallback's limit: until bridge/devices arrives after a connect, for a device it doesn't list yet, or for
 one it lists without its strings (mid-interview), the Tuya rules on the Zigbee strings can't match, so the registry
@@ -40,17 +41,20 @@ from .addressing import device_base, z2m_address
 from .families import FAMILIES, REGISTRY_PLACED, RULES
 from .refusals import REFUSALS
 from .rules import ZIGBEE, definition_fields, zigbee_strings
+from .standard_lights import STANDARD_LIGHT
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
-from ...core.scope import OTHER, ClassDomains, ClassLevel, Unplaced, labs
+from ...core.scope import OTHER, ClassDomains, ClassLevel, Unplaced, documented, labs
 
 _LOGGER = logging.getLogger(__name__)
 
-# Every class with its domains (IntegrationInfo.classes): `other`, any brand's light, plug or switch, and the families'.
-CLASSES: ClassDomains = {OTHER: frozenset({Platform.LIGHT, Platform.SWITCH})} | {
-    name: domains for family in FAMILIES for name, domains in family.classes.items()
-}
+# Every class with its domains (IntegrationInfo.classes): `other`, any brand's light, plug or switch; the standard
+# lights, other brands' lights on ZHC's standard converters; and the families'.
+CLASSES: ClassDomains = {
+    OTHER: frozenset({Platform.LIGHT, Platform.SWITCH}),
+    STANDARD_LIGHT: frozenset({Platform.LIGHT}),
+} | {name: domains for family in FAMILIES for name, domains in family.classes.items()}
 
 # `other`'s level in each adapter's scope (index.md, Device classes; docs/evidence.md, In Labs): in Labs only where
 # research predicts most of it accepts the call, and not built elsewhere (an empty mapping). It spans vendors, so a
@@ -84,11 +88,40 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "clear_auto_off": _NOT_BUILT,
 }
 
+# The standard lights' level in each adapter's scope (index.md, Standard lights; docs/evidence.md, Documented, a
+# standard converter's call). Like `other`, the integration's own class (IntegrationInfo.own_classes), as it spans
+# vendors: other brands' lights whose definition sends DeviceSide's calls through ZHC's standard converters
+# (standard_lights.py), carved out of `other` by the rule after every family's (families/__init__.py). Documented on
+# Zigbee2MQTT's usage: its users send the fades, stop and the hue and saturation moves through the same converters. A
+# hue or saturation move reaches only a light exposing color_hs (fade.py). The raw reads and writes qualify as every
+# known failure is visible to the caller; on lights alone, as `other`'s.
+_STANDARD = documented(STANDARD_LIGHT)
+_STANDARD_LIGHTS = documented(STANDARD_LIGHT, domains=(Platform.LIGHT,), only=True)
+STANDARD_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
+    "raise_brightness": _STANDARD,
+    "lower_brightness": _STANDARD,
+    "stop": _STANDARD,
+    "raise_hue": _STANDARD,
+    "lower_hue": _STANDARD,
+    "raise_saturation": _STANDARD,
+    "lower_saturation": _STANDARD,
+    "get_attributes": _STANDARD_LIGHTS,
+    "set_attributes": _STANDARD_LIGHTS,
+    # As `other`: turn_on_for's call harms some lights, so the integration refuses the class there (refusals.py).
+    "turn_on_for": _NOT_BUILT,
+    "turn_off_for": _NOT_BUILT,
+    "set_auto_off": _NOT_BUILT,
+    "clear_auto_off": _NOT_BUILT,
+}
+# The integration's classes' levels, by action: `other` first, as the cards list a scope's classes in its order.
+_LEVELS = {action: {**levels, **STANDARD_LEVELS[action]} for action, levels in OTHER_LEVELS.items()}
+
 
 def class_scope(action: str) -> dict[str, Any]:
     """An adapter's AdapterScope fields that are held by class, for its action (core/scope.py, class_scope): `other`
-    at its own level, the families' classes and own calls, and the integration's refusal entries (refusals.py)."""
-    return scope.class_scope(action, families=FAMILIES, default_levels=OTHER_LEVELS, refusals=REFUSALS)
+    and the standard lights at their own levels, the families' classes and own calls, and the integration's refusal
+    entries (refusals.py)."""
+    return scope.class_scope(action, families=FAMILIES, default_levels=_LEVELS, refusals=REFUSALS)
 
 
 def _listed(hass: HomeAssistant, device: dr.DeviceEntry) -> dict | None:

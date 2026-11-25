@@ -19,6 +19,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import (
     sonoff,
     tuya,
 )
+from custom_components.deviceside.integrations.zigbee2mqtt.standard_lights import STANDARD_LIGHT
 
 
 def test_the_integration_holds_the_seven_families_and_the_registry_s_checks_pass():
@@ -28,8 +29,9 @@ def test_the_integration_holds_the_seven_families_and_the_registry_s_checks_pass
 
 
 def test_the_rule_groups_run_in_the_integration_s_order():
-    """Tuya's Zigbee-string rules before the vendor rules, its registry rules last (families/__init__.py)."""
-    assert RULES == (
+    """Tuya's Zigbee-string rules before the vendor rules, its registry rules last (families/__init__.py), then the
+    standard lights' rule, after every family's."""
+    assert RULES[:-1] == (
         *hue.RULES,
         *tuya.ZIGBEE_RULES,
         *ikea.RULES,
@@ -39,6 +41,8 @@ def test_the_rule_groups_run_in_the_integration_s_order():
         *aqara.RULES,
         *tuya.REGISTRY_RULES,
     )
+    assert RULES[-1].capability == STANDARD_LIGHT
+    assert RULES[-1].conditions.keys() == {"definition_model"}
 
 
 def test_a_rule_tests_the_fields_zigbee2mqtt_reads():

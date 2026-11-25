@@ -18,6 +18,7 @@ from .families.hue import HUE
 from .families.ikea import IKEA, IKEA_TIMER_HARMED
 from .families.sonoff import SONOFF_INCHING, SONOFF_S60
 from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_INCHING, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
+from .standard_lights import STANDARD_LIGHT
 from ...core.scope import OTHER, NoKnownMethod, NotBuilt
 from ...zigbee.ikea import TIMER_HARMED_REASON
 from ...zigbee.reasons import OTHER_TIMER_REASON, SWITCH_TIMER_REASON
@@ -42,9 +43,11 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # action's failure harms, so the dispatcher refuses a device not yet placed as well, which could be one of them
     # (plan Decision 26).
     "turn_on_for": {
-        OTHER: NotBuilt(
-            reason=OTHER_TIMER_REASON,
-            source=RESEARCH + "2026-11-14-timed-on-call-patterns.md",
+        # Other brands' devices, the standard lights among them: no standard converter makes the timer the call on
+        # record, and it harms some lights.
+        **dict.fromkeys(
+            (OTHER, STANDARD_LIGHT),
+            NotBuilt(reason=OTHER_TIMER_REASON, source=RESEARCH + "2026-11-14-timed-on-call-patterns.md"),
         ),
         **dict.fromkeys(
             (HUE, IKEA),

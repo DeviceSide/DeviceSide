@@ -17,6 +17,7 @@ from .raise_hue import Z2MRaiseHue
 from .raise_saturation import Z2MRaiseSaturation
 from .set_attributes import Z2MSetAttributes
 from .set_auto_off import Z2MSetAutoOff
+from .standard_lights import STANDARD_LIGHT
 from .stop import Z2MStop
 from .turn_off_for import Z2MTurnOffFor
 from .turn_on_for import Z2MTurnOnFor
@@ -34,6 +35,7 @@ INTEGRATION = IntegrationInfo(
     classes=CLASSES,
     default_class=OTHER,
     families=FAMILIES,
+    own_classes=frozenset({STANDARD_LIGHT}),
     zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=Z2MCallResolver(),
     setup=lifecycle.setup,
