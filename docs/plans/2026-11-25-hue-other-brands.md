@@ -57,6 +57,19 @@ Two principles Jason drew from #617, which this PR writes into the rules (step 1
    user of that model reads HA's own light attributes.
 8. **(2026-11-25) Tenet 11 covers full releases, not RCs.**
 
+9. **(2026-11-25, after the PR audit) Decision 7 widens to the makers core #62497 reports, and the route narrows.**
+   [core #62497](https://github.com/home-assistant/core/issues/62497) reports the same color temperature mode misread
+   through the bridge on other Gledopto models (GL-S-004P, GL-B-007P, non-Pro strip controllers), a Müller Licht tint
+   and a LivarnoLux strip; the bridge itself reports it, and a Gledopto Pro controller didn't. So the split-off keys on
+   the maker, at the narrowest key a class rule can use: Gledopto (`GLEDOPTO`, any model) and Müller Licht (its Zigbee
+   manufacturer string, cited), each a class of its own that `get_attributes` doesn't serve; every other `other` light
+   keeps it. Livarno is Tuya inside, with a `_TZ…` string per model and none in the report, so it has no key yet: it
+   is recorded in `internals.md` as reported, to split off when a report gives its strings. Not `product_data.certified`:
+   it would drop a read that works on most uncertified lights, and whether Friends of Hue lights report it is unverified.
+   In `docs/evidence.md`'s route: the bridge picks the call (not "or the device's driver", which a Zigbee2MQTT
+   converter could claim), and a read that sends nothing needs no usage evidence but splits off on a reported misread
+   like a failing request.
+
 ## Steps
 
 1. **Build** (opus implementer: binding-rule text and public docs; Opus `plan-reviewer`).
@@ -103,7 +116,7 @@ Touches: custom_components/deviceside/integrations/hue/**, tests/integrations/hu
 2026-11-25, step 1 done (the implementing session crashed after plan review 2; a successor finished it).
 
 - **Done:** step 1 (A and B), three plan reviews; the last raised no must-fix.
-- **Next:** step 2. Post nothing on #617: its reply waits for Jason's yes. The reply should also ask for a GL-C-008P's
+- **Next:** Decision 9 (step 1 rework), its plan review, a re-audit, then ready again. Post nothing on #617: its reply waits for Jason's yes. The reply should also ask for a GL-C-008P's
   `product_data` on a Hue bridge, if anyone has one, as the split-off's strings are inferred (`internals.md`, Split off).
 - **Open decisions:** none.
 - **Branch / worktree / PR:** `wt/hue-other-brands`, `deviceside-wt/hue-other-brands`, #619 (draft).
