@@ -172,6 +172,9 @@ it wasn't sure of. #613 must merge first (`Depends-on`); build on `main` and mer
 
 2026-11-25. **Done:** the step, its plan reviews, Decisions 17-24, and PR audits 1-5 (report 5 CLEAN, delta). `main` (#613, #614) is merged in. Decision 24 (a standard light's bottom is a raw level 2, at or below that level) was built after #613's merge, plan-reviewed (four findings, all taken), and audited (report 4's two Highs in `check_audit.py` fixed). #615 is ready. Branch `wt/standard-call-route`, worktree `/Users/jason/projects/ha/deviceside-wt/standard-call-route`.
 
-**Next:** Jason merges #615 into `main`. A further move of `main` is resolved by merge, then the checks and `audit-gate status`.
+**Next:**
+1. `main` (#611) is merged in at `75797707`, pushed; all checks pass locally (3785 tests). A GitHub outage (Pull Requests, Actions) left the PR showing the old head `71f3653` and DIRTY, with no CI run on `75797707`. Wait for the PR to sync (`wait-until` on `gh api repos/DeviceSide/DeviceSide/pulls/615 --jq .head.sha` matching the branch head; push an empty commit only if it never syncs after the outage clears), then `ci-green 615`.
+2. Jason merges #615 into `main`. A further move of `main` is resolved by merge, then the checks and `audit-gate status`.
+3. #616 (wt/readme-coverage) overlaps: `scripts/gen_compat.py`'s README cards, the README block, `docs/device-compatibility.md`'s intro, three card lines in `docs/evidence.md` (~207, ~352, ~419). Whichever merges second merges the other in and regenerates with `scripts/gen_compat.py`.
 
 **Note for Jason (from brightness-floor):** #613's Decision 12 follow-up, scraping ZHC's flagged models, may be mostly covered by this PR's table; check before planning it.
