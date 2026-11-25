@@ -31,6 +31,10 @@ models:
     ids: [E11-G13]
     type: bulb
     section: Sengled
+  - name: Aqara LED Bulb T2 E27
+    ids: [lumi.light.agl003, T2_E27]
+    type: bulb
+    section: Aqara
   - name: Tuya TS011F
     ids: [TS011F, TS011F_plug_1]
     type: plug

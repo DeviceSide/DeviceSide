@@ -213,6 +213,26 @@ other features aren't built yet.
 On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
 ([evidence](../hue/internals.md#device-classes)).
 
+### Aqara
+
+Aqara's lights, placed by the Zigbee manufacturer string `Aqara`, which Zigbee2MQTT publishes as it connects (until
+then an Aqara light counts as another brand's). Lights that report `LUMI` stay with [other brands](#other-brands). The
+class starts from one bulb, the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights
+get: smooth dimming and stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light must take,
+and get and set attributes. On the rig it passed smooth dimming, stop and set attributes ([records](test-records/));
+get attributes has no record on it yet. Its other features
+aren't built yet, and DeviceSide refuses them, even with Labs on:
+
+- **Hue and saturation:** the bulb reports xy and color temperature only (no hue or saturation attributes, and the
+  hue and saturation moves leave its color unchanged), so raise and lower hue and saturation aren't built on it. An
+  emulation from the host in xy is plausible, but nothing builds it yet ([probe](research/aqara/2026-11-25-agl003-probe.md), sections 1 and 2).
+- **Turn on with timer:** the bulb ignored a timed on from off and stayed off, so it isn't built
+  ([probe](research/aqara/2026-11-25-agl003-probe.md), section 3).
+
+Set attributes on this bulb can time out. In the probe, `set_attributes` sent at once after a turn off timed out in 1
+of 10 runs (the call failed with no reply from Zigbee2MQTT and the values didn't land), and sent after Home Assistant
+showed the bulb off, about 0.1 s later, in 0 of 10. The cause is unexplained ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
+
 ### Other brands
 
 Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable

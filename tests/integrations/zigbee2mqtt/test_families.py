@@ -10,6 +10,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import (
     FAMILIES,
     REGISTRY_PLACED,
     RULES,
+    aqara,
     check_registry_placed,
     gledopto,
     hue,
@@ -20,9 +21,9 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import (
 )
 
 
-def test_the_integration_holds_the_six_families_and_the_registry_s_checks_pass():
+def test_the_integration_holds_the_seven_families_and_the_registry_s_checks_pass():
     assert INTEGRATION.families is FAMILIES
-    assert [family.key for family in FAMILIES] == ["hue", "ikea", "tuya", "sonoff", "sengled", "gledopto"]
+    assert [family.key for family in FAMILIES] == ["hue", "ikea", "tuya", "sonoff", "sengled", "gledopto", "aqara"]
     check_families(INTEGRATION)
 
 
@@ -35,6 +36,7 @@ def test_the_rule_groups_run_in_the_integration_s_order():
         *sonoff.RULES,
         *sengled.RULES,
         *gledopto.RULES,
+        *aqara.RULES,
         *tuya.REGISTRY_RULES,
     )
 

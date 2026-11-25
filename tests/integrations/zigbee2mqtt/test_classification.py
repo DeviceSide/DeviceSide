@@ -69,6 +69,11 @@ DEVICES = {
     "hue_listed": (listed(("Philips", "9290018217"), ("Signify Netherlands B.V.", "LWA012")), "hue"),
     "sengled": (device(("Sengled", "E11-G13")), "sengled"),
     "sengled_listed": (listed(("Sengled", "E11-G13"), ("sengled", "E11-G13")), "sengled"),
+    # Aqara's rule reads the Zigbee string alone, so a registry-only device waits in `other`, and a bulb of Z2M's vendor
+    # `Aqara` whose string is `LUMI` stays there.
+    "aqara_before": (device(("Aqara", "T2_E27")), "other"),
+    "aqara_listed": (listed(("Aqara", "T2_E27"), ("Aqara", "lumi.light.agl003")), "aqara"),
+    "aqara_lumi_listed": (listed(("Aqara", "T1"), ("LUMI", "lumi.light.acn014")), "other"),
     "gledopto": (device(("Gledopto", "GL-C-008")), "gledopto"),
     "gledopto_listed": (listed(("Gledopto", "GL-C-008"), ("GLEDOPTO", "GL-C-008")), "gledopto"),
     "other": (device(("Innr", "RB 285 C")), "other"),

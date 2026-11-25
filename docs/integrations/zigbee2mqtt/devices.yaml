@@ -53,6 +53,7 @@ capabilities:
   sonoff_s60: {phrase: Sonoff S60ZBTPF and S60ZBTPG, section: Sonoff S60 plugs}
   sengled: {phrase: Sengled bulbs, section: Sengled}
   gledopto: {phrase: Gledopto lights, section: Gledopto}
+  aqara: {phrase: Aqara lights, section: Aqara}
   other:
     phrase: other brands
     section: Other brands
