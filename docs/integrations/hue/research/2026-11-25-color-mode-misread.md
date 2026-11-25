@@ -7,8 +7,8 @@ second, read with `gh` on 2026-11-25. No probe was run. Handles are GitHub login
 firmware, and what did core's maintainer find? This is the source for Hue's Gledopto class and for Müller Licht's
 record ([internals](../internals.md#device-classes)).
 
-**Answer.** Gledopto lights, on three models named across two issues and several reporters, Pro (zigbee-herdsman-
-converters' "(pro)") and non-Pro alike: after a color temperature write, a later bridge event carried xy and cleared
+**Answer.** Gledopto lights, on three models named across two issues and several reporters, all three "(pro)" in
+zigbee-herdsman-converters, and a non-Pro MR16 (model not given) too: after a color temperature write, a later bridge event carried xy and cleared
 or contradicted `mirek_valid`, so Home Assistant showed a color. A Müller Licht tint light and a LivarnoLux strip were
 reported the same way, once each, with no Zigbee strings. Core's maintainer saw the second event in the bridge's own
 events; reporters disagreed on whether the Hue app showed it. His own Gledopto Pro strip controller didn't show it.
@@ -45,8 +45,9 @@ No comment gives a light's Zigbee manufacturer or model string as the bridge rep
   mirek_valid=True` and xy (0.5077, 0.415), then about 9 s later one with `mirek=None, mirek_valid=False` and xy
   (0.0, 0.0), which core read as `xy` mode. He called it "2 different issues then with both Gledopto bulbs".
 - 2022-01-17, on `Seba-VT`'s new GL-B-007P: "Issue remains the same", which he then called "a bug in the new Hue
-  API". 2022-01-18: Signify answered that third-party support "isn't high on their priority list"; on ZHA (a ConBee
-  II) the bulbs worked, which he put down to ZHA's "device specific quirk" for a bug "in the light itself".
+  API". The same day `Seba-VT` reported the bulbs working on ZHA (a ConBee II). 2022-01-18: Signify answered that
+  third-party support "isn't high on their priority list", and he put the ZHA result down to ZHA's "device specific
+  quirk" for a bug "in the light itself".
 - 2022-01-25: "the Hue bridge periodically pings all lights on the zigbee mesh for their state. Due to a rounding
   issue, the Hue bridge assumes the color changed while it didn't."
 - 2022-02-24, answering the LivarnoLux report's "all third party lights": "Not true, I have tested a few 3rd party
@@ -70,10 +71,10 @@ not None."
 
 ## What this does and doesn't show
 
-- **Shown:** Gledopto lights on three models (GL-S-004P, GL-B-007P, GL-C-008P), three reporters naming a model and two years, with
-  the bridge's events contradicting a color temperature write. Two of the three are "(pro)" models, and a non-Pro
-  MR16 was reported too, so the reports don't split along Pro; the one light that didn't show it is the maintainer's own Gledopto Pro
-  strip controller, model and firmware not given.
+- **Shown:** Gledopto lights on three models (GL-S-004P, GL-B-007P, GL-C-008P), three reporters naming a model and
+  two years, with the bridge's events contradicting a color temperature write. All three are "(pro)" models; a
+  non-Pro MR16 (model not given) was reported too, so the reports don't split along Pro. The one light that didn't
+  show it is the maintainer's own Gledopto Pro strip controller, model and firmware not given.
 - **Disputed:** whether the Hue app shows it. `Seba-VT` and `szuek` said yes; `snowatom-dk` and `juliusvaart`
   said no.
 - **Not shown:** any light's Zigbee strings as the bridge reports them (`product_data`). The Müller Licht and

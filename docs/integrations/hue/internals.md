@@ -95,8 +95,8 @@ models, firmware and the maintainer's findings):
 - [core #93459](https://github.com/home-assistant/core/issues/93459): a Gledopto GL-C-008P (firmware 11076802) left
   `mirek_valid` unset, so Home Assistant showed its color temperature as a color (fixed by PR #97263).
 
-As three models, Pro ones (zigbee-herdsman-converters' "(pro)") and a non-Pro MR16 among them, show it, the class keys
-on the maker, any model: the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`, in
+As three Pro models (zigbee-herdsman-converters' "(pro)") and a non-Pro MR16 show it, the class keys on the maker, any
+model: the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`, in
 any case. Gledopto's is `GLEDOPTO`
 ([`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L400)):
 inferred, as no Hue diagnostics in either issue show it.
