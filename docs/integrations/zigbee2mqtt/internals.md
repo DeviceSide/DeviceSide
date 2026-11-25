@@ -1,3 +1,15 @@
+  Measured with `hue_native_control` off, Z2M's default (with it on, nothing jumped), on the first call above:
+  - **Z2M's own group behavior.** A member soft-off at 40 %, then a group raise from off to 100 %, then a plain on to
+    that member: it went back to 40.2 %. The memory is per device, and a group's set doesn't clear a member's: plain
+    Home Assistant group commands, with no DeviceSide call, did the same ([probe](research/hue/2026-11-25-raw-bottom-probe.md)).
+  - **A known narrow case, the stale window after a raw lower.** A raw lower from 30 % to 0.4 %, then an off with a
+    transition 2 s later, before the end read-back: Z2M's state still held 30 %, which the off stored, and the plain on
+    restored 29.9 % ([probe](research/hue/2026-11-25-raw-bottom-probe.md)). The window is the fade's length and about 1 s more (`END_READ_S`); the converter's publish
+    would have moved Z2M's state to the end level at once. Documented, not fixed.
+  - After the read-back the bulb was already off (above), so an off with a transition stored nothing and the plain on
+    gave 0.4 %. A lit bulb at level 1 isn't measured: from source its stored 1 would go through the converter as 2
+    ([L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), 0.8 %.
+
 # Zigbee2MQTT internals
 
 How the Zigbee2MQTT adapters address a target, what they send and read back, and what was measured on real hardware.
@@ -102,7 +114,7 @@ probed on Z2M:
 - `set_attributes`: `MoveToLevel` with `ExecuteIfOff`, then its kept-level publish,
   `{"state": null, "brightness", "transition"}`, a `MoveToLevel` without it. The E11-G13 jumped on both on ZHA.
 - `raise_brightness` from off: `{"state": "ON", "brightness": 1, "transition": 0}`, which Z2M sends as
-  `moveToLevelWithOnOff` (to a Hue light, the same call raw: `fade`), then the fade, the same.
+  `moveToLevelWithOnOff`, then the fade, the same.
 - `turn_on_for` with brightness: Home Assistant's `light.turn_on`, `{"state": "ON", "brightness"}`, also
   `moveToLevelWithOnOff`.
 - `lower_brightness`, the hue and saturation ramps and `stop` send no Level command to an off light.
@@ -390,24 +402,27 @@ one, the longest.
     option on (`native_control`), read 1 through the timer. Philips' native-control converter clamps a brightness to
     1–254 ([philips.ts L420](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L420)); other paths with the option on weren't measured.
 
-  **The bypass.** A Hue bulb holds level 1, so a fade's publish whose brightness is 1 goes past the converter where
-  every light it reaches is a Hue light (`families/hue` `RAW_BOTTOM`, `fade.py` `raw_bottom`): a lower to a limit
-  that rounds to level 1, and raise's from-off bottom (a raise's lowest limit, 1 %, is level 3). It is the
-  converter's own call through Z2M's `command` payload, as `set_attributes` sends:
-  `{"command": {"cluster": "genLevelCtrl", "command": "moveToLevelWithOnOff", "payload": {"level": 1, "transtime", "optionsMask": 0, "optionsOverride": 0}}}`,
+  **The bypass.** A Hue bulb holds level 1, so a lower whose publish carries brightness 1 (a limit that rounds to
+  level 1) goes past the converter where every light it reaches is a Hue light (`families/hue` `RAW_BOTTOM`,
+  `fade.py` `raw_bottom`), as a raw `moveToLevel` through Z2M's `command` payload, the call `set_attributes` and
+  ZHA's lower send:
+  `{"command": {"cluster": "genLevelCtrl", "command": "moveToLevel", "payload": {"level": 1, "transtime", "optionsMask": 0, "optionsOverride": 0}}}`,
   `transtime` the transition in tenths, as the converter's
   ([toZigbee.ts L1403](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1403)).
-  A group goes raw only when every member is a Hue light, as the converter applies the flag to a group only when every
-  member's definition has it (`allEqual`, above): a group with another brand's light keeps the converter, which sends
-  1 unless that light's definition is flagged too. A raw command draws no state from Z2M, so Home Assistant follows at
-  the fade's end read-back, or at a report from the bulb; `brightness_move: stop` halts it as it does the converter's,
-  both ZCL transitions. `set_attributes` leaves out its kept-level publish only for a level 1 on lit Hue lights
-  (`set_attributes`).
-  Rig probes 2026-11-25, the LTA009 above ([probe](research/hue/2026-11-25-raw-bottom-probe.md)): the raw lower to 0.4 % ends with the bulb off. At the end
-  read-back its `onOff` reads off, so Z2M and Home Assistant show it off, while the level reads 0.4 %, the brightness Z2M
-  holds for an off light. `moveToLevelWithOnOff` to level 1, the bulb's lowest, sets OnOff off, likely ZCL's rule for
-  the with-On/Off commands, which `turnsOffAtBrightness1` steps around. The same level as `set_attributes`' raw
-  `moveToLevel` stayed lit, as on ZHA, which sends `move_to_level`.
+  Not the converter's `moveToLevelWithOnOff`: sent raw to level 1, it left the bulb off (below). A group goes raw only
+  when every member is a Hue light, as the converter applies the flag to a group only when every member's definition
+  has it (`allEqual`, above): a group with another brand's light keeps the converter, which sends 1 unless that
+  light's definition is flagged too. A raw command draws no state from Z2M, so Home Assistant follows at the fade's
+  end read-back, or at a report from the bulb; `brightness_move: stop` halts it as it does the converter's, both ZCL
+  transitions. A raise from off keeps the converter's bottom, so it starts at level 2 before fading up, which the fade
+  hides. `set_attributes` leaves out its kept-level publish only for a level 1 on lit Hue lights (`set_attributes`).
+  The `moveToLevel` lower isn't run on the rig yet.
+
+  Rig probes 2026-11-25, the LTA009 above ([probe](research/hue/2026-11-25-raw-bottom-probe.md)), of the bypass's first call, `moveToLevelWithOnOff` to level 1: the
+  raw lower to 0.4 % ended with the bulb off. At the end read-back its `onOff` read off, so Z2M and Home Assistant
+  showed it off, while the level read 0.4 %, the brightness Z2M holds for an off light. Level 1 is the bulb's lowest,
+  and a with-On/Off command ending there sets OnOff off, likely ZCL's rule, which `turnsOffAtBrightness1` steps
+  around. The same level as `set_attributes`' raw `moveToLevel` stayed lit, as on ZHA, which sends `move_to_level`.
 
   **Z2M's restore memory around a raw command**, from source (ZHC `03b37655`), and probed ([probe](research/hue/2026-11-25-raw-bottom-probe.md)). An off with a
   transition, while Z2M's state is ON, stores that state's brightness and sets `turnedOffWithTransition`
