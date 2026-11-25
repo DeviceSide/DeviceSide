@@ -6,7 +6,7 @@
   "date": "2026-11-25",
   "source": {
     "kind": "rig",
-    "commit": "7f3c8610"
+    "commit": "cfc2beaa"
   },
   "calls": "111afab46d8cf0a5da3205241424745bbb2b1113",
   "home_assistant": "2026.10.4",
@@ -26,6 +26,20 @@
       ]
     },
     {
+      "id": "reads_while_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
+        }
+      ]
+    },
+    {
       "id": "reads_xy_while_off[light_color]",
       "domain": "light",
       "role": "light_color",
@@ -36,6 +50,20 @@
           "manufacturer": "Signify Netherlands B.V.",
           "firmware": "1.164.2",
           "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "reads_xy_while_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "lumi.light.agl003",
+          "manufacturer": "Aqara",
+          "firmware": null,
+          "class": "aqara"
         }
       ]
     },
