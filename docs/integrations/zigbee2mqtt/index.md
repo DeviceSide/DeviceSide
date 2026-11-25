@@ -41,8 +41,8 @@ publishes as it connects.
 Signify's Hue devices (manufacturer `Philips`). A Hue smart plug gets no turn on with timer
 ([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)).
 
-Smooth dimming reaches a Hue bulb's lowest brightness, 0.4 %, where Zigbee2MQTT alone would stop at 0.8 %
-([Lowest brightness](#lowest-brightness)).
+Smooth dimming sends a Hue bulb's lowest brightness, 0.4 %, directly, where Zigbee2MQTT alone stopped at 0.8 % in a
+test; the direct send hasn't been measured yet ([Lowest brightness](#lowest-brightness)).
 
 ### Tuya
 

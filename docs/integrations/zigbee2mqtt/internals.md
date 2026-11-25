@@ -326,9 +326,10 @@ updates Z2M's and Home Assistant's state. Level and color temperature are compar
 color isn't, as the bulb clamps it to its gamut. A group is one groupcast per field, then every member is read.
 `min_brightness`/`max_brightness` alone clamp each member from its own level, so each gets its own commands; an off
 light is clamped from the brightness Z2M holds. A level write is followed by Z2M's own kept-level payload,
-`{"state": null, "brightness", "transition"}`, only where a light it reaches is off: after an off with a transition Z2M
-restores the level it kept on the next plain on, which a raw command doesn't replace. A lit light has taken the raw
-write, and the payload, through the converter, moved a lit Hue bulb from level 1 to 2 (`fade`, the bottom). On
+`{"state": null, "brightness", "transition"}`: after an off with a transition Z2M restores the level it kept on the next
+plain on, which a raw command doesn't replace. It is left out only for a level 1 written where every light it reaches
+is a lit Hue light (`families/hue` `RAW_BOTTOM`): the bulb has taken the raw write, and the payload, through the
+converter, moved a lit Hue bulb from level 1 to 2 (`fade`, the bottom). On
 another brand's light (`other`, Labs) the call is the same: no
 departure is reported among its vendors, and a bulb older than ZCL rev 7 rejects the override fields
 (MALFORMED_COMMAND), which raises ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
@@ -400,8 +401,23 @@ one, the longest.
   member's definition has it (`allEqual`, above): a group with another brand's light keeps the converter, which sends
   1 unless that light's definition is flagged too. A raw command draws no state from Z2M, so Home Assistant follows at
   the fade's end read-back, or at a report from the bulb; `brightness_move: stop` halts it as it does the converter's,
-  both ZCL transitions. Not yet run on the rig. `set_attributes` sends its kept-level publish only where a light the
-  write reaches is off (`set_attributes`).
+  both ZCL transitions. Not yet run on the rig. `set_attributes` leaves out its kept-level publish only for a level 1
+  on lit Hue lights (`set_attributes`).
+
+  **Z2M's restore memory around a raw command**, read from source (ZHC `03b37655`), not measured. An off with a
+  transition, while Z2M's state is ON, stores that state's brightness and sets `turnedOffWithTransition`
+  ([L1320](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1320)–[L1329](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1329)); the next on with no brightness restores the stored level through the converter
+  ([L1336](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1336), [L1354](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1354)–[L1356](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1356)), and only a converter brightness set clears the flag ([L1382](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1382)–[L1384](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1384)).
+  A raw command touches neither. Two cases follow:
+  - A group raise lights an off Hue member raw (its own bottom publish), and the group's fade that follows is the
+    group's converter set, which writes the group's memory, not the member's: a member soft-off before keeps its flag
+    set while lit, so a plain on to that member alone sends it back to the level stored at its soft off.
+  - A raw lower to 0.4 %, then an off with a transition before the fade's end read-back (or a report from the bulb):
+    Z2M's state still holds the level from before the fade, so that level is stored, and the next plain on restores
+    it, not 0.4 %. After the read-back the stored level is 1, which the restore sends through the converter as 2
+    ([L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), 0.8 %.
+
+  Step 4's rig retest runs both; a failure reopens a fix.
 
   Other flagged lights keep Z2M's 2, so their lowest is 0.8 %: Innr's turn off at level 1 ([research](research/2026-11-24-other-brands-dimming.md), from Z2M #4035); ADEO's is read from the flag, not reported. IKEA (15 definitions),
   Gledopto (3) and Aqara (3) carry the flag too (ZHC `03b37655`, counted in
