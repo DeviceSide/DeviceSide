@@ -64,6 +64,18 @@ UNSUPPORTED_ATTRIBUTE); its timer behavior is unprobed; one unexplained `no genL
     Decision 8 (no timer on `aqara`, get_attributes asks no OnTime). `keeps_and_reads_hs_while_off` (no hs color mode
     on the bulb) isn't under it, so get_attributes still can't record on lab_aqara: open for Jason.
 
+## After the merge (2026-11-25, Jason)
+
+12. **Decision 11, settled: the step file.** `keeps_and_reads_hs_while_off` (`tests/rig/steps/get_attributes.yaml`)
+    tests Z2M's `hue_native_control`, a Hue option, so it is limited to the `hue` class with the step selector on the
+    target's DeviceSide class (ha-rig #97). No ha-rig rule on `supported_color_modes`. Then a restricted
+    `lab_aqara --integration zigbee2mqtt --action get_attributes` run (Jason's yes first), promote, and get_attributes
+    `verified` on `aqara`; reword index.md's Aqara paragraph, regenerate.
+13. **Decision 5, settled: keep the recorded limit.** No probe and no DeviceSide wait. The same `no genLevelCtrl reply`
+    showed twice on a Hue CT bulb in the 10:40 `lab_hue` run (about 6 s after its join to Z2M; not in the clean 10:47
+    rerun), so it may not be Aqara's alone: a reason to probe later, with Z2M's `advanced.log_debug_to_mqtt_frontend`
+    on, if it bites again.
+
 ## Steps
 
 **No rig run or write probe before 07:45 local on 2026-11-25** (Jason, 2026-11-24): work that needs no device (steps 2, 3, 6) goes first. Every rig run and every write probe needs Jason's yes (`DEVICE_SIDE_RIG_RESTRICTED=1`). Read-only probes run through
@@ -95,16 +107,16 @@ hostnames in commits, docs or research files.
 
 ## Handoff
 
-2026-11-25 10:30, from the step 5 session. Branch `wt/aqara-verified`, worktree `deviceside-wt/aqara-verified`, PR #609.
+2026-11-25 11:15, after #609 (Aqara Verified) and #612 (Hue and plug records refreshed) merged. Branch
+`wt/aqara-get-attributes`, worktree `deviceside-wt/aqara-get-attributes`, draft PR opened by this handoff.
 
-- **Done:** steps 1-4 and step 6's research. ha-rig #109 merged (3ceb00b); `class: aqara` in `lab_aqara.yaml`; the
-  restricted `--action stop` rerun passed its three dimming cases, rows promoted; stop, raise_brightness and
-  lower_brightness Verified on `aqara`, the card regenerated, index.md's Aqara paragraph reworded. Step 4 plan-reviewed:
-  0 must-fix; the owner's call and both optionals taken.
-- **Next:** step 5 (audit, owner-findings, `gh pr ready`; Jason merges).
-- **Remind Jason, once the Aqara records are in:** the Hue `lab` refresh (`--profile lab --action get_attributes`).
-- **Open for Jason:** get_attributes' `keeps_and_reads_hs_while_off` on an xy-only bulb (Decision 11); Decision 5
-  (recommended: keep the recorded limit).
+- **Next:** Decision 12: the step-file change (one case's selector), `.venv/bin/pytest -n auto --transcripts=check`,
+  push; ask Jason's yes, then `DEVICE_SIDE_RIG_RESTRICTED=1 /Users/jason/projects/ha/ha-rig/scripts/rig.py --profile
+  lab_aqara --integration zigbee2mqtt --action get_attributes` from the worktree (`in-dir`); check Hue's rows stay
+  in the diff; lift get_attributes to `verified` on `aqara` (`families/aqara/__init__.py`, its comment), reword
+  index.md's Aqara paragraph, `scripts/gen_compat.py`; then audit-gate, owner-findings, `gh pr ready`.
+- **Known:** the rig needs a draft PR for the branch; ci-green can fail on a concurrency-cancelled Owner notice
+  (check `gh pr checks`); lint-on-edit flags gitignored ha-rig profiles (false positive).
 
 ## Verification
 
