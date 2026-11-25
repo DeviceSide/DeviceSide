@@ -111,3 +111,41 @@ Decision 1; research files aren't edited.
 4. **Retest and records.** Rerun the cases whose call changed (tenet 9: Z2M raise, lower, and set_attributes if
    changed), commit the records, then the PR audit (binding-rule text: Opus auditor), `owner-findings`, ready and
    `merge-green 613 --squash --delete-branch`.
+
+
+## Handoff
+
+2026-11-25, from the first implementing session (Opus), at ~123k context.
+
+**Done.** Steps 1–3 are built, reviewed and audited (each step's last commit carries its `Plan review:` note; the rework after
+step 4's probe, Decisions 9–10, was re-reviewed, with 2 must-fix doc slips fixed in `feaa0160`, and its optional off-member
+test added in `0655d7af`). Decisions 6–10 were recorded after the plan was written. Main is merged in (#612 landed).
+Step 4's retest at `91259a99` passed every case: Z2M `lower_brightness` 6/6 and `set_attributes` 13/13, including the
+bottom cases, and a raw `moveToLevel` to level 1 kept the Hue bulb lit. `raise_brightness` needs no rerun
+(`check_release.py --signoffs --reruns` prints `{}`; its transcript matches main).
+
+**Next (step 4, the rest):**
+1. Jason has put the Hue lab bulbs back on the Hue bridge: run `scripts/rig.py --recover` (rig rules: `../ha-rig`
+   `CLAUDE.local.md`).
+2. The records. Jason approved (2026-11-25): delete `docs/integrations/zigbee2mqtt/test-records/lower_brightness.json` and
+   `set_attributes.json` by hand, run the restricted `lab_aqara` profile (`DEVICE_SIDE_RIG_RESTRICTED=1`) for the
+   light_ct and light_color cases, then rerun `lab_hue` with `--fresh`, and commit the two records. The Aqara bulb runs
+   the bottom cases through Z2M's converter at a true level 1 (no flag) and may switch off as the Hue bulb did with
+   `...WithOnOff`: if it does, that's a finding (Decision 2), recorded in internals.md and brought to Jason. Don't drop
+   the case.
+3. The group probe: an all-Hue Z2M group with one member off, lowered to 0.4 %. The off member is expected to stay off
+   (unit-tested, `0655d7af`).
+4. One new dated research note in `docs/integrations/zigbee2mqtt/research/hue/` for this run's `moveToLevel` and group
+   results; cite it from Z2M `internals.md` (replace what's marked unmeasured) and update `index.md`'s Hue line to the
+   measured state.
+5. The PR audit via `audit-gate` (binding-rule text: Opus auditor), then `owner-findings` (every touched package is
+   @jasonmx's), then `gh pr ready` and a backgrounded `merge-green 613 --squash --delete-branch`. The PR body names the
+   user-visible failure each rule prevents (Decision 2, tenet 6).
+
+**Rig permission (Jason):** the lab rig yes, the Z2M plugs never.
+
+**Open, for the PR body or Jason:** mixed groups lowered through the converter send `moveToLevelWithOnOff`, which lights
+an off member (before this PR too); worth a `docs/deferred.md` line or an issue.
+
+Branch `wt/brightness-floor`, worktree `/Users/jason/projects/ha/deviceside-wt/brightness-floor`, PR #613 (draft).
+Overlaps: #611 (`docs/design.md`), #614 (Z2M `index.md` Aqara paragraph, `get_attributes.json`): resolve by merge.
