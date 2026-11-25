@@ -36,8 +36,8 @@ def in_color_temp_mode(light: Light) -> bool:
     """Whether the light is in color temperature mode, as core's hue integration decides it for a certified light
     (v2/light.py, color_temp_active; internals.md, Device classes): its `mirek_valid`. Never with no mirek, or 0, which
     core treats as no value (and which would divide by zero). A non-certified light may not set `mirek_valid`
-    reliably: Gledopto's and Müller Licht's are split off for it, and other uncertified lights would be on a report
-    (internals.md, Device classes). Core reads an uncertified light's mode from its own last command (v2/light.py,
+    reliably: Gledopto's are split off for it, and other uncertified lights would be on a report (internals.md, Device
+    classes). Core reads an uncertified light's mode from its own last command (v2/light.py,
     _color_temp_active, set in async_turn_on), which get_attributes never reports."""
     if not (feature := light.color_temperature) or not feature.mirek:
         return False

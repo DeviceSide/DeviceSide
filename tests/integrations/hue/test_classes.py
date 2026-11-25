@@ -25,11 +25,10 @@ def capability(hass, entity_id: str) -> str | None:
     return INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id))
 
 
-# The split-off makers' Zigbee manufacturer strings, as the bridge passes them on (internals.md, Device classes).
+# The split-off maker's Zigbee manufacturer string, as the bridge passes it on (internals.md, Device classes).
 GLEDOPTO = ("GLEDOPTO", "GL-C-008P")
-MULLER_LICHT = ("MLI", "tint-ExtendedColor")
 # Every maker get_attributes doesn't serve, by its class.
-SPLIT_OFF = {"gledopto": GLEDOPTO, "muller_licht": MULLER_LICHT}
+SPLIT_OFF = {"gledopto": GLEDOPTO}
 
 
 @pytest.mark.parametrize(
@@ -45,11 +44,8 @@ SPLIT_OFF = {"gledopto": GLEDOPTO, "muller_licht": MULLER_LICHT}
         ("gledopto", "GL-B-007P", "gledopto"),
         ("GLEDOPTO", None, "gledopto"),
         ("Gledopto Lighting", "GL-C-008P", "other"),  # the whole string, not a prefix
-        # Müller Licht by its Zigbee string, any model (core #62497).
-        (*MULLER_LICHT, "muller_licht"),
-        ("MLI", "Bulb white+color", "muller_licht"),
-        ("mli", None, "muller_licht"),
-        ("Müller Licht", "tint-ExtendedColor", "other"),  # Zigbee2MQTT's vendor name, not the device's string
+        # Müller Licht is reported (core #62497) but has no key yet: no report gives its strings.
+        ("MLI", "tint-ExtendedColor", "other"),
         ("_TZ3210_mntza0sw", "TS0505B", "other"),  # a Tuya-made light under another brand has no key yet
     ],
 )
@@ -87,7 +83,6 @@ async def scene(
         pytest.param({"one": classes.SIGNIFY, "two": classes.SIGNIFY}, "hue", id="hue"),
         pytest.param({"one": classes.SIGNIFY, "two": IKEA}, "other", id="one_other"),
         pytest.param({"one": classes.SIGNIFY, "two": GLEDOPTO}, "gledopto", id="one_gledopto"),
-        pytest.param({"one": classes.SIGNIFY, "two": MULLER_LICHT}, "muller_licht", id="one_muller_licht"),
         pytest.param({"one": IKEA, "two": GLEDOPTO}, "other", id="two_others"),
         pytest.param({}, "hue", id="writes_none"),
     ],
@@ -125,11 +120,11 @@ def get_entry(hass) -> str:
 @pytest.mark.parametrize("adapter", ADAPTERS, ids=lambda adapter: adapter.action)
 def test_hue_is_verified_and_other_documented_on_every_adapter(adapter):
     # other on a bridge's one request (docs/evidence.md, Levels): every light gets the same CLIP v2 request. Gledopto
-    # and Müller Licht share other's levels but get_attributes', as the bridge reports their color temperature mode
-    # wrong (core #62497, #93459).
+    # shares other's levels but get_attributes', as the bridge reports its color temperature mode wrong (core #62497,
+    # #93459).
     levels = {"hue": Level.VERIFIED, "other": Level.DOCUMENTED}
     if adapter.action != "get_attributes":
-        levels |= {"gledopto": Level.DOCUMENTED, "muller_licht": Level.DOCUMENTED}
+        levels |= {"gledopto": Level.DOCUMENTED}
     assert adapter.scope.capabilities == levels
 
 

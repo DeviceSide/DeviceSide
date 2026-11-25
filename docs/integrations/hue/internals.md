@@ -83,27 +83,41 @@ stays on, or shows a wrong value, where the user sees it.
   `get_attributes` never reports. Reported: [core #62497](https://github.com/home-assistant/core/issues/62497) and
   [core #93459](https://github.com/home-assistant/core/issues/93459), split off below.
 
-**Split off:** Gledopto (`gledopto`) and Müller Licht (`muller_licht`), each a class of its own, not built on
-`get_attributes`, as the bridge reports their color temperature mode wrong:
+**Split off:** Gledopto (`gledopto`), a class of its own, not built on `get_attributes`, as the bridge reports its
+lights' color temperature mode wrong ([research](research/2026-11-25-color-mode-misread.md), these issues' reporters,
+models, firmware and the maintainer's findings):
 
-- [core #62497](https://github.com/home-assistant/core/issues/62497) (2021-2022): Gledopto GL-S-004P (a Pro bulb) and GL-B-007P
+- [core #62497](https://github.com/home-assistant/core/issues/62497) (2021-2022): Gledopto GL-S-004P and GL-B-007P
   bulbs and strip controllers, a Müller Licht tint loris (firmware 2.5.3) and a LivarnoLux strip. After a
-  color temperature write, a second event within a second reports xy, so Home Assistant shows a color. The bridge
+  color temperature write, a later event reports xy, so Home Assistant shows a color. The bridge
   itself reports it: core's maintainer read it in the bridge's events (reporters disagreed on whether the Hue app
-  showed it too). A Gledopto Pro strip controller didn't show it.
-- [core #93459](https://github.com/home-assistant/core/issues/93459): a Gledopto GL-C-008P (a Pro controller,
-  firmware 11076802) left `mirek_valid` unset, so Home Assistant showed its color temperature as a color (fixed by PR
-  #97263).
+  showed it too). His own Gledopto Pro strip controller didn't show it.
+- [core #93459](https://github.com/home-assistant/core/issues/93459): a Gledopto GL-C-008P (firmware 11076802) left
+  `mirek_valid` unset, so Home Assistant showed its color temperature as a color (fixed by PR #97263).
 
-As a Pro controller shows it too, each class keys on the maker, any model: the Zigbee manufacturer string the bridge
-passes on as `product_data.manufacturer_name`, in any case. Gledopto's is `GLEDOPTO`
-([`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L400)), Müller Licht's `MLI`,
-the string zigbee-herdsman-converters' fingerprints give its tint lights
-([`muller_licht.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/muller_licht.ts#L333-L354)): inferred, as
-no Hue diagnostics in either issue show them. Müller Licht lights made by Tuya (a `_TZ…` string) stay in `other`.
-Livarno (Lidl) is recorded as reported but has no key yet: its lights are Tuya inside, with a `_TZ…` manufacturer
-string per model, and the report gives none, so it splits off once a report gives its strings. Any other maker reported
-the same way is split off alike.
+As three models, Pro ones (zigbee-herdsman-converters' "(pro)") and a non-Pro MR16 among them, show it, the class keys
+on the maker, any model: the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`, in
+any case. Gledopto's is `GLEDOPTO`
+([`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L400)):
+inferred, as no Hue diagnostics in either issue show it.
+
+**Reported, no key yet:** a maker whose report gives no identity the bridge reports stays in `other`, keeping
+`get_attributes`, until a report gives one:
+
+- **Müller Licht:** #62497's one tint loris, with no Zigbee strings. Its candidate zigbee-herdsman-converters
+  definition, the tint panel 404028/44435, matches on the model string `RGB-CCT` alone, with no `MLI` manufacturer
+  fingerprint, and 44435 also names a second definition
+  ([`muller_licht.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/muller_licht.ts#L152-L172)),
+  so a model key would rest on two guesses, and one report of one product is no ground to refuse the maker whole
+  ([contrary evidence](../../evidence.md#levels)). It earns a key on a Hue diagnostics `product_data` of a Müller
+  Licht light (its identity), or a second Müller Licht report on another model (the maker, whose tint lights'
+  fingerprints carry `MLI`:
+  [`muller_licht.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/muller_licht.ts#L333-L354)).
+  Müller Licht lights made by Tuya (a `_TZ…` string) stay in `other` either way.
+- **Livarno (Lidl):** its lights are Tuya inside, with a `_TZ…` manufacturer string per model, and the report gives
+  none, so it splits off once a report gives its strings.
+
+Any other maker reported the same way is split off alike.
 
 ## Modules
 

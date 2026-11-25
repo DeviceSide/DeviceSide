@@ -44,7 +44,7 @@ these features harms when it fails ([internals](internals.md#device-classes)).
 
 Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
 and color at a time, some come on when written while off, and some don't report color temperature mode as Hue lights do
-([Gledopto](#gledopto) and [Müller Licht](#müller-licht) are known). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
+([Gledopto](#gledopto) is known). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
 with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model, or its maker, a class of its
 own and refuses it the action it fails (`not_built`, or `no_known_method` with why, where no command is known to
 work), and every other light keeps it.
@@ -53,16 +53,11 @@ work), and every other light keeps it.
 
 Gledopto's lights and LED controllers (manufacturer `GLEDOPTO`, any model) get every feature other brands' lights get,
 but `get_attributes`. The bridge has reported several of them in color mode after a color temperature write, so Home
-Assistant showed a color temperature it set as a color ([core #62497](https://github.com/home-assistant/core/issues/62497), [core #93459](https://github.com/home-assistant/core/issues/93459)).
+Assistant showed a color temperature it set as a color ([core #62497](https://github.com/home-assistant/core/issues/62497), [core #93459](https://github.com/home-assistant/core/issues/93459);
+[research](research/2026-11-25-color-mode-misread.md)).
 `get_attributes` reports the light's actual values, so it refuses Gledopto lights (`not_built`); read Home Assistant's
 own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, where core reads its color temperature
 mode from its own last command ([internals](internals.md#device-classes)).
-
-### Müller Licht
-
-Müller Licht's tint lights (manufacturer `MLI`, any model) are refused `get_attributes` as [Gledopto's](#gledopto) are,
-and get every other feature: the bridge has reported a tint light in color mode after a color temperature write the
-same way ([core #62497](https://github.com/home-assistant/core/issues/62497)).
 
 ## Smooth dimming
 

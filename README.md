@@ -71,7 +71,7 @@ Before installing, the cards below answer the same question by integration and d
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-lights): 🟢 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
-- [Gledopto lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#gledopto), [Müller Licht lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#müller-licht): 🟡 smooth dimming, smooth saturation, set without turning on, set scene
+- [Gledopto lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#gledopto): 🟡 smooth dimming, smooth saturation, set without turning on, set scene
 - [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#other-brands): 🟡 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
 
 **[Matter](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md)**

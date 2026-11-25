@@ -446,53 +446,6 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "muller_licht",
-    "data": null,
-    "detail": null,
-    "entity_id": "light.lamp",
-    "integration": "hue",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "v2.HueBridgeV2.request",
-     [
-      "put",
-      "clip/v2/resource/light/light-1"
-     ],
-     {
-      "json": {
-       "dimming_delta": {
-        "action": "stop"
-       }
-      }
-     }
-    ],
-    []
-   ]
-  ]
- },
- {
-  "action": "stop",
-  "integration": "hue",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {},
-   "targets": [
-    [
-     "light.lamp",
-     "light.lamp",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
     "classes": "other",
     "data": null,
     "detail": null,
@@ -744,59 +697,6 @@
     "member_classes": {
      "light.one": "hue",
      "light.two": "gledopto"
-    },
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "v2.HueBridgeV2.request",
-     [
-      "put",
-      "clip/v2/resource/grouped_light/grouped-1"
-     ],
-     {
-      "json": {
-       "dimming_delta": {
-        "action": "stop"
-       }
-      }
-     }
-    ],
-    []
-   ]
-  ]
- },
- {
-  "action": "stop",
-  "integration": "hue",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {},
-   "targets": [
-    [
-     "light.room",
-     "light.room",
-     true
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": [
-     "hue",
-     "muller_licht"
-    ],
-    "data": null,
-    "detail": null,
-    "entity_id": "light.room",
-    "integration": "hue",
-    "member_classes": {
-     "light.one": "hue",
-     "light.two": "muller_licht"
     },
     "status": "sent"
    }

@@ -8,8 +8,8 @@ from the bridge's `product_data`:
 - `hue`: Signify's own lights, which every record ran on.
 - `other`, the default class: every other maker's light the bridge has paired, Friends of Hue certified ones
   included, as certification isn't Signify's firmware and no record reaches one.
-- `gledopto` and `muller_licht`: Gledopto's and Müller Licht's lights, any model, split off `other` as the bridge
-  reports their color temperature mode wrong, so get_attributes doesn't serve them (internals.md, Device classes).
+- `gledopto`: Gledopto's lights, any model, split off `other` as the bridge reports their color temperature mode
+  wrong, so get_attributes doesn't serve them (internals.md, Device classes; research/2026-11-25-color-mode-misread.md).
 - `smart_scene`: an All-Day scene, which has no fixed settings to write (set_scene's no known method entry).
 
 A scene is classed by the lights it writes: the one class other than `hue` among them, `other` when they hold more,
@@ -38,31 +38,28 @@ from ...core.scope import OTHER, NoKnownMethod, documented, verified
 SIGNIFY = "Signify Netherlands B.V."
 HUE = "hue"
 GLEDOPTO = "gledopto"
-MULLER_LICHT = "muller_licht"
 SMART_SCENE = "smart_scene"
 # The split-off makers, by the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`,
 # casefolded and matched in any case, as Zigbee2MQTT's Gledopto rule does: Gledopto's `GLEDOPTO` (src/devices/
-# gledopto.ts) and Müller Licht's `MLI` (src/devices/muller_licht.ts), zigbee-herdsman-converters at the commits
-# internals.md (Device classes) cites.
-_MAKERS = {"gledopto": GLEDOPTO, "mli": MULLER_LICHT}
+# gledopto.ts, zigbee-herdsman-converters at the commit internals.md, Device classes, cites).
+_MAKERS = {"gledopto": GLEDOPTO}
 # Each class's domains (IntegrationInfo.classes): a light, Hue's smart plug included, which the bridge shows as one,
 # and a scene, classed by the lights it writes; a smart scene is a scene alone.
 CLASSES = {
     HUE: frozenset({Platform.LIGHT, Platform.SCENE}),
     OTHER: frozenset({Platform.LIGHT, Platform.SCENE}),
     GLEDOPTO: frozenset({Platform.LIGHT, Platform.SCENE}),
-    MULLER_LICHT: frozenset({Platform.LIGHT, Platform.SCENE}),
     SMART_SCENE: frozenset({Platform.SCENE}),
 }
 
 # Every adapter's levels: Verified on Hue, whose lights every record ran on; Documented on `other`, on a bridge's one
 # request (docs/evidence.md, Levels): DeviceSide sends every light the same CLIP v2 light update, which Hue Smooth
 # Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and no Hue action's failure harms
-# (internals.md, Device classes). Gledopto and Müller Licht take `other`'s levels on every action but get_attributes.
-LEVELS = verified(HUE) | documented(OTHER, GLEDOPTO, MULLER_LICHT)
-# get_attributes reads `mirek_valid` for color temperature mode, which the bridge reports wrong for Gledopto and
-# Müller Licht lights (core #62497, #93459): not built there (a NotBuilt entry is only for an action whose failure
-# harms).
+# (internals.md, Device classes). Gledopto takes `other`'s levels on every action but get_attributes.
+LEVELS = verified(HUE) | documented(OTHER, GLEDOPTO)
+# get_attributes reads `mirek_valid` for color temperature mode, which the bridge reports wrong for Gledopto lights
+# (core #62497, #93459; research/2026-11-25-color-mode-misread.md): not built there (a NotBuilt entry is only for an
+# action whose failure harms).
 GET_ATTRIBUTES_LEVELS = verified(HUE) | documented(OTHER)
 
 _PAGE = DOCS_URL + "docs/integrations/hue/index.md"

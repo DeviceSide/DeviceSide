@@ -16,6 +16,3 @@ capabilities:
   gledopto:
     phrase: Gledopto lights
     section: Gledopto
-  muller_licht:
-    phrase: Müller Licht lights
-    section: Müller Licht
