@@ -87,3 +87,27 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 - Progress: the step waits while Z2M has no `bridge/devices`, and renders after the 10 s bound.
 - Checks: `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check`, `scripts/check_ha_literals.py`.
 - Before ready: Jason opens Configure → Device coverage on his HA (a rig run isn't needed: no call changes).
+
+## Handoff
+
+2026-11-25, after steps 1-3 were built.
+
+- **Done:** step 1 (`095c6cbc`, `710717fe`: `gate()`/`judge()` in `core/dispatcher.py`, plan-reviewed, findings
+  answered as Decisions 13-14); steps 2-3 (`4cebaef9`, `81e83dc5`, `9cfb549b`, `ba54c734`: `coverage.py`, the
+  Configure item and progress step, Z2M's `capability_ready`, `features.py`, `registry.CARD_ORDER`, design.md).
+  Full suite, `gen_compat --check`, `check_ha_literals` pass.
+- **Rulings after the plan (Jason, 2026-11-25):** (15) no change to the card-order mechanism and nothing of Control4's:
+  `column_order` stays in the bundles, `CARD_ORDER` mirrors it for the view, pinned by `tests/test_card_order.py`
+  (Control4 last); `4cebaef9`'s bundle edits are reverted by `ba54c734`. (16) The legend stays as built; with
+  nothing in Labs, the Labs field description drops the "Turn on Labs: adds…" sentence. (17) Never name another
+  maintainer in PR text, comments or commits.
+- **Next:** a fresh `plan-reviewer` (opus) on steps 2-3, range `710717fe..HEAD`, with Decisions 15-17; rule on
+  its findings (the step 2 implementer can be resumed only by this session, so brief a fresh sonnet one). Then the
+  audit gate (`audit-gate brief pr`, the Agent it prints, `audit-gate record`, `owner-findings`), then Jason's
+  live check (Configure → Device coverage on his HA) before `gh pr ready`. Squash-merge with
+  `merge-green 611 --squash --delete-branch`.
+- **Open for review to weigh:** the implementer's own notes: ZHA groups are left out by a hard-coded
+  `_GROUPS_ON_COORDINATOR = {"zha"}` in `coverage.py`; a Z2M bridge whose cache never started isn't waited on;
+  each open runs ~12 `judge()` calls per entity, with their DEBUG lines; `FEATURE_ACTIONS` moved into
+  `custom_components/deviceside/features.py` and `gen_features` reads it.
+- **Branch / worktree / PR:** `wt/coverage-view`, `/Users/jason/projects/ha/deviceside-wt/coverage-view`, #611 (draft).
