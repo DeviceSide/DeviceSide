@@ -7,12 +7,16 @@ The record is `docs/audits/<rc>.md`: YAML frontmatter (rc, base, passes, finding
 - Passes chain from it (`passes[0].from == base`, each `from` the previous `to`); each `to` is an ancestor of the head.
 - Nothing outside `docs/audits/` changed after the last pass.
 - A Critical or High finding is `fixed` (`fixed_in` inside a pass after the first) or `waived` (with a `reason`).
+- An RC cut from main has bumped the standard lights table's ZHC pin since the previous RC tag, or its record holds a
+  line `ZHC bump skipped: <reason>` (the release skill; docs/integrations/zigbee2mqtt/internals.md, standard_lights).
+  A release/vX.Y.Z branch is exempt, as no bump lands between an RC and its release. Git reads only.
 See .claude/skills/rc-audit/SKILL.md.
 
-Usage: scripts/check_audit.py <rc> <head-sha>
+Usage: scripts/check_audit.py <rc> <head-sha> [<branch>]   (the branch it is cut from; main when left out)
        scripts/check_audit.py --base <rc>   (print the base /rc-audit starts rc1 or a new RC from)
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +29,10 @@ sys.path.insert(0, str(REPO))
 from scripts.check_tag import RC, git, name, releases  # noqa: E402
 
 AUDITS = Path("docs") / "audits"
+# The standard lights table and the line its pin is on (scripts/zhc_table.py writes it).
+ZHC_TABLE = "custom_components/deviceside/integrations/zigbee2mqtt/standard_lights.py"
+ZHC_PIN = re.compile(r'^ZHC_RELEASE = "([^"]*)"$', re.MULTILINE)
+ZHC_SKIPPED = re.compile(r"^ZHC bump skipped: \S", re.MULTILINE)
 SEVERITIES = frozenset({"critical", "high"})
 # A squash or rebase merge replaces the commits a record cites, so they are no longer under the head.
 REWRITTEN = "; was the audit PR squashed or rebased? Merge it with a merge commit"
@@ -66,7 +74,35 @@ def frontmatter(path: Path) -> dict:
     return data
 
 
-def errors(repo: Path, rc: str, head: str) -> list[str]:
+def previous_rc(repo: Path, rc: str, head: str) -> str | None:
+    """The latest RC tag under head other than `rc`, by version then number, or None."""
+    found = [
+        (tuple(map(int, match.groups())), tag)
+        for tag in git(repo, "tag", "--list", "v*rc*", "--merged", head).split()
+        if (match := RC.match(tag)) and tag != rc
+    ]
+    return max(found)[1] if found else None
+
+
+def zhc_pin(repo: Path, rev: str) -> str | None:
+    """The standard lights table's ZHC pin at rev, or None where the table isn't there."""
+    shown = subprocess.run(["git", "-C", str(repo), "show", f"{rev}:{ZHC_TABLE}"], capture_output=True, text=True)
+    return match[1] if shown.returncode == 0 and (match := ZHC_PIN.search(shown.stdout)) else None
+
+
+def zhc_bump_errors(repo: Path, rc: str, head: str, branch: str, text: str) -> list[str]:
+    """An RC from main whose table pin is the previous RC tag's, with no skip line in its record `text`."""
+    if branch.startswith("release/") or ZHC_SKIPPED.search(text) or (previous := previous_rc(repo, rc, head)) is None:
+        return []
+    if (pin := zhc_pin(repo, head)) is None or pin != zhc_pin(repo, previous):
+        return []
+    return [
+        f"the ZHC table is pinned to {pin}, as at {previous}: bump it (scripts/zhc_table.py --pin, the release skill),"
+        f" or add a line `ZHC bump skipped: <reason>` to {AUDITS.as_posix()}/{rc}.md"
+    ]
+
+
+def errors(repo: Path, rc: str, head: str, branch: str = "main") -> list[str]:
     if not RC.match(rc):
         return [f"{rc} is not vX.Y.ZrcN"]
     if (head := sha(repo, head)) is None:
@@ -95,7 +131,7 @@ def errors(repo: Path, rc: str, head: str) -> list[str]:
 
     for finding in record.get("findings") or []:
         problems += finding_errors(repo, finding, ranges[1:], head)
-    return problems
+    return problems + zhc_bump_errors(repo, rc, head, branch, path.read_text())
 
 
 def unaudited(repo: Path, last: str | None, head: str) -> list[str]:
@@ -149,7 +185,7 @@ def main(argv: list[str] | None = None, repo: Path = REPO) -> int:
     if len(argv) == 2 and argv[0] == "--base" and RC.match(argv[1]):
         print(expected_base(repo, argv[1], "HEAD"))
         return 0
-    if len(argv) != 2 or argv[0] == "--base":
+    if len(argv) not in (2, 3) or argv[0] == "--base":
         print(__doc__.split("Usage: ", 1)[1].strip(), file=sys.stderr)
         return 2
     problems = errors(repo, *argv)
