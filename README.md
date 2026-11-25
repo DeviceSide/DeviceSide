@@ -28,7 +28,7 @@ DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* 
 
 ### Will it work with my device?
 
-Once installed, open DeviceSide's **Configure → Settings** to see each feature on your own lights and switches, marked Verified, Documented or Labs:
+Once installed, open DeviceSide's **Configure > Settings** to see each feature on your own lights and switches, marked Verified, Documented or Labs:
 
 <img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/images/coverage-view.png" width="300" alt="DeviceSide's Settings: a table of the user's lights and switches by integration, each feature marked Verified, Documented or Labs">
 

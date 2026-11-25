@@ -1250,7 +1250,7 @@ class Line:
         return self.note is None and "labs" in statuses and not statuses & {"works", "should"}
 
 
-def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> tuple[list[Line], str | None]:
+def fold(lines: list[Line], card: Card, key: str, data: Data) -> tuple[list[Line], str | None]:
     """Two or more top-level lines that are in Labs (`Line.in_labs`) leave `lines` for one folded line:
     "⚪ [a] (x, y); [b], [c] (z)", as the README shows it (no 🔴, no ✔, no models). Lines with the same features share a
     parenthesis, and a group sits where its last line does, so one holding an "other brands" line comes last.
@@ -1260,7 +1260,7 @@ def fold(lines: list[Line], card: Card, key: str, data: Data, rig: set[str]) -> 
         return lines, None
     groups: dict[Shape, list[str]] = {}
     for line in labs_only:
-        groups.setdefault(line.claims, []).append(line.name(card, key, data, rig, readme=True))
+        groups.setdefault(line.claims, []).append(line.name(card, key, data, set(), readme=True))
     # A group sits where its last line does, so a group with an "other brands" line comes last, as on the card.
     last = {
         found: max(i for i, line in enumerate(lines) if line.claims == found and line in labs_only) for found in groups
@@ -1704,9 +1704,9 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
 def show(result: Card, data: Data) -> None:
     """Render the card's model as the README shows it: the classes with their marks, no tested models, ✔ or 🔴 (the
     refused entries have no line), the fold last; the unfolded lines stay in `entries`."""
-    key, rig = result.key, result.rig
-    lines, folded = fold(result.entries, result, key, data, rig)
-    result.lines = [shown for line in lines if (shown := line.render(result, key, data, rig, readme=True))]
+    key = result.key
+    lines, folded = fold(result.entries, result, key, data)
+    result.lines = [shown for line in lines if (shown := line.render(result, key, data, set(), readme=True))]
     if folded:
         result.lines.append(folded)
 

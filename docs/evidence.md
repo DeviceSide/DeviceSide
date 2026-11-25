@@ -112,7 +112,7 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
 
 A field can be in Labs on some classes alone (`labs_fields(...)`, `AdapterScope.class_labs`) while it keeps its level in
 `fields` on the rest. With the Labs option off it is dropped on those classes (`fields_dropped`), not refused; with it
-on, the call is Labs. A pass on such a class credits no model on its card for that action, as a record doesn't say which
+on, the call is Labs. A pass on such a class credits no model on the compatibility page for that action, as a record doesn't say which
 fields a test sent.
 
 A sign-off covers only what was exercised; it never signs off untested code.
@@ -282,13 +282,13 @@ On an integration that names classes, every class an adapter's scope holds as Ve
 test in that domain (a manual row names no domain, so it covers each). A record names the class each test's devices
 reached, and a manual row each device's. A native group's test credits each member's class, from its members' entries
 (the response's `member_capabilities`, [action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one
-call reached each member (a null one credits none; the cards add "native groups", never the members' models). A group
-with a null-class member is on no card, as "native groups" needs every member's class named and unflagged, while its
+call reached each member (a null one credits none; the cards and the page add "native groups", never the members' models). A group
+with a null-class member is on no card or page line, as "native groups" needs every member's class named and unflagged, while its
 named members still count here; a manual row credits every class it lists to every action it passed, so a row whose
 actions reached different classes is split. A manual row may carry `group`, as a rig group test does: its devices are
-the members, credited as a group test's are; the evidence table shows it as "group, by hand", and the card "native
+the members, credited as a group test's are; the evidence table shows it as "group, by hand", and the page "native
 groups", with no ✔ from it. A scene's test is a group's, its members the scene's lights. A null class credits none, here
-or on the cards, as does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer
+or on the page, as does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer
 sees it early, and names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
 `scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
 checks that evidence exists, not that it suffices (tenet 7).
@@ -354,7 +354,7 @@ README's cards fold two or more top-level Labs lines on a card (⚪ with no 🟢
 (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `labs("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the page and
 lets a Shelly maintainer lift the flag, once they judge that pass enough: their PR makes it `verified("Light")`.
 
 *Example:* Zigbee2MQTT's set auto-off and clear auto-off on Tuya and Sonoff inching switches are in Labs, untested.

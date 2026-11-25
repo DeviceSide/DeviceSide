@@ -20,7 +20,7 @@
 <!-- features:end -->
 
 Will DeviceSide work with your device? The table above answers per feature and integration, and DeviceSide's
-Configure → Settings shows it per device once installed. This page has the detail: each tested device, each class of
+Configure > Settings shows it per device once installed. This page has the detail: each tested device, each class of
 device by integration, and what can't be done. Every mark links its proof.
 
 ## Levels of proof

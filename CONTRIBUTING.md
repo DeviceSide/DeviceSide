@@ -32,7 +32,7 @@ Every code pull request follows these steps:
    - **The rule that places it:** the integration's `classes.py`, or, on an integration with families (Zigbee2MQTT, ZHA), the family's `RULES` (as in `integrations/zigbee2mqtt/families/gledopto/__init__.py`), or the catalog module the rule reads (`custom_components/deviceside/zigbee/<family>.py`).
    - **Its test,** beside the rule's: `tests/integrations/<x>/test_classes.py`, the family's `tests/integrations/<x>/families/<family>/`, or the catalog's `tests/zigbee/test_<family>.py`.
    - **The classification snapshot** (`tests/integrations/<x>/test_classification.py`), only if the change moves a device it lists out of its class.
-   - **The model you tested,** in your bundle's `devices.yaml` (`models`), or in `docs/models.yaml` when another integration already lists it (move the entry there from its bundle). A model is credited on the card only by a `_manual.json` row on an item that isn't in Labs; your own run goes in Testing evidence.
+   - **The model you tested,** in your bundle's `devices.yaml` (`models`), or in `docs/models.yaml` when another integration already lists it (move the entry there from its bundle). A model is credited on the [compatibility page](docs/device-compatibility.md) only by a `_manual.json` row on an item that isn't in Labs; your own run goes in Testing evidence.
 
    Merge: the family's maintainers when every file is the family's or the catalog's, except `zigbee/reasons.py` and its test, which need a Zigbee integration's maintainer; the integration's when the snapshot or the bundle changes; a repo maintainer for `docs/models.yaml`.
 
