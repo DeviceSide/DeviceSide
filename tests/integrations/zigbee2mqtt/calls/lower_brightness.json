@@ -72,7 +72,7 @@
      "mqtt.async_publish",
      [
       "zigbee2mqtt/0x00124b0012345678/set",
-      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevelWithOnOff\", \"payload\": {\"level\": 1, \"transtime\": 30, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
+      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevel\", \"payload\": {\"level\": 1, \"transtime\": 30, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
      ],
      {}
     ],
@@ -388,7 +388,7 @@
      "mqtt.async_publish",
      [
       "zigbee2mqtt/7/set",
-      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevelWithOnOff\", \"payload\": {\"level\": 1, \"transtime\": 30, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
+      "{\"command\": {\"cluster\": \"genLevelCtrl\", \"command\": \"moveToLevel\", \"payload\": {\"level\": 1, \"transtime\": 30, \"optionsMask\": 0, \"optionsOverride\": 0}}}"
      ],
      {}
     ],

@@ -13,10 +13,10 @@ from custom_components.deviceside.core.runtime import DATA
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
 from custom_components.deviceside.integrations.zigbee2mqtt.addressing import Address
-from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache, waiting
+from custom_components.deviceside.integrations.zigbee2mqtt.fade import AT_THE_BOTTOM, transition_cache, waiting
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
-from .conftest import DEVICES, RAW_BOTTOM, SET, call, light, target
+from .conftest import DEVICES, SET, call, light, target
 from ...conftest import allow_labs, refusal
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
@@ -347,7 +347,7 @@ async def test_a_raise_after_a_stop_in_the_option_window_lights_an_off_bulb_from
 
     assert await call(hass, "raise_brightness", {"entity_id": entity_id}) == {entity_id: SENT}
 
-    assert [p["payload"] for p in broker.published if p["topic"] == SET][0] == RAW_BOTTOM
+    assert [p["payload"] for p in broker.published if p["topic"] == SET][0] == AT_THE_BOTTOM
 
 
 async def test_a_stop_in_the_option_window_halts_an_earlier_fade_where_the_stop_found_it(

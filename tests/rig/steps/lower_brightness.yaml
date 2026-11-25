@@ -51,6 +51,8 @@ tests:
       # 30 % to 0.4 % takes 1.5 s; the read comes once the fade, and Z2M's end read-back, have run.
       - wait: 1.5 + 1 + tol
       - sample: {attribute: brightness, for: 1, expect: steady, min: 0.4, max: 0.4, source: deviceside}
+      # An off light reads the level Z2M holds, so the level alone passes a lower that switched the light off.
+      - expect_state: {state: on}
 
   - name: light_raised_mid_room_lower  # needs light_ct to be one of the group's lights
     roles: [group]

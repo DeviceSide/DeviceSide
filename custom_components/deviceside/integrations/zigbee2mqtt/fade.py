@@ -5,10 +5,11 @@ Saturation is a color with no hue, which zigbee-herdsman-converters' light_color
 an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one halted by StopMoveStep doesn't
 (docs/integrations/zigbee2mqtt/internals.md, Tested behavior).
 
-A brightness publish that carries level 1 goes raw to lights whose class holds it (families/hue, RAW_BOTTOM), every
-light it reaches: the converter sends level 1 as 2 where every light's definition has turnsOffAtBrightness1 (a group
-only when all its members' do), and a Hue bulb holds 1 (internals.md, `fade`). The raw command is the converter's
-own call with level 1 kept, and publishes no state, which the end read-back makes up."""
+A lower to level 1 goes raw to lights whose class holds it (families/hue, RAW_BOTTOM), every light it reaches: the
+converter sends level 1 as 2 where every light's definition has turnsOffAtBrightness1 (a group only when all its
+members' do), and a Hue bulb holds 1. It is a moveToLevel, not the converter's moveToLevelWithOnOff, which turns a
+light off at the minimum (rig probe 2026-11-25); it publishes no state, which the end read-back makes up. A raise from
+off keeps the converter's bottom, level 2, which the fade up hides (internals.md, `fade`)."""
 
 import logging
 from collections.abc import Coroutine
@@ -307,8 +308,8 @@ async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Ta
 def brightness_fade(
     hass: HomeAssistant, cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]
 ) -> Fade | str:
-    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg); each publish
-    at level 1 raw where every light it reaches holds it (raw_bottom)."""
+    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg); a lower to
+    level 1 raw where every light it reaches holds it (raw_bottom)."""
     if isinstance(leg := brightness_leg(cache, request, lights), str):
         return leg
     up, limit, lit_lights = request.up, leg.limit, leg.lit
@@ -320,26 +321,25 @@ def brightness_fade(
         payload = {"state": "ON", **payload} if up else payload
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
-    before = tuple(
-        (to, raw_bottom(hass, AT_THE_BOTTOM, lights if to is target else [to]))
-        for to in ([target] if off == lights else off)
-    )
-    payload = raw_bottom(hass, payload, lights)
+    before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
+    if not up:
+        payload = raw_bottom(hass, payload, lights)
     return Fade(
         BRIGHTNESS_FIELD, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before, leg.clamped_to
     )
 
 
 def raw_bottom(hass: HomeAssistant, payload: dict, reached: list[Target]) -> dict:
-    """The brightness publish, or where it carries level 1 and every light it reaches is of a class that holds it
-    (families/hue, RAW_BOTTOM), the converter's own call as a raw command: moveToLevelWithOnOff with its transtime
-    and options, and level 1 kept. A group reaches its members; one with another brand's light keeps the converter."""
+    """A lower's publish, or where it carries level 1 and every light it reaches is of a class that holds it
+    (families/hue, RAW_BOTTOM), a raw moveToLevel to level 1 with the converter's transtime and options: the
+    converter's moveToLevelWithOnOff would turn the light off at the minimum. A group reaches its members; one with
+    another brand's light keeps the converter."""
     if payload.get("brightness") != 1 or not all(capability(hass, light) in RAW_BOTTOM for light in reached):
         return payload
     transtime = round(payload["transition"] * 10)  # the converter's: transition in tenths
     return raw_command(
         LEVEL_CLUSTER,
-        "moveToLevelWithOnOff",
+        "moveToLevel",
         {"level": 1, "transtime": transtime, "optionsMask": 0, "optionsOverride": 0},
     )
 

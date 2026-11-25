@@ -348,19 +348,15 @@ BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
 
 def level_1(transtime: int) -> dict:
-    """Level 1 as a fade sends it to Hue lights alone: the converter's moveToLevelWithOnOff, raw, as the converter would
-    send 2 (fade.raw_bottom)."""
+    """Level 1 as a lower sends it to Hue lights alone: a raw moveToLevel, as the converter would send 2, and its
+    moveToLevelWithOnOff would turn the light off at the minimum (fade.raw_bottom)."""
     return {
         "command": {
             "cluster": "genLevelCtrl",
-            "command": "moveToLevelWithOnOff",
+            "command": "moveToLevel",
             "payload": {"level": 1, "transtime": transtime, "optionsMask": 0, "optionsOverride": 0},
         }
     }
-
-
-# BOTTOM, to Hue lights alone.
-RAW_BOTTOM = level_1(0)
 
 
 def bottom_target(hass, broker, kind: str, **options) -> tuple[str, str]:

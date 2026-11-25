@@ -39,10 +39,11 @@ NEED: dict[str, bool] = {
     "lower_saturation": False,
 }
 
-# The classes whose lights a brightness fade sends level 1 raw (fade.py), and set_attributes sends no kept-level publish
-# after a level 1 on a lit one (set_attributes.py): Z2M's converter sends a brightness of 1 as
-# level 2 on a definition with turnsOffAtBrightness1, which philips.m.light sets, yet a Hue bulb holds level 1 (rig run
-# 2026-11-25: Z2M's raw command and ZHA read 1, the converter 2; internals.md, `fade`). Other flagged brands turn off
+# The classes whose lights a lower sends level 1 raw, as a moveToLevel (fade.py), and set_attributes sends no kept-level
+# publish after a level 1 on a lit one (set_attributes.py): Z2M's converter sends a brightness of 1 as level 2 on a
+# definition with turnsOffAtBrightness1, which philips.m.light sets, yet a Hue bulb holds level 1 lit (rig runs
+# 2026-11-25: ZHA and set_attributes' raw moveToLevel read 1, the converter 2; internals.md, `fade`). A raise from off
+# keeps the converter's level 2 bottom, which its fade up hides. Other flagged brands turn off
 # at 1, or aren't known not to, so they keep the converter's 2 (index.md, Lowest brightness).
 RAW_BOTTOM: frozenset[str] = frozenset({HUE})
 
