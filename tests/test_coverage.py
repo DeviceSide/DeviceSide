@@ -1,6 +1,5 @@
 """The coverage view in Settings: each cell is the dispatcher's own decision (dispatcher.judge) on the entity, the rows
-are
-the entities a call could reach, and the counts, the legend and the Labs line read the cells."""
+are the entities a call could reach, and the counts, the legend and the Labs line read the cells."""
 
 import asyncio
 import json

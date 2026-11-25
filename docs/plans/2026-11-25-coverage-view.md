@@ -6,7 +6,7 @@ from step 4's prototype (`spike/coverage-view`: `scripts/prototype_coverage_view
 
 ## Coordination
 
-Intent: A Configure menu item that shows, per light and switch entity, which DeviceSide features run now
+Intent: The Configure Settings form shows, per light and switch entity, which DeviceSide features run now
 (Verified, Documented), which need Labs, and which are refused and why, read from the scopes the dispatcher uses.
 Touches: custom_components/deviceside/config_flow.py, custom_components/deviceside/coverage.py,
 custom_components/deviceside/core/dispatcher.py, custom_components/deviceside/core/scope.py,
@@ -73,7 +73,7 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 19. **No refusals in the view (Jason, 2026-11-25):** a refused feature is an empty cell, as a blank is unsupported either way, and a row with no Verified, Documented or Labs cell is left out; the refusals' detail is the compatibility page's. The legend explains each mark, from the README's. Replaces Decision 7's 🔴 and footnotes, and the 🔴 in Decisions 8 and 18.
 
 20. **Coverage in Settings (Jason, 2026-11-25):** one Settings form: its description holds the intro, legend and table; then all three options, Labs last with the "Turn on Labs: adds…" line (Decision 11) as its description. The `coverage` menu item and `coverage_view` step go; the progress wait (Decision 12) runs before Settings. The install success text reads "…open Configure, then Settings." Replaces Decision 1's menu item; its install-flow note stands (HA's `next_flow` takes only `FlowType.CONFIG_FLOW`, so the install can't open Configure).
-21. **The "Turn on Labs: adds…" sentence shows only while Labs is off (Jason, 2026-11-25),** closing audit report 2's Medium; with Labs on, the Labs description is the warning sentence alone.
+21. **The "Turn on Labs: adds…" sentence shows only while Labs is off (Jason, 2026-11-25),** closing audit report 2's Medium; with Labs on, the Labs description is the Settings form's own Labs text alone.
 
 ## Steps
 
@@ -94,7 +94,7 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 - Counts and the Labs line on a fixture with known 🟢/🟡/⚪ cells; an entity whose only outcomes are refusals has no row.
 - Progress: the step waits while Z2M has no `bridge/devices`, and renders after the 10 s bound.
 - Checks: `.venv/bin/pytest -n auto --transcripts=check`, `scripts/gen_compat.py --check`, `scripts/check_ha_literals.py`.
-- Before ready: Jason opens Configure → Device coverage on his HA (a rig run isn't needed: no call changes).
+- Before ready: Jason opens Configure → Settings on his HA (a rig run isn't needed: no call changes).
 
 ## Handoff
 
@@ -102,5 +102,5 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 
 - **Done:** steps 1-3; plan review of 2-3 (`f152520d`'s note); PR audit report 1's High (a falling-back native group, `18ff1021`); audit report 2 CLEAN at `18ff1021`, now stale. Main merged (`335f6165`: Aqara Verified). Live-check rounds from Jason: Decision 18 (`b397a17d`, `ba53867c`), Decision 19 (`0ba64a32`, legend `d4c6e6c2`), then `4f985a5d`: headings in `<div align="center">` (not yet seen live), the icon before the name, the Labs legend line "not yet passed on a real device. Turn on Labs below to try it", and gen_compat's legend drops "or held back to soak" (README regenerated). HA runs `d4c6e6c2`.
 - **Ruling 20 (Jason, 2026-11-25):** merge the coverage view into Settings: one Settings form with the intro, legend and table in its description, then all three options (Labs last, with the "Turn on Labs: adds…" line). The `coverage` menu item and `coverage_view` step go; the progress wait (Decision 12) runs before Settings. The install success text points to "open Configure, then Settings". Decision 1's install-flow note stands: HA's `next_flow` takes only `FlowType.CONFIG_FLOW`, so the install can't open Configure. Device Sentinel's after-setup device list is HA's own success dialog over the devices its entry registers; DeviceSide registers none.
-- **Next:** (Decisions 20-21 recorded) brief a sonnet implementer (config_flow.py, en.json, tests, design.md); check with Jason live (deploy with `/Users/jason/projects/ha/ha-rig/scripts/rig.py --deploy-only` from this worktree, after asking: it restarts HA), including whether the headings centre (else `<center>`). Open to Jason: the Labs-on Medium (audit report 2: with Labs on, "Turn on Labs: adds…" still shows), now on the line Ruling 20 rewrites. Then the audit gate (`audit-gate brief pr`, opus auditor, `record`, `owner-findings`), `gh pr ready`, `merge-green 611 --squash --delete-branch`.
+- **Next:** Decisions 20-21 built (`871ac385`, plan-reviewed: design.md typo and plan text fixed after). Check with Jason live (deploy with `/Users/jason/projects/ha/ha-rig/scripts/rig.py --deploy-only` from this worktree, after asking: it restarts HA), including whether the headings centre (else `<center>`). Then the audit gate (`audit-gate brief pr`, opus auditor, `record`, `owner-findings`), `gh pr ready`, `merge-green 611 --squash --delete-branch`.
 - **Branch / worktree / PR:** `wt/coverage-view`, `/Users/jason/projects/ha/deviceside-wt/coverage-view`, #611 (draft).
