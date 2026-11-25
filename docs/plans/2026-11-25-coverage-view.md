@@ -70,7 +70,7 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 
 18. **Columns and legend, after the live check (Jason, 2026-11-25):** headings Smooth dimming, Smooth color (saturation and hue, the weaker), Set while off, Timed on, Timed off, Auto off/on, plain text; the legend's key line is gone and 🔴 reads Unsupported. Replaces Decision 6's headings and abbr, and Decision 8's key.
 
-19. **No refusals in the view (Jason, 2026-11-25):** a refused feature is an empty cell, as a blank is unsupported either way, and a row with no Verified, Documented or Labs cell is left out; the refusals' detail is the compatibility page's. Replaces Decision 7's 🔴 and footnotes, and the 🔴 in Decisions 8 and 18.
+19. **No refusals in the view (Jason, 2026-11-25):** a refused feature is an empty cell, as a blank is unsupported either way, and a row with no Verified, Documented or Labs cell is left out; the refusals' detail is the compatibility page's. The legend explains each mark, from the README's. Replaces Decision 7's 🔴 and footnotes, and the 🔴 in Decisions 8 and 18.
 
 ## Steps
 

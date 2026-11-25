@@ -290,8 +290,12 @@ async def test_a_name_with_markup_is_shown_as_it_is(hass, fake):
     assert coverage._plain("A | <b>lamp</b> *1*") == "A \\| &lt;b&gt;lamp&lt;/b&gt; \\*1\\*"
 
 
-def test_the_legend_names_the_marks():
-    assert coverage.legend() == "🟢 Verified · 🟡 Documented · ⚪ Labs"
+def test_the_legend_explains_each_mark():
+    assert coverage.legend().split("\n\n") == [
+        "🟢 Verified: works, tested on a real device",
+        "🟡 Documented: should work, same call pattern as a tested device",
+        "⚪ Labs: not yet passed on a real device, or held back to soak. Turn on Labs below to use it",
+    ]
 
 
 # The Configure step

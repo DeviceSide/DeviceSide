@@ -301,5 +301,11 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
 
 
 def legend() -> str:
-    """The three marks."""
-    return " · ".join((f"{Mark.VERIFIED} Verified", f"{Mark.DOCUMENTED} Documented", f"{Mark.LABS} Labs"))
+    """What each mark means, a paragraph each, worded from the README's legend."""
+    return "\n\n".join(
+        (
+            f"{Mark.VERIFIED} Verified: works, tested on a real device",
+            f"{Mark.DOCUMENTED} Documented: should work, same call pattern as a tested device",
+            f"{Mark.LABS} Labs: not yet passed on a real device, or held back to soak. Turn on Labs below to use it",
+        )
+    )
