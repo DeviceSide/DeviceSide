@@ -181,13 +181,16 @@ async def test_a_scene_writing_another_makers_light_runs_with_labs_off(hass, bri
     assert sorted(path for path, _ in bridge.puts) == ["light/one", "light/two"]
 
 
-async def mixed_room(hass, bridge, *, entity_for_two: bool = True, two: str | None = IKEA, color: bool = False) -> str:
-    """light.room over a Hue light (one) and a second light (two, an IKEA one unless `two` names another maker), both
-    on at 60 %, color bulbs if `color`; `entity_for_two` False leaves the second light without a light entity in HA,
-    as the bridge still lists it."""
+async def mixed_room(
+    hass, bridge, *, entity_for_two: bool = True, two: str | tuple[str, str] | None = IKEA, color: bool = False
+) -> str:
+    """light.room over a Hue light (one) and a second light (two, an IKEA one unless `two` names another maker, or a
+    maker and model ID), both on at 60 %, color bulbs if `color`; `entity_for_two` False leaves the second light without
+    a light entity in HA, as the bridge still lists it."""
     xy = hs_xy(200.0, 50.0) if color else None
     bridge.light("one", on=True, xy=xy)
-    bridge.light("two", on=True, xy=xy, **({"manufacturer": two} if two else {}))
+    maker, model_id = two if isinstance(two, tuple) else (two, None)
+    bridge.light("two", on=True, xy=xy, **({"manufacturer": maker, "model_id": model_id} if maker else {}))
     bridge.room("grouped-1", ["one", "two"], brightness=60.0)
     entry = await hue_entry(hass, bridge)
     members = [add_hue_entity(hass, entry, "light.one", "one", state="on")]
@@ -276,3 +279,14 @@ async def test_a_room_light_ha_has_no_device_for_classes_the_room_unknown(hass, 
     assert await call(hass, "set_attributes", {"entity_id": "light.room", "brightness": 40}) == {"light.one": SENT}
     assert [path for path, _ in bridge.puts] == ["light/one"]
     assert list(await call(hass, "get_attributes", {"entity_id": "light.room"})) == ["light.one"]
+
+
+async def test_a_room_with_a_gl_c_008p_falls_back_on_get_attributes_alone(hass, bridge):
+    # get_attributes doesn't serve the GL-C-008P, so the room answers through its other lights; stop serves both, so
+    # the room runs whole.
+    await mixed_room(hass, bridge, two=GL_C_008P)
+
+    assert list(await call(hass, "get_attributes", {"entity_id": "light.room"})) == ["light.one"]
+    response = await call_service(hass, "stop", {"entity_id": "light.room"})
+    assert list(response) == ["light.room"]
+    assert response["light.room"]["capabilities"] == ["gledopto_gl_c_008p", "hue"]

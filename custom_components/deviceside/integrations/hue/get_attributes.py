@@ -37,7 +37,8 @@ def in_color_temp_mode(light: Light) -> bool:
     (v2/light.py, color_temp_active; internals.md, Device classes): its `mirek_valid`. Never with no mirek, or 0, which
     core treats as no value (and which would divide by zero). A non-certified light may not set `mirek_valid`
     reliably: the GL-C-008P is split off for it, and other uncertified lights would be on a report (internals.md, Device
-    classes). Core reads such a light's mode from its own last command, which get_attributes never reports."""
+    classes). Core reads an uncertified light's mode from its own last command (v2/light.py, _color_temp_active, set in
+    async_turn_on), which get_attributes never reports."""
     if not (feature := light.color_temperature) or not feature.mirek:
         return False
     return feature.mirek_valid

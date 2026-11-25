@@ -25,9 +25,11 @@ DeviceSide sends the bridge the same request for every light, and the bridge pic
 other brands can answer it differently, so DeviceSide tells them apart by the manufacturer the bridge reports for each
 light.
 
-- A **scene** counts as its lights: one with a light of another brand counts as that brand's.
+- A **scene** counts as its lights: one with a light of another brand counts as that brand's, or as other brands'
+  when it holds lights of two such classes.
 - A **room or zone** counts as all its lights, a light the bridge has in the room but Home Assistant has no light
-  entity for included, as the room's command reaches it.
+  entity for included, as the room's command reaches it. Where one of its lights is refused an action (as the
+  [GL-C-008P](#gledopto-gl-c-008p) is `get_attributes`), the room answers through its other lights, each on its own.
 
 ### Hue lights
 
@@ -53,8 +55,8 @@ Gledopto's GL-C-008P LED controller (model ID `GL-C-008P` or `C-ZB-LC20v2-RGBCCT
 lights get, but `get_attributes`. It doesn't tell the bridge reliably when it's in color temperature mode, so Home
 Assistant has shown a color temperature it set as a blue color ([core #93459](https://github.com/home-assistant/core/issues/93459)).
 `get_attributes` reports the light's actual values, so it refuses this controller (`not_built`); read Home
-Assistant's own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, which core keeps from its
-own last command ([internals](internals.md#device-classes)).
+Assistant's own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, where core reads its color
+temperature mode from its own last command ([internals](internals.md#device-classes)).
 
 ## Smooth dimming
 

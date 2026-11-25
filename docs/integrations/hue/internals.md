@@ -77,9 +77,9 @@ So `other` holds every other maker's light. It is Documented on every action, on
   no gamut (above), leaving the bridge to fit it.
 - **`get_attributes`**: a non-certified light may not set `mirek_valid` reliably (above), and DeviceSide reads only
   `mirek_valid` for color temperature mode, so such a light may read no color temperature, or a stale one in color
-  mode. Core reads such a light's mode from its own last command
-  ([core PR #97263](https://github.com/home-assistant/core/pull/97263)), a cached write `get_attributes` never
-  reports.
+  mode. Core reads an uncertified light's mode from its own last command, `_color_temp_active`, set on each turn on
+  ([`v2/light.py`](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L155-L164), [L258](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L258), Home Assistant 2026.10.2), a cached write
+  `get_attributes` never reports.
 
 **Split off:** the Gledopto GL-C-008P (`gledopto_gl_c_008p`), not built on `get_attributes`, as Home Assistant showed
 its color temperature as a color, a `mirek_valid` it left unset
