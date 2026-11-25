@@ -170,6 +170,40 @@ async def test_an_empty_cache_reads_fresh(hass, setup_production, broker, connec
     assert broker.topics == [GROUPS]
 
 
+async def test_settings_waits_for_bridge_devices_until_it_arrives_and_again_after_a_disconnect(
+    hass, setup_production, broker, connection, mqtt_up
+):
+    cache = await start(hass, setup_production)  # Z2M has published no devices yet
+    assert not cache.devices_ready.is_set()
+
+    waiting = bridge_cache.capability_ready(hass)
+    assert waiting is not None
+    task = asyncio.ensure_future(waiting)
+    await settle()
+    assert not task.done()
+
+    broker.deliver(DEVICES, json.dumps([{"ieee_address": "0x01"}]))
+    await settle()
+    assert task.done()
+    assert bridge_cache.capability_ready(hass) is None
+
+    connection.lost()  # the held payloads go until the resubscribe brings them back
+    again = bridge_cache.capability_ready(hass)
+    assert again is not None
+    again.close()
+
+
+async def test_a_bridge_devices_that_does_not_parse_does_not_make_the_cache_ready(
+    hass, setup_production, broker, connection, mqtt_up
+):
+    cache = await start(hass, setup_production)
+
+    broker.deliver(DEVICES, "not json")
+    await settle()
+
+    assert not cache.devices_ready.is_set()
+
+
 async def test_without_a_cache_everything_reads_fresh(hass, broker):
     broker.retained[GROUPS] = ROOM
 

@@ -32,7 +32,7 @@ import asyncio
 import json
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from functools import partial
 from typing import Any
 
@@ -70,6 +70,8 @@ class BridgeCache:
         # Whether the response topics and bridge/logging are subscribed, so a request's reply reaches `pending` and a
         # log line the listeners.
         self.replies_live = False
+        # Set once a bridge/devices that parses has arrived since the last connect (capability_ready).
+        self.devices_ready = asyncio.Event()
         self._log_listeners: list[Callable[[str], None]] = []
         self._unsubscribes: list[Callable[[], None]] = []
 
@@ -121,6 +123,8 @@ class BridgeCache:
                 self._payloads.pop(suffix, None)
             if suffix == "info":
                 self.confirmed.clear()
+            if suffix == "devices" and self.parsed("devices") is not None:
+                self.devices_ready.set()
 
         return received
 
@@ -155,6 +159,7 @@ class BridgeCache:
 
     def _clear(self) -> None:
         self.replies_live = False
+        self.devices_ready.clear()
         self._payloads.clear()
         self._parsed.clear()
         self.confirmed.clear()
@@ -264,6 +269,20 @@ def get(hass: HomeAssistant, base: str) -> BridgeCache | None:
     if (runtime := hass.data.get(DATA)) is None:
         return None
     return runtime.integration_state.get(_KEY, {}).get(base)
+
+
+def capability_ready(hass: HomeAssistant) -> Awaitable[None] | None:
+    """Zigbee2MQTT's IntegrationInfo.capability_ready: a device is placed only once bridge/devices lists it
+    (classes.placed), so None once every running cache holds one; else an awaitable that completes when they all do.
+    A bridge with no cache yet (MQTT not up) isn't waited on: nothing says when its cache will start."""
+    if (runtime := hass.data.get(DATA)) is None:
+        return None
+    waiting = [cache for cache in runtime.integration_state.get(_KEY, {}).values() if not cache.devices_ready.is_set()]
+    return _devices_listed(waiting) if waiting else None
+
+
+async def _devices_listed(caches: list[BridgeCache]) -> None:
+    await asyncio.gather(*(cache.devices_ready.wait() for cache in caches))
 
 
 async def async_setup(

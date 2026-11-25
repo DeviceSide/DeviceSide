@@ -46,8 +46,8 @@ def no_blockers(monkeypatch):
 
 
 def headings():
-    """A heading for every row's anchor, so a test README passes the anchor check."""
-    return "".join(f"## {anchor.replace('-', ' ')}\n" for _, anchor, *_ in gf.FEATURES)
+    """The page's own legend headings, so a test page passes the anchor check."""
+    return "## Tested devices\n## Native groups\n## Levels of proof\n"
 
 
 def row(text, label):
@@ -181,7 +181,7 @@ def test_a_blocked_cell_with_one_key_built_fails(monkeypatch):
 
 def test_a_no_path_entry_naming_no_row_fails(monkeypatch):
     monkeypatch.setattr(gf, "NO_PATH", {("Teleport", "hue")})
-    with pytest.raises(SystemExit, match="names no README row or column"):
+    with pytest.raises(SystemExit, match="names no row or column"):
         gf.generate(FakeRegistry(*every_row()))
 
 
@@ -192,11 +192,14 @@ def test_slugs_match_githubs_anchors():
     )
 
 
-def test_a_row_linking_to_no_heading_fails(tmp_path, no_blockers):
+def test_a_row_linking_to_no_heading_fails(tmp_path, monkeypatch, no_blockers):
     readme = tmp_path / "README.md"
-    readme.write_text(f"# x\n\n## Smooth dimming\n\n{gf.START}\n{gf.END}\n")
-    with pytest.raises(SystemExit, match="no heading for .*#turn-on-with-timer"):
-        gf.main(["--check"], FakeRegistry(*every_row()), readme)
+    readme.write_text("# x\n\n## Smooth dimming\n")
+    monkeypatch.setattr(gf, "README", readme)
+    page = tmp_path / "page.md"
+    page.write_text(f"# x\n\n{gf.START}\n{gf.END}\n")
+    with pytest.raises(SystemExit, match="README.md has no heading for .*#turn-on-with-timer"):
+        gf.main(["--check"], FakeRegistry(*every_row()), page)
 
 
 def test_an_action_with_no_adapter_anywhere_fails(no_blockers):
@@ -221,15 +224,15 @@ def test_columns_follow_their_order_and_need_a_label_and_an_order(tmp_path, monk
         gf.columns(["c"])
 
 
-def test_the_readme_needs_its_markers(tmp_path, no_blockers):
-    readme = tmp_path / "README.md"
-    readme.write_text("# x\n")
+def test_the_page_needs_its_markers(tmp_path, no_blockers):
+    page = tmp_path / "page.md"
+    page.write_text("# x\n")
     with pytest.raises(SystemExit, match="needs one"):
-        gf.main(["--check"], FakeRegistry(*every_row()), readme)
+        gf.main(["--check"], FakeRegistry(*every_row()), page)
 
 
 def test_check_fails_on_a_stale_table_until_it_is_regenerated(tmp_path, capsys, no_blockers):
-    readme = tmp_path / "README.md"
+    readme = tmp_path / "page.md"
     readme.write_text(f"# x\n\n{gf.START}\nold\n{gf.END}\n\nafter\n{headings()}")
     registry = FakeRegistry(*every_row())
     assert gf.main(["--check"], registry, readme) == 1
@@ -242,7 +245,7 @@ def test_check_fails_on_a_stale_table_until_it_is_regenerated(tmp_path, capsys, 
     assert "old" not in text
 
 
-def test_the_checked_in_readme_matches_the_real_adapters():
+def test_the_checked_in_table_matches_the_real_adapters():
     """The table is generated from the scopes: run the real check so local pytest catches a scope that drifts it."""
     assert gf.main(["--check"]) == 0
 
@@ -320,14 +323,15 @@ def test_an_integration_without_a_user_page_fails(tmp_path, monkeypatch, no_bloc
 def test_every_legend_icon_links_to_its_heading(no_blockers):
     legend = gf.generate(FakeRegistry(*every_row())).split("\n")[-3]
     assert legend.count("<a href=") == 7
-    assert f'<a href="{DOCS}device-compatibility.md#levels-of-proof">' in legend
-    assert '<a href="#set-scene-without-turning-on">' in legend
+    assert f'<a href="{DOCS.removesuffix("docs/")}README.md#set-scene-without-turning-on">' in legend
+    assert '<a href="#levels-of-proof">' in legend
+    assert f'<a href="{DOCS}integrations.md#what-cant-be-done-and-why">' in legend
 
 
 def test_a_legend_link_to_no_heading_fails(tmp_path, monkeypatch, no_blockers):
     monkeypatch.setattr(gf, "LEGEND", ((("no",), "not possible", "x", "docs/design.md", "nowhere"),))
-    readme = tmp_path / "README.md"
-    readme.write_text(f"# x\n\n{gf.START}\n{gf.END}\n{headings()}")
+    readme = tmp_path / "page.md"
+    readme.write_text(f"# x\n\n{gf.START}\n{gf.END}\n")
     with pytest.raises(SystemExit, match="docs/design.md has no heading for #nowhere"):
         gf.main(["--check"], FakeRegistry(*every_row()), readme)
 

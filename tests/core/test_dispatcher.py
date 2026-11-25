@@ -20,12 +20,15 @@ from homeassistant.helpers import label_registry as lr
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
+from custom_components.deviceside.core.dispatcher import Gate, Outcome, judge
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
+from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     DurationLimits,
+    Level,
     NoKnownMethod,
     NotBuilt,
     OwnCall,
@@ -222,6 +225,119 @@ async def test_a_labs_class_is_gated_by_the_one_the_integration_names(hass, fake
         assert await call(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5}) == {
             "light.b": SENT | {"capability": "B"}
         }
+
+
+# A scope with a class at each level, one with no known method and one not built yet, for the gate (dispatcher.gate).
+GATED = AdapterScope(
+    domains=verified("light", "switch"),
+    duration=LIMITS,
+    capabilities=verified("A") | documented("B") | labs("C"),
+    no_known_method={"D": NoKnownMethod("Plug D", "It never switches on", "https://example.com/d")},
+    not_built={"E": NotBuilt("It ignores the timer", "https://example.com/e")},
+    native_groups=True,
+)
+
+
+def judged(hass, entity_id, labs_on=False):
+    """The gate on a turn_off_for call of 5 s on the entity, as judge gives it for a target alone."""
+    registry = get_runtime(hass).registry
+    target = resolve(hass, registry, entity_id, None)
+    return judge(hass, registry, registry.adapter("turn_off_for", "fake"), target, TimedRequest(duration_s=5), labs_on)
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize(
+    ("entity_id", "decided"),
+    [
+        pytest.param("switch.a", Gate(Outcome.RUNS, Level.VERIFIED), id="verified"),
+        pytest.param("switch.b", Gate(Outcome.RUNS, Level.DOCUMENTED), id="documented"),
+        pytest.param("switch.c", Gate(Outcome.LABS, Level.LABS, "labs_off", by_class_alone=True), id="labs"),
+        pytest.param(
+            "switch.d", Gate(Outcome.REFUSED, reason="no_known_method", why="It never switches on"), id="refused"
+        ),
+        pytest.param(
+            "switch.e", Gate(Outcome.NOT_BUILT, reason="not_built", why="It ignores the timer"), id="not_built"
+        ),
+    ],
+)
+async def test_the_gate_on_a_target_is_what_a_call_on_it_does(hass, fake, reset_script, entity_id, decided):
+    add_fake_entity(hass, fake, entity_id)
+    allow_labs(hass, False)
+    data = {"entity_id": entity_id, "duration": 5}
+
+    with patch.object(FakeTurnOffFor, "scope", GATED):
+        assert judged(hass, entity_id) == decided
+        if decided.outcome is Outcome.RUNS:
+            assert await call(hass, "turn_off_for", data) == {entity_id: SENT | {"capability": entity_id[-1].upper()}}
+        else:
+            assert await refusal(hass, "turn_off_for", data) == decided.reason
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_gate_lets_a_labs_class_run_at_its_level_with_the_option_on(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.c")
+    allow_labs(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", GATED):
+        assert judged(hass, "switch.c", labs_on=True) == Gate(Outcome.RUNS, Level.LABS)
+        assert await call(hass, "turn_off_for", {"entity_id": "switch.c", "duration": 5}) == {
+            "switch.c": SENT | {"capability": "C"}
+        }
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_gate_holds_a_native_group_with_a_labs_member_and_a_call_falls_back(hass, fake, reset_script):
+    native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.c"])
+    allow_labs(hass, False)
+    data = {"entity_id": "switch.fake_group", "duration": 5}
+
+    with patch.object(FakeTurnOffFor, "scope", GATED):
+        assert judged(hass, "switch.fake_group") == Gate(Outcome.LABS, Level.LABS, "labs_off", by_class_alone=True)
+        # Held by a member's class alone, so the call runs the member of a Verified class.
+        assert await call(hass, "turn_off_for", data) == {"switch.a": SENT | {"capability": "A"}}
+
+        allow_labs(hass)
+        assert judged(hass, "switch.fake_group", labs_on=True) == Gate(Outcome.RUNS, Level.LABS)
+        assert await call(hass, "turn_off_for", data) == {
+            "switch.fake_group": SENT
+            | {"capabilities": ["A", "C"], "member_capabilities": {"switch.a": "A", "switch.c": "C"}}
+        }
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_gate_holds_a_native_group_on_a_labs_domain_whole(hass, fake, reset_script):
+    native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    allow_labs(hass, False)
+
+    with patch.object(FakeTurnOffFor, "scope", replace(GATED, domains=verified("light") | labs("switch"))):
+        assert judged(hass, "switch.fake_group") == Gate(Outcome.LABS, Level.LABS, "labs_off")
+        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == "labs_off"
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_gate_has_no_decision_on_an_empty_native_group(hass, fake, reset_script):
+    add_fake_native_group(hass, fake, "switch.fake_group", [])
+
+    with patch.object(FakeTurnOffFor, "scope", GATED):
+        assert judged(hass, "switch.fake_group") is None
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_judgment_on_a_member_it_cant_address_is_its_classs_refusal_else_not_addressable(
+    hass, fake, reset_script
+):
+    registry = get_runtime(hass).registry
+    adapter = registry.adapter("turn_off_for", "fake")
+    for entity_id in ("switch.a", "switch.d"):
+        add_fake_entity(hass, fake, entity_id)
+
+    with patch.object(FakeTurnOffFor, "scope", GATED):
+        for entity_id, decided in (
+            ("switch.a", Gate(Outcome.REFUSED, reason="not_addressable")),
+            ("switch.d", Gate(Outcome.REFUSED, reason="no_known_method", why="It never switches on")),
+        ):
+            member = replace(resolve(hass, registry, entity_id, None), addressable=False)
+            assert judge(hass, registry, adapter, member, TimedRequest(duration_s=5), False) == decided
 
 
 @pytest.mark.usefixtures("classed", "harmless")
@@ -1927,6 +2043,23 @@ async def test_a_group_with_a_member_that_takes_a_call_of_its_own_falls_back(has
     }
     assert sorted(ids for *_, ids in reset_script.calls) == [["switch.a"], ["switch.e"]]
     assert "switch.fake_group falls back to its members (own_call)" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_judgment_on_a_group_that_falls_back_is_its_members_and_a_call_runs_them(hass, fake, reset_script):
+    """The group's own gate refuses it (own_call), but a call runs the member, so judge gives the member's level."""
+    native_group(hass, fake, "switch.fake_group", ["switch.e"])
+    registry = get_runtime(hass).registry
+    adapter = registry.adapter("turn_off_for", "fake")
+    target = resolve(hass, registry, "switch.fake_group", None)
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        assert judge(hass, registry, adapter, target, TimedRequest(duration_s=5), False) == Gate(
+            Outcome.RUNS, Level.VERIFIED
+        )
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.e": SENT | {"capability": "E"}}
 
 
 # An adapter that serves only its classes' own calls (AdapterScope.own_calls_only): E takes its own, nothing else is

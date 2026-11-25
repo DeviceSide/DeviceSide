@@ -521,6 +521,11 @@ class IntegrationInfo:
     # matches gets the default class, never None: core refuses None there as class_unknown, as it does Unplaced. None
     # for an integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
+    # Whether capability() can name every device now, for the coverage view, which would otherwise show devices the
+    # integration hasn't reported yet as unplaced (Z2M's bridge/devices arrives after the entry sets up): sync, no I/O.
+    # None when it can; else an awaitable that completes once it can, which the view waits on for a bounded time
+    # (coverage.WAIT_S) and then reads what it has. None as the hook, for an integration that is always ready.
+    capability_ready: Callable[[HomeAssistant], Awaitable[None] | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
     # adapter serves in neither its capabilities nor its no_known_method as not built yet. Each with the entity
     # domains whose features its devices have (a TS011F plug: a switch, even where Zigbee2MQTT shows it as a light), so

@@ -5,6 +5,10 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.dispatcher import Gate, Outcome, judge
+from custom_components.deviceside.core.models import Request
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
@@ -111,6 +115,12 @@ async def test_a_relay_shown_as_a_light_is_not_dimmable(hass, setup_production):
 
     assert await refusal(hass, "stop", {"entity_id": "light.relay"}) == "not_dimmable"
     assert not call_rpc.await_args_list
+    # The coverage view's judgment is the same refusal (dispatcher.judge).
+    registry = get_runtime(hass).registry
+    target = resolve(hass, registry, "light.relay", None)
+    assert judge(hass, registry, registry.adapter("stop", "shelly"), target, Request(), False) == Gate(
+        Outcome.REFUSED, reason="not_dimmable"
+    )
 
 
 @pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
