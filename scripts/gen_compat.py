@@ -18,9 +18,9 @@ then trust): a record never ages.
 
 **Cards.** One collapsed section between the README's devices markers: the legend, of the marks the cards use (the
 three marks' entries are coverage.LEGEND's, as the Settings view words them), then a card per integration, then a link
-to the compatibility page, for models, and one to the integrations page. The cards answer "will it work with my device?"
-by class: a line names its classes, never a tested model (the page lists each, with how it was tested), and shows no ✔
-and no 🔴 (the page's matrix and Not supported table hold the refusals).
+to the compatibility page, for models, and one to the integrations page. The cards answer "will it work with my
+devices?" by class: a line names its classes, never a tested model (the page lists each, with how it was
+tested), and shows no ✔ and no 🔴 (the page's matrix and Not supported table hold the refusals).
 A card has its name, linked to its page (the bundle's index.md), with "⚠️ Unmaintained" when every adapter is; the
 features of the adapters with each `caveat` (🔧 Untested fix, then ⚠️ Unmaintained, linking its reason); then a line per
 feature set, naming each class on one line, with its features by status: "Hue lights: 🟢 turn on with timer · ⚪ get

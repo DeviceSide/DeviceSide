@@ -8,13 +8,13 @@ It's the successor to [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth
 
 ## Key Features
 
-* **Auto-off/on:** Turn devices off/on safely and automatically, even if HA crashes or restarts.
-
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
 * **Change colors smoothly:** Press to change hue or saturation, release to stop.
 
 * **Flash-free turn-on:** Set brightness, color, color temperature or scenes without turning the lights on
+
+* **Auto-off/on:** Turn devices off/on safely and automatically, even if HA crashes or restarts.
 
 * **Zero setup:** Connects to your devices automatically via the core integrations
 
@@ -26,7 +26,7 @@ Many lights, plugs and switches can run timers and smooth fades on their own. Un
 
 DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* or *Dim smoothly*, that you can pick in the automation editor. Because features run on the device, timers still work if HA restarts, and dimming stays smooth.
 
-### Will it work with my device?
+### Will it work with my devices?
 
 Once installed, open DeviceSide's **Configure > Settings** to see each feature on your own lights and switches, marked Verified, Documented or Labs:
 
@@ -114,6 +114,115 @@ DeviceSide's actions are drop-in replacements for [Hue Smooth Dimming](https://g
 The fields and responses are the same. Both can run side by side while you switch. Once no automation or script calls `hue_dimmer.`, remove the Hue Smooth Dimming integration.
 
 </details>
+
+### Smooth dimming
+
+Create "press to dim, release to stop" automations. Transitions run natively on the device.
+
+###### Example: two-button dimmer
+
+```yaml
+left_button_held:
+  - action: deviceside.lower_brightness
+
+right_button_held:
+  - action: deviceside.raise_brightness
+
+buttons_released:
+  - action: deviceside.stop
+```
+
+| Action             | Description                                    |
+|:------------------ |:---------------------------------------------- |
+| `raise_brightness` | Start raising brightness, turning the light on |
+| `lower_brightness` | Start lowering brightness                      |
+| `stop`             | Freeze the move                                |
+
+| Field        | Description                                                                                                                                |
+|:------------ |:------------------------------------------------------------------------------------------------------------------------------------------ |
+| `target`     | Lights and groups (required)                                                                                                               |
+| `sweep_time` | Duration of a full 0–100% sweep (default 5s)                                                                                               |
+| `limit`      | Raise: maximum brightness (default 100%).<br>Lower: minimum brightness (default 0%). The light turns off at 0%; choose 0.4%+ to keep it on |
+
+To dim multiple Zigbee lights together, target a Hue, Z2M or ZHA group instead of separate lights or an HA group. Native groups move in sync via group-wide Zigbee messages.
+
+### Smooth color changes
+
+Create "press to change color, release to stop" automations. Transitions run natively on the device.
+
+###### Example: hold to cycle color
+
+```yaml
+button_held:
+  - action: deviceside.raise_hue
+
+button_released:
+  - action: deviceside.stop
+```
+
+| Action             | Description                                                     |
+|:------------------ |:--------------------------------------------------------------- |
+| `raise_saturation` | Start raising saturation, toward a richer color                 |
+| `lower_saturation` | Start lowering saturation, toward white                         |
+| `raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
+| `lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
+| `stop`             | Freeze the move                                                 |
+
+| Field        | Description                                                                                                       |
+|:------------ |:----------------------------------------------------------------------------------------------------------------- |
+| `target`     | Lights and groups (required)                                                                                      |
+| `sweep_time` | Duration of a full 0–100% saturation sweep or 360º hue sweep (default 5s)                                         |
+| `limit`      | Raise saturation: maximum (default 100%).<br>Lower saturation: minimum (default 0%). <br/>Hue moves take no limit |
+
+Groups move in step, as for dimming.
+
+### Flash-free turn-on
+
+Set brightness, color temperature, color or scenes while the lights are off, so that they turn on predictably without unsightly color or brightness flashes.
+
+###### Example: set scene for next turn-on
+
+```yaml
+description: Stage the Relax scene in the living room at 22:00, without turning the lights on.
+triggers:
+  - trigger: time
+    at: "22:00:00"
+actions:
+  - action: deviceside.set_scene
+    target:
+      entity_id: scene.living_room_relax
+```
+
+###### GUI example: rearm turn-on brightness after turn-off
+
+See [docs/examples/set-turn-on-brightness.md](docs/examples/set-turn-on-brightness.md).
+
+#### Set brightness, color temperature or color without turning on
+
+Action: `set_attributes`
+
+Sets brightness, color temperature or color without changing on/off state.
+
+| Field               | Description                                 |
+|:------------------- |:------------------------------------------- |
+| `target`            | Lights and groups (required)                |
+| `brightness`        | Brightness level (%)                        |
+| `min_brightness`    | Enforce a minimum brightness (%)            |
+| `max_brightness`    | Enforce a maximum brightness (%)            |
+| `color_temp_kelvin` | Color temperature (K)                       |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
+| `xy_color`          | Color as `[x, y]`                           |
+
+#### Set scene without turning on
+
+Action: `set_scene`
+
+Stages a native scene on its lights without turning them on.
+
+| Field    | Description             |
+|:-------- |:----------------------- |
+| `target` | Native scene (required) |
 
 ### Turn on with timer
 
@@ -265,115 +374,6 @@ Each targeted entity reports a `status` in the response variable:
 If a device fails, the action fails and stops the automation.
 
 </details>
-
-### Smooth dimming
-
-Create "press to dim, release to stop" automations. Transitions run natively on the device.
-
-###### Example: two-button dimmer
-
-```yaml
-left_button_held:
-  - action: deviceside.lower_brightness
-
-right_button_held:
-  - action: deviceside.raise_brightness
-
-buttons_released:
-  - action: deviceside.stop
-```
-
-| Action             | Description                                    |
-|:------------------ |:---------------------------------------------- |
-| `raise_brightness` | Start raising brightness, turning the light on |
-| `lower_brightness` | Start lowering brightness                      |
-| `stop`             | Freeze the move                                |
-
-| Field        | Description                                                                                                                                |
-|:------------ |:------------------------------------------------------------------------------------------------------------------------------------------ |
-| `target`     | Lights and groups (required)                                                                                                               |
-| `sweep_time` | Duration of a full 0–100% sweep (default 5s)                                                                                               |
-| `limit`      | Raise: maximum brightness (default 100%).<br>Lower: minimum brightness (default 0%). The light turns off at 0%; choose 0.4%+ to keep it on |
-
-To dim multiple Zigbee lights together, target a Hue, Z2M or ZHA group instead of separate lights or an HA group. Native groups move in sync via group-wide Zigbee messages.
-
-### Smooth color changes
-
-Create "press to change color, release to stop" automations. Transitions run natively on the device.
-
-###### Example: hold to cycle color
-
-```yaml
-button_held:
-  - action: deviceside.raise_hue
-
-button_released:
-  - action: deviceside.stop
-```
-
-| Action             | Description                                                     |
-|:------------------ |:--------------------------------------------------------------- |
-| `raise_saturation` | Start raising saturation, toward a richer color                 |
-| `lower_saturation` | Start lowering saturation, toward white                         |
-| `raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
-| `lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
-| `stop`             | Freeze the move                                                 |
-
-| Field        | Description                                                                                                       |
-|:------------ |:----------------------------------------------------------------------------------------------------------------- |
-| `target`     | Lights and groups (required)                                                                                      |
-| `sweep_time` | Duration of a full 0–100% saturation sweep or 360º hue sweep (default 5s)                                         |
-| `limit`      | Raise saturation: maximum (default 100%).<br>Lower saturation: minimum (default 0%). <br/>Hue moves take no limit |
-
-Groups move in step, as for dimming.
-
-### Flash-free turn-on
-
-Set brightness, color temperature, color or scenes while the lights are off, so that they turn on predictably without unsightly color or brightness flashes.
-
-###### Example: set scene for next turn-on
-
-```yaml
-description: Stage the Relax scene in the living room at 22:00, without turning the lights on.
-triggers:
-  - trigger: time
-    at: "22:00:00"
-actions:
-  - action: deviceside.set_scene
-    target:
-      entity_id: scene.living_room_relax
-```
-
-###### GUI example: rearm turn-on brightness after turn-off
-
-See [docs/examples/set-turn-on-brightness.md](docs/examples/set-turn-on-brightness.md).
-
-#### Set brightness, color temperature or color without turning on
-
-Action: `set_attributes`
-
-Sets brightness, color temperature or color without changing on/off state.
-
-| Field               | Description                                 |
-|:------------------- |:------------------------------------------- |
-| `target`            | Lights and groups (required)                |
-| `brightness`        | Brightness level (%)                        |
-| `min_brightness`    | Enforce a minimum brightness (%)            |
-| `max_brightness`    | Enforce a maximum brightness (%)            |
-| `color_temp_kelvin` | Color temperature (K)                       |
-| `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
-| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
-| `xy_color`          | Color as `[x, y]`                           |
-
-#### Set scene without turning on
-
-Action: `set_scene`
-
-Stages a native scene on its lights without turning them on.
-
-| Field    | Description             |
-|:-------- |:----------------------- |
-| `target` | Native scene (required) |
 
 ### Get attributes
 
