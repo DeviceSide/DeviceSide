@@ -10,6 +10,7 @@ Intent: A Configure menu item that shows, per light and switch entity, which Dev
 (Verified, Documented), which need Labs, and which are refused and why, read from the scopes the dispatcher uses.
 Touches: custom_components/deviceside/config_flow.py, custom_components/deviceside/coverage.py,
 custom_components/deviceside/core/dispatcher.py, custom_components/deviceside/core/scope.py,
+custom_components/deviceside/core/registry.py, custom_components/deviceside/features.py, scripts/gen_features.py,
 custom_components/deviceside/translations/en.json, custom_components/deviceside/integrations/zigbee2mqtt/**,
 tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
 
