@@ -1,10 +1,10 @@
-"""Aqara on Zigbee2MQTT: its lights, in Labs on `other`'s actions for lights, as a class of their own so a record on one
-bulb can bring the class to Verified (index.md, Device classes)."""
+"""Aqara on Zigbee2MQTT: its lights, a class of their own so a record on one bulb brings the class to Verified
+(index.md, Device classes): Verified on the actions its records pass, in Labs on `other`'s others."""
 
 from homeassistant.const import Platform
 
 from .....core.rules import Rule
-from .....core.scope import Family, FamilyScope, labs
+from .....core.scope import Family, FamilyScope, labs, verified
 
 AQARA = "aqara"
 
@@ -12,9 +12,12 @@ AQARA = "aqara"
 # `LUMI`, which stay in `other`. Like IKEA's, it waits for bridge/devices (classes.py, placed).
 RULES = (Rule(AQARA, {"zigbee_manufacturer": "Aqara"}),)
 
-# `other`'s actions for lights, at its level (classes.py): Level Control's moves and stop, which a Zigbee 3.0 dimmable
-# light must take, and raw ZCL reads and writes.
+# `other`'s actions for lights (classes.py): Level Control's moves and stop, which a Zigbee 3.0 dimmable light must
+# take, and raw ZCL reads and writes. Verified where an Aqara bulb's record passes. Stop and get_attributes stay in
+# Labs, as their records also run hue and saturation cases this bulb can't pass, so the rig writes no Aqara rows for
+# them; the moves stay with stop, which must halt them (tests/core/test_scope.py).
 _LABS = FamilyScope(capabilities=labs(AQARA))
+_VERIFIED = FamilyScope(capabilities=verified(AQARA))
 
 FAMILY = Family(
     key="aqara",
@@ -25,7 +28,7 @@ FAMILY = Family(
         "lower_brightness": _LABS,
         "stop": _LABS,
         "get_attributes": _LABS,
-        "set_attributes": _LABS,
+        "set_attributes": _VERIFIED,
     },
     # Not in the other scopes: not built there. Hue and saturation actions are not built, as the bulb has xy and color
     # temperature only, and turn_on_for is a refusal entry (refusals.py), as the bulb ignored a timed on from off; both
