@@ -1,0 +1,123 @@
+# Standard-call route: Zigbee2MQTT's standard lights to Documented (v0.2.0 step 3)
+
+2026-11-25. The sub-plan for step 3 of [the v0.2.0 plan](2026-11-25-v0.2.0-backlog.md), which holds the Decisions
+(1 and 5-16) this builds; settled in step 2's grilling with Jason. Don't redesign them: what they don't settle comes to
+Jason and is recorded there as a numbered Decision. Evidence: [the converter survey](../research/2026-11-25-z2m-converter-survey.md).
+
+## Coordination
+
+Intent: A new Zigbee2MQTT class, other brands' standard lights, keyed on a committed table of ZHC light definitions on
+the standard converters, is Documented on nine light actions with Labs off; evidence.md gains the route; a ZHC bump
+becomes the first step of each RC.
+Touches: docs/evidence.md, docs/plans/2026-11-25-standard-call-route.md, custom_components/deviceside/integrations/zigbee2mqtt/**, tests/integrations/zigbee2mqtt/**, docs/integrations/zigbee2mqtt/**, scripts/zhc_table.py, scripts/zhc_table/**, scripts/check_audit.py, tests/scripts/**, .github/workflows/tests.yml, .github/workflows/cut-release-candidate.yml, .claude/skills/release/SKILL.md, docs/device-compatibility.md, README.md
+Depends-on: #613
+
+## What is settled
+
+- **The class** (Decisions 6, 15). One class, carved out of `other` by one rule placed after every family in
+  `families/__init__.py`'s order: a light whose `definition_model` (`rules.py`, DEFINITION) is a table member, not
+  excluded. Light domain only. It belongs to the integration, as `other` does, so its levels live in
+  `integrations/zigbee2mqtt/classes.py` beside `OTHER_LEVELS`. Families still win: a Hue, IKEA or Tuya light never
+  lands here.
+- **Membership** (Decisions 5, 6, 9). A ZHC light definition, resolved with ZHC's own `prepareDefinition` as the
+  survey's Part A did, whose converters for every key DeviceSide sends are ZHC's standard ones, with no `meta` flag
+  or `toZigbee` override touching a DeviceSide call. `turnsOffAtBrightness1` keeps a definition out (#613 owns the
+  floor). A definition exposing `color_hs` without `supportsHueAndSaturation` is out (survey Part 4: its saturation
+  fade isn't the call on record). The survey's count at its pin is 642; a different count at the new pin is reported in
+  the PR body, not a failure.
+- **Levels** (Decisions 7, 8, 15). `documented(...)` on the new class for `raise_brightness`, `lower_brightness`,
+  `stop`, `raise_hue`, `lower_hue`, `raise_saturation`, `lower_saturation`, `set_attributes` and
+  `get_attributes`. Every other action stays as `other` has it: `turn_on_for` gets the same `NotBuilt` entry
+  (`OTHER_TIMER_REASON`) in `refusals.py`, as its call harms some lights; the rest not built. `other` keeps its
+  levels. ZHA is untouched.
+- **Hue and saturation**: `zigbee2mqtt/fade.py`'s `color_hs` check already answers `unchanged` with
+  `fields_dropped` for a light without it; a unit test pins that for the new class. No second class.
+- **The table** is a generated Python module, `integrations/zigbee2mqtt/standard_lights.py`, loaded at import with no
+  file I/O:
+  - generated, between markers: the ZHC release tag pinned, and `MODELS`, one entry per definition model (vendor,
+    whether it exposes `color_hs`);
+  - hand-kept, outside the markers, preserved by every regeneration: `EXCLUDED`, one row per split-off (the identity:
+    a definition model by default, or Zigbee manufacturer and model ID, plus firmware where the report narrows it; the
+    action the report concerns; its source), and `KEPT`, a departure a maintainer kept, with the reason
+    (Decisions 10-12). An excluded model stays in `other`, in Labs, on every action.
+  The implementer may pick another committed format if a reason comes up (an import-time cost, a check that can't read
+  it); it reports the reason.
+- **Step 3's split-offs** (Decision 10, survey Part 4's rows no flag catches), each in `EXCLUDED` with its source:
+  dresden FLS-PP3; Paulmann 924.70; Müller Licht GU10; AwoX, EGLO EGLO_ZM_RGB_TW and Iluminize 5120.1100; Müller
+  Licht tint on older firmware (45327, 45328, 404065). The flagged and overridden rows of Part 4 fall out of
+  membership by themselves; a test asserts each named one is not a member.
+- **The generator** (Decision 16): `scripts/zhc_table.py`.
+  - `--pin <ZHC release tag>` clones ZHC to a temp dir, builds it and resolves the definitions (a node helper under
+    `scripts/zhc_table/`; the survey's Part A is the method), rewrites the generated block, and prints the proposal:
+    additions; departures, each **review** when the model is a member in the table at the last full-release tag
+    (`git show vX.Y.Z:…`), else **leaves**; trait changes on family models' definitions, flagged, never classifying.
+    A departure is applied by the regeneration; a reviewed one the maintainer keeps goes in `KEPT`.
+  - `--check`, with no network: the module loads, every `EXCLUDED` and `KEPT` row has a source or reason, no row
+    is both, and `docs/integrations/zigbee2mqtt/standard-lights.md` matches what it renders. A step in
+    `tests.yml` beside `gen_compat.py --check`.
+  - Pin this PR's table to ZHC's latest release when the step runs.
+- **The page** (Decision 14): `standard-lights.md`, generated: a row per member (vendor, model, smooth hue and
+  saturation yes/no), then the excluded rows with their sources, the ZHC release at the top. No level is stated on it
+  (gen_compat's rule); it says what the list is and links `index.md`.
+- **Card and docs** (Decisions 13, 14):
+  - `devices.yaml` `capabilities`: the class, phrase "other brands' standard lights", section "Standard lights",
+    light domain.
+  - `index.md`: `### Standard lights` under Device classes, in Hue's page shape: what sets the class apart, why it
+    is Documented (Z2M's own users send the same calls through the same converters, and no report names a departure;
+    the survey is the source), that hue and saturation moves need a light exposing `color_hs`, and how to check: the
+    light's Model on its Zigbee2MQTT page, against the list. `### Other brands` gains a sentence pointing there for
+    the lights that left it.
+  - `internals.md`: the membership predicate, the table, the bump and why ZHC's options 0/0 against DeviceSide's 1/1
+    doesn't matter for the two raw-command actions (Decision 8), linking the survey.
+  - `gen_compat.py` and its fold are unchanged; regenerate README and `docs/device-compatibility.md`.
+- **evidence.md** (Decision 1, as Decision 5 rekeys it): under Levels, Documented, a third bullet, **a standard
+  converter's call**, which says:
+  - the route covers Zigbee2MQTT lights only, as a light write's failure is low harm and Z2M's usage is the evidence
+    (ZHA's is not: Decision 7);
+  - the class keys on a ZHC definition whose converters for the action are ZHC's standard ones, with no flag or override
+    touching the call, from a committed table naming the ZHC release it was built from;
+  - an action DeviceSide builds as a raw command qualifies only where every known failure is visible to the caller;
+  - split-offs: a ZHC flag or override takes a model out at the next bump; a Z2M or ZHC issue or PR reporting a device
+    failing DeviceSide's call excludes it on the report alone, citing it; a DeviceSide report follows Contrary evidence;
+    each at the narrowest identity the report supports;
+  - a bump's departure of a model whose features shipped outside Labs in a full release needs a maintainer's review,
+    kept with a reason or excluded with a source.
+  Plus an *Example* paragraph on the new class. Keep it in the section's terse shape; one fact, one home: the bump's
+  mechanics are `internals.md`'s and the release skill's.
+- **The release step** (Decision 16):
+  - `.claude/skills/release/SKILL.md`, Each RC: a first item, before `/rc-audit`: run `scripts/zhc_table.py --pin
+    <latest ZHC release>`, open the bump PR with the proposal as its body, review the departures there, merge.
+  - The guard: `scripts/check_audit.py` (already a `cut-release-candidate` step) fails an RC cut from `main` when
+    `standard_lights.py`'s pin is the same at the previous RC tag and at the head, unless the audit record holds a
+    line `ZHC bump skipped: <reason>`. A `release/vX.Y.Z` branch is exempt. Git reads only: no clone.
+  - No bump between an RC and its release: the release skill says so in a line.
+
+## Steps
+
+One step: one implementer (`opus`: a binding-rule change, public text), then a fresh `plan-reviewer` (`opus`), then
+an `/audit-code` of its range, as the step is a binding-rule change. Branch `wt/standard-call-route` off `main`,
+its own worktree, its first act `pr-draft docs/plans/2026-11-25-standard-call-route.md`.
+
+Order inside the step, committed as it goes:
+1. The generator and the table at ZHC's latest release; `--check`, its tests and the `tests.yml` step.
+2. The class, its rule, its levels and refusal entry, the split-offs; the classification snapshot rows (a member, an
+   excluded one, a family model that is also a ZHC member, a `turnsOffAtBrightness1` one).
+3. `devices.yaml`, `index.md`, `internals.md`, the generated page; regenerate README and the compat page.
+4. The evidence.md bullet.
+5. The release skill item and the `check_audit.py` guard, with tests.
+
+The implementer must not mark the PR ready, merge, or start another step; it reports its judgment calls and anything
+it wasn't sure of. #613 must merge first (`Depends-on`); build on `main` and merge `main` in when it lands.
+
+## Verification
+
+- `.venv/bin/pytest -n auto --transcripts=check`; `scripts/gen_compat.py --check`; `scripts/zhc_table.py --check`.
+  No call or reply handling changes, so transcripts stay unchanged; a change there is a finding.
+- A scope test: with the Labs option off, a member light is Documented on the nine actions; an `other` light is still
+  refused on them; an `other` switch is still refused; an `EXCLUDED` model and a `turnsOffAtBrightness1` one land in
+  `other`; a member on `turn_on_for` is refused with the `NotBuilt` reason.
+- A fade test: a member light without `color_hs` answers `unchanged` with `fields_dropped` on a hue move.
+- Guard tests: an unchanged pin fails; a changed pin passes; the skip line passes; a fix branch is exempt.
+- The README's Zigbee2MQTT card shows "other brands' standard lights" on its own 🟡 line, and other brands' lights
+  still in the ⚪ fold.
+- No hardware run: the route is Documented on evidence, and step 6's full Z2M run is the release's (tenet 8).
