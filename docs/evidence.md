@@ -32,8 +32,6 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    device that changes what DeviceSide sends (a converter's rewrite, a quirk) is such a finding even when its author
    meant it: record it, with its source, in the bundle's `internals.md`, and a maintainer decides whether DeviceSide
    goes around it, keeps it as a class limit (`index.md`), or reports it upstream. It is never closed as "by design".
-   This prevents a light that stops at 0.8 % when asked for its lowest level, unseen because unit tests pin what
-   DeviceSide hands the layer, not what reaches the wire.
 5. **Proof follows the call and the class.** Evidence is about how a class of devices responds to a call
    ([device classes](#device-classes)). Any code that sends the same call to the same class inherits it, and unit tests
    pin the call. So does a no known method entry: it may cover every action that sends that call to that class or
