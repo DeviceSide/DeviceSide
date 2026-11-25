@@ -59,6 +59,13 @@ tests/**, docs/design.md, docs/plans/2026-11-25-coverage-view.md, README.md
     generic, optional `IntegrationInfo` hook (sync check or awaitable) that says capability() is ready; Z2M implements
     it from its bridge cache (an `asyncio.Event` set when `bridge/devices` is first parsed). No other integration
     needs one.
+13. **`judge()` covers the whole per-target decision** (plan review, step 1): it runs what the dispatcher checks
+    before the gate too (`adapter.supports`, the not-addressable branch), on a request the caller passes. The view
+    passes each action's minimal request: the action's required fields only, and for `set_attributes` a
+    brightness-only one. So an adapter's own refusal (ZHA's `unsupported_reason`, Shelly stop's `not_dimmable`) shows
+    as 🔴, never a 🟢 a call would refuse.
+14. **A native group held only by a member's Labs class** shows ⚪, the weakest of its members, though a call runs its
+    Verified and Documented members: turning on Labs is what adds the rest.
 
 ## Steps
 
