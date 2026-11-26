@@ -96,6 +96,11 @@ The coverage view (`coverage.py`) is unchanged: it has no set scene column, and 
    does. Its decision (tenet 8): the v0.3.0 release run; no merge waits on it. The rig's role for it is a change in
    ha-rig, left to Jason.
 
+**Doc shape** (docs scrub, #626 step 3 and 4): living docs cite no `Decision N`, `plans/` path or SHA;
+`docs/deferred.md` entries about 80 words; `docs/design.md` contract cells 25 words or fewer; scene results in
+`docs/action-behavior.md` as rows of its Refused | Dropped and response-key tables. `scripts/check_docs.py` will hold a
+word budget per living doc: fit it, or raise the budget line in this PR.
+
 ## Reuse
 
 `SetAttributesRequest` and `LightFields` (`actions/set_attributes.py`, `core/models.py`);
