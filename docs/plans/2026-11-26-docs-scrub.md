@@ -135,3 +135,24 @@ CONTRIBUTING.md, CLAUDE.md, scripts/check_docs.py, docs/word-budgets.yaml, .clau
 ## Implementing
 
 A fresh `opus` session orchestrates (steps 1 and 2 are binding rule text and public copy); implementers per step as marked.
+
+## Handoff
+
+2026-11-26, from the session that ran steps 1 and 2.
+
+- **Done:** step 1 merged as #626, step 2 as #629. Each had an Opus plan-reviewer and a clean PR audit. Sizes landed
+  above target, accepted because the reviewers found the rest is rule clauses or device facts: `evidence.md` 4,828,
+  Z2M `index.md` 3,638, Z2M `internals.md` 5,787, ZHA pair 3,150.
+- **Next:** step 3 (sonnet implementer, Opus plan-reviewer), then step 4. Branch `wt/docs-scrub-rest` in the
+  `docs-scrub` worktree; open its draft PR with `pr-draft`, then retitle it for the step. Each step is its own PR,
+  merged with `merge-green <n> --squash` without `--delete-branch` (this repo opts in; deleting removes the
+  worktree). Start each later step on a fresh `wt/` branch off `origin/main`.
+- **Rulings for step 4:** the commit-SHA check skips link URLs (upstream SHAs stay as source pins in permalinks); a
+  bare SHA in prose is a fault. #630 (set_scene, v0.3.0) adds to `design.md`, `action-behavior.md` and
+  `deferred.md` after the budgets are set, so it may need a budget raise; its session has been told the shapes step 3
+  gives those sections.
+- **Lows left from audits** (untracked, per the audit rule): `core/identifiers.py:4-6` rig fact without a cited
+  record; the ZHC bump rule in three homes (`zhc_table.py`, `check_audit.py`, release skill); ZHA `fade.py`
+  failure rule in three docstrings; `tests/integrations/zha/test_turn_on_for.py:387` still cites "plan Decision 74".
+  Step 3 or 4 may take any of these where it touches the line.
+- **Open decisions:** none.

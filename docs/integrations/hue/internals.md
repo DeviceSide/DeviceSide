@@ -17,53 +17,23 @@ a light entity. Reads come from aiohue's copy of the bridge's state, kept curren
 
 ## Device classes
 
-What decides a call's outcome on Hue (docs/evidence.md, key a class on what decides the outcome), checked
-2026-11-14 in Home Assistant 2026.10.2 and aiohue 4.9.0, the versions in `pyproject.toml`'s lock:
+What decides a call's outcome on Hue (key a class on what decides the outcome, [evidence.md](../../evidence.md#device-classes)),
+read 2026-11-14 in Home Assistant 2026.10.2 and aiohue 4.9.0, the versions in `pyproject.toml`'s lock. The walk of the
+code is [research](research/2026-11-26-class-admission-code-walk.md):
 
-- **DeviceSide's request is the same for every light.** aiohue's `set_state` builds the CLIP v2 PUT from its
-  arguments alone, with no branch on the light, bar effects, which DeviceSide never sends
-  ([`v2/controllers/lights.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/controllers/lights.py#L74-L105)),
-  and `stop`'s raw PUT (`bridge.put`) sends its body as given.
-  The bridge picks the Zigbee command, and its firmware is closed: nothing in CLIP v2 shows which command it sent, nor
-  routes a light by a field DeviceSide could read. So the class keys on identity.
-- **Hue's results are the bridge's and Signify's firmware together.** On the bridge a Hue bulb's soft off keeps its
-  stored brightness and a raise from off starts at the bottom (Tested behavior); on ZHA the same bulb given the plain
-  ZCL call is left at level 1 after a soft off and raises from its stored level ([ZHA internals](../zha/internals.md)).
-  So the bridge sends Hue bulbs more than the plain call, and what it sends another brand can't be seen.
-- **`product_data.certified`** is the one routing core's hue integration does by device: it trusts `mirek_valid`
-  (color temperature mode) only from a certified light, as "non-official lights do not" set it
-  ([`v2/light.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/light.py#L160-L164)),
-  and skips its availability workaround for one
-  ([`v2/entity.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/entity.py#L166-L170)).
-  It decides how a light's state reads, not the call. Whether a Friends of Hue light reports `certified` true is
-  unverified, so it can't stand for Signify's firmware: `hue` keys on the manufacturer, `Signify Netherlands B.V.`,
-  which core registers from `product_data.manufacturer_name`
-  ([`v2/device.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/device.py#L64-L71)).
-- **Per-light data changes the payload, not the call:** a light's gamut (aiohue leaves `gamut` None for many
-  non-Hue lights, [`v2/models/feature.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/models/feature.py#L310-L311)),
-  where `colors.clamp_to_gamut` sends the xy unclamped; its `mirek_schema`; and its features, which drop fields
-  (`fields_dropped`, `not_dimmable`). None needs a class. `product_archetype`, `min_dim_level`, `dynamics` and `mode`
-  route nothing.
+| What | Finding | Research |
+|---|---|---|
+| DeviceSide's request | The same for every light; the bridge picks the Zigbee command and its firmware is closed, so the class keys on identity | [§1](research/2026-11-26-class-admission-code-walk.md#1-devicesides-request-is-the-same-for-every-light) |
+| Hue's results | The bridge's and Signify's firmware together: on ZHA the same bulb given the plain ZCL call behaves otherwise ([ZHA internals](../zha/internals.md), Tested behavior) | §1 |
+| `product_data.certified` | Changes how a light's state reads in core, not the call. Unverified for Friends of Hue, so `hue` keys on the manufacturer, `Signify Netherlands B.V.` | [§2](research/2026-11-26-class-admission-code-walk.md#2-product_datacertified) |
+| Gamut, `mirek_schema`, features | Change the payload, not the call (`fields_dropped`, `not_dimmable`); no class. `product_archetype`, `min_dim_level`, `dynamics`, `mode` route nothing | [§3](research/2026-11-26-class-admission-code-walk.md#3-per-light-data-changes-the-payload-not-the-call) |
+| Hue Smooth Dimming | Sent every brand the same calls; DeviceSide sends the same requests, adding the saturation fades and `stop`'s xy halt and soft-off cut (measured on Hue bulbs only) | [§4](research/2026-11-26-class-admission-code-walk.md#4-hue-smooth-dimming-sent-every-brand-the-same-calls) |
 
-So `other` holds every other maker's light. It is Documented on every action, on a bridge's one request
-(docs/evidence.md, Levels): it gets the request `hue` gets, and no Hue action's failure harms: a light that misses one
-stays on, or shows a wrong value, where the user sees it.
-
-- **Hue Smooth Dimming sent every brand the same calls,** with no branch on the light's maker: a target is any light
-  entity of the hue integration on a v2 bridge (`_resolve_bridge`, `_iter_targets`,
-  [`bridge.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/bridge.py#L21-L75)). Its set attributes and set scene write each light with aiohue's
-  `lights.set_state` (`_write_light`, [`bridge.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/bridge.py#L134-L143);
-  [`scenes.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/scenes.py#L35-L49)), its raise and lower send `set_state(on, brightness, transition_time)` and
-  its stop `set_dimming_delta` ([`transitions.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/transitions.py#L90-L108)), and its get attributes reads
-  aiohue's cache, sending nothing ([`bridge.py`](https://github.com/jasonmx/hue-smooth-dimming/blob/9f48dcfdc24295c1fe74833947270e479efeb30c/custom_components/hue_dimmer/bridge.py#L94-L111)). DeviceSide sends the same requests
-  (`bridge.set_state`; `stop`'s `{"dimming_delta": {"action": "stop"}}` through `bridge.put`, the body
-  `set_dimming_delta` builds). A user's report has another
-  brand's Zigbee Light Link dimmers running its set attributes and set scene
-  ([#617](https://github.com/DeviceSide/DeviceSide/issues/617); set scene's request:
-  [jasonmx/hue-smooth-dimming#22](https://github.com/jasonmx/hue-smooth-dimming/issues/22)).
-- **What DeviceSide adds to those calls:** the saturation fades, one `set_state` with an xy and a duration, the two
-  fields Hue Smooth Dimming sent apart; and `stop`'s xy halt and soft-off cut, writes mid-transition measured only on
-  Hue bulbs (Modules, `stop`).
+So `other` holds every other maker's light and gets every action, on a bridge's one request
+([evidence.md](../../evidence.md#levels)): it gets the request `hue` gets, and no Hue action's failure harms: a light
+that misses one stays on, or shows a wrong value, where the user sees it. A user's report has another brand's Zigbee
+Light Link dimmers running set attributes and set scene
+([#617](https://github.com/DeviceSide/DeviceSide/issues/617)).
 
 **Known departures**, which a failing report on an `other` light would split off at its manufacturer, or its model:
 
@@ -88,36 +58,28 @@ lights' color temperature mode wrong ([research](research/2026-11-25-color-mode-
 models, firmware and the maintainer's findings):
 
 - [core #62497](https://github.com/home-assistant/core/issues/62497) (2021-2022): Gledopto GL-S-004P and GL-B-007P
-  bulbs and strip controllers, a Müller Licht tint loris (firmware 2.5.3) and a LivarnoLux strip. After a
-  color temperature write, a later event reports xy, so Home Assistant shows a color. The bridge
-  itself reports it: core's maintainer read it in the bridge's events (reporters disagreed on whether the Hue app
-  showed it too). His own Gledopto Pro strip controller didn't show it.
+  bulbs and strip controllers, a Müller Licht tint loris (firmware 2.5.3) and a LivarnoLux strip. After a color
+  temperature write, a later event reports xy, so Home Assistant shows a color. The bridge itself reports it: core's
+  maintainer read it in the bridge's events (reporters disagreed on whether the Hue app showed it too). His own
+  Gledopto Pro strip controller didn't show it.
 - [core #93459](https://github.com/home-assistant/core/issues/93459): a Gledopto GL-C-008P (firmware 11076802) left
   `mirek_valid` unset, so Home Assistant showed its color temperature as a color (fixed by PR #97263).
 
 As three Pro models (zigbee-herdsman-converters' "(pro)") and a non-Pro MR16 show it, the class keys on the maker, any
-model: the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`, in
-any case. Gledopto's is `GLEDOPTO`
+model: the Zigbee manufacturer string the bridge passes on as `product_data.manufacturer_name`, in any case. Gledopto's
+is `GLEDOPTO`
 ([`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L400)):
 inferred, as no Hue diagnostics in either issue show it.
 
-**Reported, no key yet:** a maker whose report gives no identity the bridge reports stays in `other`, keeping
-`get_attributes`, until a report gives one:
+**Reported, no key yet:** Müller Licht and Livarno stay in `other`, as the [index](index.md#other-brands) says, until a
+report gives an identity the bridge reports. Any other maker reported the same way is split off alike. What earns a key:
 
-- **Müller Licht:** #62497's one tint loris, with no Zigbee strings. Its candidate zigbee-herdsman-converters
-  definition, the tint panel 404028/44435, matches on the model string `RGB-CCT` alone, with no `MLI` manufacturer
-  fingerprint, and 44435 also names a second definition
-  ([`muller_licht.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/muller_licht.ts#L152-L172)),
-  so a model key would rest on two guesses, and one report of one product is no ground to refuse the maker whole
-  ([contrary evidence](../../evidence.md#levels)). It earns a key on a Hue diagnostics `product_data` of a Müller
-  Licht light (its identity), or a second Müller Licht report on another model (the maker, whose tint lights'
-  fingerprints carry `MLI`:
-  [`muller_licht.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/devices/muller_licht.ts#L333-L354)).
-  Müller Licht lights made by Tuya (a `_TZ…` string) stay in `other` either way.
+- **Müller Licht:** #62497's one tint loris, with no Zigbee strings. It earns a key on a Hue diagnostics
+  `product_data` of a Müller Licht light, or a second Müller Licht report on another model; Müller Licht lights made by
+  Tuya (a `_TZ…` string) stay in `other` either way
+  ([why](research/2026-11-26-class-admission-code-walk.md)).
 - **Livarno (Lidl):** its lights are Tuya inside, with a `_TZ…` manufacturer string per model, and the report gives
   none, so it splits off once a report gives its strings.
-
-Any other maker reported the same way is split off alike.
 
 ## Modules
 
@@ -208,7 +170,6 @@ Assistant 2026.10.2, aiohue 4.9.0, unless dated otherwise. Home Assistant shows 
 - **Moving a bulb between networks** (2026-10-31, the A60 on firmware 1.164.2): a CLIP v2 `DELETE device/<id>`
   sends it a Leave, as Z2M's and ZHA's removes do, and it joins the next network in about 10 s. On older firmware,
   a v1 light delete left it on no network, until a delete in the Hue app released it.
-
 - **Device strings** (2026-11-14, Home Assistant 2026.10.4): Hue bulbs register as manufacturer `Signify
   Netherlands B.V.`, a product-name model (`Hue ambiance lamp`), the model ID in `model_id` (`LTA009`), and the
   firmware as `sw_version`. Their `product_data` has `certified` true and `product_archetype` `sultan_bulb` or
