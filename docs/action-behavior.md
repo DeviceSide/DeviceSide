@@ -101,19 +101,15 @@ A response entry holds these keys:
   target once.
 - **Commands and settings** return nothing in core. DeviceSide keeps an optional status response, one entry per target that ran. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as `unchanged` with a `detail`, checked before the target's class, so nothing-to-do wins over no known method or not built yet. A named target whose class has no known method, or is not built yet and is harmed by today's call, raises with the reason why.
 - **A native group** that falls back to its members has no entry of its own, so no `member_capabilities`: each member's entry carries its `capability`. When it is refused, and what its members answer for: Native groups in [`core/dispatcher.py`](../custom_components/deviceside/core/dispatcher.py).
-- **A Home Assistant scene** (`set_scene` on a `scene.homeassistant` entity, [integrations.md](integrations.md#home-assistant-scenes))
-  is a group of its lights. Each light held on is an indirect `set_attributes` target through the scene: one that
-  can't take it is skipped and logged, an unavailable one left out quietly, as in an area. Brightness 0 writes no
-  brightness; a light whose color mode names a color its state lacks is skipped (`color_missing`). Lights held off go
-  through core's `light.turn_off` with the call's context. Other entities, and a light neither on nor off, are left out
-  (DEBUG only). A light in two scenes of one call gets both writes in no set order, as core's activation would.
-  The scene's one entry is `sent` when any light was written or turned off, else `unchanged` (`nothing_to_set`); a
-  device failure makes it `rejected` (`some_lights_failed`, or `error` when every light written or turned off
-  failed), raising `targets_failed` once every light has run, as does a scene removed since the call began
-  (`scene_not_found`). None of its lights can run: refused, raised if named, with its most useful light's reason;
-  each unavailable: no entry, logged as skipped (`lights_unavailable`) if named; each skipped by an adapter while
-  sending: skipped and logged, never raised. `member_capabilities` holds each light `set_attributes` reached, a native
-  group's members included, never a light turned off or held on with nothing to write; there is no `capabilities`.
+- **A Home Assistant scene** (`set_scene` on a `scene.homeassistant` entity) is a group of its lights: each held on
+  is an indirect `set_attributes` target through it; each held off goes through core's `light.turn_off`. Brightness 0
+  writes no brightness; a light lacking its color mode's color is skipped (`color_missing`); other entities are left
+  out at DEBUG. A light in two scenes of one call gets both writes, in no set order, as in core. The scene's entry is
+  `sent`, `unchanged` (`nothing_to_set`) or `rejected` (`some_lights_failed`; `error` when every light written or
+  turned off failed; `scene_not_found` when removed mid-call), raising `targets_failed` once every light has run.
+  With no light able to run it is refused like a native group; each unavailable: logged as skipped
+  (`lights_unavailable`) if named. `member_capabilities` holds each light `set_attributes` reached; there is no
+  `capabilities`.
 
 ## Replacing hue_dimmer
 

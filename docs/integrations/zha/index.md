@@ -16,11 +16,11 @@ Lights on the core `zha` integration.
 DeviceSide tells brands apart ([why](../zigbee.md#why-brands-have-classes)) by the manufacturer and model the device
 reports when it pairs, and by how ZHA's device handler for it sends commands ([internals](internals.md#classes)).
 
-- A **group** gets only what all its lights get: one with a light a feature refuses, or, with Labs off, one in Labs,
-  falls back to its lights, each on its own. Turn on with timer sends a group one command only when its lights are
-  every device in it, so a plug with no light in the group, or a light refused, never gets the group's timer; the
-  lights get one command each, a fraction of a second apart ([internals](internals.md#turn_on_for)). A ZHA group
-  command gives no delivery feedback, so each light is read back.
+- A **group** gets only what all its lights get, and otherwise falls back to its lights, each on its own
+  ([the rules](../../integrations.md#all-integrations)). Turn on with timer sends a group one command only when its
+  lights are every device in it; otherwise each light gets its own, so a plug or a refused light in the group never
+  gets the timer ([internals](internals.md#turn_on_for)). A ZHA group command gives no delivery feedback, so each
+  light is read back.
 - A device whose manufacturer or model ZHA couldn't read when it paired (ZHA shows `unk_manufacturer` or
   `unk_model`) can't be placed, so turn on with timer refuses it (`class_unknown`), even with Labs
   on, as it could be a Tuya datapoint device. Reconfigure it from its ZHA device page, or pair it again.

@@ -17,7 +17,8 @@ after the work lands.
 
 One fact, one home; elsewhere, point to it. A device fact cites its source: a record, report, research file or upstream
 link. `<x>` is `docs/integrations/<integration>/`, the integration's bundle; a fact spanning integrations goes in the
-shared home named in parentheses.
+shared home named in parentheses. `scripts/check_docs.py` checks the living docs mechanically; `.claude/rules/docs.md`
+says how to write them.
 
 | Fact | Home |
 |---|---|
