@@ -140,6 +140,7 @@ import argparse
 import copy
 import re
 import sys
+import unicodedata
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -1753,6 +1754,35 @@ def card_list(registry: AdapterRegistry, data: Data) -> list[Card]:
     return [card(key, registry, adapters, data) for key, adapters in by_integration(registry).items()]
 
 
+WRAP_COLUMNS = 120  # The Markdown lint's limit (.rumdl.toml MD013 line-length), so a card line needs no reflow.
+ATOM = re.compile(r"\[[^\]]*\]\([^)\s]*\)\S*|\S+")  # A link stays whole: its text and URL never split.
+
+
+def width(text: str) -> int:
+    """Display columns, as the lint counts them: an emoji or other wide character takes two."""
+    return sum(2 if unicodedata.east_asian_width(char) in "WF" else 1 for char in text)
+
+
+def wrap(line: str) -> str:
+    """The line filled greedily to WRAP_COLUMNS, as the lint would reflow it: continuation lines sit under the text of a
+    list item. A single atom wider than the limit (a link with a long URL) keeps its own line."""
+    if width(line) <= WRAP_COLUMNS:
+        return line
+    indent = line[: len(line) - len(line.lstrip())]
+    marker = re.match(r"[-*] ", line.lstrip())
+    lead = indent + (" " * len(marker[0]) if marker else "")
+    out, current = [], ""
+    for atom in ATOM.findall(line.strip()) if not marker else ATOM.findall(line.strip()[len(marker[0]) :]):
+        first = indent + marker[0] if marker and not out and not current else lead
+        candidate = f"{current} {atom}" if current else f"{first}{atom}"
+        if current and width(candidate) > WRAP_COLUMNS:
+            out.append(current)
+            current = f"{lead}{atom}"
+        else:
+            current = candidate
+    return "\n".join([*out, current])
+
+
 def cards(built: list[Card]) -> str:
     body = []
     for entry in built:
@@ -1866,7 +1896,7 @@ def main(
     updates = {}
     for path, markers, new in (
         (page, EVIDENCE, block),
-        (readme, CARDS, shown),
+        (readme, CARDS, "\n".join(wrap(line) for line in shown.split("\n"))),
         (integrations, INTEGRATIONS, integration_links(registry)),
     ):
         text = updates[path][1] if path in updates else path.read_text()

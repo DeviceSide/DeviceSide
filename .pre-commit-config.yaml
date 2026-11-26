@@ -94,6 +94,14 @@ repos:
         exclude: ^docs/(plans|audits)/
 
   # -------------------------
+  # Markdown line length (.rumdl.toml: MD013 only, 120 columns, reflows a paragraph with an over-long line)
+  # -------------------------
+  - repo: https://github.com/rvben/rumdl-pre-commit
+    rev: v0.3.6
+    hooks:
+      - id: rumdl-fmt
+
+  # -------------------------
   # Household details (terms from gitignored files; a no-op without them)
   # -------------------------
   - repo: https://github.com/jasonmx/pre-commit-hooks

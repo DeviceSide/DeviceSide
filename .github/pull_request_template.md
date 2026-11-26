@@ -8,8 +8,12 @@
 
 - Integration:
 - Actions:
-- Level of each new or changed item (Verified, Documented or Labs), with, for each Verified item, the test that passed it (Testing evidence), and for each Labs item, its source (the vendor's documentation, an upstream integration that ships the call, or research):
-- Native groups (the integration's own groups that take one command; [the Groups row](https://github.com/DeviceSide/DeviceSide/blob/main/docs/design.md#core-contract)): `is_group`, `expand_group` and `native_groups` built, or why not:
+- Level of each new or changed item (Verified, Documented or Labs), with, for each Verified item, the test that passed
+  it (Testing evidence), and for each Labs item, its source (the vendor's documentation, an upstream integration that
+  ships the call, or research):
+- Native groups (the integration's own groups that take one command;
+  [the Groups row](https://github.com/DeviceSide/DeviceSide/blob/main/docs/design.md#core-contract)): `is_group`,
+  `expand_group` and `native_groups` built, or why not:
 
 ## Changes to shared code
 
@@ -31,4 +35,5 @@
 
 - [ ] The shared files CONTRIBUTING's Fast track step 2 lists for a new integration
 - [ ] `IntegrationInfo.maintainers` names me
-- [ ] Not yours to tick: a repo maintainer invites the maintainers to Triage after merge ([docs/repo-maintainers.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/repo-maintainers.md))
+- [ ] Not yours to tick: a repo maintainer invites the maintainers to Triage after merge
+      ([docs/repo-maintainers.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/repo-maintainers.md))

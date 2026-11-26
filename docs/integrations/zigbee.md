@@ -13,12 +13,13 @@ another. Each integration gives a brand, or a model, that answers differently a 
 ## Smooth dimming and stop
 
 A Zigbee 3.0 certified dimmable light must take the standard dimming and stop commands, and DeviceSide sends them to
-every brand's light exactly as it sends them to a Hue bulb. So a brand's lights can take smooth dimming and stop with
-no test of their own. DeviceSide can't tell an uncertified light apart, and one that fails the commands shows it at once.
+every brand's light exactly as it sends them to a Hue bulb. So a brand's lights can take smooth dimming and stop with no
+test of their own. DeviceSide can't tell an uncertified light apart, and one that fails the commands shows it at once.
 
 - A Level Control server must take Move to Level, Move, Step and Stop, and their With On/Off forms (ZCL Rev 8,
-  07-5123-08, §3.10.2.3, Table 3-59: all M, [PDF](https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf);
-  checked there: [research](../research/2026-11-17-zcl-rev8-level-and-onoff.md)).
+  07-5123-08, §3.10.2.3, Table 3-59: all M,
+  [PDF](https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf); checked there:
+  [research](../research/2026-11-17-zcl-rev8-level-and-onoff.md)).
 - A Dimmable Light, and every light device type above it, must have that server (Lighting & Occupancy Device
   Specification 15-0014, as NXP's JN-UG-3131 §3.2, Table 15, gives it:
   [NXP](https://mcuxpresso.nxp.com/mcuxsdk/25.09.00-pvw1/html/middleware/wireless/zigbee/Docs/JNUG3131/topics/lighting_and_occupancy_device_types.html)).

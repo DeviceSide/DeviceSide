@@ -244,8 +244,9 @@ DeviceSide sets three Zigbee2MQTT options:
   and any color temperature; the bulb is untouched. Lights with one color model, on an endpoint (`light_l1`), or with
   your own override are left alone. Turned off, it restores Zigbee2MQTT's own modes.
 - **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had it
-  within a second; every other command, DeviceSide's or not, goes out as you set it ([why](internals.md#native_control)).
-  With it on, a plain `light.turn_on` is the bulb's own short fade (about 0.4 s), and a `stop` sent during it halts it.
+  within a second; every other command, DeviceSide's or not, goes out as you set it
+  ([why](internals.md#native_control)). With it on, a plain `light.turn_on` is the bulb's own short fade (about 0.4 s),
+  and a `stop` sent during it halts it.
 - **`filtered_cache`**, before the first read of a device, so a read's answer isn't resent in every later state
   message. Your own entries are kept. Removing DeviceSide's is harmless: it comes back at the next read.
 
@@ -292,9 +293,10 @@ device has been tried. The spec doesn't say whether turning off a device already
 
 ## Lowest brightness
 
-A light's lowest brightness is 0.4 %. Zigbee2MQTT sends 0.8 % in its place to a light whose definition says it turns
-off at 0.4 %, which every Hue bulb's does, and to a group only when every member's does. DeviceSide sends the level
-directly, with the command Flash-free turn-on uses, to the lights below that hold it lit ([internals](internals.md#fade)):
+A light's lowest brightness is 0.4 %. Zigbee2MQTT sends 0.8 % in its place to a light whose definition says it turns off
+at 0.4 %, which every Hue bulb's does, and to a group only when every member's does. DeviceSide sends the level
+directly, with the command Flash-free turn-on uses, to the lights below that hold it lit
+([internals](internals.md#fade)):
 
 | Lights | A lower to the lowest brightness |
 |---|---|

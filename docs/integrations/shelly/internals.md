@@ -7,11 +7,11 @@ What a user sees is in [index.md](index.md) and isn't repeated here; what every 
 ## Addressing
 
 Through the core integration's RPC connection. The unique ID is `<mac>-<key>`; the key gives the RPC component:
-`switch:N` → `Switch` (a `switch`, or a `light` for a relay set to "light"), `light:N`, `cct:N`, `rgb:N`, `rgbw:N`
-and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Each adapter's components are in
+`switch:N` → `Switch` (a `switch`, or a `light` for a relay set to "light"), `light:N`, `cct:N`, `rgb:N`, `rgbw:N` and
+`rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Each adapter's components are in
 `integrations/shelly/addressing.py` (`CAPABILITIES`, `AUTO_CAPABILITIES`, `DIMMING_CAPABILITIES`); the
-[compatibility page](../../device-compatibility.md#shelly) shows them. Any other key (virtual booleans, scripts) has no timer.
-Gen1 (CoIoT) has no `toggle_after`.
+[compatibility page](../../device-compatibility.md#shelly) shows them. Any other key (virtual booleans, scripts) has no
+timer. Gen1 (CoIoT) has no `toggle_after`.
 
 ## Modules
 
@@ -19,14 +19,14 @@ One section per adapter module, named after it.
 
 ### `rpc`
 
-One `<Component>.Set` with `on` and `toggle_after` (device range: over 0 s to 604800 s, 0.01 s
-resolution). Light fields ride in the same call, translated as the core Shelly light does: brightness to percent,
-`transition` to `transition_duration`, and on `RGBCCT` the mode switched to `cct` or `rgb` to match. `CCT.Set` takes `{ct}` with no mode. `RGB.Set`
-takes `{rgb}` and `RGBW.Set` `{rgb, white}`, converted with `homeassistant.util.color` as core's Shelly light does
-(`light/helper.py` `process_turn_on_params`): `rgb` as given, `hs` and `xy` by `color_hs_to_RGB` and
-`color_xy_to_RGB`, a kelvin by `color_hs_to_RGB(*color_temperature_to_hs(k))` (unclamped), and on RGBW the white
-split by `color_rgb_to_rgbw`. No record covers these three calls, so `addressing.COLOR_LABS` marks them for those
-classes alone (#585) and the dispatcher drops them while the `labs` option is off.
+One `<Component>.Set` with `on` and `toggle_after` (device range: over 0 s to 604800 s, 0.01 s resolution). Light fields
+ride in the same call, translated as the core Shelly light does: brightness to percent, `transition` to
+`transition_duration`, and on `RGBCCT` the mode switched to `cct` or `rgb` to match. `CCT.Set` takes `{ct}` with no
+mode. `RGB.Set` takes `{rgb}` and `RGBW.Set` `{rgb, white}`, converted with `homeassistant.util.color` as core's Shelly
+light does (`light/helper.py` `process_turn_on_params`): `rgb` as given, `hs` and `xy` by `color_hs_to_RGB` and
+`color_xy_to_RGB`, a kelvin by `color_hs_to_RGB(*color_temperature_to_hs(k))` (unclamped), and on RGBW the white split
+by `color_rgb_to_rgbw`. No record covers these three calls, so `addressing.COLOR_LABS` marks them for those classes
+alone (#585) and the dispatcher drops them while the `labs` option is off.
 
 The read-back is `<Component>.GetStatus`; `confirmed` when the output matches and `timer_duration` equals the
 `toggle_after` sent, to 0.01 s. `timer_duration` is the timer's full duration, not the time left, so another
@@ -59,25 +59,27 @@ The docs for Light, CCT, RGB and RGBW `Set` match RGBCCT's field for field, but 
 
 ### `fade`
 
-Every dimming component takes the same calls (`DIMMING_CAPABILITIES`). A move reads `GetStatus` first: the device reports its level exactly mid-fade (rig, 8 Nov), so no transition cache is kept and
-no call resolver is needed. Then one `<Component>.Set {on: true, brightness, transition_duration}` for the distance
-left at the `sweep_time`'s speed, at least 0.5 s (`TRANSITION_LIMITS`, the device's 0.5 to 10800 s); to 0 it is
-`{on: false, transition_duration}`, the device's soft off, which keeps the stored level (`brightness: 0` would
-leave it on at 0%). From off the device fades in from 1%.
+Every dimming component takes the same calls (`DIMMING_CAPABILITIES`). A move reads `GetStatus` first: the device
+reports its level exactly mid-fade (rig, 8 Nov), so no transition cache is kept and no call resolver is needed. Then one
+`<Component>.Set {on: true, brightness, transition_duration}` for the distance left at the `sweep_time`'s speed, at
+least 0.5 s (`TRANSITION_LIMITS`, the device's 0.5 to 10800 s); to 0 it is `{on: false, transition_duration}`, the
+device's soft off, which keeps the stored level (`brightness: 0` would leave it on at 0%). From off the device fades in
+from 1%.
 
 ### `stop`
 
-`stop` sends `<Component>.DimStop {id}` first, which halts a `Set`'s fade within ~0.1 s and is a no-op with none running, then `GetStatus`: `confirmed` when on with no
-`transition` object, `sent` (`still_fading`) when one remains, `unchanged` (`off`) when off. Under a second client
-polling the device, round trips reach 0.7 s and the halt lands late; the read-back is still exact.
+`stop` sends `<Component>.DimStop {id}` first, which halts a `Set`'s fade within ~0.1 s and is a no-op with none
+running, then `GetStatus`: `confirmed` when on with no `transition` object, `sent` (`still_fading`) when one remains,
+`unchanged` (`off`) when off. Under a second client polling the device, round trips reach 0.7 s and the halt lands late;
+the read-back is still exact.
 
 ### `auto`
 
-`<Component>.GetConfig` first, and `<Component>.SetConfig` with `{"id": N, "config": {...}}` only when the config differs: `auto_off: true` and `auto_off_delay` to set,
-`auto_off: false` alone to clear (likewise `auto_on`). A delay matches to 0.01 s. `SetConfig` emits
-`config_changed`, and core reloads the entry after its 60 s debounce (`shelly/coordinator.py`,
-`ENTRY_RELOAD_COOLDOWN`). Read-back is a second `GetConfig`. The delay's device range is unverified: the timer's
-604800 s ceiling until a rig run reads it.
+`<Component>.GetConfig` first, and `<Component>.SetConfig` with `{"id": N, "config": {...}}` only when the config
+differs: `auto_off: true` and `auto_off_delay` to set, `auto_off: false` alone to clear (likewise `auto_on`). A delay
+matches to 0.01 s. `SetConfig` emits `config_changed`, and core reloads the entry after its 60 s debounce
+(`shelly/coordinator.py`, `ENTRY_RELOAD_COOLDOWN`). Read-back is a second `GetConfig`. The delay's device range is
+unverified: the timer's 604800 s ceiling until a rig run reads it.
 
 ## Upstream defects
 

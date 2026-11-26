@@ -66,7 +66,8 @@ its class counts, and `member_lights` leaves it out. A group can hold one gang a
 | `turn_on_for` (groupcast only) | Unaffected |
 | Any fallback to members | Skips it as `not_addressable` |
 
-Addressing each endpoint is deferred: [per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt).
+Addressing each endpoint is deferred:
+[per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt).
 
 ## Modules
 
@@ -84,7 +85,8 @@ registry fallback's limit in the `classes.py` docstring. A device identifier is 
 ### `standard_lights`
 
 The table the `standard_light` class keys on (`classes.py`; the rule is last in `families/__init__.py`, after every
-family's, so a family keeps its own lights). Evidence: [the converter survey](../../research/2026-11-25-z2m-converter-survey.md).
+family's, so a family keeps its own lights). Evidence:
+[the converter survey](../../research/2026-11-25-z2m-converter-survey.md).
 
 Membership, the table's layout (`zigbee/standard_lights.py`, read by any Zigbee integration) and the bump each RC
 opens are in the docstrings of `scripts/zhc_table.py` and `zigbee/standard_lights.py`; [the standard lights
@@ -144,12 +146,12 @@ bulb, and Z2M turned it off for Hue on purpose. A group gets one publish and one
 once every member is.
 
 **Tuya's countdown** (converter A): a TS011F plug in a `tuya_countdown` class gets one publish,
-`{"state": "ON", "countdown": N}`, N whole seconds from 1 to 43200 (`COUNTDOWN_LIMITS` in `families/tuya/countdown.py`; core rounds and clamps, and
-reports either in `clamped_to`). No `on_time` (it has no converter there, Tested behavior) and no state reads: the plug
-reports its state at expiry (probe P1, P2, P6, P7), and the time left can't be read, so the result is `sent`. A Z2M
-group's call carries `on_time`, so a group with such a plug falls back to its members (`AdapterScope.own_calls`). A
-plug Z2M exposes as a switch is the group's stand-in (`members._stand_in`), which no light entity addresses, so the
-fallback skips it (`not_addressable`).
+`{"state": "ON", "countdown": N}`, N whole seconds from 1 to 43200 (`COUNTDOWN_LIMITS` in `families/tuya/countdown.py`;
+core rounds and clamps, and reports either in `clamped_to`). No `on_time` (it has no converter there, Tested behavior)
+and no state reads: the plug reports its state at expiry (probe P1, P2, P6, P7), and the time left can't be read, so the
+result is `sent`. A Z2M group's call carries `on_time`, so a group with such a plug falls back to its members
+(`AdapterScope.own_calls`). A plug Z2M exposes as a switch is the group's stand-in (`members._stand_in`), which no light
+entity addresses, so the fallback skips it (`not_addressable`).
 
 - **The order.** Converter A (`tuya.tz.on_off_countdown`) awaits `genOnOff` `on`, then 0x42
   `{ctrlbits: 0, ontime: N, offwaittime: N}`. 0x42 alone on an off plug toggles it on at N for good (probe P1b), and a
@@ -231,9 +233,9 @@ clear sends `"DISABLE"` and `inching_time_1` 1, as a gang missing either field i
 65,535 (a 16-bit count on the wire).
 
 - **Gang 4 and up are mis-encoded.** The channel byte is `2 ** (i-1)` where Tuya's document gives `(i-1) << 1`: equal
-  for gangs 1 to 3, wrong from the fourth ([ZHC #13655](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13655),
-  open). Inferred from the code and the PR, not tested. On the TS0004 in that PR a write for one gang also disabled the
-  others. So multi-gang waits.
+  for gangs 1 to 3, wrong from the fourth
+  ([ZHC #13655](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13655), open). Inferred from the code and the
+  PR, not tested. On the TS0004 in that PR a write for one gang also disabled the others. So multi-gang waits.
 - **No shared channel:** neither inching string is in a class `turn_on_for` serves, so inching and a countdown never
   share a channel.
 
@@ -258,9 +260,10 @@ departure is reported among its vendors, and a bulb older than ZCL rev 7 rejects
 Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "deviceside_read"}}`, one cluster at a
 time, answered on the state topic:
 
-- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) and an Aqara light (`aqara`, whose bulb has no `onTime`: [probe](research/aqara/2026-11-25-agl003-probe.md), section 1) are asked `onOff` alone: ZCL
-  doesn't require `onTime`, one unsupported attribute fails the whole cluster read (herdsman `Endpoint.read`), and no
-  timer action serves `other` ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
+- `genOnOff` (`onOff`, `onTime` in tenths): the timer. Another brand's light (`other`) and an Aqara light (`aqara`,
+  whose bulb has no `onTime`: [probe](research/aqara/2026-11-25-agl003-probe.md), section 1) are asked `onOff` alone:
+  ZCL doesn't require `onTime`, one unsupported attribute fails the whole cluster read (herdsman `Endpoint.read`), and
+  no timer action serves `other` ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)).
 - `genLevelCtrl` (`currentLevel`), only when the light is on. An off light's brightness is Z2M's, from the state the
   `genOnOff` answer carries: after an off with a transition the bulb holds 0.4 % while Z2M keeps the level it
   restores, a Hue bulb's own fade dims it for about a second after a plain off, and reading it would overwrite
@@ -286,20 +289,24 @@ one, the longest.
   `moveToSaturation`. No hue rides in the payload, so each bulb keeps its own and a group is one publish. A light in
   color temperature (its stored hue may be stale, untested) makes the payload `{"color": {"hue", "saturation"}}`, the
   light's current hue, which goes out as `moveToHueAndSaturation`. Source, zigbee-herdsman-converters at
-  [this commit](https://github.com/Koenkk/zigbee-herdsman-converters/commit/f368dcd1): `src/converters/toZigbee.ts` (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`),
-  `src/lib/modernExtend.ts` (`light`: `meta.supportsHueAndSaturation`).
+  [this commit](https://github.com/Koenkk/zigbee-herdsman-converters/commit/f368dcd1): `src/converters/toZigbee.ts`
+  (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`), `src/lib/modernExtend.ts` (`light`:
+  `meta.supportsHueAndSaturation`).
 - A brightness or saturation fade's `transition` is at most the longest ZCL transition (`docs/internals.md`, Fades),
   with `clamped_to` when a longer one is cut; the prediction matches.
 - Hue: `hue_move` at `254 / sweep_time` steps per second (ZCL allows 1 to 254).
 
 **The bottom.** zigbee-herdsman-converters' `light_onoff_brightness` sends a brightness of 1 as level 2 on a definition
-with `turnsOffAtBrightness1` ([toZigbee.ts L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)), and on a group only when every
-member's definition has it (`allEqual`, [L1258](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1258)); it sends the level with
-`moveToLevelWithOnOff`, which at a light's minimum sets OnOff off (Tested behavior). `philips.m.light` sets the flag
-([philips.ts L315](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L315)), as do 92 Innr and 28 ADEO definitions
-([survey](../../research/2026-11-25-z2m-converter-survey.md)) and some IKEA, Gledopto and Aqara ones. DeviceSide can't
-read the flag, so a lower whose publish would carry brightness 1 (2 or less for a standard light) goes by class; the
-rule is `fade.py`'s docstring:
+with `turnsOffAtBrightness1`
+([toZigbee.ts L1378](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1378)),
+and on a group only when every member's definition has it (`allEqual`,
+[L1258](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1258));
+it sends the level with `moveToLevelWithOnOff`, which at a light's minimum sets OnOff off (Tested behavior).
+`philips.m.light` sets the flag
+([philips.ts L315](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/lib/philips.ts#L315)),
+as do 92 Innr and 28 ADEO definitions ([survey](../../research/2026-11-25-z2m-converter-survey.md)) and some IKEA,
+Gledopto and Aqara ones. DeviceSide can't read the flag, so a lower whose publish would carry brightness 1 (2 or less
+for a standard light) goes by class; the rule is `fade.py`'s docstring:
 
 | Lights the lower reaches | Call | Level |
 |---|---|---|
@@ -309,25 +316,27 @@ rule is `fade.py`'s docstring:
 | Other lights not flagged | The converter's `moveToLevelWithOnOff` | 1, which switches the light off |
 | A group with an `other` member | The converter, for the whole group (`allEqual`) | 2 when every member is flagged; else 1, which switches its lit lights off and lights its off ones |
 
-The raw call is `set_attributes`' and ZHA's: `{"command": {"cluster": "genLevelCtrl", "command": "moveToLevel",
-"payload": {"level", "transtime", "optionsMask": 0, "optionsOverride": 0}}}`, `transtime` in tenths as the converter's
-([L1403](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1403)). With no On/Off it never sets OnOff, and below a light's MinLevel it
-clamps to MinLevel (ZCL, Level Control, Move to Level), so it holds any MinLevel lit.
+The raw call is `set_attributes`' and ZHA's:
+`{"command": {"cluster": "genLevelCtrl", "command": "moveToLevel", "payload": {"level", "transtime", "optionsMask": 0, "optionsOverride": 0}}}`,
+`transtime` in tenths as the converter's
+([L1403](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1403)).
+With no On/Off it never sets OnOff, and below a light's MinLevel it clamps to MinLevel (ZCL, Level Control, Move to
+Level), so it holds any MinLevel lit.
 
 - **Hue and Aqara** go to level 1 on a probe of each holding it lit (Tested behavior); the raw bottom serves the whole
   Aqara class on the T2's evidence, so an Aqara definition ZHC flags would get a raw level 1 untested.
-- **A standard light's bottom is level 2,** not 1, as no standard light has been probed holding level 1 on the raw
-  call. A probe of one holding level 1 lit on the raw `moveToLevel` reopens it, lowering `BOTTOM_LEVEL` to 1. The result carries no `clamped_to`, as Z2M's own flagged bottom reports
-  none.
+- **A standard light's bottom is level 2,** not 1, as no standard light has been probed holding level 1 on the raw call.
+  A probe of one holding level 1 lit on the raw `moveToLevel` reopens it, lowering `BOTTOM_LEVEL` to 1. The result
+  carries no `clamped_to`, as Z2M's own flagged bottom reports none.
 - **Other flagged lights** keep Z2M's 2: Innr's turn off at level 1
   ([research](research/2026-11-24-other-brands-dimming.md)). An unflagged `other` light, and a group with an `other`
   member: [deferred.md](../../deferred.md#the-raw-bottom-for-other-lights-on-zigbee2mqtt).
 - **Z2M's restore memory.** An off with a transition stores Z2M's brightness, and the next plain on restores it through
   the converter; only a converter brightness set clears it, and a raw command touches neither
-  ([L1320](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1320)–[L1384](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1384)). So an off with a transition
-  after a raw lower, before the end read-back (the fade's length and about 1 s, `END_READ_S`), stores the level from
-  before the lower: a known limit (Tested behavior). After the read-back, a lit bulb at level 1 would store 1, which the
-  converter sends as 2 (from source; not measured).
+  ([L1320](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1320)–[L1384](https://github.com/Koenkk/zigbee-herdsman-converters/blob/03b37655f540668d94975c47550f249fc0d16e26/src/converters/toZigbee.ts#L1384)).
+  So an off with a transition after a raw lower, before the end read-back (the fade's length and about 1 s,
+  `END_READ_S`), stores the level from before the lower: a known limit (Tested behavior). After the read-back, a lit
+  bulb at level 1 would store 1, which the converter sends as 2 (from source; not measured).
 
 ### `stop`
 
@@ -403,7 +412,8 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
   `{"color": ""}` get publishes the halted x/y.
 
 The brightness floor, 2026-11-25 on Z2M 2.14.3, an LTA009 (firmware 1.163.1), its level read live
-([brightness floor](research/hue/2026-11-25-brightness-floor-probe.md), [raw bottom](research/hue/2026-11-25-raw-bottom-probe.md),
+([brightness floor](research/hue/2026-11-25-brightness-floor-probe.md),
+[raw bottom](research/hue/2026-11-25-raw-bottom-probe.md),
 [rig run](research/hue/2026-11-25-move-to-level-bottom-rig.md)):
 
 | Case | Result |
@@ -470,9 +480,9 @@ cites have been checked upstream: search each tracker for duplicates before fili
   Workaround: `color_refresh`. Fix: re-read `currentX`/`currentY` (or drop the optimistic value) on a color stop.
 - **Zigbee2MQTT: a group stop is read back from its first member only;** the others keep the optimistic end
   value. Workaround: a read per member. Per-member reads on large groups cost mesh traffic, so expect discussion.
-- **Zigbee2MQTT: a `read` answer with `state_property` is deep-merged into the cached state forever,** so every
-  later state message carries it. Workaround: `read`. Fix: a non-persisting read, or `state_property` keys kept out of the cache. They may answer "use
-  `filtered_cache`".
+- **Zigbee2MQTT: a `read` answer with `state_property` is deep-merged into the cached state forever,** so every later
+  state message carries it. Workaround: `read`. Fix: a non-persisting read, or `state_property` keys kept out of the
+  cache. They may answer "use `filtered_cache`".
 - **zigbee-herdsman (Ember adapter): a groupcast the coordinator refuses with BUSY isn't retried.**
   `sendZclFrameToGroup` makes one `ezsp.send` (multicast) and throws on any status but success, while a unicast
   retries BUSY up to `QUEUE_MAX_SEND_ATTEMPTS` (3), 500 ms apart (`src/adapter/ember/adapter/emberAdapter.ts`).
@@ -484,7 +494,7 @@ cites have been checked upstream: search each tracker for duplicates before fili
 - **Zigbee2MQTT discovery identifiers.** A device's identifier lacks the base topic and a group's encodes it as
   unseparated character codes; a device whose friendly name is a bare number shadows the group with that ID in
   `resolveEntity`. Real but edge cases.
-- **zigbee-herdsman-converters (candidate, not probed): `brightness_move: stop` leaves a color temperature fade
-  running to its end** when brightness and color temperature fade together. Possibly the same gap as the `saturation_move: stop` one above,
-  fixed by a `stopMoveStep`; untested. Probe it on a Hue CT bulb before filing, and file it separately: a color
-  temperature stop that jumps whichever command halts it is a different problem.
+- **zigbee-herdsman-converters (candidate, not probed): `brightness_move: stop` leaves a color temperature fade running
+  to its end** when brightness and color temperature fade together. Possibly the same gap as the `saturation_move: stop`
+  one above, fixed by a `stopMoveStep`; untested. Probe it on a Hue CT bulb before filing, and file it separately: a
+  color temperature stop that jumps whichever command halts it is a different problem.

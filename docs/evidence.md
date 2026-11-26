@@ -217,13 +217,13 @@ notes, not a caveat.
 
 ## Release gate
 
-Each action whose calls changed since the last release tag needs a sign-off, an all-Labs one aside. An action's **call
-transcript**, `tests/integrations/<x>/calls/<action>.json`, holds a **segment** per distinct way the unit tests run it:
-the request, each call sent at the wire with its reply, and the result ([`tests/transcripts.py`](../tests/transcripts.py);
-CI fails a PR whose transcripts don't match its code). An action has changed when HEAD's transcript no longer holds
-every segment of the tag's, or the tag has none (tenet 9); a segment added doesn't count. A flag lifted or a class added
-changes no call ([the coverage check](#the-coverage-check) holds those). An action whose adapter has `native_groups`
-needs a segment run on a group.
+Each action whose calls changed since the last release tag needs a sign-off, an all-Labs one aside. An action's
+**call transcript**, `tests/integrations/<x>/calls/<action>.json`, holds a **segment** per distinct way the unit tests
+run it: the request, each call sent at the wire with its reply, and the result
+([`tests/transcripts.py`](../tests/transcripts.py); CI fails a PR whose transcripts don't match its code). An action has
+changed when HEAD's transcript no longer holds every segment of the tag's, or the tag has none (tenet 9); a segment
+added doesn't count. A flag lifted or a class added changes no call ([the coverage check](#the-coverage-check) holds
+those). An action whose adapter has `native_groups` needs a segment run on a group.
 
 - **Evidence binds to a transcript** by the git blob id of the one it was tested against (`calls`), and stands while
   HEAD's transcript holds every segment of it. A blob git doesn't have stands for nothing (branch runs and squash

@@ -48,14 +48,16 @@ Two outcomes for a field or target that can't be served, by what holds it back:
 | An entity the integration can't address | Every light field, on a `switch` or a `switch_as_x` light, so a timed call still runs its timer |
 | A field the adapter has never been tested with: refused, never dropped | |
 
-A call left nothing to do by dropping is `unchanged` with `fields_dropped`. An empty group is skipped silently, as core's group expansion yields nothing for one.
+A call left nothing to do by dropping is `unchanged` with `fields_dropped`. An empty group is skipped silently, as
+core's group expansion yields nothing for one.
 
 **Not yet classed** (`class_unknown`), where a call is known to harm a class, is refused the same way, raised if named
 and skipped if not, but it is usually transient: it holds only until the integration has reported the device or group
 ([evidence.md](evidence.md#no-known-method-not-built-yet-in-labs)). That usually takes seconds, so an automation firing
 at startup can get it; if the integration never reports it (DeviceSide couldn't connect to it), it holds until
 DeviceSide reloads, and a device that never finishes pairing holds until it is paired again. A target DeviceSide can't
-class at all (an entity with no device, a classifier that raised) is refused the same way, for good. A native group with a member refused either way falls back to its members, like any refused member (Native groups in
+class at all (an entity with no device, a classifier that raised) is refused the same way, for good. A native group with
+a member refused either way falls back to its members, like any refused member (Native groups in
 [`core/dispatcher.py`](../custom_components/deviceside/core/dispatcher.py)).
 
 **Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take although
@@ -91,16 +93,29 @@ A response entry holds these keys:
 | `capabilities` | a native group's entry | its members' classes once each, sorted (a list: `["hue", "other"]`). Absent when any member's is absent, so a list stands for the whole group and never for a class that could still move |
 | `member_capabilities` | a native group's or an HA scene's entry | each member's entity_id to its class (a map: `{"light.one": "hue", "light.two": "other"}`), as the one call reached each member. Absent when no member is left. Appears on an `unchanged` entry too, where nothing was sent: a reader crediting evidence credits only an entry whose status shows a send |
 
-`member_capabilities` leaves out a member with no class or only a provisional one, and only that member, so a group with one member not yet placed still names the rest. It also leaves out every member core didn't reach through its own available entity (availability judged when the call is planned), whose class still counts in `capabilities`: one that is unavailable; one core resolves only through a stand-in, as a plug in a light group (which HA exposes as a switch, or a `switch_as_x` light wraps) or a disabled member; and a device with more than one entity in the group's domain, which DeviceSide can't address on its own.
+`member_capabilities` leaves out a member with no class or only a provisional one, and only that member, so a group with
+one member not yet placed still names the rest. It also leaves out every member core didn't reach through its own
+available entity (availability judged when the call is planned), whose class still counts in `capabilities`: one that is
+unavailable; one core resolves only through a stand-in, as a plug in a light group (which HA exposes as a switch, or a
+`switch_as_x` light wraps) or a disabled member; and a device with more than one entity in the group's domain, which
+DeviceSide can't address on its own.
 
-- **Queries** (`get_attributes`, on lights and switches) return core's shape: each target's data under its entity ID, nothing else, the class among it. A target that couldn't be read raises `targets_failed` once every target has run, as any device failure does. Templates read `response['light.desk'].brightness`.
+- **Queries** (`get_attributes`, on lights and switches) return core's shape: each target's data under its entity ID,
+  nothing else, the class among it. A target that couldn't be read raises `targets_failed` once every target has run, as
+  any device failure does. Templates read `response['light.desk'].brightness`.
 - **`merge_response`** turns that shape into a list of the entities' dicts with `entity_id` added to each, so
   a blueprint can loop without knowing the IDs. It requires every value to be a dict and raises if one already
   has an `entity_id` key, so query data never carries `entity_id`.
 - **One entry per target.** A room returns one entry, not one per light as well, so `merge_response` lists each
   target once.
-- **Commands and settings** return nothing in core. DeviceSide keeps an optional status response, one entry per target that ran. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as `unchanged` with a `detail`, checked before the target's class, so nothing-to-do wins over no known method or not built yet. A named target whose class has no known method, or is not built yet and is harmed by today's call, raises with the reason why.
-- **A native group** that falls back to its members has no entry of its own, so no `member_capabilities`: each member's entry carries its `capability`. When it is refused, and what its members answer for: Native groups in [`core/dispatcher.py`](../custom_components/deviceside/core/dispatcher.py).
+- **Commands and settings** return nothing in core. DeviceSide keeps an optional status response, one entry per target
+  that ran. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never reach a
+  response: the call skips or raises instead. A call that has nothing to do succeeds quietly as `unchanged` with a
+  `detail`, checked before the target's class, so nothing-to-do wins over no known method or not built yet. A named
+  target whose class has no known method, or is not built yet and is harmed by today's call, raises with the reason why.
+- **A native group** that falls back to its members has no entry of its own, so no `member_capabilities`: each member's
+  entry carries its `capability`. When it is refused, and what its members answer for: Native groups in
+  [`core/dispatcher.py`](../custom_components/deviceside/core/dispatcher.py).
 - **A Home Assistant scene** (`set_scene` on a `scene.homeassistant` entity) is a group of its lights: each held on
   is an indirect `set_attributes` target through it; each held off goes through core's `light.turn_off`. Brightness 0
   writes no brightness; a light lacking its color mode's color is skipped (`color_missing`); other entities are left

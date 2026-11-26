@@ -17,9 +17,10 @@ a light entity. Reads come from aiohue's copy of the bridge's state, kept curren
 
 ## Device classes
 
-What decides a call's outcome on Hue (key a class on what decides the outcome, [evidence.md](../../evidence.md#device-classes)),
-read 2026-11-14 in Home Assistant 2026.10.2 and aiohue 4.9.0, the versions in `pyproject.toml`'s lock. The walk of the
-code is [research](research/2026-11-26-class-admission-code-walk.md):
+What decides a call's outcome on Hue (key a class on what decides the outcome,
+[evidence.md](../../evidence.md#device-classes)), read 2026-11-14 in Home Assistant 2026.10.2 and aiohue 4.9.0, the
+versions in `pyproject.toml`'s lock. The walk of the code is
+[research](research/2026-11-26-class-admission-code-walk.md):
 
 | What | Finding | Research |
 |---|---|---|
@@ -47,10 +48,12 @@ Light Link dimmers running set attributes and set scene
 - **Color fades** (`raise_saturation`, `lower_saturation`): DeviceSide sends the xy unclamped where a light reports
   no gamut (above), leaving the bridge to fit it.
 - **`get_attributes`**: a non-certified light may not set `mirek_valid` reliably (above), and DeviceSide reads only
-  `mirek_valid` for color temperature mode, so such a light may read no color temperature, or a stale one in color
-  mode. Core reads an uncertified light's mode from its own last command, `_color_temp_active`, set on each turn on
-  ([`v2/light.py`](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L155-L164), [L258](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L258), Home Assistant 2026.10.2), a cached write
-  `get_attributes` never reports. Reported: [core #62497](https://github.com/home-assistant/core/issues/62497) and
+  `mirek_valid` for color temperature mode, so such a light may read no color temperature, or a stale one in color mode.
+  Core reads an uncertified light's mode from its own last command, `_color_temp_active`, set on each turn on
+  ([`v2/light.py`](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L155-L164),
+  [L258](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/hue/v2/light.py#L258),
+  Home Assistant 2026.10.2), a cached write `get_attributes` never reports. Reported:
+  [core #62497](https://github.com/home-assistant/core/issues/62497) and
   [core #93459](https://github.com/home-assistant/core/issues/93459), split off below.
 
 **Split off:** Gledopto (`gledopto`), a class of its own, not built on `get_attributes`, as the bridge reports its
@@ -99,9 +102,10 @@ takes 3 requests at once and aiohue retries the rest.
 
 ### `get_attributes`
 
-`get_attributes` leaves out `color_temp_kelvin` in color mode, as the bridge's value is stale, and with a mirek of 0
-or none, which core treats as no value. Color temperature mode is the light's `mirek_valid`, as core reads it for a certified one (Device classes). A room
-with a light on uses the bridge's brightness and averages color over lit lights; with all off, over all of them.
+`get_attributes` leaves out `color_temp_kelvin` in color mode, as the bridge's value is stale, and with a mirek of 0 or
+none, which core treats as no value. Color temperature mode is the light's `mirek_valid`, as core reads it for a
+certified one (Device classes). A room with a light on uses the bridge's brightness and averages color over lit lights;
+with all off, over all of them.
 
 ### `fade`
 
