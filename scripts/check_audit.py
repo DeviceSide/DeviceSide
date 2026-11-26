@@ -8,7 +8,7 @@ The record is `docs/audits/<rc>.md`: YAML frontmatter (rc, base, passes, finding
 - Nothing outside `docs/audits/` changed after the last pass.
 - A Critical or High finding is `fixed` (`fixed_in` inside a pass after the first) or `waived` (with a `reason`).
 - An RC cut from main has bumped the standard lights table's ZHC pin since the previous RC tag, or its record holds a
-  line `ZHC bump skipped: <reason>` (the release skill; docs/integrations/zigbee2mqtt/internals.md, standard_lights).
+  line `ZHC bump skipped: <reason>` (the release skill; scripts/zhc_table.py's docstring).
   A release/vX.Y.Z branch is exempt, as no bump lands between an RC and its release. Git reads only.
 See .claude/skills/rc-audit/SKILL.md.
 

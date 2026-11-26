@@ -215,6 +215,8 @@ readback, the off's report and the strings tried: [Sonoff](research/sonoff/2026-
   as one 32-bit value (ZHADH #5317). So on the 86,399.5 s models (MINI-ZBDIM, MINI-ZB1GSP, MINI-ZB1GS) anything over
   32,767.5 s would truncate through ZHC. `DurationLimits` is 0.5 s to 3,599.5 s step 0.5 s on every model, so one class
   holds them all (inferred from the source, not tested on a device).
+- **Mode OFF is relay-neutral:** arming it changes no state, and `clear_auto_off` leaves the output as it is, inferred
+  from DISABLE being the same write with the enable bit clear (inferred, not reported).
 
 **Tuya** (`families/tuya/inching.py`): `{"inching_control_set": {"inching_control_1": "ENABLE", "inching_time_1": N}}`;
 clear sends `"DISABLE"` and `inching_time_1` 1, as a gang missing either field is skipped. N is whole seconds, 1 to
@@ -224,6 +226,8 @@ clear sends `"DISABLE"` and `inching_time_1` 1, as a gang missing either field i
   for gangs 1 to 3, wrong from the fourth ([ZHC #13655](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13655),
   open). Inferred from the code and the PR, not tested. On the TS0004 in that PR a write for one gang also disabled the
   others. So multi-gang waits.
+- **No shared channel:** neither inching string is in a class `turn_on_for` serves, so inching and a countdown never
+  share a channel.
 
 ### `set_attributes`
 
