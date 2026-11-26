@@ -303,7 +303,7 @@ def test_the_legend_entries_are_shared_with_the_readme_whose_labs_pointer_differ
 
 
 def test_the_legend_explains_each_mark():
-    assert coverage.legend().split("<br>\n") == [
+    assert coverage.legend().split("<br>") == [
         "🟢 Verified: works, tested on a real device",
         "🟡 Documented: should work, same call pattern as a tested device",
         "⚪ Labs: built, but not yet shown to work. Turn on Labs below to try it",
