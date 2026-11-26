@@ -9,6 +9,9 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from homeassistant.components.homeassistant.scene import DATA_PLATFORM as SCENE_PLATFORM
+from homeassistant.components.homeassistant.scene import SceneConfig
+from homeassistant.core import State
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
 
@@ -28,18 +31,19 @@ from custom_components.deviceside.core.scope import (
     labs,
     verified,
 )
-from custom_components.deviceside.coverage import COLUMNS, Cell, Mark
+from custom_components.deviceside.coverage import COLUMNS, Cell, Coverage, Mark, Row
 
 from .conftest import allow_labs, call, refusal
 from .fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOffFor, FakeTurnOnFor
-from .fixtures.fake import add_fake_entity, add_fake_native_group, fake_config_entry
+from .fakes.scripted import ScriptedAdapter
+from .fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group, fake_config_entry
 
 pytestmark = pytest.mark.usefixtures("setup_integration")
 
 TIMER_OFF = "turn off with timer"
 TIMER_ON = "turn on with timer"
 SWITCH = '<ha-icon icon="mdi:toggle-switch-variant"></ha-icon> '  # the domain's default icon
-ANYWHERE = frozenset({"light", "switch"})
+ANYWHERE = frozenset({"light", "switch", "scene"})
 # A class at each level, one with no known method and one not built yet (as test_dispatcher's GATED).
 GATED = AdapterScope(
     domains=verified("light", "switch"),
@@ -273,7 +277,9 @@ async def test_the_table_has_a_column_per_feature_and_a_blank_where_it_does_not_
     text = coverage.table(hass, found)
 
     assert text.splitlines()[:3] == [
-        "| | " + " | ".join(f'<center>{column.heading}</center>' for column in COLUMNS) + " |",
+        "| | <center>Smooth dimming</center> | <center>Smooth color</center> | "
+        "<center>Flash\u2011free turn\u2011on</center> | <center>Timed on</center> | "
+        "<center>Timed off</center> | <center>Auto off/on</center> |",
         "|---|:-:|:-:|:-:|:-:|:-:|:-:|",
         "| **Fake** | | | | | | |",
     ]
@@ -329,7 +335,7 @@ async def test_settings_shows_the_matrix_with_the_options_under_it(hass, setup_i
     assert result["step_id"] == "settings"
     holders = result["description_placeholders"]
     assert holders["coverage"] == (
-        "DeviceSide runs 9 features on 4 of your devices.\n\n"
+        "DeviceSide runs 9 features on 4 devices.\n\n"
         f"{coverage.legend()}\n\n{coverage.table(hass, await coverage.collect(hass))}"
     )
     assert f"| {SWITCH}c |" in holders["coverage"]
@@ -484,3 +490,202 @@ async def test_labs_adds_is_said_only_while_labs_is_off(hass, setup_integration)
 
     assert on["description_placeholders"]["labs_adds"] == ""
     assert on["description_placeholders"]["coverage"]  # the Labs cells are still shown
+
+
+# The scenes
+
+
+SCENE_GATED = AdapterScope(
+    domains=verified("scene"),
+    capabilities=verified("A") | documented("B") | labs("C"),
+    no_known_method={"D": NoKnownMethod("Smart scene", "It has no fixed settings", "https://example.com/d")},
+    not_built={"E": NotBuilt("It is not built", "https://example.com/e")},
+)
+
+
+class FakeSetScene(ScriptedAdapter):
+    action = "set_scene"
+    integration = "fake"
+    scope = SCENE_GATED
+
+
+@pytest.fixture
+def bridge_scenes(hass, classed):
+    """The fake with a set_scene adapter, as Hue's, whose scenes are classed A to E from their object id."""
+    registry = get_runtime(hass).registry
+    adapter = FakeSetScene()
+    adapter.kind = registry.adapter("set_attributes", "fake").kind
+    registry._adapters[("set_scene", "fake")] = adapter
+    yield
+    del registry._adapters[("set_scene", "fake")]
+
+
+def ha_scene(hass, entity_id: str, states: dict[str, dict | None]) -> str:
+    """A Home Assistant scene with no registry entry, as a YAML scene with no id is: each light on with the attributes
+    given, or off for None."""
+    platform = hass.data.get(SCENE_PLATFORM) or SimpleNamespace(entities={})
+    platform.entities[entity_id] = SimpleNamespace(
+        scene_config=SceneConfig(
+            None,
+            entity_id,
+            None,
+            {light: State(light, "off" if a is None else "on", a or {}) for light, a in states.items()},
+        )
+    )
+    hass.data[SCENE_PLATFORM] = platform
+    hass.states.async_set(entity_id, "unknown")
+    return entity_id
+
+
+BRIGHT = {"brightness": 255}
+
+
+async def marks(hass) -> list[Mark]:
+    return sorted((await coverage.collect(hass)).scenes, key=coverage._WEAKEST.index)
+
+
+@pytest.fixture
+def lamps(hass, fake):
+    """A light of each class: A is Verified, B Documented, C Labs, D refused, E not built."""
+    for letter in "abcde":
+        add_fake_entity(hass, fake, f"light.{letter}_lamp")
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+async def test_a_scene_of_verified_lights_is_verified(hass):
+    ha_scene(hass, "scene.evening", {"light.a_lamp": BRIGHT})
+
+    assert await marks(hass) == [Mark.VERIFIED]
+    assert er.async_get(hass).async_get("scene.evening") is None  # a YAML scene with no id has no registry entry
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+@pytest.mark.parametrize(
+    ("lights", "mark"),
+    [
+        pytest.param(("a", "b"), Mark.DOCUMENTED, id="documented"),
+        pytest.param(("a", "b", "c"), Mark.LABS, id="labs, the weakest of three"),
+        pytest.param(("b", "c"), Mark.LABS, id="labs under documented"),
+        pytest.param(("b",), Mark.DOCUMENTED, id="all alike"),
+    ],
+)
+async def test_the_mark_is_the_weakest_light(hass, lights, mark):
+    ha_scene(hass, "scene.movie", {f"light.{letter}_lamp": BRIGHT for letter in lights})
+
+    assert await marks(hass) == [mark]
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+async def test_lights_a_call_would_skip_lower_no_mark(hass):
+    elsewhere = er.async_get(hass).async_get_or_create("light", "elsewhere", "x", suggested_object_id="elsewhere")
+    ha_scene(
+        hass,
+        "scene.party",
+        {"light.a_lamp": BRIGHT, "light.d_lamp": BRIGHT, "light.e_lamp": BRIGHT, elsewhere.entity_id: BRIGHT},
+    )
+
+    # Refused, not built and unresolved lights lower no mark.
+    assert await marks(hass) == [Mark.VERIFIED]
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+async def test_a_light_with_a_missing_color_lowers_no_mark(hass):
+    ha_scene(hass, "scene.color", {"light.a_lamp": BRIGHT})
+    hass.data[SCENE_PLATFORM].entities["scene.color"].scene_config.states["light.b_lamp"] = State(
+        "light.b_lamp",
+        "on",
+        {"brightness": 255, "color_mode": "hs"},  # names a color mode it holds no color for
+    )
+
+    assert await marks(hass) == [Mark.VERIFIED]
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+async def test_lights_held_off_or_with_nothing_to_write_carry_no_mark(hass):
+    ha_scene(hass, "scene.relax", {"light.a_lamp": BRIGHT, "light.b_lamp": None, "light.c_lamp": {}})
+
+    assert await marks(hass) == [Mark.VERIFIED]  # c is on with nothing to write, b is off
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+@pytest.mark.parametrize(
+    "states",
+    [
+        pytest.param({"light.d_lamp": BRIGHT, "light.e_lamp": BRIGHT}, id="refused and not built"),
+        pytest.param({"light.a_lamp": None, "light.b_lamp": None}, id="all held off"),
+        pytest.param({"light.a_lamp": {}}, id="nothing to write"),
+        pytest.param({}, id="no lights"),
+    ],
+)
+async def test_a_scene_with_no_light_served_has_no_mark(hass, states):
+    ha_scene(hass, "scene.dark", states)
+
+    assert await marks(hass) == []
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+async def test_an_ha_group_in_a_scene_is_judged_by_its_members(hass):
+    add_ha_group(hass, "light.pair", ["light.a_lamp", "light.b_lamp"])
+    ha_scene(hass, "scene.pair", {"light.pair": BRIGHT})
+
+    assert await marks(hass) == [Mark.DOCUMENTED]
+
+
+@pytest.mark.usefixtures("classed", "lamps")
+async def test_a_field_the_adapter_holds_in_labs_puts_the_scene_in_labs(hass):
+    """The scene's own write is judged for each light, so a color held in Labs is Labs, with Labs off."""
+    ha_scene(hass, "scene.glow", {"light.a_lamp": {"color_mode": "hs", "hs_color": [10, 50]}})
+    scope = replace(GATED, duration=None, fields=verified("brightness") | labs("hs_color"))
+
+    with patch.object(FakeSetAttributes, "scope", scope):
+        assert await marks(hass) == [Mark.LABS]
+
+
+@pytest.mark.usefixtures("bridge_scenes")
+async def test_a_bridge_scene_is_judged_on_its_set_scene_adapter(hass, fake):
+    for name in ("a_x", "b_x", "c_x", "d_x", "e_x", "pending_a"):
+        add_fake_entity(hass, fake, f"scene.{name}", state="scening")
+
+    # D is a smart scene (no known method), E is not built, and pending_a is still being placed: no mark.
+    assert await marks(hass) == [Mark.LABS, Mark.DOCUMENTED, Mark.VERIFIED]
+
+
+@pytest.mark.usefixtures("bridge_scenes", "lamps")
+async def test_a_disabled_or_hidden_scene_entry_is_left_out(hass, fake):
+    for name, changes in (
+        ("a_off", {"disabled_by": er.RegistryEntryDisabler.USER}),
+        ("a_hidden", {"hidden_by": er.RegistryEntryHider.USER}),
+    ):
+        add_fake_entity(hass, fake, f"scene.{name}")
+        er.async_get(hass).async_update_entity(f"scene.{name}", **changes)
+    er.async_get(hass).async_get_or_create("scene", "homeassistant", "x", suggested_object_id="ha_off")
+    er.async_get(hass).async_update_entity("scene.ha_off", disabled_by=er.RegistryEntryDisabler.USER)
+    ha_scene(hass, "scene.ha_off", {"light.a_lamp": BRIGHT})
+    ha_scene(hass, "scene.ha_on", {"light.a_lamp": BRIGHT})
+
+    assert await marks(hass) == [Mark.VERIFIED]
+
+
+def device_row():
+    return Row("switch.a", "a", None, False, "fake", "device", {"Timed on": Cell(Mark.VERIFIED)})
+
+
+@pytest.mark.parametrize(
+    ("device_rows", "scenes", "line"),
+    [
+        pytest.param((), (), "DeviceSide runs 0 features on 0 devices.", id="none"),
+        pytest.param((device_row(),), (), "DeviceSide runs 1 feature on 1 device.", id="no scene ends at devices"),
+        pytest.param(
+            (device_row(),), (Mark.VERIFIED,), "DeviceSide runs 1 feature on 1 device and 1 scene.", id="one scene"
+        ),
+        pytest.param(
+            (),
+            (Mark.VERIFIED, Mark.DOCUMENTED, Mark.LABS),
+            "DeviceSide runs 0 features on 0 devices and 2 scenes.",
+            id="several, Labs not counted",
+        ),
+        pytest.param((), (Mark.LABS,), "DeviceSide runs 0 features on 0 devices.", id="only Labs"),
+    ],
+)
+def test_the_count_line_counts_the_scenes_that_run_now(hass, device_rows, scenes, line):
+    assert coverage.section(hass, Coverage(device_rows, scenes)).startswith(line + "\n\n")

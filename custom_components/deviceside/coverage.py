@@ -3,8 +3,10 @@ Documented), and which need Labs (docs/design.md, Coverage view). A refused feat
 unsupported.
 
 It reads what a call would do, never a copy of it: each cell is dispatcher.judge on the entity (resolved as a call
-resolves it) with Labs off, for each action of the feature, on the action's minimal request. So a level, a refusal or a
-class is only ever the dispatcher's. What is left out of the rows, and why, is in `collect`.
+resolves it) with Labs off, for each action of the feature, on the action's minimal request. A scene's mark, which only
+the intro's count of scenes reads, is the same judgment: a bridge scene's on its `set_scene` adapter, a Home Assistant
+scene's on each of its lights' `set_attributes` with the scene's own write. So a level, a refusal or a class is only
+ever the dispatcher's. What is left out of the rows, and why, is in `collect`.
 """
 
 import asyncio
@@ -12,10 +14,11 @@ import contextlib
 import html
 import logging
 import re
-from collections.abc import Awaitable, Iterable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
+from functools import partial
 
 import probatio
 from homeassistant.const import Platform
@@ -23,9 +26,13 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.icon import async_get_icons
 
+from .actions.set_attributes import SetAttributes, SetAttributesRequest
+from .actions.set_scene import SetScene
 from .const import DOMAIN
+from .core import ha_scene
 from .core.action import Action
-from .core.dispatcher import Outcome, judge
+from .core.dispatcher import Gate, Outcome, judge
+from .core.groups import expand_ha_groups
 from .core.models import Request, Target
 from .core.registry import CARD_ORDER, AdapterRegistry
 from .core.resolver import resolve
@@ -97,6 +104,7 @@ class Row:
 @dataclass(frozen=True, slots=True)
 class Coverage:
     rows: tuple[Row, ...]
+    scenes: tuple[Mark, ...] = ()  # The mark of each scene that has one.
 
     def _cells(self, *marks: Mark) -> list[tuple[Row, Cell]]:
         return [(row, cell) for row in self.rows for cell in row.cells.values() if cell.mark in marks]
@@ -109,6 +117,11 @@ class Coverage:
     @property
     def devices_now(self) -> int:
         return len({row.device for row, _ in self._cells(*_RUNS_NOW)})
+
+    @property
+    def scenes_now(self) -> int:
+        """The scenes that run now: Verified and Documented."""
+        return sum(mark in _RUNS_NOW for mark in self.scenes)
 
     @property
     def features_in_labs(self) -> int:
@@ -148,16 +161,31 @@ def _feature_cell(hass: HomeAssistant, registry: AdapterRegistry, target: Target
     """The target's cell for a feature, from dispatcher.judge with Labs off on each of the feature's actions: the
     weakest. None where the feature isn't for the target (an action of it has no adapter or domain there), is
     refused, or isn't built (not built yet, an empty group)."""
-    judged = []
-    for key in FEATURE_ACTIONS[feature]:
-        action, adapter = registry.actions.get(key), registry.adapter(key, target.integration)
-        if action is None or adapter is None or not {target.domain} <= action.domains & adapter.scope.domains.keys():
-            return None
-        judged.append(judge(hass, registry, adapter, target, minimal_request(hass, action), False))
-    if any(gate is None or gate.outcome in (Outcome.REFUSED, Outcome.NOT_BUILT) for gate in judged):
+    marks = [_judged(hass, registry, target, key, partial(minimal_request, hass)) for key in FEATURE_ACTIONS[feature]]
+    if None in marks:
         return None
-    marks = [Mark.LABS if gate.outcome is Outcome.LABS else _BY_LEVEL[gate.level] for gate in judged if gate]
-    return Cell(min(marks, key=_WEAKEST.index))
+    return Cell(min((mark for mark in marks if mark), key=_WEAKEST.index))
+
+
+def _judged(
+    hass: HomeAssistant,
+    registry: AdapterRegistry,
+    target: Target,
+    key: str,
+    request: Callable[[type[Action]], Request],
+) -> Mark | None:
+    """The mark of action `key` on the target (dispatcher.judge, Labs off, on `request` of the action), None where the
+    action isn't for the target (no adapter, or not its domain), is refused, or isn't built."""
+    action, adapter = registry.actions.get(key), registry.adapter(key, target.integration)
+    if action is None or adapter is None or not {target.domain} <= action.domains & adapter.scope.domains.keys():
+        return None
+    return _mark(judge(hass, registry, adapter, target, request(action), False))
+
+
+def _mark(gate: Gate | None) -> Mark | None:
+    if gate is None or gate.outcome in (Outcome.REFUSED, Outcome.NOT_BUILT):
+        return None
+    return Mark.LABS if gate.outcome is Outcome.LABS else _BY_LEVEL[gate.level]
 
 
 def _unplaced(hass: HomeAssistant, registry: AdapterRegistry, target: Target) -> bool:
@@ -189,9 +217,9 @@ async def settle(pending: list[Awaitable[None]]) -> None:
 
 async def collect(hass: HomeAssistant) -> Coverage:
     """A row per light or switch entity DeviceSide's resolver accepts, in the order of the README's device cards and
-    by name within an integration. Left out: an entity with an entity_category, a disabled or hidden one, one the
-    integration is still placing (Unplaced: Z2M lists a device it no longer knows, or one not yet interviewed), a ZHA
-    group (_GROUPS_ON_COORDINATOR), and one with no cell at all."""
+    by name within an integration, and the marks of the scenes (_scenes). Left out: an entity with an entity_category, a
+    disabled or hidden one, one the integration is still placing (Unplaced: Z2M lists a device it no longer knows, or
+    one not yet interviewed), a ZHA group (_GROUPS_ON_COORDINATOR), and one with no cell at all."""
     if (runtime := hass.data.get(DATA)) is None:
         return Coverage(())
     registry = runtime.registry
@@ -199,9 +227,7 @@ async def collect(hass: HomeAssistant) -> Coverage:
     for entry in er.async_get(hass).entities.values():
         if (
             entry.domain not in DOMAINS
-            or entry.entity_category is not None
-            or entry.disabled_by is not None
-            or entry.hidden_by is not None
+            or _left_out(entry)
             or isinstance(target := resolve(hass, registry, entry.entity_id), str)
             or (target.is_group and target.integration in _GROUPS_ON_COORDINATOR)
             or _unplaced(hass, registry, target)
@@ -226,7 +252,57 @@ async def collect(hass: HomeAssistant) -> Coverage:
             )
     order = {key: place for place, key in enumerate(CARD_ORDER)}
     rows.sort(key=lambda row: (order.get(row.integration, len(order)), row.integration, row.name.casefold()))
-    return Coverage(tuple(rows))
+    return Coverage(tuple(rows), _scenes(hass, registry))
+
+
+def _left_out(entry: er.RegistryEntry) -> bool:
+    return entry.entity_category is not None or entry.disabled_by is not None or entry.hidden_by is not None
+
+
+def _scenes(hass: HomeAssistant, registry: AdapterRegistry) -> tuple[Mark, ...]:
+    """The mark of each scene that has one: a Home Assistant scene (_ha_scene_mark), including a YAML one with no id,
+    which has no registry entry, and a scene an integration's set_scene adapter serves, judged as a device cell is.
+    Left out as devices are: a disabled or hidden entry, and a scene whose class is Unplaced; and a scene with no mark
+    (refused, not built, no light served)."""
+    entries = er.async_get(hass).entities
+    ids = {
+        *hass.states.async_entity_ids(Platform.SCENE),
+        *(e.entity_id for e in entries.values() if e.domain == Platform.SCENE),
+    }
+    marks = []
+    for entity_id in sorted(ids):
+        if (entry := entries.get(entity_id)) and _left_out(entry):
+            continue
+        if ha_scene.is_ha_scene(hass, entity_id):
+            mark = _ha_scene_mark(hass, registry, entity_id)
+        elif isinstance(target := resolve(hass, registry, entity_id), str) or _unplaced(hass, registry, target):
+            continue
+        else:
+            mark = _judged(hass, registry, target, SetScene.key, partial(minimal_request, hass))
+        if mark:
+            marks.append(mark)
+    return tuple(marks)
+
+
+def _ha_scene_mark(hass: HomeAssistant, registry: AdapterRegistry, entity_id: str) -> Mark | None:
+    """A Home Assistant scene's mark, or None with no light served: the weakest of its lights' marks. Each light the
+    scene holds on with something to write (HA groups expanded, as ha_scene expands them) is judged on set_attributes
+    with the scene's own write, Labs off. A light held off or with nothing to write counts neither way; one a call
+    would skip (refused, not built, no adapter, unresolved, or a missing color) lowers no mark, as the call writes the
+    lights it can."""
+    if (lights := ha_scene.scene_lights(hass, entity_id)) is None:
+        return None
+    marks: list[Mark] = []
+    for light, write in lights.items():
+        if not isinstance(write, SetAttributesRequest):
+            continue
+        for member in expand_ha_groups(hass, [light])[0]:
+            target = resolve(hass, registry, member)
+            if not isinstance(target, str) and (
+                mark := _judged(hass, registry, target, SetAttributes.key, lambda _action, w=write: w)
+            ):
+                marks.append(mark)
+    return min(marks, key=_WEAKEST.index) if marks else None
 
 
 def _name(hass: HomeAssistant, entry: er.RegistryEntry) -> str:
@@ -286,7 +362,8 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
     if not coverage.rows:
         return ""
     registry = hass.data[DATA].registry
-    headings = " | ".join(f'<center>{column.heading}</center>' for column in COLUMNS)
+    # A non-breaking hyphen (U+2011): a heading wraps only at its spaces, so "Flash-free turn-on" takes two lines.
+    headings = " | ".join(f'<center>{column.heading.replace("-", "\u2011")}</center>' for column in COLUMNS)
     lines = [f"| | {headings} |", "|---|" + ":-:|" * len(COLUMNS)]
     shown = None
     for row in coverage.rows:
@@ -300,12 +377,16 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
     return "\n".join(lines)
 
 
+def _count(number: int, noun: str) -> str:
+    return f"{number} {noun}{'' if number == 1 else 's'}"
+
+
 def section(hass: HomeAssistant, coverage: Coverage) -> str:
     """The Settings form's coverage, above the options: the counts, the legend and the table."""
-    return (
-        f"DeviceSide runs {coverage.features_now} features on {coverage.devices_now} of your devices.\n\n"
-        f"{legend()}\n\n{table(hass, coverage)}"
-    )
+    scenes = f" and {_count(coverage.scenes_now, 'scene')}" if coverage.scenes_now else ""
+    features, devices = _count(coverage.features_now, "feature"), _count(coverage.devices_now, "device")
+    counts = f"DeviceSide runs {features} on {devices}{scenes}."
+    return f"{counts}\n\n{legend()}\n\n{table(hass, coverage)}"
 
 
 # Each mark's legend entry: (mark, name, meaning). The README's legend (scripts/gen_compat.py) renders the same entries.
