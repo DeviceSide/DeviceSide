@@ -348,8 +348,8 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
                 "coverage": coverage.section(self.hass, found),
                 # What Labs would add: said only while Labs is off and something is in Labs.
                 "labs_adds": (
-                    f"Turn on Labs: adds {found.features_in_labs} features on {found.devices_in_labs} devices. "
-                    if not labs and found.features_in_labs
+                    f"Turn on Labs: adds features on {found.devices_in_labs} of your devices. "
+                    if not labs and found.devices_in_labs
                     else ""
                 ),
             },

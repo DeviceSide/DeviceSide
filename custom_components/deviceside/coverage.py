@@ -120,10 +120,6 @@ class Coverage:
         return sum(mark in _RUNS_NOW for mark in self.scenes)
 
     @property
-    def features_in_labs(self) -> int:
-        return len(self._cells(Mark.LABS))
-
-    @property
     def devices_in_labs(self) -> int:
         return len({row.device for row, _ in self._cells(Mark.LABS)})
 
