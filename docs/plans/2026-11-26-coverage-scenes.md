@@ -76,3 +76,11 @@ One step (sonnet; the decisions settle the judgment calls, and tests catch a wro
 
 Checks: `.venv/bin/pytest -n auto --transcripts=check`, `.venv/bin/python scripts/check_docs.py`, pre-commit. Then deploy to the
 maintainer's HA for Jason's live look; that check decides wording, not a release, so no rig run.
+
+## Handoff
+
+- Done: plan settled with Jason (Decisions 1-7); draft PR #640 on `wt/coverage-scenes`, worktree
+  `deviceside-wt/coverage-scenes`. The PR also carries a merged-in tweak Jason confirmed live: column headings use
+  non-breaking hyphens so "Flash-free turn-on" wraps to two lines (`coverage.py` `table()`, its test).
+- Next: step 1, the Scenes table (one implementer, then a plan-reviewer), then the PR audit and Jason's live look.
+- Open decisions: none.
