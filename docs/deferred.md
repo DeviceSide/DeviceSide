@@ -259,25 +259,14 @@ others are reported to have no effect ([research](integrations/zigbee2mqtt/resea
 
 ## Native scenes beyond Hue
 
-`set_scene` on a scene the device or its controller holds, written per light with `set_attributes` so no light turns
-on, as Hue's bridge scenes are. Today it takes Hue bridge scenes and Home Assistant scenes
-([plan](plans/2026-11-26-set-scene-ha-scenes.md)). It needs a scene entity whose contents can be read; checked against
-HA core 2026.11.3 on 2026-11-26:
+`set_scene` on scenes ZHA, Matter, Shelly, Control4 or Zigbee2MQTT hold, written per light like Hue's.
 
-- **ZHA, Matter, Shelly, Control4:** HA exposes no scene entity. None of the four core integrations has a `scene.py`,
-  and none forwards `Platform.SCENE` (`zha/__init__.py` `PLATFORMS`, `matter/discovery.py` `DISCOVERY_SCHEMAS`,
-  `shelly/__init__.py` `PLATFORMS`, `control4/__init__.py` `PLATFORMS`). DeviceSide's Control4 adapter rides the
-  core integration ([internals](integrations/control4/internals.md)).
-- **Zigbee2MQTT:** scenes are HA `scene` entities on the `mqtt` platform, but command-only (`scene_recall`), and
-  their contents are in Zigbee2MQTT's `database.db` alone, reaching MQTT only on a recall
-  ([research](integrations/zigbee2mqtt/research/2026-11-26-scenes.md)).
-
-**Why not now:** there is nothing to read the scene's settings from, so it can't be written without recalling it,
-which turns the lights on.
+**Why not now:** no readable contents. HA core 2026.11.3 gives the first four no scene platform; Zigbee2MQTT's
+scenes are command-only `mqtt` entities whose contents reach MQTT only on a recall
+([research](integrations/zigbee2mqtt/research/2026-11-26-scenes.md)).
 
 **Revisit when:**
-- one of these integrations exposes scene entities with readable contents (an HA scene platform holding each
-  light's settings, or a Zigbee2MQTT topic or bridge response that carries a scene's state).
+- one of these integrations exposes scene entities with readable contents.
 
 **Plan:** none.
 
