@@ -257,11 +257,68 @@ others are reported to have no effect ([research](integrations/zigbee2mqtt/resea
 
 **Plan:** none.
 
+## A stop after a failed native-control set on Zigbee2MQTT
+
+When `hue_native_control` can't be set for a soft off (MQTT or Zigbee2MQTT slow or down; `native_control` logs
+"Couldn't set Zigbee2MQTT's hue_native_control to ..." and sends the command anyway), the soft off goes out as Philips'
+own command, which `brightness_move: stop` doesn't end, so the light fades on to off after a stop
+([internals](integrations/zigbee2mqtt/internals.md#stop)). The fix: after the stop, publish
+`{"state": "ON", "brightness", "transition": 0}` at the predicted brightness, only for a soft off whose set failed
+(`native_control` reports it; the stop picks those lights out). Sent after every soft off's stop, that publish jumped
+the bulb to the prediction, a flicker seen by eye.
+
+**Why not now:** no field data (no telemetry), and 85 lab rig logs, 2026-11-08 to 13, on one Zigbee2MQTT 2.14.3, hold
+no set-failed and no restore-failed warning (172 sets visible, in the debug-logged runs only).
+
+**Revisit when:**
+- a report or log shows a light fading on to off after a stop, with that warning.
+
+**Plan:** none.
+
+## Sengled lights on Zigbee2MQTT
+
+Place Sengled's other features on Zigbee2MQTT with a run. Written while off, the E11-G13 jumps to full brightness on
+ZHA, with `MoveToLevel` with or without `ExecuteIfOff` ([ZHA internals](integrations/zha/internals.md#tested-behavior)).
+Read from the code, 2026-11-14, these Zigbee2MQTT adapters send a Level command to a light that is off: `set_attributes`
+(`MoveToLevel` with `ExecuteIfOff`, then its kept-level publish, `{"state": null, "brightness", "transition"}`, a
+`MoveToLevel` without it, both of which the E11-G13 jumped on, on ZHA); `raise_brightness` from off
+(`{"state": "ON", "brightness": 1, "transition": 0}`, which Zigbee2MQTT sends as `moveToLevelWithOnOff`, then the fade);
+and `turn_on_for` with brightness (`light.turn_on`'s `{"state": "ON", "brightness"}`, also `moveToLevelWithOnOff`).
+`lower_brightness`, the hue and saturation ramps and `stop` send none. `moveToLevelWithOnOff` from off is untested on
+the Sengled. The `sengled` family holds no scope, so every feature is refused until a run.
+
+**Why not now:** nothing probed on Zigbee2MQTT, and no request for a Sengled feature.
+
+**Revisit when:**
+- a device report or request names a Sengled bulb on Zigbee2MQTT.
+
+**Plan:** none.
+
+## Tuya's recipe on ZHA
+
+Turn on with timer for Tuya's countdown plugs and switches on ZHA (`tuya_countdown`), by unicast: `light.turn_on` when
+there are fields, a plain `On`, then `OnWithTimedOff` with `on_time` and `off_wait_time` both the duration in whole
+seconds, read back in seconds; OnTime reads 0 for about a second after the call (C5: `0.1 | 1 | 0 | 10`, then
+`1.1 | 1 | 10 | 10`). It is the frame Zigbee2MQTT's converter A sends (`tuya.tz.on_off_countdown`,
+[tuya-countdown](integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1) and the lab probe's C5
+([lab probe](integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md), §2). Until it returns, `turn_on_for` refuses the
+Tuya classes as not built yet, harmed by today's call, and `get_attributes` reads none of them, as it reads only what
+another action serves (`core/registry.py`, `check_queries`). When it returns, `get_attributes` reads a
+`tuya_countdown` again, its OnTime in whole seconds (the lab probe's ZHA C5 counts it down by 1 a second), so ten times
+the spec's tenths.
+
+**Why not now:** it was built, then taken out for v0.1.0's scope, not its units.
+
+**Revisit when:**
+- a device report or request asks for turn on with timer on a Tuya plug or switch on ZHA.
+
+**Plan:** none.
+
 ## Split this register into a file per entry
 
 One file per entry, in place of this page, once one file costs more than it saves.
 
-**Why not now:** fourteen entries.
+**Why not now:** nineteen entries.
 
 **Revisit when:**
 - it holds more than 30 entries;

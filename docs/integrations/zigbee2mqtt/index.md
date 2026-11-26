@@ -1,180 +1,130 @@
 # Zigbee2MQTT
 
 What DeviceSide's features do on Zigbee2MQTT, their limits, and what DeviceSide changes in your setup. What applies
-to every integration is in [integrations.md](../../integrations.md); which devices each feature is proven on is
-on the [device compatibility page](../../device-compatibility.md); how the calls work, and what was measured, is
-in [internals.md](internals.md).
+to every integration is in [integrations.md](../../integrations.md), and what holds for a brand on both Zigbee
+integrations in [zigbee.md](../zigbee.md); which devices each feature is proven on is on the
+[device compatibility page](../../device-compatibility.md); how the calls work, and what was measured, is in
+[internals.md](internals.md).
 
 Lights that Zigbee2MQTT announced to Home Assistant through MQTT discovery.
 
 ## Device classes
 
-Zigbee devices given the same command can answer it differently, by brand and firmware
-([research](research/2026-11-14-timed-on-call-patterns.md)), so a test on one brand proves nothing about another.
-DeviceSide tells them apart by the manufacturer and model Zigbee2MQTT registers in Home Assistant and, for IKEA's
-devices and Tuya devices sold under other brands, by the device's own Zigbee manufacturer and model, which Zigbee2MQTT
-publishes as it connects.
-
-- A **group** gets only what all its devices get. Zigbee2MQTT shows a group as one entity per kind of member: a group of
-  lights is a light, a group of switches is a switch, and a group holding both gets two entities, a light and a switch,
-  each reaching only its own domain's members on a fallback. So target `switch.<group>` for auto-off, and `light.<group>`
-  for the lights. A group with a light a feature refuses, or, with Labs
-  off, one in Labs, falls back to its lights, each on its own; with Labs on, it runs as one group. A member
-  Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya plug in a
-  group makes it fall back too. A TS011F plug makes it fall back on smooth dimming, smooth color changes and set without
-  turning on even with Labs on, as those serve lights alone, and a TS011F is a plug even where
-  Zigbee2MQTT shows it as a light. So does a TS011F plug on Tuya's countdown for turn on with timer, as the group's
-  timer isn't the plug's: each light gets its own, and so does a plug Zigbee2MQTT shows as a light. One it shows as a
-  switch is skipped (`not_addressable`), with a warning, as no light reaches it: target its switch beside the group (or the group's switch), and
-  it gets its countdown, with no warning. Set auto-off and clear auto-off work the same way: a group of switches, or the
-  group's switch entity, falls back to its members. A Tuya datapoint device with one countdown makes a group fall back on turn on
-  with timer the same way, and turn off with timer, set auto-off and clear auto-off always run a group as its devices, each on its own: a Zigbee group
-  has no call for it ([integrations](../../integrations.md#what-cant-be-done-and-why)). Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes its
-  groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group is in
-  Labs, and turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on. If DeviceSide
-  can't subscribe to Zigbee2MQTT's bridge at all, it logs a warning, groups run only with Labs on, and,
-  until the integration reloads, turn on with timer refuses every group and every light, plug or switch but Hue's
-  (IKEA's included), as it can't tell which is a rebadged Tuya device.
+DeviceSide tells brands apart ([why](../zigbee.md#why-brands-have-classes)) by the manufacturer and model Zigbee2MQTT
+registers in Home Assistant and, for IKEA's, Aqara's and Tuya's devices, by the device's own Zigbee manufacturer and
+model, which Zigbee2MQTT publishes as it connects ([Right after startup](#right-after-startup)). Groups:
+[Groups](#groups).
 
 ### Hue
 
-Signify's Hue devices (manufacturer `Philips`). A Hue smart plug gets no turn on with timer
-([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)).
-
-Smooth dimming lowers a Hue bulb to its lowest brightness, 0.4 %, by sending it directly, where Zigbee2MQTT alone
-stopped at 0.8 % in a test; sent directly, a bulb held 0.4 % lit in a test ([Lowest brightness](#lowest-brightness)).
+Signify's Hue devices (manufacturer `Philips`). A lower holds a Hue bulb at 0.4 %, where Zigbee2MQTT alone stops at
+0.8 % ([Lowest brightness](#lowest-brightness)).
 
 ### Tuya
 
-Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). Most run
-Tuya's own countdown instead of the Zigbee timer, and Zigbee2MQTT turns the Zigbee timer into a plain on. So turn on
-with timer uses Tuya's countdown on the TS011F plugs and the datapoint devices with one countdown below, which take
-turn off with timer too, and isn't built yet on the rest: the Zigbee timer would turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)).
-Their other features aren't built yet either, as none has passed on a Tuya device and nothing predicts Tuya's
-firmware takes the standard commands. DeviceSide refuses them, even with Labs on.
+Tuya's devices, under any brand ([Tuya](../zigbee.md#tuya)). Most run Tuya's own countdown in place of the Zigbee
+timer, and Zigbee2MQTT turns the Zigbee timer into a plain on, which would leave the device on
+([research](research/2026-11-14-timed-on-call-patterns.md)). So turn on with timer uses Tuya's countdown where a class
+below says so.
 
 #### Tuya TS011F plugs
 
-Tuya's TS011F smart plugs, and their white labels, that Zigbee2MQTT drives by Tuya's countdown (it shows a `countdown`
-setting for the plug). Turn on with timer uses that countdown:
+Tuya's TS011F smart plugs, and their white labels, that Zigbee2MQTT drives by Tuya's countdown (it shows a
+`countdown` setting for the plug). Turn on with timer uses that countdown. Plugs of one model answer it differently by
+maker string (the Zigbee manufacturer Zigbee2MQTT shows for the plug), so each string is placed on its own:
 
-- **One maker string at a time** (the Zigbee manufacturer Zigbee2MQTT shows for the plug): plugs of the same model
-  answer the countdown differently by maker, so a run on one string proves nothing about another's. A string a run
-  has passed on is a class of its own.
-- **Every other maker string:** about 200 maker strings share the plugs' Zigbee2MQTT definitions, each a different
-  maker's build, and some are reported to ignore the countdown ([research](research/2026-11-15-converter-seed-list.md)).
-  If you try one, please report whether it works: a string gets a class of its own with a passing run
-  ([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)).
-- **Shown as a light:** a plug of a string with its own class that Zigbee2MQTT shows as a light is still a plug to
-  DeviceSide, but no run has tried one shown as a light.
-- **Not built yet on `_TZ3000_gjnozsaz`,** even with Labs on: its countdown is reported to restart
-  at random, so it could stay on ([Zigbee2MQTT #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)).
+| Plug | Class |
+|---|---|
+| A maker string a run has passed on | A class of its own |
+| Any other maker string | One class for about 200 strings, each a different maker's build; some are reported to ignore the countdown ([research](research/2026-11-15-converter-seed-list.md)). If you try one, please report whether it works: a passing run gives its string a class of its own ([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)) |
+| `_TZ3000_gjnozsaz` | Refused, even with Labs on: its countdown is reported to restart at random ([the Zigbee timer](../zigbee.md#the-zigbee-timer)) |
+| No `countdown` setting, or several sockets | Refused: the Zigbee timer left the TS011F on ([internals](../../internals.md#tested-behavior)) |
 
-The timer runs in whole seconds, up to 12 hours: a duration is rounded to the nearest second, at least 1, and one
-rounded or longer than 12 hours reports `clamped_to`, the value sent. Turning the plug off, its button or a new timer
-cancels it. The plug's time left can't be read, so get attributes refuses it, with no known method. A TS011F that
-Zigbee2MQTT shows no `countdown` for, or a multi-socket one, isn't built yet: the Zigbee timer was tested on the
-Tuya TS011F and left it on ([internals](../../internals.md#tested-behavior)). A TS011F is a plug even where Zigbee2MQTT
-shows it as a light, so the actions for lights alone, such as stop, refuse it there as not built yet; turn on with
-timer still takes it.
+- **Timer:** whole seconds, up to 12 hours. A duration is rounded to the nearest second, at least 1, and one rounded or
+  longer than 12 hours reports `clamped_to`, the value sent. Turning the plug off, its button or a new timer cancels
+  it.
+- **No time left:** it can't be read, so get attributes refuses the plug, with no known method.
+- **Shown as a light:** a TS011F is still a plug to DeviceSide, so the actions for lights alone, such as stop, refuse
+  it; turn on with timer takes it, though no run has tried one shown as a light.
 
 #### Tuya datapoint devices with one countdown
 
-Tuya datapoint devices (they speak only Tuya's own protocol) whose Zigbee2MQTT definition, the Model on the device's
-Zigbee2MQTT page, gives one `countdown` setting, in seconds, for the whole device: dimmers, wall switches, relays, a
-plug and a valve. Turn on with timer and turn off with timer send the on or the off with that countdown, and the device
-toggles back when it ends. They are admitted by Model, on a reading of each one's Zigbee2MQTT definition, not on a test
-of the device ([research](research/2026-11-14-tuya-datapoint-countdown.md),
-[the call](research/2026-11-24-tuya-datapoint-call.md)). A Model not listed here is one of the
-[other Tuya datapoint devices](#other-tuya-datapoint-devices), even with a countdown setting, until its definition is
-read. If you try one, please report whether it works.
+Tuya datapoint devices whose Zigbee2MQTT definition, the Model on the device's Zigbee2MQTT page, gives one `countdown`
+setting, in seconds, for the whole device: dimmers, wall switches, relays, a plug and a valve. Turn on with timer and
+turn off with timer send the on or the off with that countdown, and the device toggles back when it ends. They are
+admitted by Model, on a reading of each one's definition, not on a test of the device
+([research](research/2026-11-14-tuya-datapoint-countdown.md), [the call](research/2026-11-24-tuya-datapoint-call.md)).
+A Model not listed here is one of the [other Tuya datapoint devices](#other-tuya-datapoint-devices), even with a
+countdown setting, until its definition is read. If you try one, please report whether it works.
 
-- **Up to 12 hours:** ZDMS16-1, ZOT60 (a TS011F plug on Tuya's protocol), FK_V02, GL-SPI-206P, SFD02-Z, SFD02-Z_2,
-  QADZ1LR, `TS0601_dimmer_1_gang_1`, `TS0601_dimmer_1_gang_2`, `TS0601_dimmer_5`, MG-ZG01W, `_TZE28C1000000_jlbsptkl`,
-  ZMS-206US-1.
-- **Up to 24 hours:** TO-DM-W/B, `TS0601_multifunction_switch`, D1Z, D5Z.
-- **Up to 7,210 s (2 h 10 s):** AVATTO ZBS16.
+| Limit | Models |
+|---|---|
+| 12 hours | ZDMS16-1, ZOT60 (a TS011F plug on Tuya's protocol), FK_V02, GL-SPI-206P, SFD02-Z, SFD02-Z_2, QADZ1LR, `TS0601_dimmer_1_gang_1`, `TS0601_dimmer_1_gang_2`, `TS0601_dimmer_5`, MG-ZG01W, `_TZE28C1000000_jlbsptkl`, ZMS-206US-1 |
+| 24 hours | TO-DM-W/B, `TS0601_multifunction_switch`, D1Z, D5Z |
+| 7,210 s (2 h 10 s) | AVATTO ZBS16 |
 
 D1Z and SFD02-Z_2 need a Zigbee2MQTT release after 2.14.3, which doesn't have their definitions yet.
 
-The timer runs in whole seconds, from 1 s to the device's limit: a duration is rounded to the nearest second, and one
-rounded or over the limit reports `clamped_to`, the value sent. Nothing is read back, so the result is `sent`; get
-attributes isn't built for these devices. On a GL-SPI-206P, which gets the on or off twice, a call can report failed
-while its timer runs ([internals](internals.md#turn_off_for)).
-
-**The toggle and its cancelling are Tuya's general spec, not measured here.** Tuya's countdown spec says the device
-turns off when the countdown ends if it is on, and on if it is off, and that the countdown is cleared when the device's
-on/off state changes (its button, the Tuya app, a schedule) or it loses power
-([Tuya, General Countdown](https://developer.tuya.com/en/miniapp/solution-ai/ability/lamp-solution/lamp/module-set/common-countdown.md)). That page is Tuya's guide for its Wi-Fi and Bluetooth lamp panels, not for
-Zigbee; that these devices follow it is an inference, which Zigbee2MQTT's own description of the setting, "Toggle the
-device after a set duration", agrees with ([research](research/2026-11-24-tuya-datapoint-call.md), §2). So a light
-turned off by hand during a timer shouldn't come back on, but no device here has been tried.
-
-Left with the other Tuya datapoint devices, though their definitions have a countdown: devices with several switches,
-and any whose countdown Zigbee2MQTT names per switch (`countdown_l1`), as DeviceSide's command would reach only the
-first ([Sharp edges](#sharp-edges)); timers in minutes, hours or a list of steps; three irrigation valves (FK-BV05,
-ZVL-PRO, ZG-308Z), whose countdown may be a preset run time rather than a timer, so a valve could be left open; and a
-few whose setting may not be a plain timer, such as a circuit
-breaker's ([research](research/2026-11-14-tuya-datapoint-countdown.md)).
+- **Timer:** whole seconds, from 1 s to the device's limit. A duration is rounded to the nearest second, and one
+  rounded or over the limit reports `clamped_to`, the value sent. Nothing is read back, so the result is `sent`;
+  get attributes isn't built for these devices.
+- **GL-SPI-206P:** it gets the on or off twice, so a call can report failed while its timer runs
+  ([internals](internals.md#turn_off_for)).
+- **The toggle and its cancelling are Tuya's general spec, not measured here:** the device toggles when the countdown
+  ends, and a change of its on/off state (its button, the Tuya app, a schedule) or a power loss clears it
+  ([Tuya, General Countdown](https://developer.tuya.com/en/miniapp/solution-ai/ability/lamp-solution/lamp/module-set/common-countdown.md)).
+  That is Tuya's guide for its Wi-Fi and Bluetooth lamp panels; that these Zigbee devices follow it is an inference,
+  which Zigbee2MQTT's own description of the setting, "Toggle the device after a set duration", agrees with
+  ([research](research/2026-11-24-tuya-datapoint-call.md), §2). So a light turned off by hand during a timer shouldn't
+  come back on, but no device here has been tried.
+- **Left with the other Tuya datapoint devices,** though their definitions have a countdown: devices with several
+  switches, and any whose countdown Zigbee2MQTT names per switch (`countdown_l1`), as DeviceSide's command would reach
+  only the first ([Sharp edges](#sharp-edges)); timers in minutes, hours or a list of steps; three irrigation valves
+  (FK-BV05, ZVL-PRO, ZG-308Z), whose countdown may be a preset run time rather than a timer, so a valve could be left
+  open; and a few whose setting may not be a plain timer, such as a circuit breaker's
+  ([research](research/2026-11-14-tuya-datapoint-countdown.md)).
 
 #### Tuya inching switches
 
-The Tuya WHD02 (maker string `_TZ3000_skueekg3`, Zigbee model `TS0001`) and the Mowe MW781Z (`_TZ300A_rncj86af`, model
-`TS0726`) keep a persistent auto-off, "inching", which set auto-off and clear auto-off write
+The Tuya WHD02 (maker string `_TZ3000_skueekg3`, Zigbee model `TS0001`) and the Mowe MW781Z (`_TZ300A_rncj86af`,
+model `TS0726`) keep a persistent auto-off, "inching", which set auto-off and clear auto-off write
 ([research](research/tuya/2026-11-24-inching.md)). Both are single-switch devices with a time measured on the device
 (5 s and 63 s on the WHD02, 5 s on the MW781Z). They are admitted by maker string, so a string not named here is not.
 
 - **Time:** whole seconds, from 1 s to 65,535 s.
 - **Sent, not confirmed:** the setting can't be read back, so the result is `sent`, and get attributes reports no
   auto-off setting for these devices.
-- **No auto-on,** and turn on with timer is refused, as on the other Tuya plugs and switches below.
-- **Not these:** the WHD02's `TS000F` variant, the Moes ZM4LT3 (`_TZ3000_mzcp0of6`, reported having no effect) and every
-  other Tuya switch whose Zigbee2MQTT definition has an inching setting stay with the other Tuya plugs and switches
-  below. The datapoint devices (`TS0601`) time themselves by a countdown, a different mechanism
-  ([above](#tuya-datapoint-devices-with-one-countdown)).
+- **No auto-on.**
+- **Not these:** the WHD02's `TS000F` variant, the Moes ZM4LT3 (`_TZ3000_mzcp0of6`, reported having no effect) and
+  every other Tuya switch whose Zigbee2MQTT definition has an inching setting are
+  [Tuya plugs and switches](#tuya-plugs-and-switches). The datapoint devices (`TS0601`) time themselves by a
+  countdown, a different mechanism ([above](#tuya-datapoint-devices-with-one-countdown)).
 
 #### Tuya plugs and switches
 
-Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white
-labels), and lights, such as bulbs and dimmers. No feature is built for them yet, as above.
-
-The LYAI-14 irrigation valve (model `TS0049`) is one of them, as it switches on the standard commands. Zigbee2MQTT
-shows a countdown setting for it, but its definition's source says the valve ignores the countdown and runs its own
-default 10 minutes, so it doesn't get Tuya's datapoint countdown ([research](research/2026-11-14-tuya-datapoint-countdown.md), §5).
+Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and
+white labels), and lights, such as bulbs and dimmers. The LYAI-14 irrigation valve (model `TS0049`) is one of them:
+Zigbee2MQTT shows a countdown setting for it, but its definition's source says the valve ignores the countdown and runs
+its own default 10 minutes ([research](research/2026-11-14-tuya-datapoint-countdown.md), §5).
 
 #### Other Tuya datapoint devices
 
 Tuya devices that speak only Tuya's own protocol (model `TS0601`), but for the
-[ones with one countdown](#tuya-datapoint-devices-with-one-countdown). No feature is built for them yet, as above; they
-take no standard Zigbee reads or writes, and their timer is Tuya's own countdown, which isn't built for them: on a
-device with several switches it needs a command per switch.
-
-Until Zigbee2MQTT publishes its devices after Home Assistant connects to MQTT, or while it is still pairing one,
-DeviceSide knows a rebadged Tuya device only by what Home Assistant shows: the vendor `Tuya`, or a model starting
-`TS`. One shown under another brand, as another brand's device (Lidl's, or Gledopto's GL-SPI-206P, which runs Tuya's
-own protocol), can't be told apart from that brand's own devices for those first moments. So turn on with timer
-refuses every light, plug or switch but a Hue one (`class_unknown`), even with Labs on, and so do turn off with timer
-(`class_unknown`; a Hue light, known from the start, it refuses as not built yet), set auto-off and clear auto-off
-(`class_unknown`), until
-Zigbee2MQTT lists it as fully paired (interviewed), with its own Zigbee manufacturer and model. A group with such a
-light in it runs its other lights, each on its own, one command per light. A device whose pairing never completes stays
-refused until you pair it again in Zigbee2MQTT, and until then its groups run their other lights one by one.
+[ones with one countdown](#tuya-datapoint-devices-with-one-countdown). Their timer is Tuya's own countdown, which on a
+device with several switches needs a command per switch.
 
 ### Sengled
 
-Sengled bulbs ignore the Zigbee timer command, so turn on with timer is not built yet on them: the bulb would stay
-off ([probe](research/2026-11-14-lab-probe.md)). Their other features aren't built either: a Sengled E11-G13 departs
-from the standard commands on ZHA (written while off, it jumps to full brightness:
-[ZHA internals](../zha/internals.md)), and nothing predicts which it takes. DeviceSide refuses them, even with
+Sengled's bulbs ([Sengled](../zigbee.md#sengled)). Zigbee2MQTT sends the Zigbee timer, which they ignore, so with turn
+on with timer a bulb would stay off ([probe](research/2026-11-14-lab-probe.md)). DeviceSide refuses them, even with
 Labs on.
 
 ### Sonoff
 
 Sonoff's relays and dimmers keep a persistent auto-off, "inching", which set auto-off and clear auto-off write
-([research](research/sonoff/2026-11-24-inching.md)). The MINI-ZBDIM dimmer also takes smooth dimming and stop,
-which rest on the standard commands every Zigbee 3.0 certified dimmable light must take, as for
-[other brands](#other-brands). Sonoff's other features aren't built yet: nothing predicts how its devices take color
-moves, reads and writes, or the Zigbee timer. A two-gang MINI-ZB2GS waits on [per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt).
+([research](research/sonoff/2026-11-24-inching.md)). The MINI-ZBDIM dimmer also takes smooth dimming and stop
+([why](../zigbee.md#smooth-dimming-and-stop)). A two-gang MINI-ZB2GS waits on
+[per-endpoint addressing](../../deferred.md#per-endpoint-addressing-on-zigbee2mqtt).
 
 #### Sonoff inching relays
 
@@ -189,7 +139,7 @@ S61SZBTPB and the MINI-ZBDIM dimmer, admitted by model on Zigbee2MQTT's definiti
 
 #### Sonoff S60 plugs
 
-The S60ZBTPF and S60ZBTPG are not built, even with Labs on: users report Zigbee2MQTT's disable has no effect on them
+The S60ZBTPF and S60ZBTPG are refused, even with Labs on: users report Zigbee2MQTT's disable has no effect on them
 ([Zigbee2MQTT #31799](https://github.com/Koenkk/zigbee2mqtt/issues/31799)), so clear auto-off would leave the plug
 pulsing.
 
@@ -197,84 +147,98 @@ pulsing.
 
 Gledopto's LED controllers and bulbs. Zigbee2MQTT sends some of them a plain on, a pause, then the brightness, rather
 than the standard command a Hue bulb gets, and some turn on when their color is set while off
-([research](research/2026-11-14-timed-on-call-patterns.md)). So no feature is built for them yet, and DeviceSide
-refuses them, even with Labs on. The GL-SPI-206P, which runs Tuya's own protocol, is one of the
+([research](research/2026-11-14-timed-on-call-patterns.md)), so DeviceSide refuses them, even with Labs on. The
+GL-SPI-206P, which runs Tuya's own protocol, is one of the
 [Tuya datapoint devices with one countdown](#tuya-datapoint-devices-with-one-countdown).
 
 ### IKEA
 
-IKEA's TRÅDFRI lights (Zigbee manufacturer `IKEA of Sweden`, which Zigbee2MQTT publishes as it connects; until then
-an IKEA light counts as another brand's). Most run the Zigbee timer, by what they report when paired and by users'
-reports ([research](research/2026-11-14-timed-on-call-patterns.md), §3), so they take the Zigbee timer. Two GU10
-white spectrum bulbs, LED2005R5 and LED2106R3, are reported to turn on with it and never turn off
-([Zigbee2MQTT #29158](https://github.com/Koenkk/zigbee2mqtt/issues/29158)), so DeviceSide refuses them there, even
-with Labs on. IKEA's outlets get no turn on with timer, as no plug has passed
-([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)). Smooth dimming and stop rest on
-the standard commands every Zigbee 3.0 certified dimmable light must take, as for [other brands](#other-brands); the
-other features aren't built yet.
-
-On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
-([evidence](../hue/internals.md#device-classes)).
+IKEA's TRÅDFRI lights (Zigbee manufacturer `IKEA of Sweden`, which Zigbee2MQTT publishes as it connects; until then an
+IKEA light counts as another brand's). They take the Zigbee timer but for two GU10 bulbs, LED2005R5 and LED2106R3,
+refused even with Labs on, and a lower to off may stop at the lowest level ([IKEA](../zigbee.md#ikea),
+[the Zigbee timer](../zigbee.md#the-zigbee-timer)). Smooth dimming and stop rest on the standard commands
+([why](../zigbee.md#smooth-dimming-and-stop)).
 
 ### Aqara
 
 Aqara's lights, placed by the Zigbee manufacturer string `Aqara`, which Zigbee2MQTT publishes as it connects (until
-then an Aqara light counts as another brand's). Lights that report `LUMI` are [standard lights](#standard-lights) when
-their model is on that list, and otherwise stay with [other brands](#other-brands). The class starts from one bulb,
-the T2 E27 color bulb (Zigbee model `lumi.light.agl003`). It gets what other brands' lights get: smooth dimming and
-stop, which rest on the standard commands every Zigbee 3.0 certified dimmable light must take, and get and set
-attributes. On the rig it passed smooth dimming, stop, and get and set attributes ([records](test-records/)). Its
-other features aren't built yet, and DeviceSide refuses them, even with Labs on:
+then an Aqara light counts as another brand's). Lights that report `LUMI` are [standard lights](#standard-lights)
+when their model is on that list, and otherwise [other brands](#other-brands). The class starts from one bulb, the T2
+E27 color bulb (Zigbee model `lumi.light.agl003`), which passed smooth dimming, stop, and get and set attributes on the
+rig ([records](test-records/)). Smooth dimming and stop rest on the standard commands
+([why](../zigbee.md#smooth-dimming-and-stop)). What sets it apart ([probe](research/aqara/2026-11-25-agl003-probe.md)):
 
-- **Hue and saturation:** the bulb reports xy and color temperature only (no hue or saturation attributes, and the
-  hue and saturation moves leave its color unchanged), so raise and lower hue and saturation aren't built on it. An
-  emulation from the host in xy is plausible, but nothing builds it yet ([probe](research/aqara/2026-11-25-agl003-probe.md), sections 1 and 2).
-- **Turn on with timer:** the bulb ignored a timed on from off and stayed off, so it isn't built
-  ([probe](research/aqara/2026-11-25-agl003-probe.md), section 3).
-
-Smooth dimming lowers this bulb to 0.4 % directly, as it does a Hue bulb ([Lowest brightness](#lowest-brightness)). On the
-rig a lower to 0.4 % held it lit ([records](test-records/)), where Zigbee2MQTT's own command switched it off.
-
-Set attributes on this bulb can time out. In the probe, `set_attributes` sent at once after a turn off timed out in 1
-of 10 runs (the call failed with no reply from Zigbee2MQTT and the values didn't land), and sent after Home Assistant
-showed the bulb off, about 0.1 s later, in 0 of 10. The cause is unexplained ([probe](research/aqara/2026-11-25-agl003-probe.md), section 4).
+- **No hue or saturation:** the bulb reports xy and color temperature only, and the hue and saturation moves leave its
+  color unchanged, so raise and lower hue and saturation are refused. An emulation from the host in xy is plausible,
+  but nothing builds it yet (sections 1 and 2).
+- **No timer:** the bulb ignored a timed on from off and stayed off, so turn on with timer is refused (section 3).
+- **Set attributes can time out:** sent at once after a turn off, it timed out in 1 of 10 runs (no reply from
+  Zigbee2MQTT, and the values didn't land); sent after Home Assistant showed the bulb off, about 0.1 s later, in 0 of
+  10. The cause is unexplained (section 4).
 
 ### Standard lights
 
-Other brands' lights whose Zigbee2MQTT device definition sends DeviceSide's commands through the converters Zigbee2MQTT
-uses for most lights, with no change for that model: [the list](standard-lights.md), built from a
+Other brands' lights whose Zigbee2MQTT device definition sends DeviceSide's commands through the converters
+Zigbee2MQTT uses for most lights, with no change for that model: [the list](standard-lights.md), built from a
 zigbee-herdsman-converters release (the library that holds Zigbee2MQTT's device support). A light of a brand with a
 section of its own here, such as Hue, IKEA or Tuya, stays there. Zigbee2MQTT's own users send the same dimming, stop
-and color moves through the same converters, and no Zigbee2MQTT or zigbee-herdsman-converters report names one of these
-lights failing them, so that usage is their evidence, in place of a DeviceSide test run
-([survey](../../research/2026-11-25-z2m-converter-survey.md)). They get smooth dimming and stop, smooth color changes,
-and get and set attributes. Get and set attributes are DeviceSide's own commands, not Zigbee2MQTT's, and so is a lower
-to the lowest brightness, a dimming command every Zigbee 3.0 dimmable light must take: they qualify as every failure
-reported for them shows as an error, never as a light quietly doing something else. Smooth hue and
-saturation changes need a light that exposes Zigbee2MQTT's `color_hs`; one without is left unchanged
-(`fields_dropped`), and the list's column says which do. A lower to the lowest brightness stops at 0.8 %
-([lowest brightness](#lowest-brightness)). Turn on with timer isn't built, as for other brands.
+and color moves through the same converters, and no Zigbee2MQTT or zigbee-herdsman-converters report names one of
+these lights failing them, so that usage is their evidence, in place of a DeviceSide test run
+([survey](../../research/2026-11-25-z2m-converter-survey.md)). Get and set attributes, and a lower to the lowest
+brightness, are DeviceSide's own commands, not Zigbee2MQTT's: they qualify as every failure reported for them shows as
+an error, never as a light quietly doing something else. Smooth hue and saturation changes need a light that exposes
+Zigbee2MQTT's `color_hs`; one without is left unchanged (`fields_dropped`), and the list's column says which do.
 
 To check a light, open its device page in Zigbee2MQTT and look for its **Model** in [the list](standard-lights.md). A
-light a report shows failing one of these commands is listed apart, with the report, and stays with
+light a report shows failing one of these commands is listed apart, with the report, and is one of
 [other brands](#other-brands).
 
 ### Other brands
 
-Lights of every other brand, such as Innr, and their plugs and switches. Lights on the
-[standard lights](#standard-lights) list have their own section. A Zigbee 3.0 certified dimmable
-light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they get
-exactly as a Hue bulb does, so they take smooth dimming and stop. Their lights also take Get attributes and Set
-attributes in Labs: no other brand's light is reported to come on when written while off, an older bulb that rejects
-the write fails it with an error, and a light that can't read one of its color attributes fails the read
-([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)). Their plugs and switches don't, and their
-other features aren't built yet: nothing predicts how other brands take color moves, and on turn on with timer some
-lights turn on and never off, and most plugs ignore the timer. If you try them, please report it whether it works or
-not: Integrations >
-[DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
-result or bug.
+Lights of every other brand, such as Innr, and their plugs and switches. Their lights take smooth dimming and stop
+([why](../zigbee.md#smooth-dimming-and-stop)), and get and set attributes in Labs: no other brand's light is reported to
+come on when written while off, an older bulb that rejects the write fails it with an error, and a light that can't
+read one of its color attributes fails the read
+([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)). If you try them, please report it whether it
+works or not: Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) >
+Configure > Report a device test result or bug.
 
-Some Innr and ADEO lights stop at 0.8 % ([Lowest brightness](#lowest-brightness)).
+## Groups
+
+Zigbee2MQTT shows a group as one entity per kind of member: a group of lights is a light, a group of switches is a
+switch, and a group holding both gets two entities, a light and a switch, each reaching only its own domain's members
+on a fallback. So target `switch.<group>` for auto-off, and `light.<group>` for the lights.
+
+A group gets only what all its devices get. A member Home Assistant has no light for (a plug Zigbee2MQTT shows as a
+switch, say) counts by its device. Falling back, the group runs its devices each on its own:
+
+| A group | Falls back on |
+|---|---|
+| With a device the action refuses, or, with Labs off, one in Labs | that action (with Labs on, a Labs device doesn't make it fall back) |
+| With a TS011F plug, shown as a light or a switch | smooth dimming, smooth color changes and set without turning on, even with Labs on, as those serve lights alone |
+| With a TS011F plug, or a Tuya datapoint device with one countdown | turn on with timer, as the group's timer isn't the device's: each light gets its own timer, and so does a plug shown as a light |
+| Any | turn off with timer, set auto-off and clear auto-off, always: a Zigbee group has no call for them ([integrations](../../integrations.md#what-cant-be-done-and-why)) |
+
+A TS011F plug shown as a switch is skipped on turn on with timer (`not_addressable`), with a warning, as no light
+reaches it: target its switch beside the group (or the group's switch), and it gets its countdown, with no warning.
+A group of switches, or the group's switch entity, falls back on set and clear auto-off the same way.
+
+## Right after startup
+
+Until Zigbee2MQTT publishes its devices and groups after Home Assistant connects to MQTT, which it does as the
+connection comes up, or while it is still pairing a device, DeviceSide knows a device only by what Home Assistant
+shows ([Tuya](../zigbee.md#tuya)):
+
+- **A device not yet fully paired (interviewed),** but a Hue one: turn on with timer, turn off with timer, set auto-off
+  and clear auto-off refuse it (`class_unknown`), even with Labs on, as a rebadged Tuya device could stay on. A Hue
+  light, known from the start, turn off with timer refuses as not built. A group with such a light runs its other
+  lights, each on its own. A device whose pairing never completes stays refused until you pair it again in
+  Zigbee2MQTT.
+- **A group, until Zigbee2MQTT republishes its groups:** DeviceSide can't tell its members, so the group is in Labs, and
+  turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on.
+- **If DeviceSide can't subscribe to Zigbee2MQTT's bridge at all,** it logs a warning, groups run only with Labs on,
+  and, until the integration reloads, turn on with timer refuses every group and every light, plug or switch but Hue's
+  (IKEA's included).
 
 ## What DeviceSide changes in Zigbee2MQTT
 
@@ -301,9 +265,9 @@ DeviceSide sets three Zigbee2MQTT options:
 ## Failed sends
 
 When Zigbee2MQTT logs that it couldn't send a command (a busy coordinator refusing a group command, say), raise,
-lower, stop, turn on with timer, turn off with timer, set attributes, `set_auto_off` and `clear_auto_off` report that light or group failed, with the reason Zigbee2MQTT
-gave (`busy`). These actions answer up to 2 s later than before while DeviceSide listens for that line; a command
-Zigbee2MQTT answers with the light's state ends the wait at once.
+lower, stop, turn on with timer, turn off with timer, set attributes, `set_auto_off` and `clear_auto_off` report that
+light or group failed, with the reason Zigbee2MQTT gave (`busy`). These actions answer up to 2 s later than before
+while DeviceSide listens for that line; a command Zigbee2MQTT answers with the light's state ends the wait at once.
 
 ## Turn on with timer
 
@@ -311,20 +275,19 @@ With light fields, DeviceSide calls `light.turn_on` first, then starts the timer
 light's new state, usually within a fraction of a second. If that takes over 5 s, the light stays on up to 5 s
 longer than asked.
 
-A Tuya TS011F plug gets Tuya's countdown instead, with its own limits ([Tuya TS011F plugs](#tuya-ts011f-plugs)); it
-reports its state when the timer ends, so DeviceSide reads nothing back. So does a Tuya datapoint device with one
-countdown ([its section](#tuya-datapoint-devices-with-one-countdown)), with its own limits too.
-
-The result is `sent`: Zigbee2MQTT doesn't confirm a timer, or report the light's state after one. Device
-Side reads the state back after the light turns on and when the timer ends, so Home Assistant stays right. A
-restart during a timer loses those reads, and the state can stay stale until the light next reports.
+The result is `sent`: Zigbee2MQTT doesn't confirm a timer, or report the light's state after one. DeviceSide reads
+the state back after the light turns on and when the timer ends, so Home Assistant stays right. A restart during a
+timer loses those reads, and the state can stay stale until the light next reports. A Tuya TS011F plug or datapoint
+device gets Tuya's countdown instead, with its own limits ([TS011F](#tuya-ts011f-plugs),
+[datapoint](#tuya-datapoint-devices-with-one-countdown)), and reports its state when the timer ends, so nothing is read
+back.
 
 Color bulbs of other brands have no equivalent of Hue native control, so one given a color from off may show its
 last color for a moment. With native control on, a Hue bulb may report its old color for the first seconds of a
 timer.
 
-**Cancelling.** `turn_off` cancels the timer. A new timer replaces the old one, longer or shorter, as on ZHA: Zigbee2MQTT
-sends the same `OnWithTimedOff` (untested on Zigbee2MQTT).
+**Cancelling.** `turn_off` cancels the timer. A new timer replaces the old one, longer or shorter, as on ZHA:
+Zigbee2MQTT sends the same `OnWithTimedOff` (untested on Zigbee2MQTT).
 
 ## Turn off with timer
 
@@ -341,24 +304,16 @@ cancels the timer (untested).
 ## Lowest brightness
 
 A light's lowest brightness is 0.4 %. Zigbee2MQTT sends 0.8 % in its place to a light whose definition says it turns
-off at 0.4 %, which every Hue bulb's does, and to a group only when every member's does
-([internals](internals.md#fade)):
+off at 0.4 %, which every Hue bulb's does, and to a group only when every member's does. DeviceSide sends the level
+directly, with the command Flash-free turn-on uses, to the lights below that hold it lit ([internals](internals.md#fade)):
 
-- **Hue and Aqara bulbs, and groups of them alone:** a lower sends 0.4 % directly, with the command Flash-free turn-on
-  uses. In a test it held a Hue bulb, and a Hue group's lit bulbs, at 0.4 %, and left a group's off bulb off; an Aqara
-  T2 bulb held 0.4 % lit the same way ([internals](internals.md#fade)).
-- **Standard lights stop at 0.8 %:** a lower to 0.8 % or below sends them 0.8 % directly, with the same command, so
-  they stay lit by the Zigbee standard, which holds a light at its own minimum; a group of them with Hue and Aqara bulbs
-  alone gets 0.8 % the same way. DeviceSide sends 0.8 % until a test shows one holds 0.4 % lit
-  ([internals](internals.md#fade)).
-- **Other lights not so flagged:** a lower to 0.4 % switches them off, since Zigbee2MQTT sends the lowest level with
-  its on/off command and DeviceSide sends the raw command to Hue, Aqara and standard lights alone
-  ([internals](internals.md#fade)).
-- **A group that mixes any of these with other lights** gets what Zigbee2MQTT sends: 0.8 % when every member's
-  definition is flagged. Otherwise the on/off command to 0.4 % switches the group's lit lights off, and lights its off
-  members.
-- **Other lights so flagged stop at 0.8 %:** some Innr, ADEO, IKEA, Gledopto and Aqara lights. Innr's are reported
-  to turn off at 0.4 %.
+| Lights | A lower to the lowest brightness |
+|---|---|
+| Hue and Aqara bulbs, and groups of them alone | 0.4 %, held lit, sent directly; a group's off bulbs stay off |
+| Standard lights, and groups of them with Hue and Aqara bulbs alone | 0.8 %, held lit, sent directly, as the Zigbee standard holds a light at its own minimum; until a test shows one holds 0.4 % lit |
+| Other lights flagged in their definition: some Innr, ADEO, IKEA, Gledopto and Aqara lights | 0.8 %, Zigbee2MQTT's own (Innr's are reported to turn off at 0.4 %) |
+| Other lights not so flagged | Off: Zigbee2MQTT sends the lowest level with its on/off command |
+| A group that mixes any of these with other lights | Zigbee2MQTT's: 0.8 % when every member's definition is flagged; otherwise its lit lights switch off and its off members light |
 
 ## Smooth color changes
 
@@ -374,8 +329,8 @@ off at 0.4 %, which every Hue bulb's does, and to a group only when every member
 
 `get_attributes` reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can be stale.
 A group returns one entry, averaged over the lights that are on, as Hue averages a room. Other brands' lights are read
-in Labs, without a timer ([other brands](#other-brands)); Tuya's datapoint devices' reads aren't built. Tuya's countdown plugs, which Turn on with timer runs on, are refused: their
-time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
+in Labs, without a timer ([other brands](#other-brands)); Tuya's datapoint devices' reads aren't built, and Tuya's
+countdown plugs are refused ([why](#tuya-ts011f-plugs)).
 
 ## Sharp edges
 
@@ -385,12 +340,11 @@ time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 - **A device named with a bare number** that matches a group's ID gets that group's commands.
 - **Devices with several lights or switches** (a two-gang switch, a dual-channel Gledopto, a two-gang relay) are
   refused (`not_addressable`) by every action, each of their lights or switches, the first too (a plug's own child
-  lock or LED switch is refused the same way, and the plug beside it works): DeviceSide's
-  command would reach only the device's default endpoint, maybe a gang the user didn't target
-  ([internals](internals.md#addressing)). Named, the call raises; by area, label or an HA group, the light is
-  skipped. A Zigbee2MQTT group holding one of its lights still runs as one group; when it falls back to its lights,
-  the device is skipped (`not_addressable`). Raise, lower, stop and set attributes refuse such a group
-  (`not_addressable`), as they plan from each light's state and can't see that one; get attributes reads the
-  group's other lights, and refuses a group with none.
+  lock or LED switch is refused the same way, and the plug beside it works): DeviceSide's command would reach only the
+  device's default endpoint, maybe a gang the user didn't target ([internals](internals.md#addressing)). Named, the
+  call raises; by area, label or an HA group, the light is skipped. A Zigbee2MQTT group holding one of its lights
+  still runs as one group; when it falls back to its lights, the device is skipped (`not_addressable`). Raise, lower,
+  stop and set attributes refuse such a group (`not_addressable`), as they plan from each light's state and can't see
+  that one; get attributes reads the group's other lights, and refuses a group with none.
 - **Large groups.** A call has 30 s for all its targets. Reading a large group on a slow mesh can run out, failing
   every target with `timeout`. Target the lights by area or label instead, which reads four at a time.
