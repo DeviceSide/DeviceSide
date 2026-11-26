@@ -199,7 +199,7 @@ leaves it to run at its time; a restart loses it. The light's entry in `soft_off
 before and after its OnOff read. A later brightness move replaces the entry (taken before its send, and put back if the
 send fails); `stop`, `set_attributes` when it sends a brightness (any `MoveToLevel`, not a color alone, which the
 restore doesn't touch) and a light call from HA drop it and cancel the job, the last through `MatterCallResolver`, the
-`ha_watch` resolver pattern of `zha/fade.py`. A saturation or hue move leaves it, as the level fade still ends off. Our
+`ha_watch` resolver pattern of `zha/fade.py`. A hue or saturation move leaves it, as the level fade still ends off. Our
 own commands go to the node, not through the light domain, so they pass the watch by.
 
 **The per-light lock.** `light_lock` is held by a brightness or saturation move from its read to its MoveTo

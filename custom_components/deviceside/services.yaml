@@ -240,6 +240,30 @@ lower_brightness:
           step: 0.2
           unit_of_measurement: "%"
 
+raise_hue:
+  target:
+    entity:
+      - domain: light
+        integration: matter
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: zha
+  fields:
+    sweep_time: *sweep_time
+
+lower_hue:
+  target:
+    entity:
+      - domain: light
+        integration: matter
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: zha
+  fields:
+    sweep_time: *sweep_time
+
 raise_saturation:
   target:
     entity:
@@ -279,30 +303,6 @@ lower_saturation:
       example: 30
       filter: *color_modes
       selector: *saturation
-
-raise_hue:
-  target:
-    entity:
-      - domain: light
-        integration: matter
-      - domain: light
-        integration: mqtt
-      - domain: light
-        integration: zha
-  fields:
-    sweep_time: *sweep_time
-
-lower_hue:
-  target:
-    entity:
-      - domain: light
-        integration: matter
-      - domain: light
-        integration: mqtt
-      - domain: light
-        integration: zha
-  fields:
-    sweep_time: *sweep_time
 
 stop:
   target:

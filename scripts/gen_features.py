@@ -61,6 +61,41 @@ ICONS = {"light": "light", "switch": "switch", "group": "native group", "scene":
 # name each action's feature by its row's card name.
 FEATURES = (
     (
+        "Smooth dimming",
+        "smooth-dimming",
+        "Smooth dimming",
+        "smooth dimming",
+        FEATURE_ACTIONS["smooth dimming"],
+    ),
+    (
+        "Smooth hue change",
+        "smooth-color-changes",
+        "Smooth color changes",
+        "smooth hue",
+        FEATURE_ACTIONS["smooth hue"],
+    ),
+    (
+        "Smooth saturation change",
+        "smooth-color-changes",
+        "Smooth color changes",
+        "smooth saturation",
+        FEATURE_ACTIONS["smooth saturation"],
+    ),
+    (
+        "Set brightness, color or CT<br>without turning on",
+        "set-brightness-color-temperature-or-color-without-turning-on",
+        "Flash-free turn-on",
+        "set attributes while off",
+        FEATURE_ACTIONS["set attributes while off"],
+    ),
+    (
+        "Set scene without turning on",
+        "set-scene-without-turning-on",
+        "Flash-free turn-on",
+        "set scene while off",
+        FEATURE_ACTIONS["set scene while off"],
+    ),
+    (
         "Turn on with timer",
         "turn-on-with-timer",
         "Turn on with timer",
@@ -80,41 +115,6 @@ FEATURES = (
         "Auto-off/on",
         "auto-off/on",
         FEATURE_ACTIONS["auto-off/on"],
-    ),
-    (
-        "Smooth dimming",
-        "smooth-dimming",
-        "Smooth dimming",
-        "smooth dimming",
-        FEATURE_ACTIONS["smooth dimming"],
-    ),
-    (
-        "Smooth saturation change",
-        "smooth-color-changes",
-        "Smooth color changes",
-        "smooth saturation",
-        FEATURE_ACTIONS["smooth saturation"],
-    ),
-    (
-        "Smooth hue change",
-        "smooth-color-changes",
-        "Smooth color changes",
-        "smooth hue",
-        FEATURE_ACTIONS["smooth hue"],
-    ),
-    (
-        "Set brightness, color or CT<br>without turning on",
-        "set-brightness-color-temperature-or-color-without-turning-on",
-        "Flash-free turn-on",
-        "set attributes while off",
-        FEATURE_ACTIONS["set attributes while off"],
-    ),
-    (
-        "Set scene without turning on",
-        "set-scene-without-turning-on",
-        "Flash-free turn-on",
-        "set scene while off",
-        FEATURE_ACTIONS["set scene while off"],
     ),
     ("Get attributes", "get-attributes", "Get attributes", "get attributes", FEATURE_ACTIONS["get attributes"]),
 )

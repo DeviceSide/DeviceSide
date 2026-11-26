@@ -44,7 +44,7 @@ outside that is clamped (`clamped_to`).
   (`unchanged`, `off`).
 - **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 65535 s, or 1 to 254 s on a light
   without enhanced hue; one outside that is clamped (`clamped_to`). A light that is off is `unchanged` (`off`).
-- A light without hue and saturation (its Color Control lacks the HS feature) keeps its color: saturation and hue
+- A light without hue and saturation (its Color Control lacks the HS feature) keeps its color: hue and saturation
   moves leave it `unchanged` (`fields_dropped`).
 - `stop` halts a color move too, and on a light with hue and saturation its read-back covers them.
 

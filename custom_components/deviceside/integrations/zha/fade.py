@@ -451,7 +451,7 @@ def run_on(
 
 async def color_capabilities(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> dict[str, int]:
     """Each light's ColorCapabilities for a hue or saturation move, by entity ID; none for brightness. Raises when one
-    isn't read. The dispatcher already dropped saturation and hue from lights without color."""
+    isn't read. The dispatcher already dropped hue and saturation from lights without color."""
     if request.attribute == BRIGHTNESS_FIELD:
         return {}
     reads = await asyncio.gather(*(zcl.color_capabilities(hass, address(light.entry.unique_id)) for light in lights))

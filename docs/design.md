@@ -107,7 +107,7 @@ device class: [device-compatibility.md](device-compatibility.md). Each adapter's
   `turn_on_for` takes the `light.turn_on` fields.
 - **`set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`**: a setting stored on the device, applied after
   every turn-on (or turn-off) from any source. A call that changes nothing sends nothing.
-- **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, saturation, hue) and direction, as HA names
+- **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, hue, saturation) and direction, as HA names
   its direction actions (`cover.open_cover`). `sweep_time` is how long a full range takes, `limit` ends the move
   early, and `stop` halts every move on the target. No color temperature move: every stop of a Hue fade jumps visibly.
 - **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read what
@@ -253,7 +253,7 @@ feature.
 - **Source.** It reads `dispatcher.judge`, the per-target decision a call makes (supports(), the class, the refusal,
   then the Labs gate), on each action of a feature with Labs off, never a copy of it, so a cell can't disagree with a
   call.
-- **Several actions.** A feature riding several actions takes its weakest; Smooth color is saturation and hue in one
+- **Several actions.** A feature riding several actions takes its weakest; Smooth color is hue and saturation in one
   column, the weaker of the two, a refused one counting as empty.
 - **Waiting.** An integration whose classes wait on a report (Z2M's bridge/devices) says so through
   `IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has.

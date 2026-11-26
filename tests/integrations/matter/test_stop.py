@@ -143,7 +143,7 @@ async def test_a_light_that_reads_off_after_the_stop_is_unchanged_with_off(hass)
 
 @pytest.mark.parametrize(
     ("path", "moves"),
-    [("1/8/0", "level"), ("1/768/1", "saturation"), ("1/768/0", "hue")],
+    [("1/8/0", "level"), ("1/768/0", "hue"), ("1/768/1", "saturation")],
 )
 async def test_a_light_whose_reads_differ_is_sent_with_still_fading(hass, path, moves):
     _, read_attr, node = light(hass)
