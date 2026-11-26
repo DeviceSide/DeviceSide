@@ -8,9 +8,9 @@ What a user sees is in [index.md](index.md) and isn't repeated here; what every 
 
 Through the core integration's RPC connection. The unique ID is `<mac>-<key>`; the key gives the RPC component:
 `switch:N` → `Switch` (a `switch`, or a `light` for a relay set to "light"), `light:N`, `cct:N`, `rgb:N`, `rgbw:N`
-and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Each adapter's level per component is in
-`integrations/shelly/addressing.py` (`CAPABILITIES`, `AUTO_CAPABILITIES`, `DIMMING_CAPABILITIES`), as the
-[evidence](../../device-compatibility.md#shelly) shows it. Any other key (virtual booleans, scripts) has no timer.
+and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Each adapter's components are in
+`integrations/shelly/addressing.py` (`CAPABILITIES`, `AUTO_CAPABILITIES`, `DIMMING_CAPABILITIES`); the
+[compatibility page](../../device-compatibility.md#shelly) shows them. Any other key (virtual booleans, scripts) has no timer.
 Gen1 (CoIoT) has no `toggle_after`.
 
 ## Modules
@@ -25,9 +25,8 @@ resolution). Light fields ride in the same call, translated as the core Shelly l
 takes `{rgb}` and `RGBW.Set` `{rgb, white}`, converted with `homeassistant.util.color` as core's Shelly light does
 (`light/helper.py` `process_turn_on_params`): `rgb` as given, `hs` and `xy` by `color_hs_to_RGB` and
 `color_xy_to_RGB`, a kelvin by `color_hs_to_RGB(*color_temperature_to_hs(k))` (unclamped), and on RGBW the white
-split by `color_rgb_to_rgbw`. No record covers these three calls, so they are in Labs for those classes alone
-(`addressing.COLOR_LABS`; #585): the dispatcher drops them
-while Labs is off.
+split by `color_rgb_to_rgbw`. No record covers these three calls, so `addressing.COLOR_LABS` marks them for those
+classes alone (#585) and the dispatcher drops them while the `labs` option is off.
 
 The read-back is `<Component>.GetStatus`; `confirmed` when the output matches and `timer_duration` equals the
 `toggle_after` sent, to 0.01 s. `timer_duration` is the timer's full duration, not the time left, so another
@@ -60,7 +59,7 @@ The docs for Light, CCT, RGB and RGBW `Set` match RGBCCT's field for field, but 
 
 ### `fade`
 
-Every dimming component takes the same calls (levels: `DIMMING_CAPABILITIES`). A move reads `GetStatus` first: the device reports its level exactly mid-fade (rig, 8 Nov), so no transition cache is kept and
+Every dimming component takes the same calls (`DIMMING_CAPABILITIES`). A move reads `GetStatus` first: the device reports its level exactly mid-fade (rig, 8 Nov), so no transition cache is kept and
 no call resolver is needed. Then one `<Component>.Set {on: true, brightness, transition_duration}` for the distance
 left at the `sweep_time`'s speed, at least 0.5 s (`TRANSITION_LIMITS`, the device's 0.5 to 10800 s); to 0 it is
 `{on: false, transition_duration}`, the device's soft off, which keeps the stored level (`brightness: 0` would

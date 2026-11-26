@@ -51,7 +51,7 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
             reason=COUNTDOWN_HARMED_REASON,
             source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         ),
-        # Tuya's recipe would serve it, parked (internals.md, "Tuya's recipe, parked"); today's tenths harm it (Tested
+        # Tuya's recipe would serve it, parked (docs/deferred.md, Tuya's recipe on ZHA); today's tenths harm it (Tested
         # behavior, the TS011F).
         TUYA_COUNTDOWN: NotBuilt(
             reason="ZHA's timer can turn it on long after the time asked and leave it on",

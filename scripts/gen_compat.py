@@ -70,9 +70,8 @@ tested it), `Card.refused`, `Card.broken` (a refused class's Not supported row),
 the same unfolded lines, with their 🔴 parts and models.
 
 **The fold** (docs/evidence.md, The Labs flag). A card's top-level lines that show only ⚪ (a 🔴 beside it is
-dropped, as on every card line) fold, when there are two or more, into one last line, "⚪ [class] (features);
-[class], [class] (features)": classes with the same features share a parenthesis, and a variants parent's children
-never fold.
+dropped, as on every card line) fold, when there are two or more and some other line isn't, into one last line,
+"⚪ Labs:", with a sub-line per class line in card order, "[class]: features"; a variants parent's children never fold.
 
 **The page.** The block between the evidence markers of docs/device-compatibility.md, in three parts; every device fact
 in it comes from the model above, so one change in code, devices.yaml, models.yaml or a record moves the README and the
@@ -155,7 +154,7 @@ sys.path.insert(0, str(REPO))
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
-from custom_components.deviceside.coverage import legend_entries  # noqa: E402
+from custom_components.deviceside.coverage import LEGEND, Mark, legend_entries  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     MANUAL,
     adapters,
@@ -199,6 +198,8 @@ OUTCOMES = (
     (REFUSED, "🔴"),
 )
 LABS = next(icon for key, icon in OUTCOMES if key == "labs")
+# The fold's parent line names the level as the legend does.
+LABS_NAME = next(name for mark, name, _ in LEGEND if mark is Mark.LABS)
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.LABS: "labs"}
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
@@ -1260,26 +1261,20 @@ class Line:
 
 
 def fold(lines: list[Line], card: Card, key: str, data: Data) -> tuple[list[Line], str | None]:
-    """Two or more top-level lines that are in Labs (`Line.in_labs`) leave `lines` for one folded line:
-    "⚪ [a] (x, y); [b], [c] (z)", as the README shows it (no 🔴, no ✔, no models). Lines with the same features share a
-    parenthesis, and a group sits where its last line does, so one holding an "other brands" line comes last.
-    A variants parent's children, and a single such line, stay where they are."""
-    labs_only = [line for line in lines if line.in_labs() and not line.variant]
-    if len(labs_only) < 2:
+    """Two or more top-level lines that are in Labs (`Line.in_labs`) leave `lines` for one last "⚪ Labs" line, each a
+    sub-line in card order, "[a]: x, y", as the README shows it (no 🔴, no ✔, no models): the parent's ⚪ marks them
+    all. On a card whose every top-level line is in Labs, nothing folds, as a parent would set nothing apart. A variants
+    parent's children, and a single such line, stay where they are."""
+    top = [line for line in lines if not line.variant]
+    labs_only = [line for line in top if line.in_labs()]
+    if len(labs_only) < 2 or len(labs_only) == len(top):
         return lines, None
-    groups: dict[Shape, list[str]] = {}
-    for line in labs_only:
-        groups.setdefault(line.claims, []).append(line.name(card, key, data, set(), readme=True))
-    # A group sits where its last line does, so a group with an "other brands" line comes last, as on the card.
-    last = {
-        found: max(i for i, line in enumerate(lines) if line.claims == found and line in labs_only) for found in groups
-    }
-    parts = []
-    for found in sorted(groups, key=last.get):
-        names = groups[found]
-        inside = ", ".join(label for _, labels in found for label in labels)  # only ⚪ is left
-        parts.append(f"{', '.join(names)} ({inside})")
-    return [line for line in lines if line not in labs_only], f"{LABS} {'; '.join(parts)}"
+    children = "".join(
+        f"\n  - {line.name(card, key, data, set(), readme=True)}: "
+        + ", ".join(label for _, labels in line.claims for label in labels)  # only ⚪ is left
+        for line in labs_only
+    )
+    return [line for line in lines if line not in labs_only], f"{LABS} {LABS_NAME}:{children}"
 
 
 def class_lines(

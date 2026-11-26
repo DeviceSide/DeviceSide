@@ -90,7 +90,7 @@ vendor and product IDs give it, as a plug does, and inherits that class's featur
 feature, as [above](#matter). Smooth dimming, smooth color changes and set without turning on are admitted by
 research, not a run, and no Matter light is on the rig yet: certification tests the fade, move and stop commands on a
 light that is on, and, since Matter 1.0, the set-while-off command on a light that is off for brightness and xy color
-([research](research/2026-11-24-level-color.md), Q1). A device report is how they move up.
+([research](research/2026-11-24-level-color.md), Q1). A [device report](../../../CONTRIBUTING.md#how-to-help) is how they move up.
 
 ### Multi-endpoint devices
 

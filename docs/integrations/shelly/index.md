@@ -42,7 +42,7 @@ Shelly doesn't document it for any component, and one user reports a Gen3 Dimmer
 ([Shelly forum](https://community.shelly.cloud/topic/2959-rd-please-fix-the-internal-dimming-speeds/)). If you try
 it, please report whether stop halts the fade where it is: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
-result or bug. One report per component settles it.
+result or bug (the form for any report on this page). One report per component settles it.
 
 ### LED controllers
 
@@ -51,9 +51,7 @@ dimmer's, field for field ([research](research/2026-11-17-set-on-sibling-compone
 calls with brightness. An RGB controller is sent `rgb`, an RGBW controller `rgb` and `white` (Home Assistant's own
 color conversions, as core's Shelly light sends them, with any other color or a color temperature converted to
 those), and a CCT controller is sent its color temperature. Nobody has yet run these calls on a device. If you have
-one, please report whether the color or color temperature lands: Integrations >
-[DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
-result or bug. Smooth dimming and stop are as on [dimmers](#dimmers).
+one, please report whether the color or color temperature lands, as for dimmers. Smooth dimming and stop are as on [dimmers](#dimmers).
 
 ## Turn on with timer
 

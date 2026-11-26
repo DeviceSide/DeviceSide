@@ -21,8 +21,8 @@ survive it going offline, which is the point of auto-off.
 
 ## Device classes
 
-DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets. Lights of
-other brands can answer it differently, so DeviceSide tells them apart by the manufacturer and model the bridge reports
+DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets
+([source walk](research/2026-11-26-class-admission-code-walk.md)). Lights of other brands can answer it differently, so DeviceSide tells them apart by the manufacturer and model the bridge reports
 for each light.
 
 - A **scene** counts as its lights: one with a light of another brand counts as that brand's, or as other brands'
@@ -47,7 +47,9 @@ and color at a time, some come on when written while off, and some don't report 
 ([Gledopto](#gledopto) is known). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
 with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model, or its maker, a class of its
 own and refuses it the action it fails (`not_built`, or `no_known_method` with why, where no command is known to
-work), and every other light keeps it.
+work), and every other light keeps it. Müller Licht and Livarno (Lidl) lights were each reported with the Gledopto
+misread once, with no manufacturer string to key on, so they keep `get_attributes` until a report gives one
+([internals](internals.md#device-classes)).
 
 ### Gledopto
 

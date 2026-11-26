@@ -6,6 +6,17 @@ once the restore is confirmed. `replay` pays what is left owed on an instance, e
 says online (entry setup hooks it to each base topic's bridge cache): at startup, and again after a Z2M that was
 offline comes back.
 
+An entry holds the user's value owed, by device or group, from just before the set's request goes out until Z2M
+confirms it written back. An earlier entry is never replaced: it holds the user's own value, where a later set may
+start from a flipped one. A set Z2M refused strikes its entry. Every write-back writes the owed value, not the opposite
+of the action's need, and an action on an address with a value still owed writes it back after its own publish even
+when its need already matched. The replay, under the same per-address lock the actions take, writes an entry's value
+only if the option still holds the flipped one (one the user set back in Z2M's UI is left), and strikes it once Z2M
+has it; an entry an action paid while the replay waited for its lock is skipped. One replay runs at a time, and an
+online that arrives during it runs it once more after, since its failures may date from Z2M going down. An entry that
+fails again stays owed, for the next online, the next start or the next action on the address. A malformed entry on
+disk is dropped with a warning; the rest replay. HA storage key: `deviceside.zigbee2mqtt_restore_journal`.
+
 Each entry is keyed by its full Address, base topic included, as two instances can both have group 7. Store version 1
 keyed by kind and ID alone, when only the default base topic was addressable, so its entries move under that base.
 Known limit, on a renamed base topic: docs/integrations/zigbee2mqtt/internals.md#addressing.
