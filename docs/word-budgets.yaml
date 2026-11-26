@@ -1,0 +1,29 @@
+# Word budget per living doc (scripts/check_docs.py), in whitespace-separated words outside generated blocks: the size
+# when the docs were pared plus 10%, rounded up; Control4's pair is its size then, with no headroom. A new living doc
+# adds a line. A raise is a reviewed line in a PR that a repo maintainer approves, and says in its body what the doc
+# gained.
+CONTRIBUTING.md: 3518
+docs/action-behavior.md: 2137
+docs/defects.md: 251
+docs/deferred.md: 2414
+docs/design.md: 3309
+docs/evidence.md: 5328
+docs/examples/set-turn-on-brightness.md: 187
+docs/icons/README.md: 75
+docs/integrations/control4/index.md: 681
+docs/integrations/control4/internals.md: 3894
+docs/integrations/hue/index.md: 1140
+docs/integrations/hue/internals.md: 2451
+docs/integrations/matter/index.md: 1322
+docs/integrations/matter/internals.md: 3176
+docs/integrations/shelly/index.md: 1256
+docs/integrations/shelly/internals.md: 869
+docs/integrations/zha/index.md: 1096
+docs/integrations/zha/internals.md: 2348
+docs/integrations/zigbee.md: 777
+docs/integrations/zigbee2mqtt/index.md: 3805
+docs/integrations/zigbee2mqtt/internals.md: 6461
+docs/integrations.md: 829
+docs/internals.md: 659
+docs/logging.md: 722
+docs/repo-maintainers.md: 697
