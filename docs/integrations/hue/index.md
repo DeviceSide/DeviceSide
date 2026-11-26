@@ -22,8 +22,8 @@ survive it going offline, which is the point of auto-off.
 ## Device classes
 
 DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets
-([source walk](research/2026-11-26-class-admission-code-walk.md)). Lights of other brands can answer it differently, so DeviceSide tells them apart by the manufacturer and model the bridge reports
-for each light.
+([source walk](research/2026-11-26-class-admission-code-walk.md)). Lights of other brands can answer it differently, so
+DeviceSide tells them apart by the manufacturer and model the bridge reports for each light.
 
 - A **scene** counts as its lights: one with a light of another brand counts as that brand's, or as other brands'
   when it holds lights of two such classes.
@@ -37,17 +37,16 @@ Signify's own lights (manufacturer `Signify Netherlands B.V.`), which the bridge
 
 ### Other brands
 
-Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get
-every feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same CLIP v2 light update a Hue light
-gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and none of
-these features harms when it fails ([internals](internals.md#device-classes)).
+Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get every
+feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same CLIP v2 light update a Hue
+light gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and none
+of these features harms when it fails ([internals](internals.md#device-classes)).
 
-Some brands answer some Zigbee commands differently
-([known departures](internals.md#device-classes)). If one of yours misbehaves,
-[report it](../../../CONTRIBUTING.md#how-to-help) with its manufacturer and model (on its device page in Home
-Assistant): DeviceSide then gives that model, or its maker, a class of its own, refused the action it fails; every other light keeps it. Müller
-Licht and Livarno (Lidl) lights, each reported once with [Gledopto's](#gledopto) misread, keep `get_attributes` until
-a report gives a manufacturer string to key on.
+Some brands answer some Zigbee commands differently ([known departures](internals.md#device-classes)). If one of yours
+misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help) with its manufacturer and model (on its device page in
+Home Assistant): DeviceSide then gives that model, or its maker, a class of its own, refused the action it fails; every
+other light keeps it. Müller Licht and Livarno (Lidl) lights, each reported once with [Gledopto's](#gledopto) misread,
+keep `get_attributes` until a report gives a manufacturer string to key on.
 
 ### Gledopto
 

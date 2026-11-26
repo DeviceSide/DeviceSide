@@ -37,8 +37,8 @@ else's code"). This skill reads the report and amends it; it never edits code.
    `route-issue.yml` does:
    `gh label create <label> --color c5def5 --description "Routed to the integration's maintainers" --force`.
 5. **In an RC** (the report is `docs/audits/<rc>.md`): for each owner group with a Critical or High whose choice no
-   earlier pass's prose records, ask the runner once, naming the `package`, the handles and the finding ids. The choices, which the runner may vary for any one
-   finding; never pick one yourself:
+   earlier pass's prose records, ask the runner once, naming the `package`, the handles and the finding ids. The
+   choices, which the runner may vary for any one finding; never pick one yourself:
    - **the owner fixes it:** that choice is the runner's word to file its issue (step 4); the status stays `open`,
      and the RC waits;
    - **the runner fixes it:** no issue for it; the fix PR names the owner; the runner decides on 🔧 Untested fix

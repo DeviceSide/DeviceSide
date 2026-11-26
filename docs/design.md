@@ -26,8 +26,8 @@ Code and docs use these terms. Each one's rules live where its link points.
   (`custom_components/deviceside/zigbee/<family>.py`), and generated device tables any Zigbee integration may read
   (`zigbee/standard_lights.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
-  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); when a
-  device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
+  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); when a device
+  counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
 - **Not supported**: DeviceSide can't do this action for the target (`target_not_supported`,
   `integration_not_supported`); for a class, either no known method or not built yet.
 - **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. Rules:
@@ -40,9 +40,9 @@ Code and docs use these terms. Each one's rules live where its link points.
   refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
 - **Level**: how a scope item is proven: Verified, Documented or Labs. Rules: [evidence.md](evidence.md#levels).
   User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) that no pass or Documented route admits yet,
-  or that a maintainer holds back; also the option (`labs`, off by default) that lets calls touching a flagged item through. Only the
-  dispatcher reads the option. Rules: [evidence.md](evidence.md#the-labs-flag).
+- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) that no pass or Documented route admits yet, or
+  that a maintainer holds back; also the option (`labs`, off by default) that lets calls touching a flagged item
+  through. Only the dispatcher reads the option. Rules: [evidence.md](evidence.md#the-labs-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
   `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
   [device-compatibility.md](device-compatibility.md#levels-of-proof).
@@ -98,10 +98,10 @@ built:
 
 ## Scope
 
-Which integrations have which actions: the feature table on docs/device-compatibility.md (`scripts/gen_features.py`); each integration's page:
-[integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`,
-explained to users in [integrations.md](integrations.md#what-cant-be-done-and-why). Per device class:
-[device-compatibility.md](device-compatibility.md). Each adapter's `AdapterScope` says what it covers.
+Which integrations have which actions: the feature table on docs/device-compatibility.md (`scripts/gen_features.py`);
+each integration's page: [integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in
+`scripts/gen_features.py`, explained to users in [integrations.md](integrations.md#what-cant-be-done-and-why). Per
+device class: [device-compatibility.md](device-compatibility.md). Each adapter's `AdapterScope` says what it covers.
 
 - **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
   `turn_on_for` takes the `light.turn_on` fields.
@@ -110,8 +110,9 @@ explained to users in [integrations.md](integrations.md#what-cant-be-done-and-wh
 - **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, saturation, hue) and direction, as HA names
   its direction actions (`cover.open_cover`). `sweep_time` is how long a full range takes, `limit` ends the move
   early, and `stop` halts every move on the target. No color temperature move: every stop of a Hue fade jumps visibly.
-- **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read
-  what HA doesn't show: the device's actual values (mid-move, where the move has reached), never a cached last write. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
+- **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read what
+  HA doesn't show: the device's actual values (mid-move, where the move has reached), never a cached last write. Every
+  timed or set-while-off adapter needs a matching `get_attributes` on its integration.
 - **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
   Zigbee would follow the same pattern.
 
@@ -234,13 +235,20 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 
 ### Coverage view
 
-The Settings form in Configure (`coverage.py`) shows, above the options, a row per light and switch entity, one cell per feature.
+The Settings form in Configure (`coverage.py`) shows, above the options, a row per light and switch entity, one cell per
+feature.
 
-- **A cell** says the feature runs now (Verified, Documented) or needs Labs; a refused feature is an empty cell, as a blank is unsupported, and an entity with no cell has no row.
-- **Source.** It reads `dispatcher.judge`, the per-target decision a call makes (supports(), the class, the refusal, then the Labs gate), on each action of a feature with Labs off, never a copy of it, so a cell can't disagree with a call.
-- **Several actions.** A feature riding several actions takes its weakest; Smooth color is saturation and hue in one column, the weaker of the two, a refused one counting as empty.
-- **Waiting.** An integration whose classes wait on a report (Z2M's bridge/devices) says so through `IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has.
-- **Features.** The features and their actions are `features.py`'s, which the README's cards read too; the integrations' order is `registry.CARD_ORDER`, a copy of the bundles' `column_order` that `tests/test_card_order.py` keeps equal.
+- **A cell** says the feature runs now (Verified, Documented) or needs Labs; a refused feature is an empty cell, as a
+  blank is unsupported, and an entity with no cell has no row.
+- **Source.** It reads `dispatcher.judge`, the per-target decision a call makes (supports(), the class, the refusal,
+  then the Labs gate), on each action of a feature with Labs off, never a copy of it, so a cell can't disagree with a
+  call.
+- **Several actions.** A feature riding several actions takes its weakest; Smooth color is saturation and hue in one
+  column, the weaker of the two, a refused one counting as empty.
+- **Waiting.** An integration whose classes wait on a report (Z2M's bridge/devices) says so through
+  `IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has.
+- **Features.** The features and their actions are `features.py`'s, which the README's cards read too; the integrations'
+  order is `registry.CARD_ORDER`, a copy of the bundles' `column_order` that `tests/test_card_order.py` keeps equal.
 
 ## Release gates
 

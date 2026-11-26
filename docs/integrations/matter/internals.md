@@ -22,53 +22,59 @@ server there (no CurrentLevel, `<endpoint>/8/0`, in the node cache) is refused `
 ## What decides the call
 
 Read 2026-11-14, for the device classes. Sources, each at the commit its link pins: Home Assistant core's
-[`matter`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter) (which pins matter-python-client 1.5.5),
-[connectedhomeip](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6) and [matter.js](https://github.com/matter-js/matter.js/commit/06cd7eaad5b868f3e81ac299d8d3d240e8fcd19b).
+[`matter`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter)
+(which pins matter-python-client 1.5.5),
+[connectedhomeip](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6) and
+[matter.js](https://github.com/matter-js/matter.js/commit/06cd7eaad5b868f3e81ac299d8d3d240e8fcd19b).
 
 - **Nobody routes the call.** Home Assistant's `matter` integration never sends `OnWithTimedOff`: its switches and
-  lights send only `On` and `Off` ([`switch.py`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter/switch.py), [`light.py`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter/light.py)). DeviceSide sends the
-  command through the client to the endpoint as it is, so neither HA nor the Matter server picks the call. The
-  endpoint's own On/Off server decides the outcome: the device's firmware or, on a bridge, the bridge's software,
-  which runs the timer or passes it on.
-- **The device type** decides only the HA domain (On/Off Plug-in Unit is a `switch`, the light types a `light`), not
-  the call: every lighting and plug-in device type requires the Lighting feature (`data_model/1.4/device_types/`,
-  e.g. [`OnOffPlug-inUnit.xml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/data_model/1.4/device_types/OnOffPlug-inUnit.xml)).
+  lights send only `On` and `Off`
+  ([`switch.py`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter/switch.py),
+  [`light.py`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter/light.py)).
+  DeviceSide sends the command through the client to the endpoint as it is, so neither HA nor the Matter server picks
+  the call. The endpoint's own On/Off server decides the outcome: the device's firmware or, on a bridge, the bridge's
+  software, which runs the timer or passes it on.
+- **The device type** decides only the HA domain (On/Off Plug-in Unit is a `switch`, the light types a `light`), not the
+  call: every lighting and plug-in device type requires the Lighting feature (`data_model/1.4/device_types/`, e.g.
+  [`OnOffPlug-inUnit.xml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/data_model/1.4/device_types/OnOffPlug-inUnit.xml)).
 - **The Lighting feature** (On/Off FeatureMap bit 0) makes `OnWithTimedOff`, `OnTime` and `OffWaitTime` mandatory
-  ([`OnOff.xml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/data_model/1.4/clusters/OnOff.xml)). It is the precondition `no_lt_feature` checks
-  (Addressing), not a class: a device without it refuses the command, so it can't be harmed. A device's
-  AcceptedCommandList (`<endpoint>/6/65529`, e.g. `[0, 1, 2, 64, 65, 66]`) lists `66` with it; nothing reads it, as
-  the feature already says so.
-- **Certification** tests the command and the reads on every device with the feature: TC-OO-2.3 (PICS `OO.S.F00`)
-  sends `OnWithTimedOff` 15 times, reads OnTime and OnOff after each, on one configured endpoint (`endpoint: 1`), and checks that the device turns off when OnTime runs out (step 24c reads OnOff false
-  after 40 s), always with OffWaitTime 300, never 0
-  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)). The same steps, reads and
-  values are in the Matter 1.0 test
+  ([`OnOff.xml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/data_model/1.4/clusters/OnOff.xml)).
+  It is the precondition `no_lt_feature` checks (Addressing), not a class: a device without it refuses the command, so
+  it can't be harmed. A device's AcceptedCommandList (`<endpoint>/6/65529`, e.g. `[0, 1, 2, 64, 65, 66]`) lists `66`
+  with it; nothing reads it, as the feature already says so.
+- **Certification** tests the command and the reads on every device with the feature: TC-OO-2.3 (PICS `OO.S.F00`) sends
+  `OnWithTimedOff` 15 times, reads OnTime and OnOff after each, on one configured endpoint (`endpoint: 1`), and checks
+  that the device turns off when OnTime runs out (step 24c reads OnOff false after 40 s), always with OffWaitTime 300,
+  never 0
+  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)).
+  The same steps, reads and values are in the Matter 1.0 test
   ([`v1.0.0`](https://github.com/project-chip/connectedhomeip/blob/561d23d0db215a99705ff0696e73853c8edf11b2/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)),
-  so every certified Lighting device passed them. PICS are per endpoint, but nothing found says a lab runs the test
-  on every On/Off endpoint of a device: the question is open upstream
+  so every certified Lighting device passed them. PICS are per endpoint, but nothing found says a lab runs the test on
+  every On/Off endpoint of a device: the question is open upstream
   ([esp-matter #1921](https://github.com/espressif/esp-matter/issues/1921)). So the basis covers a device with one
-  On/Off endpoint, and one with more is `multi_endpoint`. So certification
-  covers DeviceSide's reads of OnTime and OnOff, which carry no field values, but not its command, whose OffWaitTime
-  is 1 (docs/evidence.md, Levels). In the reference server OffWaitTime branches only as zero or not
-  (`HandleOnWithTimedOff`), so 1 likely acts as 300 does, but that is inference, not a test. It clears OffWaitTime when
-  OnTime runs out (`TimerFired`), so a non-zero one acts only after an Off mid-timer: the endpoint ignores another
-  `OnWithTimedOff` for that long
+  On/Off endpoint, and one with more is `multi_endpoint`. So certification covers DeviceSide's reads of OnTime and
+  OnOff, which carry no field values, but not its command, whose OffWaitTime is 1 (docs/evidence.md, Levels). In the
+  reference server OffWaitTime branches only as zero or not (`HandleOnWithTimedOff`), so 1 likely acts as 300 does, but
+  that is inference, not a test. It clears OffWaitTime when OnTime runs out (`TimerFired`), so a non-zero one acts only
+  after an Off mid-timer: the endpoint ignores another `OnWithTimedOff` for that long
   ([`OnOffLightingCluster.cpp`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/clusters/on-off-server/OnOffLightingCluster.cpp)).
 - **A reboot drops a running timer** on any device: the reference server persists OnOff and StartUpOnOff, not OnTime
   (same file, constructor), so a device that restores its last state after a power cut comes back on with no timer.
-- **A test VendorID** (0xFFF1 to 0xFFF4, [`CHIPVendorIdentifiers.hpp`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/lib/core/CHIPVendorIdentifiers.hpp),
-  `IsTestVendorId`) is what no certified product carries; development kits and software that shares devices on
-  Matter report one by default (HA's own test fixtures: Nordic, Silabs and Nabu Casa sample nodes,
+- **A test VendorID** (0xFFF1 to 0xFFF4,
+  [`CHIPVendorIdentifiers.hpp`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/lib/core/CHIPVendorIdentifiers.hpp),
+  `IsTestVendorId`) is what no certified product carries; development kits and software that shares devices on Matter
+  report one by default (HA's own test fixtures: Nordic, Silabs and Nabu Casa sample nodes,
   `tests/components/matter/fixtures/nodes/`). A real VendorID doesn't prove certification: a member can ship an
   uncertified product, or an app can be set to report one. That is what slips past `other`'s marker.
 - **What HA exposes.** The device registry holds Basic Information's `vendorName` as manufacturer, `productLabel` or
   `productName` as model, `productID` as `model_id` (none on a bridged device), and the version strings
-  ([`adapter.py`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter/adapter.py), `_create_device_registry`), but not the VendorID, the device types or the
-  clusters. Those are in the client's node cache, `node.node_data.attributes`, keyed `"<endpoint>/<cluster>/<attribute>"`:
-  VendorID `0/40/2`, ProductID `0/40/4`, each endpoint's DeviceTypeList `<endpoint>/29/0` (structs keyed by field id,
-  `[{"0": 266, "1": 1}]`) and FeatureMap `<endpoint>/6/65532`. A bridge has an endpoint whose DeviceTypeList holds
-  the Aggregator (0x000E), and its bridged endpoints the Bridged Node (0x0013), as the client reads them
-  (`matter_server/client/models/node.py`, `is_bridged_device`).
+  ([`adapter.py`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter/adapter.py),
+  `_create_device_registry`), but not the VendorID, the device types or the clusters. Those are in the client's node
+  cache, `node.node_data.attributes`, keyed `"<endpoint>/<cluster>/<attribute>"`: VendorID `0/40/2`, ProductID `0/40/4`,
+  each endpoint's DeviceTypeList `<endpoint>/29/0` (structs keyed by field id, `[{"0": 266, "1": 1}]`) and FeatureMap
+  `<endpoint>/6/65532`. A bridge has an endpoint whose DeviceTypeList holds the Aggregator (0x000E), and its bridged
+  endpoints the Bridged Node (0x0013), as the client reads them (`matter_server/client/models/node.py`,
+  `is_bridged_device`).
 
 The classes those facts give, and their order: the `classes.py` docstring.
 
@@ -83,9 +89,9 @@ reads of `OnOff.OnTime` and `OnOff.OnOff`, one path per `read_attribute`: `confi
 is at most the time sent and no more than 3 s under it, as on ZHA. OnTime alone is not proof: a device can hold a
 stale OnTime while off.
 
-OffWaitTime is 1 (0.1 s), not 0, since 2026-11-14: matter.js before v0.17.2 never turns off on
-OffWaitTime 0 (Upstream defects), and a non-zero value is the branch certification exercises (What decides the call). The
-2026-10-28 and 2026-11-11 records ran OffWaitTime 0; the 2026-11-16 one, the WiZ Smart Plug's record, ran 1.
+OffWaitTime is 1 (0.1 s), not 0, since 2026-11-14: matter.js before v0.17.2 never turns off on OffWaitTime 0 (Upstream
+defects), and a non-zero value is the branch certification exercises (What decides the call). The 2026-10-28 and
+2026-11-11 records ran OffWaitTime 0; the 2026-11-16 one, the WiZ Smart Plug's record, ran 1.
 
 ### `get_attributes`
 
@@ -105,14 +111,14 @@ never `MoveToLevelWithOnOff`, which turns the light on; color temperature `Color
 CurrentLevel (`<ep>/8/0`) live; a light already within them gets nothing (`unchanged`, `within_limits`), and a
 read that fails rejects the light, as nothing was sent yet.
 
-Then, after `WRITE_FADE_WAIT_S` (0.6 s, past the 0.4 s fade, so a mid-fade value isn't read), a live `read_attribute` of each
-attribute the commands set (paths in the table below). Each must read within one step of the value sent, as a light
+Then, after `WRITE_FADE_WAIT_S` (0.6 s, past the 0.4 s fade, so a mid-fade value isn't read), a live `read_attribute` of
+each attribute the commands set (paths in the table below). Each must read within one step of the value sent, as a light
 rounds to its own resolution: `confirmed`, else `sent` (`attributes_not_reported`), with the values sent and read logged
-at DEBUG. A read that raises is `sent` (`readback_failed`). OnLevel is read only when a brightness went to a light HA shows
-off, since it decides only the level the next On comes up at: non-null is `sent` (`on_level_set`) whatever the rest reads.
-By the spec, and in the reference server's `emberAfOnOffClusterLevelControlEffectCallback`, an On goes to OnLevel when it is
-non-null, else to CurrentLevel ([research](research/2026-11-24-level-color.md), Q2). DeviceSide never writes OnLevel: it is
-the user's device setting.
+at DEBUG. A read that raises is `sent` (`readback_failed`). OnLevel is read only when a brightness went to a light HA
+shows off, since it decides only the level the next On comes up at: non-null is `sent` (`on_level_set`) whatever the
+rest reads. By the spec, and in the reference server's `emberAfOnOffClusterLevelControlEffectCallback`, an On goes to
+OnLevel when it is non-null, else to CurrentLevel ([research](research/2026-11-24-level-color.md), Q2). DeviceSide never
+writes OnLevel: it is the user's device setting.
 
 **Read-back paths**, all live reads (`<ep>` is the OnOff entity's endpoint):
 
@@ -126,9 +132,10 @@ the user's device setting.
 | CurrentHue, CurrentSaturation | `<ep>/768/0`, `<ep>/768/1` | `set_attributes` (after MoveToHueAndSaturation); `stop`, on a light with HS; `fade` reads CurrentSaturation |
 
 The call runs in two passes: every light's commands, each light in an integration slot (Matter takes the default
-`max_concurrency`, 4: no evidence a lower one is needed); then one `WRITE_FADE_WAIT_S` sleep outside every slot; then each light's read-back in a slot
-of its own. So the wait doesn't hold a slot, and a call to many lights costs one wait, as ZHA's refreshes run outside
-the slots (`zha/set_attributes.py`). A light the first pass rejected or left unchanged keeps that result.
+`max_concurrency`, 4: no evidence a lower one is needed); then one `WRITE_FADE_WAIT_S` sleep outside every slot; then
+each light's read-back in a slot of its own. So the wait doesn't hold a slot, and a call to many lights costs one wait,
+as ZHA's refreshes run outside the slots (`zha/set_attributes.py`). A light the first pass rejected or left unchanged
+keeps that result.
 
 Why it reads back: no Matter light has run on the rig, and the quirks below make a write a light
 accepted no proof it kept it. Dropping the read-back per class: `docs/deferred.md`.
@@ -144,8 +151,10 @@ Quirks:
 - **IKEA KAJPLATS stores the level but comes on at its old one.** Tested with MoveToLevel and ExecuteIfOff on two IKEA
   lamps: both took the write while off (CurrentLevel moved, the lamp stayed off), but on the next `On` the VARMBLIXT
   came up at the stored level and the KAJPLATS at its previous one, though both advertise the same Level Control
-  features ([home-assistant/core#174089 comment](https://github.com/home-assistant/core/pull/174089#issuecomment-4892555029);
-  research, Q6). Whether its OnLevel was set wasn't reported, so the cause is open; `on_level_set` would show it.  A report only, not a class of its own yet.
+  features
+  ([home-assistant/core#174089 comment](https://github.com/home-assistant/core/pull/174089#issuecomment-4892555029);
+  research, Q6). Whether its OnLevel was set wasn't reported, so the cause is open; `on_level_set` would show it. A
+  report only, not a class of its own yet.
 - **The override is certified for brightness and xy color only.** TC-LVL-3.1 (steps 5–6) and TC-CC-5.1 send
   MoveToLevel and MoveToColor to an off light with mask 1 / override 1 since Matter 1.0; no test does so for
   MoveToHueAndSaturation or MoveToColorTemperature (research, Q1). HA core's own `matter` light sends
@@ -185,18 +194,17 @@ remembers a position, and `heading_there` is always False.
   `fields_dropped`. The cycling lights are in `hue_moves`, which a stop and a light call from HA that sets a color
   or turns the light off clear.
 
-**The restore and its cancels.** The job is scheduled under `matter:restore:<entity_id>` with `must_run`, so an
-unload leaves it to run at its time; a restart loses it. The light's entry in `soft_off_restores` holds a token the
-job checks before and after its OnOff read. A later brightness move replaces the entry (taken before its send, and put
-back if the send fails); `stop`, `set_attributes` when it sends a brightness (any `MoveToLevel`, not a color alone, which the restore doesn't
-touch) and a light call from HA drop it and cancel the job, the last through
-`MatterCallResolver`, the `ha_watch` resolver pattern of `zha/fade.py`. A saturation or hue move leaves it, as the
-level fade still ends off. Our own commands go to the node, not through the light domain, so they
-pass the watch by.
+**The restore and its cancels.** The job is scheduled under `matter:restore:<entity_id>` with `must_run`, so an unload
+leaves it to run at its time; a restart loses it. The light's entry in `soft_off_restores` holds a token the job checks
+before and after its OnOff read. A later brightness move replaces the entry (taken before its send, and put back if the
+send fails); `stop`, `set_attributes` when it sends a brightness (any `MoveToLevel`, not a color alone, which the
+restore doesn't touch) and a light call from HA drop it and cancel the job, the last through `MatterCallResolver`, the
+`ha_watch` resolver pattern of `zha/fade.py`. A saturation or hue move leaves it, as the level fade still ends off. Our
+own commands go to the node, not through the light domain, so they pass the watch by.
 
 **The per-light lock.** `light_lock` is held by a brightness or saturation move from its read to its MoveTo
-(`LevelFade.guard`), by a hue move, by `stop`'s sends, by `set_attributes`' sends and by the restore job, so a stop that arrives mid-move goes out after
-the move's send rather than ahead of it, and the restore can't interleave with a move.
+(`LevelFade.guard`), by a hue move, by `stop`'s sends, by `set_attributes`' sends and by the restore job, so a stop that
+arrives mid-move goes out after the move's send rather than ahead of it, and the restore can't interleave with a move.
 
 ### `stop`
 
@@ -208,13 +216,14 @@ TC-CC-8.1 check that the value holds after the stop (research, Q1–Q2). The two
 stop doesn't overshoot by a read's round trip, and the stop drops the light's hue cycle. They hold the light's lock
 (`fade`).
 
-Then the read-back, which also decides what the stop did. A light that reads off on the first read is
-`unchanged` (`off`) and read no more: without ExecuteIfOff the server drops a Stop to an off light, and nothing fades on
-one. Its soft-off restore, if one is pending (a soft off that finished before the stop), still runs. A light that reads
-on has its restore cancelled, so a halted soft off stays on at the halt level, as on ZHA. The reads are OnOff and
-CurrentLevel, plus CurrentSaturation and CurrentHue on a light with HS, read live (the attributes of a pass together) twice, `READ_GAP_S` (0.2 s) apart, each pass in a slot of its own so the gap holds none.
-Equal reads are `confirmed`; unequal ones `sent` (`still_fading`), with both reads logged at DEBUG; a light that
-reads off on the second is `unchanged` (`off`); a read that raises is `sent` (`readback_failed`). The reference
+Then the read-back, which also decides what the stop did. A light that reads off on the first read is `unchanged`
+(`off`) and read no more: without ExecuteIfOff the server drops a Stop to an off light, and nothing fades on one. Its
+soft-off restore, if one is pending (a soft off that finished before the stop), still runs. A light that reads on has
+its restore cancelled, so a halted soft off stays on at the halt level, as on ZHA. The reads are OnOff and CurrentLevel,
+plus CurrentSaturation and CurrentHue on a light with HS, read live (the attributes of a pass together) twice,
+`READ_GAP_S` (0.2 s) apart, each pass in a slot of its own so the gap holds none. Equal reads are `confirmed`; unequal
+ones `sent` (`still_fading`), with both reads logged at DEBUG; a light that reads off on the second is `unchanged`
+(`off`); a read that raises is `sent` (`readback_failed`). The reference
 server steps CurrentLevel every T/|Δ| (research, Q2), so a fade slower than a step per 0.2 s, such as a long hue cycle,
 can read equal while it still moves. Dropping the reads per class: `docs/deferred.md`.
 
@@ -247,8 +256,8 @@ cites have been checked upstream: search each tracker for duplicates before fili
   call, so the fix is the call (docs/evidence.md, Contrary evidence).
 - **matter.js: a restart drops a running timer** (open), as a reboot does on any device (What decides the call). Its
   countdown is an in-memory timer that nothing rearms on restart, though OnTime persists, so the device stays on
-  ([indigo-matter #203](https://github.com/simons-plugins/indigo-matter/issues/203), reproduced 2026-08-31). An app restarts more often
-  than a device loses power.
+  ([indigo-matter #203](https://github.com/simons-plugins/indigo-matter/issues/203), reproduced 2026-08-31). An app
+  restarts more often than a device loses power.
 
 Not worth filing:
 

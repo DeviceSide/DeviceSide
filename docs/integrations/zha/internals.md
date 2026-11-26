@@ -47,14 +47,14 @@ Tuya's countdown plugs and switches would take Tuya's own recipe, which was buil
 [Tuya's recipe on ZHA](../../deferred.md#tuyas-recipe-on-zha).
 
 A group gets one `light.turn_on` and one group `OnWithTimedOff` when the lights the call reaches are every device
-endpoint in the group but the coordinator; per-member commands would start about 0.7 s apart across 8 lights.
-Otherwise each light gets its own: a groupcast reaches every member, so a plug in a light group, which has a switch
-entity and no light, or a member the call refused or flagged, would take the timer (zha's group light entity reaches
-only its lights; [`Group.members`](https://github.com/zigpy/zha/blob/0ea5e1adb01692b7014d6f77b8255787af899d36/zha/zigbee/group.py#L190-L197) drops a member ZHA doesn't know, which zigpy's
-group still holds, so a group with one isn't covered either). A group command gets no reply, so every member is still
-read back, and a slow member's read can come before it takes the group's `light.turn_on` or `OnWithTimedOff` (Tested
-behavior). So a member that reads `not_on` or no timer is read again every 0.5 s, up to 3 times, before it is reported
-`sent`.
+endpoint in the group but the coordinator; per-member commands would start about 0.7 s apart across 8 lights. Otherwise
+each light gets its own: a groupcast reaches every member, so a plug in a light group, which has a switch entity and no
+light, or a member the call refused or flagged, would take the timer (zha's group light entity reaches only its lights;
+[`Group.members`](https://github.com/zigpy/zha/blob/0ea5e1adb01692b7014d6f77b8255787af899d36/zha/zigbee/group.py#L190-L197)
+drops a member ZHA doesn't know, which zigpy's group still holds, so a group with one isn't covered either). A group
+command gets no reply, so every member is still read back, and a slow member's read can come before it takes the group's
+`light.turn_on` or `OnWithTimedOff` (Tested behavior). So a member that reads `not_on` or no timer is read again every
+0.5 s, up to 3 times, before it is reported `sent`.
 
 ### `set_attributes`
 
@@ -95,9 +95,9 @@ light reads on, as a TS011F counts OnTime down while off.
 - A hue move marks its lights as cycling before the send, so a cancel mid-send still leaves them to a later stop; the
   lights it failed for are unmarked after.
 
-A transition longer than ZCL carries is clamped, with `clamped_to` (`docs/internals.md`, Fades). The bulb reports brightness during a fade, never color, so
-DeviceSide calls `homeassistant.update_entity` 1 s after a fade should end and straight after a stop; raw commands
-leave ZHA's transition guard down, so the read is the bulb's.
+A transition longer than ZCL carries is clamped, with `clamped_to` (`docs/internals.md`, Fades). The bulb reports
+brightness during a fade, never color, so DeviceSide calls `homeassistant.update_entity` 1 s after a fade should end and
+straight after a stop; raw commands leave ZHA's transition guard down, so the read is the bulb's.
 
 The remembered position, a group's one command or per-member ones, and failures: `fade.py`'s docstring.
 
@@ -127,9 +127,9 @@ devices may differ.
   `on_time: 0`, or a 0.1 s timer each turned the bulb off within 0.3 s. Writing OnTime resets the time left (100
   with 15.6 s left: off 10 s later). With no timer running, writing 0 changes nothing.
 
-Writes while off: the LTA004, LWA012, LTA009 and LCA016 store `MoveToLevel` and `MoveToColorTemp` with `ExecuteIfOff`, at any delay
-0 to 2 s after a plain off, and drop them without it. A Sengled E11-G13 (firmware `0x00000009`) takes `MoveToLevel`
-while on, but while off, with the override or without, jumps CurrentLevel to 255 and comes on at full.
+Writes while off: the LTA004, LWA012, LTA009 and LCA016 store `MoveToLevel` and `MoveToColorTemp` with `ExecuteIfOff`,
+at any delay 0 to 2 s after a plain off, and drop them without it. A Sengled E11-G13 (firmware `0x00000009`) takes
+`MoveToLevel` while on, but while off, with the override or without, jumps CurrentLevel to 255 and comes on at full.
 
 Moves, on the LTA004: a Level `Stop` 3 s into a 6 s soft off from 200
 held at 100 with the bulb on, and Home Assistant showed 100 from the bulb's report. A 4 s fade read its end level by
@@ -149,9 +149,10 @@ the command (the Sengled, `UNSUP_CLUSTER_COMMAND` by unicast) misses it silently
 Device strings, 2026-11-14 on Home Assistant 2026.10.4. Probe:
 [lab-probe](../zigbee2mqtt/research/2026-11-14-lab-probe.md), §1.
 
-- **The registry holds the raw Zigbee strings** for these devices (none has a quirk friendly name: `classes`), manufacturer and model, with `model_id` empty: a TS011F plug is
-  `_TZ3000_typdpbpg` / `TS011F`, a Sengled `sengled` / `E11-G13`, Hue bulbs `Signify Netherlands B.V.` and their
-  model ID (`LTA009`). `sw_version` is the Zigbee firmware in hex.
+- **The registry holds the raw Zigbee strings** for these devices (none has a quirk friendly name: `classes`),
+  manufacturer and model, with `model_id` empty: a TS011F plug is `_TZ3000_typdpbpg` / `TS011F`, a Sengled `sengled` /
+  `E11-G13`, Hue bulbs `Signify Netherlands B.V.` and their model ID (`LTA009`). `sw_version` is the Zigbee firmware in
+  hex.
 - **Beyond it, readable through `zcl.gateway`:** the TS011F has quirk `zhaquirks.tuya.ts011f_plug:Plug` (no
   `quirk_id`), `manufacturer_code` 4417, and the Tuya clusters `0xe000` and `0xe001` on endpoint 1. The Sengled
   (4448) and the Hue bulbs (4107) have no quirk.

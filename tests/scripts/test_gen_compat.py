@@ -1186,6 +1186,7 @@ def test_a_feature_whose_actions_differ_in_status_names_its_parts():
 
 def test_no_card_line_names_a_feature_twice():
     block = gc.README.read_text().split(gc.CARDS[0])[1].split(gc.CARDS[1])[0]
+    block = re.sub(r"\n +(?=[^\s-])", " ", block)  # A wrapped line is one line.
     lines = [line for line in block.splitlines() if line.lstrip().startswith("- ") and ": " in line]
     assert lines
     icons = {icon for _, icon in gc.OUTCOMES}

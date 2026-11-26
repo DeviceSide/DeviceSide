@@ -33,9 +33,10 @@ Smooth dimming and stop rely on how it halts a fade: `DimStop` stops it where it
 
 ### Dimmers
 
-Gen2+ dimmers (the `Light` component). Shelly documents the `Light` component's timer, auto-off/on and status calls
-as it does the relay's and the bulb's ([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)),
-so a dimmer takes the same calls: get attributes reports its timer, auto-off, auto-on and brightness.
+Gen2+ dimmers (the `Light` component). Shelly documents the `Light` component's timer, auto-off/on and status calls as
+it does the relay's and the bulb's
+([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)), so a dimmer takes the same
+calls: get attributes reports its timer, auto-off, auto-on and brightness.
 
 Smooth dimming and stop rely on `DimStop` halting a fade without a jump, which only the multicolor bulb has shown:
 Shelly documents it for no component, and a Gen3 Dimmer is reported jumping to the end
