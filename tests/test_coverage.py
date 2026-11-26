@@ -31,7 +31,7 @@ from custom_components.deviceside.core.scope import (
     labs,
     verified,
 )
-from custom_components.deviceside.coverage import COLUMNS, Cell, Coverage, Mark, Row, SceneRow
+from custom_components.deviceside.coverage import COLUMNS, Cell, Coverage, Mark, Row
 
 from .conftest import allow_labs, call, refusal
 from .fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOffFor, FakeTurnOnFor
@@ -537,8 +537,8 @@ def ha_scene(hass, entity_id: str, states: dict[str, dict | None]) -> str:
 BRIGHT = {"brightness": 255}
 
 
-async def scene_of(hass, entity_id) -> SceneRow | None:
-    return next((scene for scene in (await coverage.collect(hass)).scenes if scene.entity_id == entity_id), None)
+async def marks(hass) -> list[Mark]:
+    return sorted((await coverage.collect(hass)).scenes, key=coverage._WEAKEST.index)
 
 
 @pytest.fixture
@@ -549,62 +549,44 @@ def lamps(hass, fake):
 
 
 @pytest.mark.usefixtures("classed", "lamps")
-async def test_a_scene_of_verified_lights_is_verified_with_no_notes(hass):
+async def test_a_scene_of_verified_lights_is_verified(hass):
     ha_scene(hass, "scene.evening", {"light.a_lamp": BRIGHT})
 
-    scene = await scene_of(hass, "scene.evening")
-
-    assert (scene.mark, scene.notes, scene.name) == (Mark.VERIFIED, "", "evening")
+    assert await marks(hass) == [Mark.VERIFIED]
     assert er.async_get(hass).async_get("scene.evening") is None  # a YAML scene with no id has no registry entry
 
 
 @pytest.mark.usefixtures("classed", "lamps")
 @pytest.mark.parametrize(
-    ("lights", "mark", "notes"),
+    ("lights", "mark"),
     [
-        pytest.param(("a", "b"), Mark.DOCUMENTED, "b lamp is Documented", id="documented"),
-        pytest.param(("a", "b", "c"), Mark.LABS, "c lamp is in Labs", id="labs, the weakest of three"),
-        pytest.param(("b", "c"), Mark.LABS, "c lamp is in Labs", id="labs under documented"),
-        pytest.param(("b",), Mark.DOCUMENTED, "", id="all alike has no note"),
-        pytest.param(("c",), Mark.LABS, "", id="all in Labs has no note"),
+        pytest.param(("a", "b"), Mark.DOCUMENTED, id="documented"),
+        pytest.param(("a", "b", "c"), Mark.LABS, id="labs, the weakest of three"),
+        pytest.param(("b", "c"), Mark.LABS, id="labs under documented"),
+        pytest.param(("b",), Mark.DOCUMENTED, id="all alike"),
     ],
 )
-async def test_the_mark_is_the_weakest_light_and_notes_name_it_when_marks_differ(hass, lights, mark, notes):
+async def test_the_mark_is_the_weakest_light(hass, lights, mark):
     ha_scene(hass, "scene.movie", {f"light.{letter}_lamp": BRIGHT for letter in lights})
 
-    scene = await scene_of(hass, "scene.movie")
-
-    assert (scene.mark, scene.notes) == (mark, notes)
-
-
-@pytest.mark.usefixtures("classed")
-async def test_on_a_tie_the_first_light_by_name_is_named(hass, fake):
-    for entity_id, name in (("b_zed", "b Zed"), ("b_able", "b Able"), ("a_lamp", "a lamp")):
-        add_fake_entity(hass, fake, f"light.{entity_id}", attributes={"friendly_name": name})
-    ha_scene(hass, "scene.movie", {"light.b_zed": BRIGHT, "light.b_able": BRIGHT, "light.a_lamp": BRIGHT})
-
-    assert (await scene_of(hass, "scene.movie")).notes == "b Able is Documented"
+    assert await marks(hass) == [mark]
 
 
 @pytest.mark.usefixtures("classed", "lamps")
-async def test_lights_a_call_would_skip_are_counted_not_marked(hass):
+async def test_lights_a_call_would_skip_lower_no_mark(hass):
     elsewhere = er.async_get(hass).async_get_or_create("light", "elsewhere", "x", suggested_object_id="elsewhere")
     ha_scene(
         hass,
         "scene.party",
         {"light.a_lamp": BRIGHT, "light.d_lamp": BRIGHT, "light.e_lamp": BRIGHT, elsewhere.entity_id: BRIGHT},
     )
-    ha_scene(hass, "scene.single", {"light.a_lamp": BRIGHT, "light.d_lamp": BRIGHT})
-
-    party, single = await scene_of(hass, "scene.party"), await scene_of(hass, "scene.single")
 
     # Refused, not built and unresolved lights lower no mark.
-    assert (party.mark, party.notes) == (Mark.VERIFIED, "3 lights not served")
-    assert (single.mark, single.notes) == (Mark.VERIFIED, "1 light not served")
+    assert await marks(hass) == [Mark.VERIFIED]
 
 
 @pytest.mark.usefixtures("classed", "lamps")
-async def test_a_light_with_a_missing_color_is_not_served(hass):
+async def test_a_light_with_a_missing_color_lowers_no_mark(hass):
     ha_scene(hass, "scene.color", {"light.a_lamp": BRIGHT})
     hass.data[SCENE_PLATFORM].entities["scene.color"].scene_config.states["light.b_lamp"] = State(
         "light.b_lamp",
@@ -612,18 +594,14 @@ async def test_a_light_with_a_missing_color_is_not_served(hass):
         {"brightness": 255, "color_mode": "hs"},  # names a color mode it holds no color for
     )
 
-    scene = await scene_of(hass, "scene.color")
-
-    assert (scene.mark, scene.notes) == (Mark.VERIFIED, "1 light not served")
+    assert await marks(hass) == [Mark.VERIFIED]
 
 
 @pytest.mark.usefixtures("classed", "lamps")
 async def test_lights_held_off_or_with_nothing_to_write_carry_no_mark(hass):
     ha_scene(hass, "scene.relax", {"light.a_lamp": BRIGHT, "light.b_lamp": None, "light.c_lamp": {}})
 
-    scene = await scene_of(hass, "scene.relax")
-
-    assert (scene.mark, scene.notes) == (Mark.VERIFIED, "")  # c is on with nothing to write, b is off
+    assert await marks(hass) == [Mark.VERIFIED]  # c is on with nothing to write, b is off
 
 
 @pytest.mark.usefixtures("classed", "lamps")
@@ -636,10 +614,10 @@ async def test_lights_held_off_or_with_nothing_to_write_carry_no_mark(hass):
         pytest.param({}, id="no lights"),
     ],
 )
-async def test_a_scene_with_no_light_served_has_no_row(hass, states):
+async def test_a_scene_with_no_light_served_has_no_mark(hass, states):
     ha_scene(hass, "scene.dark", states)
 
-    assert await scene_of(hass, "scene.dark") is None
+    assert await marks(hass) == []
 
 
 @pytest.mark.usefixtures("classed", "lamps")
@@ -647,9 +625,7 @@ async def test_an_ha_group_in_a_scene_is_judged_by_its_members(hass):
     add_ha_group(hass, "light.pair", ["light.a_lamp", "light.b_lamp"])
     ha_scene(hass, "scene.pair", {"light.pair": BRIGHT})
 
-    scene = await scene_of(hass, "scene.pair")
-
-    assert (scene.mark, scene.notes) == (Mark.DOCUMENTED, "b lamp is Documented")
+    assert await marks(hass) == [Mark.DOCUMENTED]
 
 
 @pytest.mark.usefixtures("classed", "lamps")
@@ -659,22 +635,16 @@ async def test_a_field_the_adapter_holds_in_labs_puts_the_scene_in_labs(hass):
     scope = replace(GATED, duration=None, fields=verified("brightness") | labs("hs_color"))
 
     with patch.object(FakeSetAttributes, "scope", scope):
-        assert (await scene_of(hass, "scene.glow")).mark is Mark.LABS
+        assert await marks(hass) == [Mark.LABS]
 
 
 @pytest.mark.usefixtures("bridge_scenes")
-async def test_a_bridge_scene_is_judged_on_its_set_scene_adapter_with_blank_notes(hass, fake):
+async def test_a_bridge_scene_is_judged_on_its_set_scene_adapter(hass, fake):
     for name in ("a_x", "b_x", "c_x", "d_x", "e_x", "pending_a"):
         add_fake_entity(hass, fake, f"scene.{name}", state="scening")
 
-    scenes = {scene.entity_id: scene for scene in (await coverage.collect(hass)).scenes}
-
-    # D is a smart scene (no known method), E is not built, and pending_a is still being placed: no row.
-    assert {entity_id: (scene.mark, scene.notes) for entity_id, scene in scenes.items()} == {
-        "scene.a_x": (Mark.VERIFIED, ""),
-        "scene.b_x": (Mark.DOCUMENTED, ""),
-        "scene.c_x": (Mark.LABS, ""),
-    }
+    # D is a smart scene (no known method), E is not built, and pending_a is still being placed: no mark.
+    assert await marks(hass) == [Mark.LABS, Mark.DOCUMENTED, Mark.VERIFIED]
 
 
 @pytest.mark.usefixtures("bridge_scenes", "lamps")
@@ -690,25 +660,7 @@ async def test_a_disabled_or_hidden_scene_entry_is_left_out(hass, fake):
     ha_scene(hass, "scene.ha_off", {"light.a_lamp": BRIGHT})
     ha_scene(hass, "scene.ha_on", {"light.a_lamp": BRIGHT})
 
-    assert [scene.entity_id for scene in (await coverage.collect(hass)).scenes] == ["scene.ha_on"]
-
-
-@pytest.mark.usefixtures("bridge_scenes", "lamps")
-async def test_the_scenes_follow_by_name_with_the_domains_default_icon(hass, fake):
-    add_fake_entity(hass, fake, "scene.a_bridge", attributes={"friendly_name": "Zebra"})
-    ha_scene(hass, "scene.mid", {"light.a_lamp": BRIGHT})
-    hass.states.async_set("scene.mid", "unknown", {"friendly_name": "apple"})
-    ha_scene(hass, "scene.third", {"light.a_lamp": BRIGHT})
-    hass.states.async_set("scene.third", "unknown", {"friendly_name": "Banana"})
-
-    found = await coverage.collect(hass)
-
-    assert [scene.name for scene in found.scenes] == ["apple", "Banana", "Zebra"]
-    assert {scene.icon for scene in found.scenes} == {"mdi:palette"}
-
-
-def scene(name, mark=Mark.VERIFIED, notes=""):
-    return SceneRow(f"scene.{name}", name, "mdi:palette", mark, notes)
+    assert await marks(hass) == [Mark.VERIFIED]
 
 
 def device_row():
@@ -721,61 +673,16 @@ def device_row():
         pytest.param((), (), "DeviceSide runs 0 features on 0 devices.", id="none"),
         pytest.param((device_row(),), (), "DeviceSide runs 1 feature on 1 device.", id="no scene ends at devices"),
         pytest.param(
-            (device_row(),), (scene("a"),), "DeviceSide runs 1 feature on 1 device and 1 scene.", id="one scene"
+            (device_row(),), (Mark.VERIFIED,), "DeviceSide runs 1 feature on 1 device and 1 scene.", id="one scene"
         ),
         pytest.param(
             (),
-            (scene("a"), scene("b", Mark.DOCUMENTED), scene("c", Mark.LABS)),
+            (Mark.VERIFIED, Mark.DOCUMENTED, Mark.LABS),
             "DeviceSide runs 0 features on 0 devices and 2 scenes.",
             id="several, Labs not counted",
         ),
-        pytest.param((), (scene("c", Mark.LABS),), "DeviceSide runs 0 features on 0 devices.", id="only Labs"),
+        pytest.param((), (Mark.LABS,), "DeviceSide runs 0 features on 0 devices.", id="only Labs"),
     ],
 )
 def test_the_count_line_counts_the_scenes_that_run_now(hass, device_rows, scenes, line):
     assert coverage.section(hass, Coverage(device_rows, scenes)).startswith(line + "\n\n")
-
-
-def test_the_scenes_table_follows_the_device_grid(hass):
-    found = Coverage((device_row(),), (scene("Movie", Mark.DOCUMENTED, "Hall lamp is Documented"),))
-
-    grid, scenes = coverage.section(hass, found).split("\n\n**Scenes**\n\n")
-
-    assert grid.endswith("| a |  |  |  | 🟢 |  |  |")
-    assert scenes.splitlines() == [
-        "| | <center>Flash\u2011free turn\u2011on</center> | Notes |",
-        "|---|:-:|---|",
-        '| <ha-icon icon="mdi:palette"></ha-icon> Movie | 🟡 | Hall lamp is Documented |',
-    ]
-
-
-def test_with_scenes_but_no_device_rows_the_scenes_table_still_shows(hass):
-    text = coverage.section(hass, Coverage((), (scene("Movie"),)))
-
-    assert text.startswith("DeviceSide runs 0 features on 0 devices and 1 scene.\n\n")
-    assert text.endswith('| <ha-icon icon="mdi:palette"></ha-icon> Movie | 🟢 |  |')
-    assert "Smooth dimming" not in text
-
-
-def test_with_no_scene_rows_there_is_no_scenes_heading_or_table(hass):
-    text = coverage.section(hass, Coverage((device_row(),), ()))
-
-    assert "Scenes" not in text
-    assert "Notes" not in text
-
-
-def test_notes_are_escaped_as_a_name_is():
-    text = coverage.scenes_table(Coverage((), (scene("Odd", Mark.LABS, "A | <b>lamp</b> *1* is in Labs"),)))
-
-    assert text.endswith("| ⚪ | A \\| &lt;b&gt;lamp&lt;/b&gt; \\*1\\* is in Labs |")
-
-
-@pytest.mark.usefixtures("classed", "lamps")
-async def test_a_light_name_with_markup_is_escaped_in_the_notes(hass, fake):
-    add_fake_entity(hass, fake, "light.b_odd", attributes={"friendly_name": "B | <b>lamp</b>"})
-    ha_scene(hass, "scene.odd", {"light.a_lamp": BRIGHT, "light.b_odd": BRIGHT})
-
-    found = await coverage.collect(hass)
-
-    assert found.scenes[0].notes == "B | <b>lamp</b> is Documented"
-    assert coverage.scenes_table(found).endswith("| 🟡 | B \\| &lt;b&gt;lamp&lt;/b&gt; is Documented |")

@@ -255,10 +255,9 @@ feature.
   call.
 - **Several actions.** A feature riding several actions takes its weakest; Smooth color is hue and saturation in one
   column, the weaker of the two, a refused one counting as empty.
-- **Scenes.** A second table under the rows lists each scene `set_scene` serves, with its Flash-free turn-on mark: a
+- **Scenes.** The intro counts the scenes `set_scene` serves that run now (Verified, Documented). A scene's mark: a
   bridge scene's is its adapter's judgment, a Home Assistant scene's the weakest of its lights' `set_attributes`
-  judgments on the scene's own writes. Notes name the light that sets a lower mark and count lights a call would skip.
-  A scene with no mark has no row.
+  judgments on the scene's own writes, a light a call would skip lowering nothing. A scene with no mark isn't counted.
 - **Waiting.** An integration whose classes wait on a report (Z2M's bridge/devices) says so through
   `IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has.
 - **Features.** The features and their actions are `features.py`'s, which the README's cards read too; the integrations'
