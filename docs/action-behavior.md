@@ -129,6 +129,21 @@ raises or the entity is skipped.
   `capability`, the map also appears on an `unchanged` entry, where the call sent nothing: a reader crediting
   evidence credits only an entry whose status shows a send. A group that falls back has no entry, so no map: each
   member's own entry carries its `capability`.
+- **Home Assistant scenes** (`set_scene` on a `scene.homeassistant` entity,
+  [integrations.md](integrations.md#home-assistant-scenes)) are treated as a group of their lights. Each light held on
+  is an indirect `set_attributes` target through the scene, so one that can't take it is skipped and logged while the
+  rest run. A light held on with brightness 0 writes no brightness (core would turn it off); one whose color mode names
+  a color its state lacks is skipped (`color_missing`). Lights held off go through core's `light.turn_off` with the
+  call's context. Other entities are skipped. A light in two scenes of one call gets both writes in no set order, as
+  core's own activation of the two would. The scene has one entry: `sent` when any light was written or turned off,
+  else `unchanged` (`nothing_to_set`); a device failure makes it `rejected` (`some_lights_failed`, or `error`
+  when every light failed), raising `targets_failed` once every light has run. A scene none of whose lights can run is
+  refused, raised if named, with its most useful light's reason; one whose lights were each unavailable has no entry,
+  and is logged as skipped (`lights_unavailable`) if named; one each of whose lights an adapter skipped while sending
+  is skipped and logged, never raised. `integration` is the lights' when they share one, else
+  `homeassistant`. The entry carries `member_capabilities` for each light `set_attributes` reached, a native
+  group's members included; a light turned off, or held on with nothing to write, is not in it, and the entry has no
+  `capabilities`.
 
 ## Replacing hue_dimmer
 

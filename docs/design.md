@@ -112,8 +112,9 @@ explained to users in [integrations.md](integrations.md#what-cant-be-done-and-wh
   early, and `stop` halts every move on the target. No color temperature move: every stop of a Hue fade jumps visibly.
 - **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read
   what HA doesn't show: the device's actual values (mid-move, where the move has reached), never a cached last write. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
-- **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
-  Zigbee would follow the same pattern.
+- **`set_scene`**: a scene's settings, written to each light while it's off. A Hue bridge scene goes to Hue's adapter;
+  a Home Assistant scene is written light by light through `set_attributes`, so it serves every integration that has
+  that ([integrations.md](integrations.md#home-assistant-scenes)). Other native scenes: [deferred.md](deferred.md).
 
 Not built yet: turn-on defaults (`OnLevel`) and other entity domains (cover, valve, lock). Each new one, and each new
 integration, is weighed against the broad-appeal principle in
@@ -150,6 +151,7 @@ adapter.py       Adapter base class; gather() runs sends under the concurrency l
 registry.py      AdapterRegistry: discovery, guarded import, lookup, matrix
 resolver.py      entity_id -> Target, or the reason it can't be served
 groups.py        HA group expansion, any domain
+ha_scene.py      Home Assistant scenes: which entities are one, each light's write, set_scene's route
 dispatcher.py    parse, extract, expand, resolve, plan, run, raise rule, response
 ha_watch.py      drops predictions a light or scene call from HA leaves stale
 ha_entity.py     guarded access to HA's live entity objects
@@ -190,6 +192,14 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 | `AdapterScope.confirmable`, `options`, `notes` | Declarations core doesn't act on, read by the rig: `confirmable`, that a run expects status `confirmed`, not `sent`; `options`, the DeviceSide options that change what it does (`predicted_state`), whose rig records are `<action>-<option>.json`; `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) |
 | `AdapterScope.caveat` | A risk mark, set by a repo maintainer; changes no call. | [evidence.md](evidence.md#caveats) |
 
+**Writing an action.** An action's module exports `ACTION`, an `Action` subclass (`core/action.py`). One that serves
+some targets through another action's adapters also declares:
+
+| Hook or field | What it buys | Where its rules live |
+|---|---|---|
+| `Action.claims`, `route` | Entities the action routes itself, kept from resolution: `route` plans them beside the other targets, so a refused named one raises before any send. | `Action` and `Routed` in `core/action.py`; `Dispatcher.handle` |
+| `Action.rides` (`Ride`) | The action whose adapters serve the routed targets, and those targets as a domain on an HA integration; generators derive its target filter and cells from it. | `Ride` in `core/action.py`; `scripts/gen_services.py`, `gen_features.py`, `gen_compat.py` |
+
 Core around them:
 
 - **Registry.** `pkgutil` discovery over `actions/` and `integrations/`. Modules export data (`ACTION`,
@@ -224,8 +234,8 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 ### services.yaml, strings, icons
 
 - `services.yaml` holds only target filters and field selectors; names and descriptions are in `translations/en.json`.
-  Target filters list exactly the integrations with an adapter for the action, with the entity domains it serves;
-  `scripts/gen_services.py` generates them from the registry. They are a UI convenience: adapters enforce scope
+  Target filters list exactly the integrations with an adapter for the action, with the entity domains it serves, and
+  the target an `Action.rides` names; `scripts/gen_services.py` generates them from the registry. They are a UI convenience: adapters enforce scope
   through `supports()`.
 - Field filters can only test `supported_features` and attributes, not domain, so light fields copy
   `light/services.yaml`'s `supported_color_modes` filters; a switch-only selection shows just `duration`.
