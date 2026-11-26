@@ -264,8 +264,8 @@ async def test_integrations_follow_the_cards_order_and_those_on_no_card_come_las
 async def test_the_counts_and_the_labs_line_read_the_cells(hass):
     found = await coverage.collect(hass)
 
-    # Verified and Documented count, a, b, the group (two features each), the light (three).
-    assert (found.features_now, found.devices_now) == (9, 4)
+    # Verified and Documented count: a, b, the group and the light.
+    assert found.devices_now == 4
     # Labs: switch.c's two features, on one device.
     assert (found.features_in_labs, found.devices_in_labs) == (2, 1)
 
@@ -335,7 +335,7 @@ async def test_settings_shows_the_matrix_with_the_options_under_it(hass, setup_i
     assert result["step_id"] == "settings"
     holders = result["description_placeholders"]
     assert holders["coverage"] == (
-        "DeviceSide runs 9 features on 4 devices.\n\n"
+        "DeviceSide works with 4 of your devices.\n\n"
         f"{coverage.legend()}\n\n{coverage.table(hass, await coverage.collect(hass))}"
     )
     assert f"| {SWITCH}c |" in holders["coverage"]
@@ -405,7 +405,7 @@ async def test_settings_waits_while_an_integration_is_listing_its_devices(hass, 
     result = await finish_progress(hass, result["flow_id"])
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "settings"
-    assert "runs 9 features" in result["description_placeholders"]["coverage"]
+    assert "works with 4 of your devices" in result["description_placeholders"]["coverage"]
 
 
 @pytest.mark.usefixtures("classed", "household", "listing")
@@ -420,7 +420,7 @@ async def test_settings_waits_no_longer_than_the_bound_for_a_device_list_that_ne
     result = await finish_progress(hass, result["flow_id"])
 
     assert result["type"] is FlowResultType.FORM  # what it has
-    assert "runs 9 features" in result["description_placeholders"]["coverage"]
+    assert "works with 4 of your devices" in result["description_placeholders"]["coverage"]
 
 
 def test_the_wait_is_ten_seconds():
@@ -673,18 +673,21 @@ def device_row():
 @pytest.mark.parametrize(
     ("device_rows", "scenes", "line"),
     [
-        pytest.param((), (), "DeviceSide runs 0 features on 0 devices.", id="none"),
-        pytest.param((device_row(),), (), "DeviceSide runs 1 feature on 1 device.", id="no scene ends at devices"),
+        pytest.param((), (), "DeviceSide works with 0 of your devices.", id="none"),
+        pytest.param((device_row(),), (), "DeviceSide works with 1 of your devices.", id="no scene ends at devices"),
         pytest.param(
-            (device_row(),), (Mark.VERIFIED,), "DeviceSide runs 1 feature on 1 device and 1 scene.", id="one scene"
+            (device_row(),),
+            (Mark.VERIFIED,),
+            "DeviceSide works with 1 of your devices and 1 of your scenes.",
+            id="one scene",
         ),
         pytest.param(
             (),
             (Mark.VERIFIED, Mark.DOCUMENTED, Mark.LABS),
-            "DeviceSide runs 0 features on 0 devices and 2 scenes.",
+            "DeviceSide works with 0 of your devices and 2 of your scenes.",
             id="several, Labs not counted",
         ),
-        pytest.param((), (Mark.LABS,), "DeviceSide runs 0 features on 0 devices.", id="only Labs"),
+        pytest.param((), (Mark.LABS,), "DeviceSide works with 0 of your devices.", id="only Labs"),
     ],
 )
 def test_the_count_line_counts_the_scenes_that_run_now(hass, device_rows, scenes, line):

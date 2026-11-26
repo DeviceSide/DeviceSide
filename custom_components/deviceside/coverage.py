@@ -110,12 +110,8 @@ class Coverage:
         return [(row, cell) for row in self.rows for cell in row.cells.values() if cell.mark in marks]
 
     @property
-    def features_now(self) -> int:
-        """The cells that run now: Verified and Documented."""
-        return len(self._cells(*_RUNS_NOW))
-
-    @property
     def devices_now(self) -> int:
+        """The devices with a cell that runs now: Verified or Documented."""
         return len({row.device for row, _ in self._cells(*_RUNS_NOW)})
 
     @property
@@ -377,15 +373,10 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
     return "\n".join(lines)
 
 
-def _count(number: int, noun: str) -> str:
-    return f"{number} {noun}{'' if number == 1 else 's'}"
-
-
 def section(hass: HomeAssistant, coverage: Coverage) -> str:
     """The Settings form's coverage, above the options: the counts, the legend and the table."""
-    scenes = f" and {_count(coverage.scenes_now, 'scene')}" if coverage.scenes_now else ""
-    features, devices = _count(coverage.features_now, "feature"), _count(coverage.devices_now, "device")
-    counts = f"DeviceSide runs {features} on {devices}{scenes}."
+    scenes = f" and {coverage.scenes_now} of your scenes" if coverage.scenes_now else ""
+    counts = f"DeviceSide works with {coverage.devices_now} of your devices{scenes}."
     return f"{counts}\n\n{legend()}\n\n{table(hass, coverage)}"
 
 
