@@ -327,4 +327,4 @@ def legend_entries(labs_pointer: str) -> list[tuple[Mark, str]]:
 
 def legend() -> str:
     """What each mark means, a paragraph each."""
-    return "\n\n".join(line for _, line in legend_entries(LABS_BELOW))
+    return "<br>\n".join(line for _, line in legend_entries(LABS_BELOW))
