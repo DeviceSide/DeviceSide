@@ -17,8 +17,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
      edited; if evidence suggests it has changed, repeat the probe by hand in a new file.
 
    With no device at hand, build from a source (the vendor's documentation, an upstream integration that ships the
-   call, or research) to Labs, and cite it in the bundle's `internals.md`: the first device report is the probe
-   ([in Labs](#no-known-method-not-built-yet-in-labs)).
+   call, or research), and cite it in the bundle's `internals.md`: it ships at the level tenet 10 gives, and in Labs
+   the first device report is the probe ([in Labs](#no-known-method-not-built-yet-in-labs)).
 
    *Example:* a bulb set to red while off must come on red, with no flash of its old color. HA's state can't show the
    flash, and the call sequence DeviceSide sends decides it, so it's a watched fact test (`set_attributes`,
@@ -50,7 +50,7 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    - *a design choice:* tenet 2's probe, before the build. A call already seen working on the device (your own
      automation, an upstream integration that ships it, a research file recording a run) needs none: cite it in
      the bundle's `internals.md`. A vendor's document alone still needs the probe on a device the builder can reach;
-     with none, the build goes to Labs on its source (tenet 2);
+     with none, the build ships on its source (tenet 2);
    - *a foundation:* before further steps build on a design no verified fact covers, one run of the rig cases whose
      failure would discard that work;
    - *lifting a Labs flag* ([the Labs flag](#the-labs-flag));
@@ -58,13 +58,14 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    - *a release:* the sign-off, due before the last RC, or the one that clears a caveat ([release gate](#release-gate)).
 
    Run a test at the last point that can still take its decision. For a device the rig or a maintainer can reach, that
-   is the release's run, so merging a PR waits for none: unit tests pin the call, a new item is flagged until its pass
-   is on record, the gate runs at the cut, and the code may change again before then. For a contributor's own devices,
-   it is their pull request, as no later run is sure to reach them: one test of the finished build, at the commit whose
-   calls ship ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build works, which a maintainer needs to
-   merge it, and lets what it exercised ship unflagged ([the Labs flag](#the-labs-flag)). A plan gates a step on a run
-   only by naming the decision its result takes. This prevents a release held up by runs whose results changed nothing,
-   and replaces the practice of a rig run per step or per PR.
+   is the release's run, so merging a PR waits for none: unit tests pin the call, a new item no Documented route
+   admits is flagged until its pass is on record, the gate runs at the cut, and the code may change again before then.
+   For a contributor's own devices, it is their pull request, as no later run is sure to reach them: one test of the
+   finished build, at the commit whose calls ship ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build
+   works, which a maintainer needs to merge it, and lets what it exercised ship unflagged
+   ([the Labs flag](#the-labs-flag)). A plan gates a step on a run only by naming the decision its result takes. This
+   prevents a release held up by runs whose results changed nothing, and replaces the practice of a rig run per step or
+   per PR.
 9. **Retest what the change exercises.** After a run, a change reopens only the evidence for actions whose call, or
    whose handling of the device's reply, it changes (tenet 5), wherever the code it edits lives. A machine decides
    which: evidence binds to the action's [call transcript](#release-gate), what the unit tests saw it send and make of
@@ -72,6 +73,14 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    every call reopens nothing, and a fix for a failing case reruns its suite, not the integration's run. This prevents
    the same passing cases being rerun at each small change, and replaces judging staleness by source changes, which
    reopened evidence on a cosmetic edit and missed a call change made in `core/`.
+10. **Include unless harmful.** An item ships outside Labs unless it is likely to harm, or no route in
+    [Levels](#levels) admits it; one no route admits ships in Labs on a sourced call, or isn't built. This prevents
+    refusing users a feature their device likely takes, and replaces flagging each new item until its own pass is on
+    record.
+11. **Never withdraw silently.** A feature shipped outside Labs in a release (not an RC) is withdrawn (refused, flagged
+    or dropped) only on a report or a root-caused finding, and the notes of the release that withdraws it say so. This
+    prevents an upgrade breaking a user's working setup without a word, and replaces a demotion that landed with no
+    word in the release notes.
 
 *Example (tenets 8 and 9):* after Zigbee2MQTT's run, a refactor of a shared helper lands, and CI finds every
 transcript unchanged: every record stands. A fix to `stop`'s call lands next. Its transcript changes, which
@@ -97,7 +106,7 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test, or signed off on
   users' working reports of it in a `_manual.json` row ([the Labs flag](#the-labs-flag)). How it was tested is the
   maintainer's choice; the rig is a tool, not a requirement.
-- **Documented:** no known class departs, and the class takes either
+- **Documented:** no known class departs, and the class takes one of
   - **a sibling's call:** it differs from a Verified class's call only in addressing, and siblings share one vendor's
     firmware, whose documentation gives the call identically for both (Shelly's components). A class spanning vendors
     (`other`, a vendor-wide family) is never Documented by a sibling's pass, as a pass on one vendor's firmware proves
@@ -115,9 +124,15 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
     Split-offs, each at the narrowest identity a class rule can key on: a ZHC flag or override takes a model out at the
     next bump; a Z2M or ZHC issue or PR reporting a device failing DeviceSide's call excludes it on the report alone,
     citing it; a DeviceSide report follows contrary evidence (below). A bump's departure of a model whose features
-    shipped outside Labs in a full release needs a maintainer's review: kept with a reason, or excluded with a source.
-- **Labs:** built on a sourced call and untested, as no real device has passed it yet, or tested and held back by a
-  maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
+    shipped outside Labs is a withdrawal (tenet 11): a maintainer keeps it with a reason, or excludes it with a source.
+  - **a bridge's one request:** on an action whose failure doesn't harm (`Action.failure_harms`), the class gets the
+    request a Verified class gets, and the bridge's own firmware picks the call (Hue's CLIP v2). The evidence: a
+    predecessor's or another integration's users sent that request to every brand, with no reported departure. It
+    covers any action that sends only the fields they sent; a read that sends nothing needs none. One report of a
+    device failing the request, or misreading, splits it off at the narrowest key a class rule can use (contrary
+    evidence, below), citing it. `internals.md` lists the departures that would.
+- **Labs:** built on a sourced call that no real device has passed and no Documented route admits, or held back
+  by a maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
 
 A field can be in Labs on some classes alone (`labs_fields(...)`, `AdapterScope.class_labs`) while it keeps its level in
 `fields` on the rest. With the Labs option off it is dropped on those classes (`fields_dropped`), not refused; with it
@@ -139,7 +154,7 @@ A sign-off covers only what was exercised; it never signs off untested code.
 - **Not evidence against the device:** a failure on a different call (an external converter's), or a report that
   contradicts the identity's own passing record. The maintainer retests, or weighs the two.
 - **Anything else** changes no level until a maintainer root-causes it. The fix, or the demotion, lands with the
-  finding.
+  finding, and a demotion of a shipped feature is a withdrawal (tenet 11).
 
 *Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet. Z2M
 #25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, a different call, so it is no evidence
@@ -150,6 +165,10 @@ Documented on the brightness and color fades and stop (Z2M sends them through th
 bottom, DeviceSide's raw `moveToLevel`, which every Zigbee 3.0 dimmable light must take) and on `set_attributes` and
 `get_attributes`, raw commands like it whose known failures all raise or fail the read-back; Paulmann's 924.70, reported
 failing a color read, stays in `other` ([the table and the bump](integrations/zigbee2mqtt/internals.md#standard_lights)).
+
+*Example:* Hue's `other`, every other maker's light on a Hue bridge, is Documented on every action: it gets the request
+`hue` gets, Hue Smooth Dimming sent every brand that request for its fades, stop, scenes and writes, and no Hue action's
+failure harms (`Action.failure_harms`) ([internals](integrations/hue/internals.md#device-classes)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -169,15 +188,15 @@ per identity, the identity: a Zigbee2MQTT countdown plug's maker string with a r
 The classes split this way from one class, the rest of it among them, are **kin**: they get the same call on the same
 firmware family, and differ only in whose evidence they hold.
 
-- **Unknown is flagged, never Verified.** A device no rule matches gets the default class
+- **Unknown is never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
-  name yet is refused ([below](#no-known-method-not-built-yet-in-labs)). As it spans vendors, the default class is Documented only by a
-  [certified read](#levels), never by a sibling's pass; it is otherwise `labs(...)` where research predicts
-  most of it accepts the call (Zigbee 3.0 certification and the dimming commands:
-  [internals](internals.md#shared)), and is otherwise not built yet
+  name yet is refused ([below](#no-known-method-not-built-yet-in-labs)). As it spans vendors, the default class is
+  Documented only by a [certified read](#levels) or a [bridge's one request](#levels), never by a sibling's pass; it is
+  otherwise `labs(...)` where research predicts most of it accepts the call (Zigbee 3.0 certification and the
+  dimming commands: [internals](internals.md#shared)), and is otherwise not built yet
   ([below](#no-known-method-not-built-yet-in-labs)).
-  Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
+  No pass lifts it: a record on a device outside the named classes adds a new class named for its maker
   (Zigbee2MQTT: `innr` for an Innr bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
 - **A level per class and domain.** A class's level holds on every domain the adapter serves, unless its entry names
@@ -267,7 +286,7 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
-  harmed by (one it can't class, in Labs; Unknown is flagged, never Verified, above). The refusal is
+  harmed by (one it can't class, in Labs; Unknown is never Verified, above). The refusal is
   `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core
   applies it: `core/dispatcher.py`'s module docstring, Planning, and `AdapterScope.refusal`; when a device counts as
   placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue
@@ -328,8 +347,8 @@ needs a call that isn't built, so it is not built yet too.
 
 ## The Labs flag
 
-Labs is the lowest [level](#levels), and the Labs flag is that level: the item has not yet passed on a real device,
-or a maintainer holds it back.
+Labs is the lowest [level](#levels), and the Labs flag is that level: no pass or Documented route admits the item
+yet, or a maintainer holds it back.
 In code it is the per-axis marker `labs(...)`, beside `verified(...)` and `documented(...)`, and `labs_fields(...)` for a
 field in Labs on some classes alone ([Levels](#levels)). A call takes the weakest
 level among the items it touches, its domain always among them, so an adapter whose domains are all `labs(...)` is
@@ -337,10 +356,11 @@ flagged whole. A flagged item is refused unless the user turns on the Labs optio
 dropped there instead. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
 other item behaves.
 
-An item is in Labs until a real device has passed it, unless it qualifies as Documented ([Levels](#levels)). The pass is the author's own test or a user's working report,
-on record; a maintainer judges whether it is enough. So an item tested before it merges ships unflagged, and one
-nobody can test yet ships in Labs, untested, until someone with the device reports. The default class is the exception:
-no pass lifts it ([Unknown is flagged, never Verified](#device-classes)).
+An item ships unflagged once a real device has passed it or it qualifies as Documented ([Levels](#levels), tenet 10).
+The pass is the author's own test or a user's working report, on record; a maintainer judges whether it is enough. So
+an item tested before it merges ships unflagged, and one nobody can test and no route admits ships in Labs, untested,
+until someone with the device reports. No pass lifts the default class ([Unknown is never
+Verified](#device-classes)).
 
 Every new feature (action, integration, domain, capability or field) ships at the level its evidence gives: Verified for
 what the author's test exercised (Documented where [Levels](#levels) allows), and `labs(...)` for the rest. An item
@@ -354,8 +374,8 @@ first few rig cases before the full suite exists, so a flagged item may have pas
 lifts only on a test that sent it, which no check can tell, as a record doesn't say which fields a test sent
 ([deferred](deferred.md#field-lifts-checked-against-a-record)). Lifting makes `labs(...)` into `verified(...)` (an
 adapter flagged whole: its domains), and removes a `labs_fields(...)` entry, so the field takes its `fields` level on
-those classes too; a flagged item that qualifies as Documented becomes `documented(...)` in a PR that argues the sibling
-case ([Levels](#levels)). Lifting a flag is a change to the integration's package, so one of its maintainers approves
+those classes too; a flagged item that qualifies as Documented becomes `documented(...)` in a PR that argues its route
+([Levels](#levels)). Lifting a flag is a change to the integration's package, so one of its maintainers approves
 it, as for any change there ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set
 their own classes' levels the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
@@ -389,7 +409,8 @@ line:
 - **⚠️ Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
   integration. An integration whose maintainers are all gone gets it on every adapter.
 
-A deprecation gets a hand-written note in that release's notes, not a caveat.
+A deprecation, or any other withdrawal of a shipped feature (tenet 11), gets a hand-written note in that release's
+notes, not a caveat.
 
 *Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with
 🔧 Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.json` row, clears it.

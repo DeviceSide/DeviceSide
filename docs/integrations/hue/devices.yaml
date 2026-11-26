@@ -13,3 +13,6 @@ capabilities:
   other:
     phrase: other brands' lights
     section: Other brands
+  gledopto:
+    phrase: Gledopto lights
+    section: Gledopto

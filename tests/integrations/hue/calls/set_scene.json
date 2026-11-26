@@ -516,6 +516,70 @@
   "result": [
    {
     "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "scene.relax",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/one"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 50.0
+       }
+      }
+     }
+    ],
+    []
+   ],
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/two"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 50.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_scene",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "scene.relax",
+     "scene.relax",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
     "classes": null,
     "data": null,
     "detail": "error",

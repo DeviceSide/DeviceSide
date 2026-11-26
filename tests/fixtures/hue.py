@@ -60,9 +60,11 @@ class HueBridge:
         gamut: dict | None = None,
         mirek_schema: dict = MIREK_SCHEMA,
         manufacturer: str = SIGNIFY,
+        model_id: str | None = None,
     ) -> str:
         """A bulb and its device. brightness/mirek/xy None leave out the dimming/color_temperature/color feature;
-        gamut is the color feature's red/green/blue points, left out when None; manufacturer is the device's."""
+        gamut is the color feature's red/green/blue points, left out when None; manufacturer is the device's, and
+        model_id its model ID (by default a Hue bulb's, or an IKEA one's for another manufacturer)."""
         device_id = f"device-{light_id}"
         light: dict = {
             "id": light_id,
@@ -84,7 +86,7 @@ class HueBridge:
             "type": "device",
             "services": [{"rid": light_id, "rtype": "light"}],
             "product_data": {
-                "model_id": "LCT015" if manufacturer == SIGNIFY else "TRADFRI bulb E27 WS opal 980lm",
+                "model_id": model_id or ("LCT015" if manufacturer == SIGNIFY else "TRADFRI bulb E27 WS opal 980lm"),
                 "manufacturer_name": manufacturer,
                 "product_name": "Hue color lamp" if manufacturer == SIGNIFY else "Extended color light",
                 "product_archetype": "sultan_bulb",

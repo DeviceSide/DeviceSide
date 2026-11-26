@@ -40,8 +40,8 @@ Code and docs use these terms. Each one's rules live where its link points.
   refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
 - **Level**: how a scope item is proven: Verified, Documented or Labs. Rules: [evidence.md](evidence.md#levels).
   User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) not yet passed on a real device, or held back
-  by a maintainer; also the option (`labs`, off by default) that lets calls touching a flagged item through. Only the
+- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) that no pass or Documented route admits yet,
+  or that a maintainer holds back; also the option (`labs`, off by default) that lets calls touching a flagged item through. Only the
   dispatcher reads the option. Rules: [evidence.md](evidence.md#the-labs-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
   `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
@@ -111,7 +111,7 @@ explained to users in [integrations.md](integrations.md#what-cant-be-done-and-wh
   its direction actions (`cover.open_cover`). `sweep_time` is how long a full range takes, `limit` ends the move
   early, and `stop` halts every move on the target. No color temperature move: every stop of a Hue fade jumps visibly.
 - **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read
-  what HA doesn't show. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
+  what HA doesn't show: the device's actual values (mid-move, where the move has reached), never a cached last write. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
 - **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
   Zigbee would follow the same pattern.
 

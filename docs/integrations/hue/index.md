@@ -21,14 +21,15 @@ survive it going offline, which is the point of auto-off.
 
 ## Device classes
 
-The bridge sends each light its own commands, and lights of other brands can answer them differently, so a test on a
-Hue light proves nothing about another brand's. DeviceSide tells them apart by the manufacturer the bridge reports for
-each light.
+DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets. Lights of
+other brands can answer it differently, so DeviceSide tells them apart by the manufacturer and model the bridge reports
+for each light.
 
-- A **scene** counts as its lights: one with a light of another brand counts as that brand's, so it is refused.
-- A **room or zone** gets only what all its lights get. One with a light of another brand falls back to its
-  lights, each on its own, so the Hue lights still run and the other brand's is refused. A light the bridge has in the
-  room but Home Assistant has no light entity for still counts, as the room's command reaches it.
+- A **scene** counts as its lights: one with a light of another brand counts as that brand's, or as other brands'
+  when it holds lights of two such classes.
+- A **room or zone** counts as all its lights, a light the bridge has in the room but Home Assistant has no light
+  entity for included, as the room's command reaches it. Where one of its lights is refused an action (as
+  [Gledopto's lights](#gledopto) are `get_attributes`), the room answers through its other lights, each on its own.
 
 ### Hue lights
 
@@ -36,12 +37,27 @@ Signify's own lights (manufacturer `Signify Netherlands B.V.`), which the bridge
 
 ### Other brands
 
-Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get no
-feature yet, even with Labs on. The Hue lights' tests don't prove them, as other brands are known to
-answer the same Zigbee commands differently: some fade only one of brightness and color at a time, some come on when
-written while off, and some don't report color temperature as Hue lights do
-([internals](internals.md#device-classes)). Nothing predicts which of the bridge's commands they take. A contributor's
-passing run on one adds a class for its brand ([evidence](../../evidence.md#no-known-method-not-built-yet-in-labs)).
+Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get
+every feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same CLIP v2 light update a Hue light
+gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and none of
+these features harms when it fails ([internals](internals.md#device-classes)).
+
+Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
+and color at a time, some come on when written while off, and some don't report color temperature mode as Hue lights do
+([Gledopto](#gledopto) is known). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
+with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model, or its maker, a class of its
+own and refuses it the action it fails (`not_built`, or `no_known_method` with why, where no command is known to
+work), and every other light keeps it.
+
+### Gledopto
+
+Gledopto's lights and LED controllers (manufacturer `GLEDOPTO`, any model) get every feature other brands' lights get,
+but `get_attributes`. The bridge has reported several of them in color mode after a color temperature write, so Home
+Assistant showed a color temperature it set as a color ([core #62497](https://github.com/home-assistant/core/issues/62497), [core #93459](https://github.com/home-assistant/core/issues/93459);
+[research](research/2026-11-25-color-mode-misread.md)).
+`get_attributes` reports the light's actual values, so it refuses Gledopto lights (`not_built`); read Home Assistant's
+own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, where core reads its color temperature
+mode from its own last command ([internals](internals.md#device-classes)).
 
 ## Smooth dimming
 

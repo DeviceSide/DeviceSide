@@ -40,7 +40,7 @@ The cards below show device compatibility by integration and device class.
 
 🟢 Verified: works, tested on a real device<br>
 🟡 Documented: should work, same call pattern as a tested device<br>
-⚪ Labs: not yet passed on a real device. Turn on Labs in Configure > Settings to try it
+⚪ Labs: built, but not yet shown to work. Turn on Labs in Configure > Settings to try it
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
 
@@ -69,6 +69,8 @@ The cards below show device compatibility by integration and device class.
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-lights): 🟢 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
+- [Gledopto lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#gledopto): 🟡 smooth dimming, smooth saturation, set without turning on, set scene
+- [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#other-brands): 🟡 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
 
 **[Matter](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md)**
 

@@ -32,10 +32,11 @@ same command differently ([the rules](evidence.md#levels)).
 - 🟢 **Verified:** a maintainer tested it on a real device, or signed off on users' working reports of it. ✔ marks a
   run on the automated rig, "by hand" a maintainer's own test, and "by report" users' reports, each linking its issue.
 - 🟡 **Documented:** no device of the class has been tested, but it gets the same call as a Verified device of the
-  same maker's firmware, or certification tests the same read on every device of the class.
-- ⚪ **Labs:** built, but not yet passed on a real device, or held back by a maintainer to soak. It stays off until you
-  turn on **Labs** in **Configure > Settings**, and may be withdrawn if it fails and isn't fixed
-  ([the Labs flag](evidence.md#the-labs-flag)).
+  same maker's firmware, certification tests the same read on every device of the class, or other users already send
+  the same call to every device of the class with no reported failure.
+- ⚪ **Labs:** built, but not yet shown to work (no device has passed it and no rule above covers it), or held back
+  by a maintainer to soak. It stays off until you turn on **Labs** in **Configure > Settings**, and may be withdrawn if
+  it fails and isn't fixed ([the Labs flag](evidence.md#the-labs-flag)).
 - 🔴 **Not supported:** no known command works on it, or it isn't built yet. DeviceSide refuses it rather than leave
   the device doing something you didn't ask for. Where it isn't built yet, a contributor's pull request can build it
   ([how to help](../CONTRIBUTING.md#how-to-help)).
@@ -202,7 +203,9 @@ Fields proven less than their feature:
 |---|---|---|---|---|---|---|
 | [native groups](#native-groups) ✔ | 🟢 [up predicted state](integrations/hue/test-records/raise_brightness-predicted_state.json) [up](integrations/hue/test-records/raise_brightness.json) [down predicted state](integrations/hue/test-records/lower_brightness-predicted_state.json) [down](integrations/hue/test-records/lower_brightness.json) | 🟢 [up](integrations/hue/test-records/raise_saturation.json) [down](integrations/hue/test-records/lower_saturation.json) | 🟢 [record](integrations/hue/test-records/set_attributes.json) | 🟢 [record](integrations/hue/test-records/set_scene.json) | 🟢 [record](integrations/hue/test-records/get_attributes.json) | 🟢 [predicted state](integrations/hue/test-records/stop-predicted_state.json) [record](integrations/hue/test-records/stop.json) |
 | [Hue lights](integrations/hue/index.md#hue-lights) ([White Ambiance E27 1100lm](#hue-white-ambiance-e27-1100lm) ✔, [Essential White and Color Ambiance A60](#hue-essential-white-and-color-ambiance-a60) ✔) | 🟢 [up predicted state](integrations/hue/test-records/raise_brightness-predicted_state.json) [up](integrations/hue/test-records/raise_brightness.json) [down predicted state](integrations/hue/test-records/lower_brightness-predicted_state.json) [down](integrations/hue/test-records/lower_brightness.json) | 🟢 [up](integrations/hue/test-records/raise_saturation.json) [down](integrations/hue/test-records/lower_saturation.json) | 🟢 [record](integrations/hue/test-records/set_attributes.json) | 🟢 [record](integrations/hue/test-records/set_scene.json) | 🟢 [record](integrations/hue/test-records/get_attributes.json) | 🟢 [predicted state](integrations/hue/test-records/stop-predicted_state.json) [record](integrations/hue/test-records/stop.json) |
+| [Gledopto lights](integrations/hue/index.md#gledopto) | 🟡 [why](integrations/hue/index.md#gledopto) | 🟡 [why](integrations/hue/index.md#gledopto) | 🟡 [why](integrations/hue/index.md#gledopto) | 🟡 [why](integrations/hue/index.md#gledopto) | | 🟡 [why](integrations/hue/index.md#gledopto) |
 | [smart scenes](integrations/hue/index.md#hue-smart-scenes) | | | | 🔴 [why](#hue-smart-scenes) | | |
+| [other brands' lights](integrations/hue/index.md#other-brands) | 🟡 [why](integrations/hue/index.md#other-brands) | 🟡 [why](integrations/hue/index.md#other-brands) | 🟡 [why](integrations/hue/index.md#other-brands) | 🟡 [why](integrations/hue/index.md#other-brands) | 🟡 [why](integrations/hue/index.md#other-brands) | 🟡 [why](integrations/hue/index.md#other-brands) |
 
 ### Matter
 
