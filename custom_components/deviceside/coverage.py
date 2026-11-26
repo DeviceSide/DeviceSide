@@ -311,7 +311,7 @@ def section(hass: HomeAssistant, coverage: Coverage) -> str:
 # Each mark's legend entry: (mark, name, meaning). The README's legend (scripts/gen_compat.py) renders the same entries.
 LEGEND = (
     (Mark.VERIFIED, "Verified", "works, tested on a real device"),
-    (Mark.DOCUMENTED, "Documented", "should work, uses the same call as a verified device or a standard call"),
+    (Mark.DOCUMENTED, "Documented", "should work, uses a verified device's call or a standard call"),
     (Mark.LABS, "Labs", "built, but not yet shown to work"),
 )
 LABS_BELOW = "Turn on Labs below to try it"
