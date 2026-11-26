@@ -11,7 +11,8 @@ The option belongs to the user. An action that needs it the other way sets it, p
 back once Z2M has published the target's state in reply (1 s cap), so nothing outlasts the publish. The user's value
 is journaled as the set goes out (restore_journal.py) and written back from there, so a restore that failed earlier
 is paid by the next action on the target, whatever its need. The call returns
-once its command is out; the restore runs in a task of its own, still under the target's lock. An action that works
+once its command is out; the restore runs in a task of its own, still under the target's lock: one lock per device or
+group holds from the set to the restore, so the next action that sets it waits for the write-back. An action that works
 either way may publish before it lands; turn_on_for's timer waits for it (`settled`). Z2M reads an
 entity's options as it takes a command (lib/extension/publish.ts), so a fade already sent runs on unchanged. A command
 to a group reads the group's options, never its members', so a group with a Hue member is set itself.

@@ -1,7 +1,9 @@
 """Read a registry device's identifiers by their first two parts.
 
 Home Assistant types DeviceEntry.identifiers as (domain, value) pairs but stores any tuple, and one HomeKit device's has
-three. Unpacking every identifier as a pair raised on that one device, wherever the registry is walked.
+three. Unpacking every identifier as a pair raised on that one device, wherever the registry is walked: on the
+2026-11-24 rig it stopped Zigbee2MQTT's bridge cache and color-mode watcher at setup, as they found their bridges, so
+every device but Hue's stayed unplaced (`class_unknown`).
 """
 
 from collections.abc import Iterator

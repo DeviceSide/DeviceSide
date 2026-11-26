@@ -15,9 +15,13 @@ KEYS = ("zigbee2mqtt", "zha", "shelly", "hue", "matter")  # the real bundles, in
 GROUP = "/group.svg"
 
 
+RIDE = SimpleNamespace(rides=SimpleNamespace(action="set_attributes", domain="scene", integration="homeassistant"))
+
+
 class FakeRegistry:
-    def __init__(self, *adapters, expand=(), classes=None):
+    def __init__(self, *adapters, expand=(), classes=None, actions=None):
         classes = classes or {}
+        self.actions = actions or {}
         self._adapters = adapters
         self.integrations = {
             key: SimpleNamespace(expand_group=(len if key in expand else None), classes=classes.get(key, {}))
@@ -136,6 +140,29 @@ def test_a_domain_whose_every_class_is_refused_shows_no_icon_even_with_the_optio
 def test_a_group_needs_the_adapter_to_take_lights(no_blockers):
     registry = FakeRegistry(expand={"hue"})
     assert gf.keys(adapter("hue", "set_scene", domains=verified("scene")), registry) == {"scene"}
+
+
+def test_an_integration_without_the_action_takes_the_ridden_actions_cell_linked_to_the_scenes_section(no_blockers):
+    """Shelly has set_attributes and no set_scene: its Set scene cell is set_attributes's, linking where HA scenes are
+    explained. Hue keeps its own scene adapter's cell and its page link; the row above is untouched."""
+    adapters = [a for a in every_row(domains=verified("light")) if a.action != "set_scene"]
+    adapters.append(adapter("hue", "set_scene", domains=verified("scene")))
+    registry = FakeRegistry(*adapters, actions={"set_scene": RIDE})
+    text = gf.generate(registry)
+    shelly, hue = cells(text, "Set scene without turning on")[2:4]
+    assert LIGHT in shelly and "docs/integrations.md#home-assistant-scenes" in shelly
+    assert "/scene.svg" in hue and "integrations/hue/index.md" in hue and "home-assistant-scenes" not in hue
+    assert "home-assistant-scenes" not in cells(text, "Set brightness, color or CT<br>without turning on")[2]
+    assert gf.built(registry)["Set scene without turning on", "shelly"] == {"light"}
+    assert gf.ridden(registry, gf.integration_columns(registry)) >= {("Set scene without turning on", "shelly")}
+
+
+def test_an_integration_with_neither_action_takes_nothing(no_blockers):
+    adapters = [a for a in every_row(domains=verified("light")) if a.action not in ("set_scene", "set_attributes")]
+    adapters.append(adapter("hue", "set_scene", domains=verified("scene")))
+    adapters.append(adapter("hue", "set_attributes", domains=verified("light")))
+    registry = FakeRegistry(*adapters, actions={"set_scene": RIDE})
+    assert cells(gf.generate(registry), "Set scene without turning on")[2] == ""
 
 
 def test_a_cell_is_the_intersection_across_its_rows_actions(no_blockers):

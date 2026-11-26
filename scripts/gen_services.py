@@ -34,7 +34,8 @@ TARGET_LINE = re.compile(r"^  target:(\s.*)?$")
 
 
 def targets(registry: AdapterRegistry) -> dict[str, dict[str, set[str]]]:
-    """Each action key's entity domains served, by the HA domain of the integration serving them."""
+    """Each action key's entity domains served, by the HA domain of the integration serving them, and the extra targets
+    an action serves through another's adapters (`Action.rides`)."""
     from custom_components.deviceside.core.registry import served_domains
 
     found: dict[str, dict[str, set[str]]] = {}
@@ -42,6 +43,9 @@ def targets(registry: AdapterRegistry) -> dict[str, dict[str, set[str]]]:
         if adapter is not None:
             info = registry.integrations[integration]
             found.setdefault(key, {}).setdefault(info.ha_domain, set()).update(served_domains(adapter, info))
+    for key, action in registry.actions.items():
+        if action.rides:
+            found.setdefault(key, {}).setdefault(action.rides.integration, set()).add(action.rides.domain)
     return found
 
 

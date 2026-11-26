@@ -12,18 +12,19 @@ page, with its limits and what DeviceSide changes in your setup:
 - [Control4](integrations/control4/index.md)
 <!-- integrations:end -->
 
-Which devices each feature is proven on is on the [device compatibility page](device-compatibility.md). How the
-commands work on the wire, and what was measured on real bulbs, is in [internals.md](internals.md) and each integration's own.
+What holds for a brand on both Zigbee integrations is on the [Zigbee page](integrations/zigbee.md). Which devices each
+feature is proven on is on the [device compatibility page](device-compatibility.md). How the commands work on the wire,
+and what was measured on real bulbs, is in [internals.md](internals.md) and each integration's own.
 
 ## All integrations
 
 - **Refused targets.** A target that can't take an action fails the call if you named it, and is skipped if it
   came through an area, device, label or group ([action-behavior.md](action-behavior.md)). The error names the
   reason, such as `not_built`.
-- **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and
-  Control4 light groups get one command, so their lights move together. `set_attributes` writes a ZHA group's or
-  Hue room's lights one by one, and Zigbee2MQTT's turn off with timer, `set_auto_off` and `clear_auto_off` send each
-  of a group's lights its own call, as a group takes neither the countdown nor the auto-off call.
+- **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and Control4 light groups
+  get one command, so their lights move together. `set_attributes` writes a ZHA group's or Hue room's lights one by one.
+  A group that can't take a call falls back to its lights, each on its own (the rules: Native groups in
+  [`core/dispatcher.py`](../custom_components/deviceside/core/dispatcher.py); each integration's page lists its cases).
   Any other group, such as a light group helper, is expanded and each light gets its own command.
 - **Switches shown as lights.** A light made from a supported switch with Home Assistant's "Change device type of a
   switch" helper is treated as that switch: light fields are dropped and the timer still runs. An inverted one is
@@ -35,6 +36,18 @@ commands work on the wire, and what was measured on real bulbs, is in [internals
   command from Home Assistant clears it at once; a change from a remote or app in that window may be missed.
 - **Dimming to 0 % is a soft off.** The light fades out and keeps its level, so a plain turn on brings it back
   there. Raising brightness on a light that is off fades in from the bottom.
+
+## Home Assistant scenes
+
+`set_scene` takes a Home Assistant scene as well as a Hue bridge scene ([Hue](integrations/hue/index.md)). It writes
+each light as set without turning on does, so it works wherever that does ([feature table](device-compatibility.md)),
+at each light's own [evidence level](evidence.md#levels), reading the scene each time it runs.
+
+- **A light held on** gets the scene's brightness and the one color its color mode names, as Home Assistant picks it.
+  Effects and transitions aren't written.
+- **A light held off** is turned off by Home Assistant's own turn off.
+- **A light DeviceSide can't write** is skipped and logged while the rest run, as in a group. Other entities are left
+  alone. The response: [action-behavior.md](action-behavior.md#what-a-response-looks-like).
 
 ## What can't be done, and why
 
@@ -58,18 +71,17 @@ some devices can't do is not marked there.
 
 ## Zigbee plugs and switches
 
+`turn_on_for` isn't built for Zigbee plugs and switches, but for the Zigbee2MQTT Tuya countdown plugs
+([TS011F](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)) and Tuya datapoint devices with one countdown
+([datapoint](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown)), which DeviceSide drives by
+Tuya's own countdown; [ZHA doesn't support it yet](integrations/zha/index.md#tuya-plugs-and-switches). Few devices honor
+the Zigbee timer command ([the Zigbee timer](integrations/zigbee.md#the-zigbee-timer)): IKEA's are moving to Thread,
+and Sonoff and Tuya run their own countdowns.
+
 `set_auto_off` and `clear_auto_off` on Zigbee are built on Zigbee2MQTT alone, for Sonoff's single-channel relays and two
 Tuya switches ([Sonoff](integrations/zigbee2mqtt/index.md#sonoff-inching-relays),
 [Tuya](integrations/zigbee2mqtt/index.md#tuya-inching-switches)). The setting can't be read back, so the result is
 `sent`; ZHA has no call to send yet.
 
-`turn_on_for` on Zigbee2MQTT and ZHA plugs and switches isn't built, but for the Zigbee2MQTT Tuya countdown plugs
-and Tuya datapoint devices with one countdown, which DeviceSide drives by Tuya's own countdown
-([Zigbee2MQTT](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs),
-[datapoint](integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown));
-the [compatibility page](device-compatibility.md#zigbee2mqtt) gives each maker's level. Few honor the Zigbee timer
-command:
-IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F's runs only Tuya's way:
-DeviceSide sends it Tuya's countdown on Zigbee2MQTT, and [doesn't support](integrations/zha/index.md#tuya-plugs-and-switches) its
-timer on ZHA yet). A contributor with a plug that passes can add it
-([how to help](../CONTRIBUTING.md#how-to-help)).
+Each maker's level is on the [compatibility page](device-compatibility.md#zigbee2mqtt). A contributor with a plug that
+passes can add it ([how to help](../CONTRIBUTING.md#how-to-help)).

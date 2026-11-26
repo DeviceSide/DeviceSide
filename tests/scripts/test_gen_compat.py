@@ -109,6 +109,8 @@ class FakeRegistry:
         ),
     }
 
+    actions: dict = {}  # key -> Action class; a test that needs a ride sets it on the instance
+
     def __init__(self, *adapters):
         self._adapters = adapters
         # The cards read a class's domains, so each class a scope names is declared, as the registry holds it.
@@ -322,6 +324,102 @@ def test_a_manual_row_names_models_in_models_yaml(root):
 def zha_card(*adapters, **changes):
     registry = FakeRegistry(*adapters)
     return gc.card("zha", registry, list(adapters), data(registry, **changes))
+
+
+RIDE = SimpleNamespace(rides=SimpleNamespace(action="set_attributes", domain="scene", integration="homeassistant"))
+
+
+def test_an_action_the_integration_lacks_takes_the_status_and_records_of_the_action_it_rides(root):
+    """Set scene on an integration with set_attributes and no set_scene adapter: at set_attributes's level, linking
+    its record; an integration with its own set_scene adapter keeps it."""
+    record(root, "zha", "set_attributes", devices=[old_device("LTA009", "1")])
+    adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
+    registry = FakeRegistry(*adapters)
+    registry.actions = {"set_scene": RIDE}
+    found = data(registry)
+    card = gc.card("zha", registry, list(adapters), found)
+    assert card.lines[0] == f"[lights]({URL}#lights): 🟢 set without turning on, set scene"
+    assert card.lent == {"set_scene": "set_attributes"}
+    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    assert cells == ["🟢 [record](integrations/zha/test-records/set_attributes.json)"] * 2
+    own = (*adapters, adapter("zha", "set_scene", AdapterScope(domains=verified("light"))))
+    registry = FakeRegistry(*own)
+    registry.actions = {"set_scene": RIDE}
+    assert gc.card("zha", registry, list(own), found).lent == {}
+
+
+def test_a_lent_cell_links_the_riding_actions_own_passing_record_beside_the_ridden_ones(root):
+    """set_scene.json from a run on Home Assistant scenes (its tests served by set_attributes, `via`) is linked in the
+    derived set-scene cell; a failing one is not."""
+    record(root, "zha", "set_attributes", devices=[old_device("LTA009", "1")])
+    scene = ran("scene", device("LTA009", "1", None), group=True, role="ha_scene") | {"via": "set_attributes"}
+    path = record2(root, "zha", "set_scene", scene)
+    adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
+    registry = FakeRegistry(*adapters)
+    registry.actions = {"set_scene": RIDE}
+    found = data(registry)
+    card = gc.card("zha", registry, list(adapters), found)
+    assert card.lent_records == {"set_scene": ["docs/integrations/zha/test-records/set_scene.json"]}
+    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    assert cells == [
+        "🟢 [record](integrations/zha/test-records/set_attributes.json)",
+        "🟢 [set attributes](integrations/zha/test-records/set_attributes.json)"
+        " [set scene](integrations/zha/test-records/set_scene.json)",
+    ]
+    path.unlink()
+    record2(root, "zha", "set_scene", scene | {"result": "fail"}, result="fail")
+    assert gc.card("zha", registry, list(adapters), found).lent_records == {}
+
+
+def test_a_test_another_action_served_is_left_out_of_what_a_record_tested(root):
+    """An [ha_scene] test in Hue's set_scene.json (`via`: set_attributes) credits HueSetScene nothing, listed or not;
+    the bridge scene's test beside it still does."""
+    bridge = ran("scene", device("LTA009", "1", "hue"), group=True, role="scene")
+    served = ran("scene", device("LTA009", "1", "hue"), group=True, role="ha_scene") | {"via": "set_attributes"}
+    path = record2(root, "hue", "set_scene", bridge, served)
+    assert what_it_tested(path) == [gc.Tested(None, domain="scene")]
+    assert gc.tested(cr.load(path), classed=True) == [gc.Tested(None, domain="scene")]
+
+
+def test_the_native_groups_line_and_an_unplaced_models_line_take_the_lent_action(root):
+    """A group's or a classless model's line names set scene beside the set_attributes it was tested on, linking
+    set_attributes's record."""
+    record(root, "zha", "set_attributes", devices=[old_device("P1", "1"), old_group("Group", "x")])
+    adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
+    registry = FakeRegistry(*adapters)
+    registry.actions = {"set_scene": RIDE}
+    found = data(registry)
+    card = gc.card("zha", registry, list(adapters), found)
+    shown = [line for line in card.lines if "native groups" in line or "Plug" in line]
+    assert len(shown) == 2 and all("set without turning on, set scene" in line for line in shown)
+    groups = next(line for line in card.entries if line.native)
+    assert gc.status_cell(card, groups, "set scene", found, {}, dict(gc.OUTCOMES)) == (
+        "🟢 [record](integrations/zha/test-records/set_attributes.json)"
+    )
+
+
+def test_a_ridden_action_takes_each_items_level_of_its_ridden_action_but_never_a_refusal():
+    scope = AdapterScope(
+        capabilities=verified("Switch"),
+        no_known_method={"Hidden": NoKnownMethod("Old plug", "No timer", "https://x.y/z")},
+    )
+    found = gc.statuses(
+        [adapter("zha", "set_attributes", scope)],
+        {"Switch": CLASSES["Switch"], "Hidden": LIGHT},
+        {"set_scene": "set_attributes"},
+    )
+    works = {
+        action
+        for by_status in found.values()
+        for status, actions in by_status.items()
+        if status == "works"
+        for action in actions
+    }
+    assert works == {"set_attributes", "set_scene"}
+    assert found[("Hidden", "light")] == {gc.REFUSED: {"set_attributes"}}
+    # An action the integration has an adapter for is never lent.
+    own = [adapter("zha", "set_attributes", scope), adapter("zha", "set_scene", scope)]
+    assert gc.statuses(own, {"Switch": CLASSES["Switch"]}, {}) == gc.statuses(own, {"Switch": CLASSES["Switch"]})
 
 
 def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(root):
@@ -1186,21 +1284,18 @@ def test_a_feature_whose_actions_differ_in_status_names_its_parts():
 
 def test_no_card_line_names_a_feature_twice():
     block = gc.README.read_text().split(gc.CARDS[0])[1].split(gc.CARDS[1])[0]
-    lines = [line for line in block.splitlines() if line.startswith("- ")]
+    block = re.sub(r"\n +(?=[^\s-])", " ", block)  # A wrapped line is one line.
+    lines = [line for line in block.splitlines() if line.lstrip().startswith("- ") and ": " in line]
     assert lines
     icons = {icon for _, icon in gc.OUTCOMES}
     for line in lines:
-        # A line's features follow its names, each part "<icon> <features>"; the fold's sit in a parenthesis per group.
-        if line.startswith(f"- {gc.LABS} "):
-            groups = re.findall(r"\(([^()]*)\)(?=;|$)", line)
-            assert groups, line
-        else:
-            groups = [line.rsplit(": ", 1)[1]]
-        for group in groups:
-            # The fold's Labs part carries no icon of its own.
-            parts = [part.split(" ", 1)[1] if part.split(" ", 1)[0] in icons else part for part in group.split(" · ")]
-            labels = [label for part in parts for label in part.split(", ")]
-            assert len(labels) == len(set(labels)), line
+        # A line's features follow its names, each part "<icon> <features>"; a fold's sub-line carries no icon.
+        parts = [
+            part.split(" ", 1)[1] if part.split(" ", 1)[0] in icons else part
+            for part in line.rsplit(": ", 1)[1].split(" · ")
+        ]
+        labels = [label for part in parts for label in part.split(", ")]
+        assert len(labels) == len(set(labels)), line
 
 
 def test_a_line_holding_every_class_of_its_section_names_the_section(root):
@@ -1363,13 +1458,25 @@ def timer_labs(*classes, **scope):
     return adapter("zha", "turn_on_for", AdapterScope(capabilities=labs(*classes), **scope))
 
 
-def test_two_lines_that_show_only_labs_fold_into_one_last_line(root):
+def test_two_lines_that_show_only_labs_fold_into_one_last_line_a_sub_line_each(root):
     dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
-    card = labs_card(timer_labs("Light", "CCT"), dimming)
+    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=documented("RGBCCT") | labs("Light", "CCT")))
+    card = labs_card(timer, dimming)
     # CCT controllers and dimmers are one section but show different features, so two lines.
     assert card.lines == [
-        f"⚪ [CCT controllers]({URL}#dimmers) (turn on with timer);"
-        f" [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming)",
+        f"[bulbs]({URL}#bulbs): 🟡 turn on with timer",
+        f"⚪ Labs:\n  - [CCT controllers]({URL}#dimmers): turn on with timer"
+        f"\n  - [dimmers]({URL}#dimmers): turn on with timer, smooth dimming",
+    ]
+
+
+def test_a_card_whose_every_line_is_in_labs_folds_nothing(root):
+    """A parent would set nothing apart, so each line keeps its own ⚪."""
+    dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("Light")))
+    card = labs_card(timer_labs("Light", "CCT"), dimming)
+    assert card.lines == [
+        f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer",
+        f"[dimmers]({URL}#dimmers): ⚪ turn on with timer, smooth dimming",
     ]
 
 
@@ -1378,36 +1485,28 @@ def test_one_labs_line_stays_as_it_is(root):
     assert card.lines == [f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer"]
 
 
-def test_lines_with_the_same_features_share_one_parenthesis_in_their_order(root):
-    """Classes of two brands never share a line (`brands`), so each is its own, and the fold joins them."""
-    adapters = (timer_labs("Light", "CCT"),)
-    registry = brand_registry(*adapters)
-    card = gc.card("zha", registry, list(adapters), data(registry))
-    assert card.lines[-1] == (f"⚪ [CCT controllers]({URL}#dimmers), [dimmers]({URL}#dimmers) (turn on with timer)")
-
-
-def test_a_group_sits_where_its_last_line_does_so_the_other_brands_group_comes_last(root):
-    """Lines in card order: acme's CCT (smooth dimming), Beta's Light (timer, smooth dimming), other brands (smooth
-    dimming). The smooth-dimming group holds the first and last, so it follows the group of the middle line."""
+def test_sub_lines_keep_card_order_so_other_brands_comes_last(root):
+    """Classes of two brands never share a line (`brands`), even with the same features, so each is a sub-line."""
     dimming = adapter("zha", "raise_brightness", AdapterScope(capabilities=labs("CCT", "Light", "other")))
-    timer = adapter("zha", "turn_on_for", AdapterScope(capabilities=labs("Light")))
-    registry = brand_registry(dimming, timer)
+    reading = adapter("zha", "get_attributes", AdapterScope(capabilities=documented("Light")))
+    registry = brand_registry(dimming, reading)
     capabilities = copy.deepcopy(DATA["capabilities"])
     capabilities["zha"]["other"] = {"phrase": "other brands", "section": "Lights"}
-    card = gc.card("zha", registry, [dimming, timer], data(registry, capabilities=capabilities))
+    card = gc.card("zha", registry, [dimming, reading], data(registry, capabilities=capabilities))
     assert card.lines[-1] == (
-        f"⚪ [dimmers]({URL}#dimmers) (turn on with timer, smooth dimming);"
-        f" [CCT controllers]({URL}#dimmers), [other brands]({URL}#lights) (smooth dimming)"
+        f"⚪ Labs:\n  - [CCT controllers]({URL}#dimmers): smooth dimming"
+        f"\n  - [other brands]({URL}#lights): smooth dimming"
     )
 
 
 def test_a_no_known_method_part_is_dropped_from_the_fold(root):
     broken = {"CCT": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     off = adapter("zha", "turn_off_for", AdapterScope(capabilities=labs("RGBCCT"), no_known_method=broken))
-    card = labs_card(timer_labs("CCT", "RGBCCT"), off)
+    reading = adapter("zha", "get_attributes", AdapterScope(capabilities=documented("Light")))
+    card = labs_card(timer_labs("CCT", "RGBCCT"), off, reading)
     assert card.lines[-1] == (
-        f"⚪ [bulbs]({URL}#bulbs) (turn on with timer, turn off with timer);"
-        f" [CCT controllers]({URL}#dimmers) (turn on with timer)"
+        f"⚪ Labs:\n  - [bulbs]({URL}#bulbs): turn on with timer, turn off with timer"
+        f"\n  - [CCT controllers]({URL}#dimmers): turn on with timer"
     )
 
 
@@ -1440,7 +1539,7 @@ def test_a_variants_children_never_fold(root):
     parent = next(line for line in card.lines if line.startswith(f"[Plugs]({URL}#plug)"))
     assert "  - [maker B, or no setting]" in parent and "⚪ turn on with timer" in parent
     # The children stay under their parent; the two top-level lines fold.
-    assert sum(line.startswith("⚪ ") for line in card.lines) == 1
+    assert sum(line.startswith("⚪ Labs:") for line in card.lines) == 1
 
 
 def test_the_model_keeps_the_unfolded_lines_with_parents_and_per_feature_status(root):

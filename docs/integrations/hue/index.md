@@ -21,9 +21,9 @@ survive it going offline, which is the point of auto-off.
 
 ## Device classes
 
-DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets. Lights of
-other brands can answer it differently, so DeviceSide tells them apart by the manufacturer and model the bridge reports
-for each light.
+DeviceSide sends the bridge the same request for every light, and the bridge picks what each light gets
+([source walk](research/2026-11-26-class-admission-code-walk.md)). Lights of other brands can answer it differently, so
+DeviceSide tells them apart by the manufacturer and model the bridge reports for each light.
 
 - A **scene** counts as its lights: one with a light of another brand counts as that brand's, or as other brands'
   when it holds lights of two such classes.
@@ -37,39 +37,43 @@ Signify's own lights (manufacturer `Signify Netherlands B.V.`), which the bridge
 
 ### Other brands
 
-Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get
-every feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same CLIP v2 light update a Hue light
-gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and none of
-these features harms when it fails ([internals](internals.md#device-classes)).
+Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get every
+feature Hue lights get, with Labs off, as do scenes and rooms holding them. They get the same CLIP v2 light update a Hue
+light gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and none
+of these features harms when it fails ([internals](internals.md#device-classes)).
 
-Other brands are known to answer some Zigbee commands differently, so one may not do as asked: some fade only one of brightness
-and color at a time, some come on when written while off, and some don't report color temperature mode as Hue lights do
-([Gledopto](#gledopto) is known). If one of yours misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help)
-with its manufacturer and model (on its device page in Home Assistant): DeviceSide then gives that model, or its maker, a class of its
-own and refuses it the action it fails (`not_built`, or `no_known_method` with why, where no command is known to
-work), and every other light keeps it.
+Some brands answer some Zigbee commands differently ([known departures](internals.md#device-classes)). If one of yours
+misbehaves, [report it](../../../CONTRIBUTING.md#how-to-help) with its manufacturer and model (on its device page in
+Home Assistant): DeviceSide then gives that model, or its maker, a class of its own, refused the action it fails; every
+other light keeps it. Müller Licht and Livarno (Lidl) lights, each reported once with [Gledopto's](#gledopto) misread,
+keep `get_attributes` until a report gives a manufacturer string to key on.
 
 ### Gledopto
 
-Gledopto's lights and LED controllers (manufacturer `GLEDOPTO`, any model) get every feature other brands' lights get,
-but `get_attributes`. The bridge has reported several of them in color mode after a color temperature write, so Home
-Assistant showed a color temperature it set as a color ([core #62497](https://github.com/home-assistant/core/issues/62497), [core #93459](https://github.com/home-assistant/core/issues/93459);
-[research](research/2026-11-25-color-mode-misread.md)).
-`get_attributes` reports the light's actual values, so it refuses Gledopto lights (`not_built`); read Home Assistant's
-own state attributes for the light (`color_temp_kelvin`, `xy_color`) instead, where core reads its color temperature
-mode from its own last command ([internals](internals.md#device-classes)).
+Gledopto's lights and LED controllers (manufacturer `GLEDOPTO`, any model) get every feature other brands' lights get
+but `get_attributes` (`not_built`): the bridge has reported several in color mode after a color temperature write, so
+the color temperature read as a color ([core #62497](https://github.com/home-assistant/core/issues/62497),
+[core #93459](https://github.com/home-assistant/core/issues/93459);
+[research](research/2026-11-25-color-mode-misread.md)). Read the light's Home Assistant state attributes
+(`color_temp_kelvin`, `xy_color`) instead, as core takes the mode from its own last command
+([internals](internals.md#device-classes)).
 
 ## Smooth dimming
 
 The bridge runs the fade. A room fades as one, and its lights converge on the end point.
 
-**Fix Hue Bridge brightness reports while dimming** (on by default). When a fade starts, the bridge reports 0 % or
-100 % brightness, and only snaps back to the light's actual level about 10 s later. With this option on, Home
-Assistant shows the brightness the fade started at while it runs, where a `stop` halted it, and the end once the fade
-has run, so a dashboard slider holds still, then jumps. Color is always shown as the bridge reports it. A change from
-the Hue app, a dimmer switch or a bridge scene shows at once, except a brightness change or a turn on within 15 s of a
-fade. A restart or bridge reconnect mid-fade shows what the bridge reports. Turn the option off in DeviceSide's
-options to see the bridge's own reports.
+**Fix Hue Bridge brightness reports while dimming** (on by default; turn it off in DeviceSide's options to see the
+bridge's own reports). When a fade starts, the bridge reports 0 % or 100 % brightness, and the light's actual level
+only about 10 s later. With the option on, Home Assistant shows:
+
+| When | Home Assistant shows |
+|---|---|
+| A fade is running | The brightness it started at, so a dashboard slider holds still |
+| A `stop` halted it | Where it halted |
+| The fade has run | The end, so the slider jumps there |
+| Any time, for color | The bridge's report |
+| A change from the Hue app, a dimmer switch or a bridge scene | The change at once, except a brightness change or a turn on within 15 s of a fade |
+| A restart or bridge reconnect mid-fade | The bridge's report |
 
 ## Smooth color changes
 

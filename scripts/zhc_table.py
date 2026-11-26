@@ -14,6 +14,18 @@ for every key DeviceSide publishes is ZHC's standard one, with no `meta` flag th
 (`departures`): only the flags known to leave the calls alone may be set, so a flag ZHC adds keeps a definition out
 until a maintainer has read it. A definition exposing `color_hs` without `supportsHueAndSaturation` is out, as its
 saturation fade is `moveToColor`, not the call on record (docs/research/2026-11-25-z2m-converter-survey.md, Part 4).
+The standard converters: `state` and `brightness` on `light_onoff_brightness` (`state` on `on_off` only for a light
+with no brightness: `on_off` beside a brightness converter sends a plain On or Off, the departure ZHC fixed on Inovelli
+and Legrand), `transition` on `ignore_transition`, `color` on `light_color` or `light_color_colortemp`, `hue_move`
+on `light_hue_saturation_move`, `brightness_move` on `light_brightness_move`, and the generic `command` and `read`.
+The flags that leave the calls alone: `supportsHueAndSaturation`, `multiEndpoint`, `multiEndpointSkip`,
+`applyRedFix`, `disableActionGroup`, `overrideHaDiscoveryPayload`, `thermostat`; so `turnsOffAtBrightness1` (the
+brightness floor), the option-field, enhanced-hue and default-response flags keep a definition out. A definition model
+is the key, with each white label that has a fingerprint (Z2M publishes its model when the fingerprint matches); a
+model string two definitions publish is left out. Family is read off what a definition shows (its vendor, models,
+fingerprints and exposes, and IKEA's Zigbee manufacturer string tried on IKEA's), so it is approximate. The bump is the
+first item of each RC (the release skill); scripts/check_audit.py fails an RC cut from `main` whose pin hasn't moved
+since the previous RC tag, unless its audit record says `ZHC bump skipped: <reason>`.
 
 --pin <tag>  Clone ZHC at the release tag, build it, rewrite the generated block and the page, and print the proposal
              for the bump PR's body: additions; departures, each **review** when the model was a member at the last

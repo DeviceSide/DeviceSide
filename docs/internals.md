@@ -1,10 +1,10 @@
 # Internals
 
-What every adapter shares: how a target is resolved, how fades and writes while off work, and the levels Home
-Assistant keeps. Each integration's addressing, calls and measurements are in its own `internals.md`:
+What every adapter shares: how a target is resolved, how fades and writes while off work, and the levels Home Assistant
+keeps. Each integration's addressing, calls and measurements are in its own `internals.md`:
 [Shelly](integrations/shelly/internals.md), [Zigbee2MQTT](integrations/zigbee2mqtt/internals.md),
-[ZHA](integrations/zha/internals.md), [Matter](integrations/matter/internals.md) and
-[Hue](integrations/hue/internals.md). What a user sees is in [integrations.md](integrations.md) and isn't
+[ZHA](integrations/zha/internals.md), [Matter](integrations/matter/internals.md), [Hue](integrations/hue/internals.md)
+and [Control4](integrations/control4/internals.md). What a user sees is in [integrations.md](integrations.md) and isn't
 repeated here; result and detail codes are in the code.
 
 ## Shared
@@ -28,18 +28,10 @@ repeated here; result and detail codes are in the code.
   replaces that kept level: on Z2M by publishing `{"state": null, "brightness": <level>, "transition": 0.4}`, which
   the off light ignores; on ZHA and Hue on the light entity, and on the group or room entity for an explicit
   `brightness` there.
-- **Zigbee 3.0 certification and the dimming commands.** Why ZHA's and Zigbee2MQTT's `other` is in Labs on
-  `raise_brightness`, `lower_brightness` and `stop`. A Level Control server must take Move to Level, Move, Step and
-  Stop, and their With On/Off forms (ZCL Rev 8, 07-5123-08, §3.10.2.3, Table 3-59: all M,
-  https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf); a Dimmable Light, and
-  every light device type above it, must have that server (Lighting & Occupancy Device Specification 15-0014, as NXP's
-  JN-UG-3131 §3.2, Table 15, gives it:
-  https://mcuxpresso.nxp.com/mcuxsdk/25.09.00-pvw1/html/middleware/wireless/zigbee/Docs/JNUG3131/topics/lighting_and_occupancy_device_types.html);
-  and Zigbee 3.0 certification tests a device's ZCL compliance
-  (https://docs.silabs.com/zigbee/9.0.2/certifying-zigbee-3-devices/). So a certified dimmable light takes a fade and
-  its stop (checked in the PDF: [research](research/2026-11-17-zcl-rev8-level-and-onoff.md)). The prediction covers
-  certified lights; `other` also holds uncertified ones, which DeviceSide can't tell
-  apart, and a failure there shows at once, so it is triaged as the class's result.
+- **Zigbee 3.0 dimming.** A certified dimmable light must take the standard Level Control Move, Step and Stop commands,
+  so ZHA's and Zigbee2MQTT's `other` is admitted to `raise_brightness`, `lower_brightness` and `stop` on that basis, and
+  a failure on an uncertified one shows at once. The argument and sources:
+  [Zigbee](integrations/zigbee.md#smooth-dimming-and-stop).
 
 ## Tested behavior
 

@@ -26,8 +26,8 @@ Code and docs use these terms. Each one's rules live where its link points.
   (`custom_components/deviceside/zigbee/<family>.py`), and generated device tables any Zigbee integration may read
   (`zigbee/standard_lights.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
-  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); when a
-  device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
+  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); when a device
+  counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
 - **Not supported**: DeviceSide can't do this action for the target (`target_not_supported`,
   `integration_not_supported`); for a class, either no known method or not built yet.
 - **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. Rules:
@@ -40,9 +40,9 @@ Code and docs use these terms. Each one's rules live where its link points.
   refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
 - **Level**: how a scope item is proven: Verified, Documented or Labs. Rules: [evidence.md](evidence.md#levels).
   User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) that no pass or Documented route admits yet,
-  or that a maintainer holds back; also the option (`labs`, off by default) that lets calls touching a flagged item through. Only the
-  dispatcher reads the option. Rules: [evidence.md](evidence.md#the-labs-flag).
+- **Labs**: the lowest level, and the flag on a scope item (`labs(...)`) that no pass or Documented route admits yet, or
+  that a maintainer holds back; also the option (`labs`, off by default) that lets calls touching a flagged item
+  through. Only the dispatcher reads the option. Rules: [evidence.md](evidence.md#the-labs-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
   `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
   [device-compatibility.md](device-compatibility.md#levels-of-proof).
@@ -98,10 +98,10 @@ built:
 
 ## Scope
 
-Which integrations have which actions: the feature table on docs/device-compatibility.md (`scripts/gen_features.py`); each integration's page:
-[integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`,
-explained to users in [integrations.md](integrations.md#what-cant-be-done-and-why). Per device class:
-[device-compatibility.md](device-compatibility.md). Each adapter's `AdapterScope` says what it covers.
+Which integrations have which actions: the feature table on docs/device-compatibility.md (`scripts/gen_features.py`);
+each integration's page: [integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in
+`scripts/gen_features.py`, explained to users in [integrations.md](integrations.md#what-cant-be-done-and-why). Per
+device class: [device-compatibility.md](device-compatibility.md). Each adapter's `AdapterScope` says what it covers.
 
 - **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
   `turn_on_for` takes the `light.turn_on` fields.
@@ -110,10 +110,12 @@ explained to users in [integrations.md](integrations.md#what-cant-be-done-and-wh
 - **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, saturation, hue) and direction, as HA names
   its direction actions (`cover.open_cover`). `sweep_time` is how long a full range takes, `limit` ends the move
   early, and `stop` halts every move on the target. No color temperature move: every stop of a Hue fade jumps visibly.
-- **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read
-  what HA doesn't show: the device's actual values (mid-move, where the move has reached), never a cached last write. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
-- **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
-  Zigbee would follow the same pattern.
+- **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read what
+  HA doesn't show: the device's actual values (mid-move, where the move has reached), never a cached last write. Every
+  timed or set-while-off adapter needs a matching `get_attributes` on its integration.
+- **`set_scene`**: a scene's settings, written to each light while it's off. A Hue bridge scene goes to Hue's adapter;
+  a Home Assistant scene is written light by light through `set_attributes`, so it serves every integration that has
+  that ([integrations.md](integrations.md#home-assistant-scenes)). Other native scenes: [deferred.md](deferred.md).
 
 Not built yet: turn-on defaults (`OnLevel`) and other entity domains (cover, valve, lock). Each new one, and each new
 integration, is weighed against the broad-appeal principle in
@@ -150,6 +152,7 @@ adapter.py       Adapter base class; gather() runs sends under the concurrency l
 registry.py      AdapterRegistry: discovery, guarded import, lookup, matrix
 resolver.py      entity_id -> Target, or the reason it can't be served
 groups.py        HA group expansion, any domain
+ha_scene.py      Home Assistant scenes: which entities are one, each light's write, set_scene's route
 dispatcher.py    parse, extract, expand, resolve, plan, run, raise rule, response
 ha_watch.py      drops predictions a light or scene call from HA leaves stale
 ha_entity.py     guarded access to HA's live entity objects
@@ -170,25 +173,33 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 
 | Hook or field | What it buys | Where its rules live |
 |---|---|---|
-| `IntegrationInfo.capability`, `classes`, `default_class` | Each target's class, so each class stands on its own evidence. `capability` is sync and cheap, no I/O; it gives the default class to a device no rule matches, `Unplaced` to one not yet placed, `None` only to one it can't class at all. Every adapter sees the same class and maps the classes it serves to its own branch: a class is a device class, not a call pattern, as patterns are per action. `classes` gives each class the entity domains a device in it can be (a family's from its `Family`), so no scope holds a class on an action none of those domains reaches. | [evidence.md](evidence.md#device-classes); `Unplaced` in `core/scope.py`; the registry's checks: `check_integration` and `check_classes` in `core/registry.py` |
-| **Family**: `IntegrationInfo.families` (`Family`, `FamilyScope`), `integrations/<x>/refusals.py` | A vendor's classes as one path with its own maintainers: a `Family` names its classes and holds their rules, levels and own calls. Opt-in: an integration with none holds its classes itself. The integration keeps the transport, the default class and any other class spanning vendors (`IntegrationInfo.own_classes`: Zigbee2MQTT's standard lights), the rule order between families (`families/__init__.py`) and every refusal entry (`refusals.py`, merged in by `class_scope`). | `Family`, `FamilyScope` and `class_scope` in `core/scope.py`; `check_families` in `core/registry.py`; `core/rules.py`; [CLAUDE.md](../CLAUDE.md#maintainers) |
-| **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone, say) goes to the device as one command. `is_group` recognizes one; `expand_group` lists its members, sync and with no I/O; an adapter with `native_groups` gets the group as one target. `expand_group`'s members give the group its classes and are what it falls back to when a member's class is refused, takes a call of its own, or is in Labs, or holds a field the call carries in Labs (`AdapterScope.class_labs`), with the option off; an adapter without `native_groups` gets them as its targets. | `core/dispatcher.py`'s module docstring, Native groups; [evidence.md](evidence.md#device-classes), Groups |
-| `IntegrationInfo.setup`, `remove` | `setup` starts what the integration keeps running while the entry is loaded, as the entry's background task, and registers its own teardown with `entry.async_on_unload`; `remove` undoes what it changed outside HA as DeviceSide is deleted. A hook that raises is logged and isolated. The component root names no integration. | `IntegrationInfo` in `core/scope.py`; `_guarded` in `__init__.py` |
-| `IntegrationInfo.detect` | Picks this integration over a generic sibling on the same `ha_domain` (Zigbee2MQTT over plain MQTT): a different gateway or API is an integration of its own. | [evidence.md](evidence.md#the-split-rule); Resolver, below |
-| `IntegrationInfo.unsupported` | Refuses a gateway or API DeviceSide never supports, as `integration_not_supported` with its reason: listed in its sibling's module as `UNSUPPORTED`, it claims entities by `detect`, has no adapters, and is kept out of the cards and gates. | `IntegrationInfo` in `core/scope.py`; `AdapterRegistry` in `core/registry.py` |
+| `IntegrationInfo.capability`, `classes`, `default_class` | Each target's class, so each class stands on its own evidence: a device class, not a call pattern. `classes` gives its entity domains. | [evidence.md](evidence.md#device-classes); `capability`, `classes`, `Unplaced` in `core/scope.py`; `check_integration`, `check_classes` in `core/registry.py` |
+| **Family**: `IntegrationInfo.families` (`Family`, `FamilyScope`), `integrations/<x>/refusals.py` | A vendor's classes as one path with its own maintainers; opt-in. The integration keeps the transport, default class, rule order and every refusal entry. | `Family`, `FamilyScope`, `class_scope` in `core/scope.py`; `check_families` in `core/registry.py`; `core/rules.py`; [CLAUDE.md](../CLAUDE.md#maintainers) |
+| **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone) goes to the device as one command. `is_group` recognizes it; `expand_group` lists its members, sync, no I/O. | `core/dispatcher.py`'s module docstring, Native groups (fallback, refusal); [evidence.md](evidence.md#device-classes), Groups |
+| `IntegrationInfo.setup`, `remove` | `setup` starts what the integration keeps running while loaded, as a background task; `remove` undoes what it changed outside HA. The root names no integration. | `IntegrationInfo` in `core/scope.py`; `_guarded` in `__init__.py` (a hook that raises is logged and isolated) |
+| `IntegrationInfo.detect` | Picks this integration over a generic sibling on the same `ha_domain` (Zigbee2MQTT over plain MQTT). | [evidence.md](evidence.md#the-split-rule); Resolver, below |
+| `IntegrationInfo.unsupported` | Refuses a gateway or API DeviceSide never supports, as `integration_not_supported` with its reason; no adapters, kept out of the cards and gates. | `IntegrationInfo` in `core/scope.py`; `AdapterRegistry` in `core/registry.py` |
 | `IntegrationInfo.zigbee_manufacturer` | The device's own Zigbee manufacturer string for the device report form, where HA's registry holds another. | `IntegrationInfo` in `core/scope.py` |
 | `IntegrationInfo.call_resolver` | Drops what a light or scene call from HA leaves stale. | `core/ha_watch.py` |
 | `IntegrationInfo.max_concurrency`, `AdapterScope.max_concurrency` | How many sends run at once. | [Concurrency](#concurrency) |
-| `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). Flagging every domain flags the whole adapter. | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
+| `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
 | `AdapterScope.drops`, `unlisted` | Fields the integration can never send, dropped as a lacked field is; fields its devices take though the light's state says they can't. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): Lacks a field, Unlisted fields depart from core |
 | `AdapterScope.capabilities` | A level per class, and per domain where its entry names some (`OnDomains`). | [evidence.md](evidence.md#device-classes) |
-| `AdapterScope.class_labs` | Fields in Labs on some classes alone (`labs_fields(...)`), each a lackable field in `fields`, not dropped and not Labs there already. With the option off the dispatcher drops them on those classes (`fields_dropped`), but on a native group, which falls back to its members. | [evidence.md](evidence.md#levels); `core/dispatcher.py`'s module docstring, Planning |
-| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`). A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm, on an action whose failure harms (`Action.failure_harms`, which the registry checks). A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); `AdapterScope.refusal` and `harms` in `core/scope.py` |
-| `AdapterScope.own_calls` | A class's own call (`OwnCall`), which the dispatcher hands the adapter in place of `execute`, optionally with its own duration limits (else the scope's `duration`). Each class in it must be in `capabilities`. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
-| `AdapterScope.own_calls_only`, `OwnCallsOnly` | An adapter with no call of its own, serving only its classes' own calls (Zigbee2MQTT's `turn_off_for`, Tuya's datapoint countdown). Every class its scope serves has an own call, and `refusal` refuses every other target: a class not yet known (None or Unplaced) as `class_unknown`, with Labs on or off, any other as `not_built`. Why a flag rather than refusal entries: a class the integration couldn't name matches no entry, and would reach `execute`. The `OwnCallsOnly` base gives the adapter an `execute` that nothing reaches, so it holds no stub; the registry checks the two come together. | `AdapterScope.refusal` in `core/scope.py`; `OwnCallsOnly` in `core/adapter.py`; `AdapterRegistry` in `core/registry.py` |
+| `AdapterScope.class_labs` | Fields in Labs on some classes alone (`labs_fields(...)`). With the option off the dispatcher drops them there (`fields_dropped`), not on a native group. | [evidence.md](evidence.md#levels); `core/dispatcher.py`'s module docstring, Planning |
+| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason (`NoKnownMethod`, `NotBuilt`); in none of `capabilities`, `no_known_method` and `not_built` is not built. `not_built` holds only classes today's call would harm. | [evidence.md](evidence.md#no-known-method-not-built-yet-in-labs); `AdapterScope.refusal` and `harms` in `core/scope.py` |
+| `AdapterScope.own_calls` | A class's own call (`OwnCall`), handed to the adapter in place of `execute`, with optional duration limits. Each such class is in `capabilities`. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
+| `AdapterScope.own_calls_only`, `OwnCallsOnly` | Serves only its classes' own calls (Zigbee2MQTT's `turn_off_for`). A flag, not refusal entries: an unnameable class matches no entry and would reach `execute`. | `AdapterScope.refusal` in `core/scope.py`; `OwnCallsOnly` in `core/adapter.py`; `AdapterRegistry` in `core/registry.py` |
 | `AdapterScope.duration` | The durations the call can carry (`DurationLimits`): a request outside them is clamped, and the result says so. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): A value the device can't reach; `core/duration.py` |
-| `AdapterScope.confirmable`, `options`, `notes` | Declarations core doesn't act on, read by the rig: `confirmable`, that a run expects status `confirmed`, not `sent`; `options`, the DeviceSide options that change what it does (`predicted_state`), whose rig records are `<action>-<option>.json`; `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) |
+| `AdapterScope.confirmable`, `options`, `notes` | Declarations the rig reads: `confirmable`, a run expects `confirmed`; `options`, DeviceSide options that change what it does (`predicted_state`); `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) (`<action>-<option>.json` records) |
 | `AdapterScope.caveat` | A risk mark, set by a repo maintainer; changes no call. | [evidence.md](evidence.md#caveats) |
+
+**Writing an action.** An action's module exports `ACTION`, an `Action` subclass (`core/action.py`). One that serves
+some targets through another action's adapters also declares:
+
+| Hook or field | What it buys | Where its rules live |
+|---|---|---|
+| `Action.claims`, `route` | Entities the action routes itself, kept from resolution: `route` plans them beside the other targets, so a refused named one raises before any send. | `Action` and `Routed` in `core/action.py`; `Dispatcher.handle` |
+| `Action.rides` (`Ride`) | The action whose adapters serve the routed targets, named as a domain on an HA integration; generators derive its target filter and cells from it. | `Ride` in `core/action.py`; `scripts/gen_services.py`, `gen_features.py`, `gen_compat.py` |
 
 Core around them:
 
@@ -224,9 +235,9 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 ### services.yaml, strings, icons
 
 - `services.yaml` holds only target filters and field selectors; names and descriptions are in `translations/en.json`.
-  Target filters list exactly the integrations with an adapter for the action, with the entity domains it serves;
-  `scripts/gen_services.py` generates them from the registry. They are a UI convenience: adapters enforce scope
-  through `supports()`.
+  Target filters list exactly the integrations with an adapter for the action, with the entity domains it serves, and
+  the target an `Action.rides` names; `scripts/gen_services.py` generates them from the registry. They are a UI
+  convenience: adapters enforce scope through `supports()`.
 - Field filters can only test `supported_features` and attributes, not domain, so light fields copy
   `light/services.yaml`'s `supported_color_modes` filters; a switch-only selection shows just `duration`.
 - Adding an action means a block each in `services.yaml`, `translations/en.json` and `icons.json`;
@@ -234,14 +245,20 @@ slot under the same deadline, so a call waiting on its device holds no slot (`Ad
 
 ### Coverage view
 
-The Settings form in Configure (`coverage.py`) shows, above the options, per light and switch entity, the features that run now (Verified,
-Documented), and those that need Labs; a refused feature is an empty cell, as a blank is unsupported, and an entity with no cell has no row. It reads `dispatcher.judge`, the per-target
-decision a call makes (supports(), the class, the refusal, then the Labs gate), on each action of a feature with Labs
-off, and never a copy of it, so a cell can't disagree with a call. A feature riding several actions takes its weakest;
-Smooth color is saturation and hue in one column, the weaker of the two, a refused one counting as empty. An integration whose classes wait on a report (Z2M's bridge/devices) says so through
-`IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has. The features and
-their actions are `features.py`'s, which the README's cards read too; the integrations' order is `registry.CARD_ORDER`, a
-copy of the bundles' `column_order` that `tests/test_card_order.py` keeps equal.
+The Settings form in Configure (`coverage.py`) shows, above the options, a row per light and switch entity, one cell per
+feature.
+
+- **A cell** says the feature runs now (Verified, Documented) or needs Labs; a refused feature is an empty cell, as a
+  blank is unsupported, and an entity with no cell has no row.
+- **Source.** It reads `dispatcher.judge`, the per-target decision a call makes (supports(), the class, the refusal,
+  then the Labs gate), on each action of a feature with Labs off, never a copy of it, so a cell can't disagree with a
+  call.
+- **Several actions.** A feature riding several actions takes its weakest; Smooth color is saturation and hue in one
+  column, the weaker of the two, a refused one counting as empty.
+- **Waiting.** An integration whose classes wait on a report (Z2M's bridge/devices) says so through
+  `IntegrationInfo.capability_ready`; the form waits on it for at most 10 s, then shows what it has.
+- **Features.** The features and their actions are `features.py`'s, which the README's cards read too; the integrations'
+  order is `registry.CARD_ORDER`, a copy of the bundles' `column_order` that `tests/test_card_order.py` keeps equal.
 
 ## Release gates
 
