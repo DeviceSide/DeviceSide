@@ -9,11 +9,12 @@ one home for these rules; other docs point here.
    latency, and DeviceSide offers only what's likely to meet that bar. If that holds, nothing else matters.
 2. **Probe before you build.** When unsure how a device you can reach responds to a call, run a cheap probe and record
    what it shows, dated, in the bundle's `internals.md`. A fact a shipped call depends on is a **fact test**: the rig
-   reruns it (`--facts`) when that call changes, and `test-records/_facts.json` keeps each result; a watched test
-   covers what only a person can see. A fact that only decided scope or design goes in `research/`, a dated file never
-   edited; if evidence suggests it has changed, repeat the probe by hand in a new file. With no device at hand, build
-   from a cited source (the vendor's documentation, an upstream integration that ships the call, or research), at the
-   level tenet 10 gives; in Labs, the first device report is the probe. *Why:* assumed behavior is where features break.
+   reruns it (`--facts`) when that call changes, and `test-records/_facts.json` keeps each result; a watched test covers
+   what only a person can see. A fact that only decided scope or design goes in `research/`, a dated file never edited;
+   if evidence suggests it has changed, repeat the probe by hand in a new file. With no device at hand, build from a
+   source cited in `internals.md` (the vendor's documentation, an upstream integration that ships the call, or
+   research), at the level tenet 10 gives; in Labs, the first device report is the probe. *Why:* assumed behavior is
+   where features break.
 3. **Verify, then trust.** A verified fact stands across firmware, HA and code changes until evidence contradicts it.
    Nobody goes looking for things to re-prove.
 4. **Surprises reopen facts.** A bug or unexplained behavior gets a root-cause dive, and the finding joins the fact
@@ -28,20 +29,20 @@ one home for these rules; other docs point here.
    ([deferred](deferred.md#device-facts-across-integrations)).
 6. **Simplify relentlessly.** Prefer fewer calls, round trips and machinery. A new guardrail needs evidence its failure
    happens (a probe, record or report); until then, log so the first report would show the failure. A new rule or
-   guardrail names the user-visible failure it prevents and what it replaces. An existing guardrail stays until evidence shows its
-   failure doesn't happen; meanwhile, make it cheaper.
+   guardrail names the user-visible failure it prevents and what it replaces. An existing guardrail stays until evidence
+   shows its failure doesn't happen; meanwhile, make it cheaper.
 7. **Maintainers judge sufficiency.** Tooling records evidence; maintainers decide what's enough. Gates check that a
    sign-off exists, not how thorough it was.
-8. **Test to decide.** A hardware run costs time and a person at hand, so run one only when its result takes a
-   decision: a design choice (tenet 2's probe; a call already seen working on the device, in your own automation, an
-   upstream integration or a research file's run, needs none, only a citation, while a vendor's document alone still
-   needs the probe where a device is in reach); a foundation (before further steps build on a design no verified fact
-   covers, the rig cases whose failure would discard that work); lifting a [Labs flag](#the-labs-flag); a surprise
-   (tenet 4); or a release (the sign-off, due before the last RC, or the one that clears a caveat). Run it at the last
-   point that can take its decision: for a device the rig or a maintainer can reach, the release's run, so no merge
-   waits on one; for a contributor's own devices, their pull request, one test of the finished build at the commit whose
-   calls ship ([CONTRIBUTING](../CONTRIBUTING.md), Fast track): a maintainer needs it to merge, and what it exercised
-   ships unflagged. A plan gates a step on a run only by naming the decision.
+8. **Test to decide.** A hardware run costs time and a person at hand, so run one only when its result takes a decision:
+   a design choice (tenet 2's probe; a call already seen working on the device, in your own automation, an upstream
+   integration or a research file's run, needs none, only a citation in the bundle's `internals.md`, while a vendor's
+   document alone still needs the probe where a device is in reach); a foundation (before further steps build on a
+   design no verified fact covers, the rig cases whose failure would discard that work); lifting a [Labs
+   flag](#the-labs-flag); a surprise (tenet 4); or a release (the sign-off, due before the last RC, or the one that
+   clears a caveat). Run it at the last point that can take its decision: for a device the rig or a maintainer can
+   reach, the release's run, so no merge waits on one; for a contributor's own devices, their pull request, one test of
+   the finished build at the commit whose calls ship ([CONTRIBUTING](../CONTRIBUTING.md), Fast track): a maintainer
+   needs it to merge, and what it exercised ships unflagged. A plan gates a step on a run only by naming the decision.
    *Why:* a run whose result changes nothing only holds up the release.
 9. **Retest what the change exercises.** A change reopens only the evidence for actions whose call, or handling of the
    device's reply, it changes, wherever the code lives. Evidence binds to the action's [call
@@ -158,6 +159,7 @@ names, not the class around them. On an action whose failure harms, turning on L
 in Labs runs with the option on; an identity reported harmed is split off with a `NotBuilt` entry. On a failed report,
 the maintainer triaging it fixes it, keeping the class in Labs, or makes the class not built, as their time allows; one
 they stop fixing becomes not built. A not built class returns with a PR that brings a sourced call or a passing run.
+
 ## Contrary evidence
 
 A report changes a level only through a maintainer (tenet 7):
@@ -168,8 +170,8 @@ A report changes a level only through a maintainer (tenet 7):
   identity it names on that action, on the report alone, citing it: not built yet if a known or plausible call would
   serve it, otherwise no known method.
 - **The identity is the narrowest a class rule can key on:** model ID with manufacturer string, plus firmware where
-  that decides. A vendor is not normally refused whole on one report; split off the exception. A rule keyed on a vendor needs
-  research.
+  that decides. A vendor is not normally refused whole on one report; split off the exception. A rule keyed on a
+  vendor needs research.
 - **Not evidence against the device:** a failure on a different call (an external converter's), or a report that
   contradicts the identity's own passing record. The maintainer retests, or weighs the two.
 - **Anything else** changes no level until a maintainer root-causes it. The fix or demotion lands with the finding,
@@ -249,6 +251,7 @@ needs a segment run on a group.
   fix is low-risk; or, when it is risky, put it behind the Labs flag, alone when that makes the action all-Labs, and
   marked 🔧 Untested fix otherwise.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs 95% line coverage (CI).
+
 ### Sign-off format
 
 Test records are JSON files in the bundle's `test-records/`, each checked against
@@ -277,8 +280,9 @@ each format credits. The rules it serves:
 ### The coverage check
 
 Every class an adapter's scope holds as Verified needs, for that action, a passing record test that reached it, or a
-`_manual.json` row naming it, in each domain the level is held on (a manual row names no domain, so it covers each); on
-an integration that names no classes, each Verified domain needs the same. `scripts/gen_compat.py` warns of each gap on
+`_manual.json` row naming it: one held on every domain, in any domain; one held on some domains alone, in each of them
+(a manual row names no domain, so it covers each). On an integration that names no classes, each Verified domain needs
+the same. `scripts/gen_compat.py` warns of each gap on
 every PR and says what credits a class; `scripts/check_release.py --signoffs` fails on it at `cut-release`.
 
 ## Worked examples
