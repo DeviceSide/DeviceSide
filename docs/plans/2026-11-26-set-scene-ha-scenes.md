@@ -149,7 +149,7 @@ cd ~/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11
   the generators' `--check` and `scripts/check_docs.py` clean. `check_release.py --signoffs` flags nothing from the
   dispatcher change (there is no `--records` flag).
 - **Waiting on Jason:** the live HA-scene rig run (Decision 7), from this worktree:
-  `../ha-rig/scripts/rig.py --action set_scene`. If it passes, the PR rides v0.2.0rc1; if it slips, rc1 is cut without it.
+  `../../ha-rig/scripts/rig.py --action set_scene`. If it passes, the PR rides v0.2.0rc1; if it slips, rc1 is cut without it.
   Jason has also not yet confirmed Decision 7 himself (it was relayed) nor approved integrations.md's budget raise.
 - **Then, in the turn that marks it ready:** merge main again (GitHub runs no PR CI while the PR conflicts), rerun the
   generators, `ci-green 630`, then the whole-PR audit (Opus auditor: `docs/design.md` rule text changes) and
