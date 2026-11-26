@@ -21,13 +21,16 @@ It's the successor to [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth
 
 * **Zero setup:** Connects to your devices automatically via the core integrations
 
-### Why DeviceSide exists
+<details>
+<summary>Why DeviceSide exists</summary>
 
 Many lights, plugs and switches can run timers and smooth fades on their own. Until now, using these on HA meant hunting
 forum threads for YAML recipes and adapting them to your device.
 
 DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* or *Dim smoothly*, that you can pick in
 the automation editor. Because features run on the device, timers still work if HA restarts, and dimming stays smooth.
+
+</details>
 
 ### Will it work with my devices?
 
@@ -138,7 +141,7 @@ integration are in [docs/integrations.md](https://github.com/DeviceSide/DeviceSi
 
 <!-- devices:end -->
 
-Once installed, open DeviceSide's **Configure > Settings** to see which features work on each of your lights and
+Once installed, open DeviceSide's **Configure > Settings** to see which features work on your lights and
 switches:
 
 <img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/images/coverage-view.png" width="600" alt="DeviceSide's Settings: a table of the user's lights and switches by integration, each feature marked Verified, Documented or Labs">
