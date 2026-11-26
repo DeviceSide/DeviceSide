@@ -276,19 +276,23 @@ def _sort(
 async def _run(hass: HomeAssistant, request: Request, scene: _Planned, dispatcher: Dispatcher) -> list[EntityResult]:
     """Send one scene's runs and turn its off lights off, concurrently, then fold the lights' results into the scene's
     (_fold). A light an adapter skipped while running (an empty group) is no failure: its result is kept beside the
-    scene's, for the skipped-targets warning."""
+    scene's, for the skipped-targets warning. A scene each of whose lights was so skipped is skipped too, with their
+    ranked reason (rank), never raised, as sending has begun."""
     written, off_failed = await asyncio.gather(dispatcher.run_planned(scene.runs), _turn_off(hass, request, scene))
     skipped = [result for result in written if result.status is Status.UNSUPPORTED]
     reached = [result for result in written if result.status is not Status.UNSUPPORTED]
-    return [_fold(scene, reached, off_failed), *skipped]
-
-
-def _fold(scene: _Planned, reached: list[EntityResult], off_failed: int) -> EntityResult:
-    """The scene's result: rejected if any light failed (error if each written or turned off did), sent if any was
-    written or turned off, else unchanged. Its integration is its lights' when they share one, else homeassistant;
-    `member_classes` maps each light the call reached to its class, as a native group's entry does."""
-    integrations = {r.integration for r in (*reached, *scene.unchanged) if r.integration} | scene.unresolved
+    integrations = {r.integration for r in (*written, *scene.unchanged) if r.integration} | scene.unresolved
     integration = integrations.pop() if len(integrations) == 1 else HA_DOMAIN
+    if skipped and not (reached or scene.off or scene.unchanged or scene.idle):
+        reason = min((r.detail for r in skipped if r.detail), key=rank, default=None)
+        return [*skip(scene.entity_id, False, reason, integration), *skipped] if reason else skipped
+    return [_fold(scene, reached, off_failed, integration), *skipped]
+
+
+def _fold(scene: _Planned, reached: list[EntityResult], off_failed: int, integration: str) -> EntityResult:
+    """The scene's result: rejected if any light failed (error if each written or turned off did), sent if any was
+    written or turned off, else unchanged. `integration`: its lights' when they share one, else homeassistant;
+    `member_classes` maps each light the call reached to its class, as a native group's entry does."""
     if failed := sum(result.status is Status.REJECTED for result in reached) + off_failed:
         detail = "error" if failed == len(reached) + len(scene.off) else "some_lights_failed"
         return EntityResult(scene.entity_id, Status.REJECTED, integration=integration, detail=detail)

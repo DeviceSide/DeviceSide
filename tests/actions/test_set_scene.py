@@ -367,6 +367,36 @@ async def test_a_named_scene_refused_by_its_lights_class_raises_with_why(hass, f
     assert reset_script.calls == []
 
 
+async def test_a_named_scene_refused_as_class_unknown_names_its_lights_integration(hass, fake, reset_script):
+    """The title a class_unknown refusal names is the light's integration's, as for the light named alone."""
+    registry = get_runtime(hass).registry
+    info = registry.integrations["fake"]
+    registry.integrations["fake"] = replace(
+        info, capability=lambda hass, target: None, classes={"A": frozenset({"light"})}
+    )
+    add_fake_entity(hass, fake, "light.a")
+    scene(hass, [on("light.a", brightness=255)])
+    adapter = registry.adapter("set_attributes", "fake")
+    entry = NoKnownMethod("Bulb D", "It ignores brightness", "https://example.com/d")
+    scope = replace(FakeSetAttributes.scope, capabilities=verified("A"), no_known_method={"D": entry})
+    try:
+        with (
+            patch.object(adapter, "failure_harms", True),
+            patch.object(FakeSetAttributes, "scope", scope),
+            pytest.raises(TargetNotSupported) as raised,
+        ):
+            await call(hass, "set_scene", {"entity_id": SCENE})
+    finally:
+        registry.integrations["fake"] = info
+
+    assert raised.value.reason == "class_unknown"
+    assert raised.value.translation_placeholders == {
+        "entity_id": SCENE,
+        "reason": "class_unknown",
+        "integration": "Fake",
+    }
+
+
 async def test_a_turn_off_that_hangs_times_out_as_a_device_failure(hass, fake, reset_script, caplog, monkeypatch):
     monkeypatch.setattr(module, "ADAPTER_TIMEOUT_S", 0)
     monkeypatch.setattr(module, "ADAPTER_BACKSTOP_S", 0.01)
@@ -416,3 +446,23 @@ async def test_the_scene_names_each_lights_class_and_their_integration(hass, fak
         assert await call(hass, "set_scene", {"entity_id": SCENE}) == {
             SCENE: SENT | {"member_capabilities": {"light.a": "A"}}
         }
+
+
+@pytest.mark.parametrize(("detail", "logged"), [("not_addressable", True), ("empty_group", False)])
+async def test_a_scene_each_of_whose_lights_an_adapter_skips_while_running_is_skipped(
+    hass, fake, special, reset_script, caplog, detail, logged
+):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.s", identifier="special_s")
+    scene(hass, [on("light.a", brightness=255)])
+    scene(hass, [on("light.a", brightness=255), on("light.s", brightness=255)], entity_id="scene.other")
+
+    async def execute(adapter, hass, request, targets):
+        return [adapter.result(target, Status.UNSUPPORTED, detail=detail) for target in targets]
+
+    with patch.object(FakeSetAttributes, "execute", execute):
+        response = await call(hass, "set_scene", {"entity_id": [SCENE, "scene.other"]})
+
+    # The scene is skipped, not unchanged; the other still reports both lights' integrations.
+    assert response == {"scene.other": SENT}
+    assert (f"{SCENE} ({detail})" in caplog.text) is logged
