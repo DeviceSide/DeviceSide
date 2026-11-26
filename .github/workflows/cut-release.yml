@@ -70,13 +70,15 @@ jobs:
             exit 1
           fi
           previous=$(git describe --tags --abbrev=0 --exclude '*rc*' "$TARGET" 2>/dev/null || true)
+          # A random delimiter, so no line of the notes can end the output early.
+          delimiter="NOTES_$(openssl rand -hex 16)"
           {
-            echo 'notes<<END_OF_NOTES'
+            echo "notes<<$delimiter"
             cat "$file"
             if [[ -n "$previous" ]]; then
               printf '\n**Full Changelog**: %s/%s/compare/%s...%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$previous" "$VERSION"
             fi
-            echo 'END_OF_NOTES'
+            echo "$delimiter"
           } >> "$GITHUB_OUTPUT"
 
       - name: Require green CI on the RC
