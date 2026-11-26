@@ -30,7 +30,7 @@ A button (not a service), run attended with a warning about the connected load, 
 
 ## Repair notice on a first Labs call
 
-The first Labs call on a device would raise one dismissable Home Assistant repair issue, once per device and action, saying the feature is on trial there and linking the device report form, so a Labs item shown only as a folded line on a card still returns a signal. A small `core/` helper called by the dispatcher would raise it (`issue_registry.async_create_issue`, `is_persistent=False`, `is_fixable=False`); no adapter changes. First proposed as #515, after v0.1.0.
+The first Labs call on a device would raise one dismissable Home Assistant repair issue, once per device and action, saying the feature is on trial there and linking the device report form, so a Labs item shown only under a card's ⚪ Labs line still returns a signal. A small `core/` helper called by the dispatcher would raise it (`issue_registry.async_create_issue`, `is_persistent=False`, `is_fixable=False`); no adapter changes. First proposed as #515, after v0.1.0.
 
 **Why not now:** no evidence yet that the report rate limits lifting Labs flags; the Labs option already asks for reports.
 
