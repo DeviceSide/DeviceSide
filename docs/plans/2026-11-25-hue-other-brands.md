@@ -137,6 +137,8 @@ must-fix count errors and 1 dating slip fixed, the Handoff status updated here).
 all fixed at Jason's ask (classes.py's docstring; the one-entry `_MAKERS` dict dropped; a scene takes the weakest of
 its lights' classes on set_scene, a split-off before `other` on a tie). `owner-findings`: all in Jason's code. PR #619 marked ready.
 
+- **Route wording (2026-11-26, Jason):** the route's paragraph was cut to half its length; it stays bridge-only, as
+  Control4's per-light drivers pick the call (two depart on stop).
 - **Next:** Jason reviews the `evidence.md` route wording and merges. Post nothing on #617 until Jason approves the
   reply, which asks for the `product_data` of a GL-C-008P and of a Müller Licht light on a Hue bridge.
 - **Open decisions:** none.

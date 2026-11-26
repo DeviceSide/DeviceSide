@@ -60,11 +60,12 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    Run a test at the last point that can still take its decision. For a device the rig or a maintainer can reach, that
    is the release's run, so merging a PR waits for none: unit tests pin the call, a new item no Documented route
    admits is flagged until its pass is on record, the gate runs at the cut, and the code may change again before then.
-   For a contributor's own devices, it is their pull request, as no later run is sure to reach them: one test of the finished build, at the commit whose
-   calls ship ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build works, which a maintainer needs to
-   merge it, and lets what it exercised ship unflagged ([the Labs flag](#the-labs-flag)). A plan gates a step on a run
-   only by naming the decision its result takes. This prevents a release held up by runs whose results changed nothing,
-   and replaces the practice of a rig run per step or per PR.
+   For a contributor's own devices, it is their pull request, as no later run is sure to reach them: one test of the
+   finished build, at the commit whose calls ship ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build
+   works, which a maintainer needs to merge it, and lets what it exercised ship unflagged
+   ([the Labs flag](#the-labs-flag)). A plan gates a step on a run only by naming the decision its result takes. This
+   prevents a release held up by runs whose results changed nothing, and replaces the practice of a rig run per step or
+   per PR.
 9. **Retest what the change exercises.** After a run, a change reopens only the evidence for actions whose call, or
    whose handling of the device's reply, it changes (tenet 5), wherever the code it edits lives. A machine decides
    which: evidence binds to the action's [call transcript](#release-gate), what the unit tests saw it send and make of
@@ -124,16 +125,12 @@ whole adapter, flag its domains ([the Labs flag](#the-labs-flag)).
     next bump; a Z2M or ZHC issue or PR reporting a device failing DeviceSide's call excludes it on the report alone,
     citing it; a DeviceSide report follows contrary evidence (below). A bump's departure of a model whose features
     shipped outside Labs is a withdrawal (tenet 11): a maintainer keeps it with a reason, or excludes it with a source.
-  - **a bridge's one request:** on an action whose failure doesn't harm (`Action.failure_harms`), the integration sends
-    the class, through a bridge, the same request a Verified class gets, and the bridge picks the call (Hue's CLIP v2).
-    The evidence that this choice holds across brands is that request's use on every brand, by a predecessor's or
-    another integration's users, with no reported departure. The usage covers the request's fields, not each action: an
-    action whose request sends only fields the usage sent is admitted with it. A read that sends nothing needs no such
-    use, but a reported misread splits off its identity as a failing request does. A DeviceSide report, or an upstream
-    issue or PR, of a device failing the request splits off its identity, the narrowest one a class rule can key on
-    (contrary evidence, below), on the report alone, citing it: a class of its own, not built yet on that action, or no
-    known method. The bundle's `internals.md` lists the departures known on other calls, which such a report would
-    split off.
+  - **a bridge's one request:** on an action whose failure doesn't harm (`Action.failure_harms`), the class gets the
+    request a Verified class gets, and the bridge's own firmware picks the call (Hue's CLIP v2). The evidence: a
+    predecessor's or another integration's users sent that request to every brand, with no reported departure. It
+    covers any action that sends only the fields they sent; a read that sends nothing needs none. One report of a
+    device failing the request, or misreading, splits it off at the narrowest key a class rule can use (contrary
+    evidence, below), citing it. `internals.md` lists the departures that would.
 - **Labs:** built on a sourced call that no real device has passed and no Documented route admits, or held back
   by a maintainer. It is refused unless the Labs option is on ([the Labs flag](#the-labs-flag)).
 
@@ -196,8 +193,8 @@ firmware family, and differ only in whose evidence they hold.
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
   name yet is refused ([below](#no-known-method-not-built-yet-in-labs)). As it spans vendors, the default class is
   Documented only by a [certified read](#levels) or a [bridge's one request](#levels), never by a sibling's pass; it is
-  otherwise `labs(...)` where research predicts most of it accepts the call (Zigbee 3.0 certification and the dimming commands:
-  [internals](internals.md#shared)), and is otherwise not built yet
+  otherwise `labs(...)` where research predicts most of it accepts the call (Zigbee 3.0 certification and the
+  dimming commands: [internals](internals.md#shared)), and is otherwise not built yet
   ([below](#no-known-method-not-built-yet-in-labs)).
   No pass lifts it: a record on a device outside the named classes adds a new class named for its maker
   (Zigbee2MQTT: `innr` for an Innr bulb), as the default class holds every device no rule matches, and one maker's
