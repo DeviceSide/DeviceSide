@@ -182,7 +182,7 @@ INTEGRATIONS_PAGE = REPO / "docs" / "integrations.md"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
 PAGE_URL = f"{DOCS_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
-CARDS_TITLE = "Device compatibility by integration"
+CARDS_TITLE = "View device compatibility by integration"
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 INTEGRATIONS = ("<!-- integrations:start -->", "<!-- integrations:end -->")
 
