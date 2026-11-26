@@ -148,8 +148,8 @@ cd ~/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11
   Full suite `--transcripts=check` passes, no transcript changed; all three generators' `--check` clean.
 - **Waiting:** on the HA-scene rig case passing live (Decision 7); the PR then targets v0.2.0rc1.
 - **Then, in the turn that marks it ready:** merge main and rerun the generators. Docs scrub step 3 (#631) and #632
-  are already merged in, the scene bullet fitted to the new tables. #633 adds `scripts/check_docs.py`: if a doc
-  overruns its budget, raise that line in `docs/word-budgets.yaml` here. Then the whole-PR audit (Opus auditor:
+  are already merged in, the scene bullet fitted to the new tables. #633 is merged in: integrations.md's budget
+  is raised 829 → 869 for the Home Assistant scenes section; the ready PR body must say so (word-budgets.yaml's rule). Then the whole-PR audit (Opus auditor:
   `docs/design.md` rule text changes) and `owner-findings`.
 - **Peers:** ha-rig session "ha-scene-rig-77" (agent-inbox, jasonmx/HA-rig#110) reads `SetScene.rides.action` and
   the scene entry's `member_capabilities`/integration; tell it if either shape changes. Docs scrub sessions
