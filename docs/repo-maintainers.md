@@ -20,6 +20,7 @@ invite them to Triage, as for an integration's maintainers.
 
 ## Settings the workflows rely on
 
+- **Word budgets:** a repo maintainer approves any raise in `docs/word-budgets.yaml` (`scripts/check_docs.py`).
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required
   checks (`lint`, `secrets-history`, `pytest`, `pytest-without-family-tests`, `validate-hacs`, `validate`) must pass,
   with no up-to-date rule and no merge queue, so a branch behind `main` merges without an update. The accepted risk:

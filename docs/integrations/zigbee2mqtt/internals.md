@@ -99,6 +99,10 @@ page](standard-lights.md) is rendered from the table.
 
 ### `color_modes`
 
+Z2M announces only one of a full-color light's two color modes, usually XY, so Home Assistant ignores its
+hue-saturation (HS) updates and keeps the old color after a hue or saturation change, a Hue gradient scene, a remote
+or a power cut ([Koenkk/zigbee2mqtt#28757](https://github.com/Koenkk/zigbee2mqtt/issues/28757)).
+
 The Home Assistant override is set to `xy`, `hs` and, where present, `color_temp`, on lights
 exposing both `color_xy` and `color_hs`, and on groups whose members all qualify. Z2M re-announces at once and
 Home Assistant keeps the entity. Rerun at setup and on every device or group announcement, reading Z2M's settings
@@ -190,6 +194,10 @@ result is `sent`, or `rejected` by `set_check`. Evidence: Z2M 2.14.3 and the ZHC
   TS011F) and `tuya_mcu`. Until `bridge/devices` lists the device it is Unplaced, refused as `class_unknown`. D1Z and
   SFD02-Z_2 are newer than the ZHC Z2M 2.14.3 ships, so match nothing on it.
 
+**Cancelling** follows Tuya's General Countdown guide, written for its Wi-Fi and Bluetooth lamp panels; that these
+Zigbee devices follow it is an inference, which Z2M's own description of the setting, "Toggle the device after a set
+duration", agrees with ([research](research/2026-11-24-tuya-datapoint-call.md), §2).
+
 Source walk, the toggle and the definitions checked: [research](research/2026-11-24-tuya-datapoint-call.md).
 
 ### `set_auto_off` and `clear_auto_off`
@@ -202,7 +210,7 @@ SET only and Z2M's state for it is the last write's echo. Each class rule reads 
 `model` (Sonoff) or maker string (Tuya) in the allowlist, and a top-level `inching_control_set` expose. The wire bytes,
 readback, the off's report and the strings tried: [Sonoff](research/sonoff/2026-11-24-inching.md),
 [Tuya](research/tuya/2026-11-24-inching.md) (ZHC at
-[`ed29f800`](https://github.com/Koenkk/zigbee-herdsman-converters/tree/ed29f80014f11cd3234e0e7371d1aace44e08982), read
+[this commit](https://github.com/Koenkk/zigbee-herdsman-converters/tree/ed29f80014f11cd3234e0e7371d1aace44e08982), read
 2026-11-24; no device probed).
 
 **Sonoff** (`families/sonoff/inching.py`): `{"inching_control_set": {"inching_control": "ENABLE", "inching_time": t,
@@ -278,7 +286,7 @@ one, the longest.
   `moveToSaturation`. No hue rides in the payload, so each bulb keeps its own and a group is one publish. A light in
   color temperature (its stored hue may be stale, untested) makes the payload `{"color": {"hue", "saturation"}}`, the
   light's current hue, which goes out as `moveToHueAndSaturation`. Source, zigbee-herdsman-converters at
-  [`f368dcd1`](https://github.com/Koenkk/zigbee-herdsman-converters/commit/f368dcd1): `src/converters/toZigbee.ts` (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`),
+  [this commit](https://github.com/Koenkk/zigbee-herdsman-converters/commit/f368dcd1): `src/converters/toZigbee.ts` (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`),
   `src/lib/modernExtend.ts` (`light`: `meta.supportsHueAndSaturation`).
 - A brightness or saturation fade's `transition` is at most the longest ZCL transition (`docs/internals.md`, Fades),
   with `clamped_to` when a longer one is cut; the prediction matches.
