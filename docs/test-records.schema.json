@@ -24,7 +24,7 @@
     "class": {"description": "The class the call reached (IntegrationInfo.capability, as the action's result reports it); null where the integration named none, or names no classes, or, for a device not yet placed, the response leaves it out.", "type": ["string", "null"], "minLength": 1},
 
     "record": {
-      "description": "A rig run of one suite. Format 3 is what the rig writes: the devices each test reached, and the call transcript it tested (`calls`). Format 2 is the same, bound to the package tree instead (`package`); it credits classes and cards but is no sign-off. Format 1 is a markdown record converted once (device-classes plan, step 5b), with the run's devices on the record, not per test; it credits as the markdown did and is no sign-off.",
+      "description": "A rig run of one suite. Format 3 is what the rig writes: the devices each test reached, and the call transcript it tested (`calls`). Format 2 is the same, bound to the package tree instead (`package`); it credits classes and cards but is no sign-off. Format 1 is a markdown record converted once (device-classes plan, step 5b), with the run's devices on the record, not per test; it credits as the markdown did and is no sign-off. A rerun replaces formats 1 and 2 with format 3. Counts are derived from the tests, never stored.",
       "type": "object",
       "required": ["format", "integration", "action", "result", "date", "source", "home_assistant", "tests"],
       "properties": {

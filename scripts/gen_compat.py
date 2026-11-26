@@ -100,7 +100,9 @@ result (`check_models`). The prose outside the evidence markers is hand-written 
 
 **The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class (on an
 integration that names none, Verified domain) no record reaches on every run, `--check` included, and never fails
-here: `check_release.py --signoffs` fails on it at the cut. It also warns (`check_release.default_class_credits`) of
+here: `check_release.py --signoffs` fails on it at the cut. A native group's test credits each member's class (the
+response's `member_capabilities`), a null one none; a group with a null-class member is on no card or line, but its
+named members still count here. It also warns (`check_release.default_class_credits`) of
 each model a passing record or manual row credits in its integration's default class where that is in Labs: the pass
 can never lift a flag, so the model needs a class of its own; this warning never fails anywhere.
 

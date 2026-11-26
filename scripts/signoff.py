@@ -7,8 +7,15 @@ Paste the printed row into `signoffs` in docs/integrations/<integration>/test-re
 `calls` binds each action to the blob of that revision's transcript,
 tests/integrations/<integration>/calls/<action>.json: sign off the commit you tested, with the transcripts it holds.
 For users' working reports, give their issues (`--reports`) and the release they ran (`--at`), whose commit and
-transcripts the row then names. Every field only a person knows is a required flag, so the row printed is complete;
-add a device's `firmware` by hand where known. A device is `model,manufacturer,class`; `-` for a manufacturer or class
+transcripts the row then names.
+
+A blob is its content's hash, so a run on a pull request branch still resolves once the PR squash-merges with that
+transcript unchanged, and its records or row can land in the same PR. Any later edit to the transcript on the branch,
+even an added segment, leaves the tested blob on the branch alone, gone after the squash: retest and reprint the row,
+or rerun the suite, at the transcript that merges.
+
+Every field only a person knows is a required flag, so the row printed is complete; add a device's `firmware` by hand
+where known. A device is `model,manufacturer,class`; `-` for a manufacturer or class
 leaves it null. docs/evidence.md (Sign-off format) says what each field holds."""
 
 import argparse
