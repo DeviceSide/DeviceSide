@@ -20,6 +20,9 @@ works. Ships in v0.3.0, not v0.2.0: the PR stays a draft and merges only once v0
    its lights can run; a device failure raises once every light has run.
 4. **Shown per integration, derived:** an integration with `set_attributes` and no `set_scene` adapter gets a
    set scene cell derived from `set_attributes`.
+5. **No rig step file here** (Jason, 2026-11-26): this PR leaves `tests/rig/steps/set_scene.yaml` untouched. A separate
+   ha-rig plan owns the HA-scene case, its role and where its record lands; its step file lands in a small PR paired
+   with that rig change.
 
 Approach chosen: a core route (no per-integration adapters, no pseudo-integration). Rejected: a `homeassistant`
 pseudo-integration whose adapter re-enters the dispatcher (circular, meaningless class levels); native scene adapters
@@ -92,10 +95,7 @@ The coverage view (`coverage.py`) is unchanged: it has no set scene column, and 
    `set_scene` adapter: confirm, and pin it with a test.
 5. **Docs:** `docs/design.md` (Scope's `set_scene` bullet, `core/` listing, the seam in Core contract),
    `docs/action-behavior.md` (what a scene's result holds, what is skipped), a "Home Assistant scenes" section in
-   `docs/integrations.md`, `translations/en.json`. Add one case to `tests/rig/steps/set_scene.yaml` for an HA
-   scene: it catches the live `scene_config` read and the off-light turn-off, which no unit test or existing case
-   does. Its decision (tenet 8): the v0.3.0 release run; no merge waits on it. The rig's role for it is a change in
-   ha-rig, left to Jason.
+   `docs/integrations.md`, `translations/en.json`. The rig case for an HA scene is not here (Decision 5).
 
 **Doc shape** (docs scrub, #626 step 3 and 4): living docs cite no `Decision N`, `plans/` path or SHA;
 `docs/deferred.md` entries about 80 words; `docs/design.md` contract cells 25 words or fewer; scene results in
@@ -113,15 +113,14 @@ word budget per living doc: fit it, or raise the budget line in this PR.
 
 - `.venv/bin/pytest -n auto --transcripts=check` passes with no transcript changed.
 - `scripts/gen_services.py --check`, `scripts/gen_features.py --check`, `scripts/gen_compat.py --check` clean.
-- Live, on the rig against the household HA (Jason's Mac): the new `set_scene` case, on an HA scene holding lights
-  of two integrations with one held off; lights stay off, then show the scene's values when turned on.
+- Live: the HA-scene rig case lands with its ha-rig change (Decision 5), not in this PR.
 - PR audit by an Opus auditor (`docs/evidence.md` or `docs/design.md` rule text may change), then `owner-findings`.
 
 ## Coordination
 
 Intent: set_scene takes Home Assistant scenes on every integration with set_attributes, by a core route that
 writes each light through set_attributes; non-Hue native scenes are researched (Zigbee2MQTT) or deferred.
-Touches: custom_components/deviceside/core/ha_scene.py, custom_components/deviceside/core/dispatcher.py, custom_components/deviceside/core/action.py, custom_components/deviceside/actions/set_scene.py, custom_components/deviceside/services.yaml, custom_components/deviceside/translations/en.json, scripts/gen_services.py, scripts/gen_features.py, scripts/gen_compat.py, tests/core/**, tests/actions/**, tests/scripts/**, tests/rig/steps/set_scene.yaml, docs/design.md, docs/action-behavior.md, docs/integrations.md, docs/deferred.md, docs/device-compatibility.md, docs/integrations/zigbee2mqtt/research/**, README.md, docs/plans/2026-11-26-set-scene-ha-scenes.md
+Touches: custom_components/deviceside/core/ha_scene.py, custom_components/deviceside/core/dispatcher.py, custom_components/deviceside/core/action.py, custom_components/deviceside/actions/set_scene.py, custom_components/deviceside/services.yaml, custom_components/deviceside/translations/en.json, scripts/gen_services.py, scripts/gen_features.py, scripts/gen_compat.py, tests/core/**, tests/actions/**, tests/scripts/**, docs/design.md, docs/action-behavior.md, docs/integrations.md, docs/deferred.md, docs/device-compatibility.md, docs/integrations/zigbee2mqtt/research/**, README.md, docs/plans/2026-11-26-set-scene-ha-scenes.md
 
 ## Implementing session
 
