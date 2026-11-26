@@ -553,7 +553,7 @@ class Dispatcher:
     ) -> tuple[list[EntityResult], list[Target], set[str]]:
         """The targets to plan from `members` (each entity_id to the group it came through), a skip for each that
         resolution already rules out, raised for one the caller named (`referenced`), and the entity_ids left out as
-        unavailable or not loaded, for the caller to log."""
+        unavailable or not loaded, for the caller to log when named."""
         results: list[EntityResult] = []
         missing: set[str] = set()
         targets: list[Target] = []

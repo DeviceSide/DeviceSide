@@ -140,21 +140,16 @@ cd ~/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11
 
 ## Handoff
 
-2026-11-26, from the session that ran steps 0-4.
+2026-11-26, from the session that ran step 5.
 
-- **Done:** steps 0-4, each with its plan review (and step 3's `/audit-code`) recorded in a `Step N done` commit.
-  Full suite `--transcripts=check` passes (3886), no transcript changed; all three generators' `--check` clean.
-- **Next:** step 5 (docs), one opus implementer and an opus `plan-reviewer`. Inputs from earlier steps it must cover:
-  `docs/action-behavior.md` rows for what an HA scene's entry holds (sent / unchanged / rejected / skipped with
-  `lights_unavailable`, `member_capabilities`, the shared integration or `homeassistant`); that an on state with
-  brightness 0 writes nothing; that a light in two scenes of one call gets two writes in no set order (as HA's own
-  scene activation); off lights go through core's `light.turn_off` and are not in `member_capabilities`. The
-  `docs/integrations.md` section must have the anchor `#home-assistant-scenes` (generated cells link it). Write in
-  the Doc shape above.
-- **Then:** the PR stays a draft until v0.2.0 is tagged (or cut to `release/v0.2.0`). In the turn that marks it ready:
-  merge main (expect conflicts with the docs scrub's step 3 in design.md, action-behavior.md, deferred.md, and with
-  #632's gen_compat fold and README; rerun the generators), the whole-PR audit (Opus auditor: `docs/design.md` rule
-  text changes) and `owner-findings`.
+- **Done:** steps 0-5, each with its plan review (and step 3's `/audit-code`) recorded in a `Step N done` commit.
+  Full suite `--transcripts=check` passes, no transcript changed; all three generators' `--check` clean.
+- **Waiting:** the PR stays a draft until v0.2.0 is tagged (or cut to `release/v0.2.0`); neither exists yet.
+- **Then, in the turn that marks it ready:** merge main (expect conflicts with the docs scrub's step 3 in design.md,
+  action-behavior.md, deferred.md, and with #632's gen_compat fold and README; rerun the generators). If the scrub
+  brought action-behavior.md's Refused | Dropped and response-key tables, recast the "Home Assistant scenes" bullet
+  as rows of them; if `scripts/check_docs.py` landed, fit its word budget. Then the whole-PR audit (Opus auditor:
+  `docs/design.md` rule text changes) and `owner-findings`.
 - **Peers:** ha-rig session "ha-scene-rig-77" (agent-inbox, jasonmx/HA-rig#110) reads `SetScene.rides.action` and
   the scene entry's `member_capabilities`/integration; tell it if either shape changes. Docs scrub sessions
   "docs-scrub-84" / "docs-scrub-pare-living-docs" know of the overlap.
