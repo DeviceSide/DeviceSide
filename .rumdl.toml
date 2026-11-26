@@ -7,6 +7,8 @@ exclude = [
   "docs/audits/**",
   "notes/**",
   "**/research/**",
+  # Synced copies of shared skills; skill-sync owns their bytes.
+  ".claude/skills/**",
   "docs/device-compatibility.md",
   "docs/integrations/zigbee2mqtt/standard-lights.md",
 ]
