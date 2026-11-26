@@ -16,7 +16,7 @@ from .....core.scope import Family
 from .....zigbee import tuya as strings
 
 # Tuya's ZCL plugs and switches whose timer is Tuya's countdown, in whole seconds (internals.md, `classes`; Tuya's
-# recipe for them is parked: internals.md, "Tuya's recipe, parked", and plan Decision 74).
+# recipe for them is parked: docs/deferred.md, Tuya's recipe on ZHA).
 TUYA_COUNTDOWN = "tuya_countdown"
 # A countdown plug reported harmed on the recipe's own frame, the TS011F `_TZ3000_gjnozsaz` (plan Decision 35;
 # docs/evidence.md, Contrary evidence).
@@ -72,5 +72,5 @@ FAMILY = Family(
     # with a reason (refusals.py). `tuya_mcu`'s quirk answers what DeviceSide sends itself (reads from its cache, a
     # Level move without its transition), so it needs a datapoint call nobody has built; get_attributes reads only what
     # another action serves (core/registry.py, check_queries); a countdown model's OnTime reads in whole seconds
-    # (internals.md, "Tuya's recipe, parked").
+    # (docs/deferred.md, Tuya's recipe on ZHA).
 )
