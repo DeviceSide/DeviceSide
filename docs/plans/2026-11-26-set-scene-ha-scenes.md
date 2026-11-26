@@ -1,4 +1,4 @@
-# set_scene on Home Assistant scenes (v0.3.0)
+# set_scene on Home Assistant scenes (v0.2.0)
 
 ## Context
 
@@ -7,8 +7,7 @@
 `set_attributes` per light, so every integration with a `set_attributes` adapter (Hue, ZHA, Zigbee2MQTT, Matter,
 Shelly, Control4) can serve it with no code of its own. Outcome: `deviceside.set_scene` takes a
 `scene.homeassistant` entity and writes each light's settings without turning it on, wherever `set_attributes`
-works. Ships in v0.3.0, not v0.2.0: the PR stays a draft and merges only once v0.2.0 is tagged (or cut to a
-`release/v0.2.0` branch), so no v0.2.0 RC carries it.
+works. Ships in v0.2.0 if the HA-scene rig case passes live (Decision 7).
 
 ## Decisions (Jason, 2026-11-26)
 
@@ -25,6 +24,9 @@ works. Ships in v0.3.0, not v0.2.0: the PR stays a draft and merges only once v0
    with that rig change.
 6. **The scene's entry reads like a group's** (ha-rig plan for this case, 2026-11-26): `member_capabilities` and
    the lights' shared integration, so the rig binds the record to the lights' classes.
+7. **Ships in v0.2.0, not v0.3.0** (Jason, 2026-11-26, relayed by the planning session): it rides v0.2.0rc1 only if the
+   HA-scene rig case (ha-rig#110 and its paired step-file PR) passes live. If that slips, rc1 is cut without this PR;
+   it never blocks the RC. So the PR no longer waits for v0.2.0 to be tagged.
 
 Approach chosen: a core route (no per-integration adapters, no pseudo-integration). Rejected: a `homeassistant`
 pseudo-integration whose adapter re-enters the dispatcher (circular, meaningless class levels); native scene adapters
@@ -144,7 +146,7 @@ cd ~/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11
 
 - **Done:** steps 0-5, each with its plan review (and step 3's `/audit-code`) recorded in a `Step N done` commit.
   Full suite `--transcripts=check` passes, no transcript changed; all three generators' `--check` clean.
-- **Waiting:** the PR stays a draft until v0.2.0 is tagged (or cut to `release/v0.2.0`); neither exists yet.
+- **Waiting:** on the HA-scene rig case passing live (Decision 7); the PR then targets v0.2.0rc1.
 - **Then, in the turn that marks it ready:** merge main and rerun the generators. Docs scrub step 3 (#631) and #632
   are already merged in, the scene bullet fitted to the new tables. #633 adds `scripts/check_docs.py`: if a doc
   overruns its budget, raise that line in `docs/word-budgets.yaml` here. Then the whole-PR audit (Opus auditor:
