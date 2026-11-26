@@ -14,6 +14,7 @@ from typing import Any, Final
 
 from homeassistant.components.homeassistant.scene import DATA_PLATFORM
 from homeassistant.components.light import (
+    ATTR_BRIGHTNESS,
     ATTR_COLOR_MODE,
     ATTR_COLOR_TEMP_KELVIN,
     ATTR_HS_COLOR,
@@ -31,20 +32,39 @@ from ..actions.set_attributes import SetAttributesRequest
 _LOGGER = logging.getLogger(__name__)
 
 OFF: Final = "off"  # a light the scene holds off: turned off, not written
-LightWrite = SetAttributesRequest | str | None  # a request, OFF, or None: on, nothing to write (unchanged)
+SKIPPED: Final = "skipped"  # a light whose state can't be read (its mode's color is missing): nothing is sent
+LightWrite = SetAttributesRequest | str | None  # a request, OFF, SKIPPED, or None: on, nothing to write (unchanged)
 
-# The color attributes a request carries, in core's order for a state with no usable color mode.
+_unreadable: set[str] = set()  # what of a scene HA no longer keeps as expected, already logged
+
+# For a state with no color mode: core's COLOR_GROUP order (hs, color_temp, rgb, rgbw, rgbww, xy) less the two
+# modes `set_attributes` can't write; an rgbw or rgbww state holds hs_color too, which comes first.
 _COLORS = (ATTR_HS_COLOR, ATTR_COLOR_TEMP_KELVIN, ATTR_RGB_COLOR, ATTR_XY_COLOR)
-# Modes whose own attribute `set_attributes` has no field for: they take the state's hs_color (HA keeps it for each).
-_HS_MODES = frozenset({ColorMode.RGBW, ColorMode.RGBWW, ColorMode.WHITE})
+# Modes whose own attribute `set_attributes` has no field for: they take the state's hs_color. White is not one: core's
+# white is a brightness, and a white-mode state holds no color.
+_HS_MODES = frozenset({ColorMode.RGBW, ColorMode.RGBWW})
 
 
 def _scene_states(hass: HomeAssistant, entity_id: str) -> dict[str, State] | None:
     """The scene's states, or None if no such scene is loaded."""
-    platform = hass.data.get(DATA_PLATFORM)
-    entity = platform.entities.get(entity_id) if platform is not None else None
+    if (platform := hass.data.get(DATA_PLATFORM)) is None:
+        return None
+    if not isinstance(entities := getattr(platform, "entities", None), dict):
+        _log_unreadable("EntityPlatform.entities")
+        return None
+    if (entity := entities.get(entity_id)) is None:
+        return None
     states = getattr(getattr(entity, "scene_config", None), "states", None)
-    return states if isinstance(states, dict) else None
+    if not isinstance(states, dict):
+        _log_unreadable(f"{type(entity).__qualname__}.scene_config.states")
+        return None
+    return states
+
+
+def _log_unreadable(what: str) -> None:
+    if what not in _unreadable:
+        _unreadable.add(what)
+        _LOGGER.warning("%s is not what Home Assistant's scene platform held, so its scenes can't be read", what)
 
 
 def is_ha_scene(hass: HomeAssistant, entity_id: str) -> bool:
@@ -56,7 +76,7 @@ def scene_lights(hass: HomeAssistant, entity_id: str) -> dict[str, LightWrite] |
     """What each light in the scene asks for, by entity_id, or None if the scene is gone.
 
     A non-light member (a switch, a cover) is left out at DEBUG: it isn't a fault. So is a light whose state is neither
-    on nor off, as core's reproduce_state ignores it.
+    on nor off, as core's reproduce_state ignores it. A light that can't be read is SKIPPED, for the caller to count.
     """
     if (states := _scene_states(hass, entity_id)) is None:
         return None
@@ -72,36 +92,39 @@ def scene_lights(hass: HomeAssistant, entity_id: str) -> dict[str, LightWrite] |
 
 
 def light_write(state: State) -> LightWrite:
-    """One light's scene state as OFF, a SetAttributesRequest, or None when it is on with nothing to write."""
+    """One light's scene state as OFF, a SetAttributesRequest, SKIPPED, or None when it is on with nothing to write."""
     if state.state == STATE_OFF:
         return OFF
     attributes = state.attributes
-    brightness = attributes.get("brightness")  # ha-255: HA state reports a byte
+    brightness = attributes.get(ATTR_BRIGHTNESS)  # ha-255: HA state reports a byte
+    if (light := _color(state)) is None:
+        return SKIPPED
     request = SetAttributesRequest(
-        light=_color(state),
+        light=light,
         # Level 1 is 0.4 %: no floor is raised. 0 is no level (core would turn the light off), so it writes nothing.
         brightness=brightness / 255 * 100 if brightness else None,  # ha-255: converts HA's byte to a percent
     )
     return None if request.nothing_to_do() else request
 
 
-def _color(state: State) -> LightFields:
+def _color(state: State) -> LightFields | None:
+    """The state's one color, empty when it has none to write, None when its mode names a color it lacks."""
     attributes = state.attributes
     mode = attributes.get(ATTR_COLOR_MODE, ColorMode.UNKNOWN)
     if mode == ColorMode.UNKNOWN:  # a scene from before color modes: the first color present, as core does
         name = next((name for name in _COLORS if attributes.get(name) is not None), None)
     elif mode in _HS_MODES:
         name = ATTR_HS_COLOR
-    elif mode in COLOR_MODE_TO_ATTRIBUTE:
-        name = COLOR_MODE_TO_ATTRIBUTE[mode].parameter
-    else:  # onoff, brightness: no color
+    elif mode == ColorMode.WHITE or mode not in COLOR_MODE_TO_ATTRIBUTE:  # white, onoff, brightness: no color
         name = None
+    else:
+        name = COLOR_MODE_TO_ATTRIBUTE[mode].parameter
     if name is None:
         return LightFields()
     value = attributes.get(name)
     if value is None:
-        _LOGGER.debug("Scene state for %s names color mode %s but holds no %s", state.entity_id, mode, name)
-        return LightFields()
+        _LOGGER.warning("Skipping %s: its scene state names color mode %s but holds no %s", state.entity_id, mode, name)
+        return None
     return LightFields.from_data({name: _typed(name, value)})
 
 

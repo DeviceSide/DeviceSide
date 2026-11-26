@@ -9,7 +9,7 @@ from homeassistant.core import State
 
 from custom_components.deviceside.actions.set_attributes import SetAttributesRequest
 from custom_components.deviceside.core import ha_scene as module
-from custom_components.deviceside.core.ha_scene import OFF, is_ha_scene, light_write, scene_lights
+from custom_components.deviceside.core.ha_scene import OFF, SKIPPED, is_ha_scene, light_write, scene_lights
 from custom_components.deviceside.core.models import LightFields
 
 LAMP = "light.lamp"
@@ -55,11 +55,17 @@ async def test_no_scene_platform_or_another_entity_is_not_a_scene(hass):
     assert not is_ha_scene(hass, "light.lamp")
 
 
-async def test_a_scene_without_scene_config_reads_as_gone(hass):
+async def test_a_scene_without_scene_config_warns_once_and_reads_as_gone(hass, caplog, monkeypatch):
     """A rename in HA must not raise."""
+    monkeypatch.setattr(module, "_unreadable", set())
     hass.data[DATA_PLATFORM] = SimpleNamespace(entities={"scene.evening": SimpleNamespace()})
-    assert not is_ha_scene(hass, "scene.evening")
-    assert scene_lights(hass, "scene.evening") is None
+    with caplog.at_level(logging.WARNING, logger=module.__name__):
+        assert not is_ha_scene(hass, "scene.evening")
+        assert scene_lights(hass, "scene.evening") is None
+    assert [record.message for record in caplog.records] == [
+        "SimpleNamespace.scene_config.states is not what Home Assistant's scene platform held, "
+        "so its scenes can't be read"
+    ]
 
 
 async def test_a_scene_removed_mid_call_reads_as_gone_on_the_next_read(hass):
@@ -156,8 +162,8 @@ def test_the_color_mode_picks_the_one_color(attributes, light):
     assert request == SetAttributesRequest(light=light, brightness=100.0)
 
 
-@pytest.mark.parametrize("mode", ["rgbw", "rgbww", "white"])
-def test_white_modes_take_the_states_hs_color(mode):
+@pytest.mark.parametrize("mode", ["rgbw", "rgbww"])
+def test_rgbw_modes_take_the_states_hs_color(mode):
     request = light_write(
         _on(
             color_mode=mode,
@@ -181,12 +187,37 @@ def test_an_unknown_color_mode_takes_the_first_color_present():
     )
 
 
-def test_a_color_mode_whose_color_is_missing_writes_the_brightness_alone(caplog):
+def test_white_mode_writes_the_brightness_alone():
+    """Core's white is a brightness, and a white-mode state holds no hs_color."""
+    assert light_write(_on(color_mode="white", brightness=255)) == SetAttributesRequest(brightness=100.0)
+    assert light_write(_on(color_mode="white")) is None
+
+
+@pytest.mark.parametrize(
+    ("mode", "missing"), [("xy", "xy_color"), ("rgbw", "hs_color"), ("color_temp", "color_temp_kelvin")]
+)
+def test_a_color_mode_whose_color_is_missing_is_skipped_with_a_warning(caplog, mode, missing):
+    """As core's reproduce_state sends nothing for it, not even the brightness."""
     with caplog.at_level(logging.DEBUG, logger=module.__name__):
-        request = light_write(_on(color_mode="xy", brightness=255))
-    assert request == SetAttributesRequest(brightness=100.0)
+        assert light_write(_on(color_mode=mode, brightness=255)) == SKIPPED
+    assert [(record.levelno, record.message) for record in caplog.records] == [
+        (logging.WARNING, f"Skipping light.lamp: its scene state names color mode {mode} but holds no {missing}")
+    ]
+
+
+async def test_a_skipped_light_is_in_the_scene_lights(hass):
+    _scene(hass, "scene.evening", {LAMP: _on(color_mode="xy"), "light.hall": _on(brightness=255)})
+    assert scene_lights(hass, "scene.evening") == {LAMP: SKIPPED, "light.hall": SetAttributesRequest(brightness=100.0)}
+
+
+async def test_an_unreadable_scene_platform_warns_once_and_reads_as_no_scene(hass, caplog, monkeypatch):
+    monkeypatch.setattr(module, "_unreadable", set())
+    hass.data[DATA_PLATFORM] = SimpleNamespace()
+    with caplog.at_level(logging.WARNING, logger=module.__name__):
+        assert not is_ha_scene(hass, "scene.evening")
+        assert scene_lights(hass, "scene.evening") is None
     assert [record.message for record in caplog.records] == [
-        "Scene state for light.lamp names color mode xy but holds no xy_color"
+        "EntityPlatform.entities is not what Home Assistant's scene platform held, so its scenes can't be read"
     ]
 
 
