@@ -1,8 +1,15 @@
-# An edit in the Hue app applying is unit-tested (re-read on every call) and was watched on the rig in #48.
-# The target is the scene; `target: group` points a step at the room the scene belongs to. Other cases need
-# scene kinds (a light off, All-Day, dynamic), a large room and a second bridge that profile roles don't name yet.
+# Two scene kinds. [scene] is the Hue bridge's scene the rig makes in the roam group's room, served by Hue's own
+# set_scene: an edit in the Hue app applying is unit-tested (re-read on every call) and was watched on the rig in #48.
+# Its target is the scene; `target: group` points a step at the room the scene belongs to. Other cases need scene
+# kinds (a light off, All-Day, dynamic), a large room and a second bridge that profile roles don't name yet. Off Hue the
+# profile names no scene, so they skip.
+# [ha_scene] is a Home Assistant scene each case's setup makes of its own lights (scene.create), served by set_attributes
+# on every integration that has it, Hue's included: light_ct on at 40 % and 2732 K (the bridge scene's values, roam.py's
+# SCENE_BRIGHTNESS and SCENE_MIREK, 366 mirek), light_dimmable off. The setups move the lights far from those values,
+# to 100 % and 6500 K, so a call that wrote nothing fails. An edit to an HA scene applying is unit-tested
+# (tests/core/test_ha_scene.py), so it is no case here.
 action: set_scene
-rig_seconds: 80
+rig_seconds: 140
 tests:
   - name: sets_while_off
     roles: [scene]
@@ -25,4 +32,51 @@ tests:
     steps:
       - call: {}
       - expect_state: {target: group, state: on, within: tol}
+      - expect_state: {target: light_ct, state: on, brightness: {min: 90, max: 114}, color_temp_kelvin: {min: 2600, max: 2850}, within: 5}
+
+  # The live scene_config read: core keeps a scene.create scene's states where the route reads them, and the route writes
+  # the stored attributes to an off light it reached through the scene, leaving it off.
+  - name: ha_sets_while_off
+    roles: [ha_scene]
+    setup:
+      - ha_scene: {light_ct: {state: on, brightness_pct: 40, color_temp_kelvin: 2732}, light_dimmable: {state: off}}
+      - set: {target: light_ct, state: on, brightness_pct: 100, color_temp_kelvin: 6500}
+      - set: {target: light_ct, state: off}
+      - set: {target: light_dimmable, state: off}
+    steps:
+      - call: {}
+      - expect_response: {status: sent, integration: self}
+      - wait: 1
+      - expect_state: {target: light_ct, state: off}
+      - expect_state: {target: light_dimmable, state: off}
+      - set: {target: light_ct, state: on}
+      - expect_state: {target: light_ct, state: on, brightness: {min: 90, max: 114}, color_temp_kelvin: {min: 2600, max: 2850}, within: 5}
+
+  # The scene's 0-255 brightness and its color_temp_kelvin, picked by color_mode, land on a light that is on.
+  - name: ha_applies_while_on
+    roles: [ha_scene]
+    setup:
+      - ha_scene: {light_ct: {state: on, brightness_pct: 40, color_temp_kelvin: 2732}, light_dimmable: {state: off}}
+      - set: {target: light_ct, state: on, brightness_pct: 100, color_temp_kelvin: 6500}
+      - set: {target: light_dimmable, state: off}
+    steps:
+      - call: {}
+      - expect_response: {status: sent, integration: self}
+      - expect_state: {target: light_ct, state: on, brightness: {min: 90, max: 114}, color_temp_kelvin: {min: 2600, max: 2850}, within: 5}
+
+  # The light the scene holds off is turned off through core's light.turn_off, and the write to the other light still
+  # lands.
+  - name: turns_off_held_off
+    roles: [ha_scene]
+    setup:
+      - ha_scene: {light_ct: {state: on, brightness_pct: 40, color_temp_kelvin: 2732}, light_dimmable: {state: off}}
+      - set: {target: light_ct, state: on, brightness_pct: 100, color_temp_kelvin: 6500}
+      - set: {target: light_ct, state: off}
+      - set: {target: light_dimmable, state: on, brightness_pct: 100}
+    steps:
+      - call: {}
+      - expect_response: {status: sent, integration: self}
+      - expect_state: {target: light_dimmable, state: off, within: 5}
+      - expect_state: {target: light_ct, state: off}
+      - set: {target: light_ct, state: on}
       - expect_state: {target: light_ct, state: on, brightness: {min: 90, max: 114}, color_temp_kelvin: {min: 2600, max: 2850}, within: 5}

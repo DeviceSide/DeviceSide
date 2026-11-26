@@ -108,8 +108,8 @@
         {"if": {"required": ["reason"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
         {"if": {"required": ["fact"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
         {
-          "description": "A scene's test is a group's: the one call is the scene's, not its members'.",
-          "if": {"properties": {"role": {"const": "scene"}, "result": {"not": {"const": "skipped"}}}, "required": ["role", "result"]},
+          "description": "A scene's test (a Hue bridge scene's, or a Home Assistant scene's: ha_scene) is a group's: the one call is the scene's, not its members'.",
+          "if": {"properties": {"role": {"enum": ["scene", "ha_scene"]}, "result": {"not": {"const": "skipped"}}}, "required": ["role", "result"]},
           "then": {"required": ["group"]}
         }
       ]
@@ -131,11 +131,12 @@
       "unevaluatedProperties": false,
       "properties": {
         "group": {"description": "The target was a native group, or a scene (whose test always carries it): devices are its members, each with its manufacturer and class.", "const": true},
-        "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/test_device"}}
+        "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/test_device"}},
+        "via": {"description": "The action whose adapter served the test's call, when not the record's own (an [ha_scene] test's: set_attributes, which set_scene rides); its pass credits nothing to the record's action (check_release.credited).", "$ref": "#/$defs/action"}
       },
       "if": {"properties": {"result": {"const": "skipped"}}},
       "then": {
-        "not": {"anyOf": [{"required": ["devices"]}, {"required": ["group"]}]},
+        "not": {"anyOf": [{"required": ["devices"]}, {"required": ["group"]}, {"required": ["via"]}]},
         "anyOf": [{"required": ["reason"]}, {"required": ["fact"]}]
       },
       "else": {"required": ["domain", "devices"]},

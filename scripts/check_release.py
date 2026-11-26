@@ -33,9 +33,10 @@ coverage check, failing on each gap: for an integration that names no classes, e
 Verified needs a passing test in that domain in a passing record of the action, or a `_manual.json` row naming it; for
 one that names classes (`IntegrationInfo.capability`), every class an adapter not flagged whole holds as Verified needs
 a passing test that reached it in a passing record of the action
-(format 2 and 3: a device of the test with that class, a native group's test crediting each member's; format 1: the
-test's `classes`), or a `_manual.json` row naming the action (format 3: in `calls`; format 2: in `passed`) one of whose
-devices has the class. `scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`), with a
+(format 2 and 3: a device of the test with that class, a native group's test crediting each member's, a test whose
+`via` names another action that served it crediting none; format 1: the test's `classes`), or a `_manual.json` row
+naming the action (format 3: in `calls`; format 2: in `passed`) one of whose devices has the class.
+`scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`), with a
 warning (`default_class_credits`) for each model a passing record or manual row credits in the integration's default
 class where that is in Labs, as its pass can never lift a flag.
 
@@ -47,8 +48,10 @@ there are none.
 Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked against docs/test-records.schema.json
 (the format's one home; docs/evidence.md, Sign-off format, describes it); a file of the wrong kind for its name, or of
 another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
-read as the action's evidence; another suite's, as `config_entry.json`, is none's), `_manual.json`, whose rows are
-manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads; a dotfile is ignored. A manual
+read as the action's evidence; another suite's, as `config_entry.json`, is none's; one of an action riding another on
+the integration, as `set_scene.json` where set_scene rides set_attributes, is checked when read and never demanded),
+`_manual.json`, whose rows are manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here
+reads; a dotfile is ignored. A manual
 row whose signer (`signed_by`) is neither a maintainer of the integration nor a repo
 maintainer is an error. A manual row's devices, and a record's tests, may name a class only on an integration that names
 classes (`names_classes`, which gen_compat shares). A record names no signer: review of the PR that lands it checks who
@@ -234,11 +237,13 @@ def manual_rows(integration: str, action: str) -> list[tuple[bool, list[tuple[st
 def credited(integration: str, action: str) -> Iterator[tuple[str | None, str | None, str | None]]:
     """What the action's passing records credit, as (model id, class, domain of the test) per device: each passing
     test's devices (format 2 and 3: a native group's are its members); format 1 names no model, so it yields each of
-    the test's `classes` with a model of None. The one walk `reached` and `credited_models` share."""
+    the test's `classes` with a model of None. A test with a `via` credits nothing: another action's adapter served
+    its call (an [ha_scene] test in set_scene.json, served by set_attributes), so its pass is no proof of this action's
+    adapter. The one walk `reached` and `credited_models` share."""
     for path in passing(integration, action):
         record = load(path)
         for test in record["tests"]:
-            if test["result"] != "pass":
+            if test["result"] != "pass" or "via" in test:
                 continue
             if record["format"] == 1:
                 yield from ((None, name, test.get("domain")) for name in test.get("classes", ()))
@@ -276,13 +281,13 @@ def runs_only_in_labs(scope: AdapterScope) -> bool:
 
 
 def tested_domains(integration: str, action: str) -> set[str]:
-    """The domains the action's passing records tested: each passing test's, in a passing record. A `_manual.json`
-    row names none (`manual_rows`); the caller counts it as covering each."""
+    """The domains the action's passing records tested: each passing test's, in a passing record, bar one with a
+    `via` (`credited`). A `_manual.json` row names none (`manual_rows`); the caller counts it as covering each."""
     return {
         test["domain"]
         for path in passing(integration, action)
         for test in load(path)["tests"]
-        if test["result"] == "pass" and "domain" in test
+        if test["result"] == "pass" and "domain" in test and "via" not in test
     }
 
 

@@ -266,7 +266,12 @@ each format credits. The rules it serves:
   ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none. A
   Zigbee device is named by its Zigbee model ID on every integration, with its manufacturer string, as one model ID
   carries many makers' strings. Every model a file names must be in `docs/models.yaml` or its bundle's `devices.yaml`.
-  A native group's or a scene's test lists the members and carries `group`.
+  A native group's or a scene's test lists the members and carries `group`. A Home Assistant scene's test lists the
+  lights it holds; one it holds off is listed with class null, as DeviceSide turns it off through core's
+  `light.turn_off` and no response names its class, so on an integration that names classes it credits nothing.
+- **`via` names the action whose adapter served a test's call** when it isn't the record's own (a Home Assistant
+  scene's test in `set_scene.json`: `set_attributes`, which `set_scene` rides). Such a test credits nothing to the
+  record's action, toward coverage or the cards; the riding action's proof is the ridden action's records.
 - **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model ID with the class it
   reached and its firmware where known, and the actions that passed on all of them, each with its transcript's blob.
   `signed_by` is the maintainer who vouches for it. `scripts/signoff.py` prints the row from HEAD's transcripts, so run
