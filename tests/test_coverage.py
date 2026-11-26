@@ -273,7 +273,9 @@ async def test_the_table_has_a_column_per_feature_and_a_blank_where_it_does_not_
     text = coverage.table(hass, found)
 
     assert text.splitlines()[:3] == [
-        "| | " + " | ".join(f'<center>{column.heading}</center>' for column in COLUMNS) + " |",
+        "| | <center>Smooth dimming</center> | <center>Smooth color</center> | "
+        "<center>Flash\u2011free turn\u2011on</center> | <center>Timed on</center> | "
+        "<center>Timed off</center> | <center>Auto off/on</center> |",
         "|---|:-:|:-:|:-:|:-:|:-:|:-:|",
         "| **Fake** | | | | | | |",
     ]

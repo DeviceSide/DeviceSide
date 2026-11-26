@@ -286,7 +286,8 @@ def table(hass: HomeAssistant, coverage: Coverage) -> str:
     if not coverage.rows:
         return ""
     registry = hass.data[DATA].registry
-    headings = " | ".join(f'<center>{column.heading}</center>' for column in COLUMNS)
+    # A non-breaking hyphen (U+2011): a heading wraps only at its spaces, so "Flash-free turn-on" takes two lines.
+    headings = " | ".join(f'<center>{column.heading.replace("-", "\u2011")}</center>' for column in COLUMNS)
     lines = [f"| | {headings} |", "|---|" + ":-:|" * len(COLUMNS)]
     shown = None
     for row in coverage.rows:
