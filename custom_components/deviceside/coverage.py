@@ -49,8 +49,6 @@ WAIT_S = 10
 DOMAINS = (Platform.LIGHT, Platform.SWITCH)
 _ICON_DOMAINS = (*DOMAINS, Platform.SCENE)
 SCENE_HEADING = "Flash-free turn-on"
-_ICON_DOMAINS = (*DOMAINS, Platform.SCENE)
-SCENE_HEADING = "Flash-free turn-on"
 # Integrations whose groups the view leaves out: ZHA registers a group's entity on the coordinator's device, so its row
 # would name the coordinator, not the group.
 _GROUPS_ON_COORDINATOR = frozenset({"zha"})
