@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from homeassistant.const import Platform
+from jsonschema.exceptions import best_match
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.registry import AdapterRegistry
@@ -650,6 +651,32 @@ def test_a_failing_record_is_no_signoff_and_a_rerun_completes_it(released, gate)
     write_record(released, "stop.json", result="fail")
     assert "(stop.json: fails)" in gate()[1][1]
     write_record(released, "stop.json")
+    assert gate()[0] == 0
+
+
+def served_record(repo, *tests: dict, result: str = "pass") -> str:
+    """Commit stop.json with these tests, bound to HEAD's transcript of stop."""
+    data = record_v3("fake", "stop", list(tests), result=result, commit=repo.git("rev-parse", "HEAD"))
+    return repo.commit(f"{RECORDS}/stop.json", text(data | {"calls": blob(repo, "stop")}))
+
+
+def test_a_record_signs_off_its_action_only_when_a_test_of_its_own_passed(released, gate):
+    """Plan Decision 6: a test another action served (`via`) proves nothing of the record's own adapter, so a record
+    whose only passes are such tests signs nothing off; one of its own beside them does; a failing via test fails the
+    record, as any failing test does."""
+    pin(released, "stop", "b")
+    own = ran("light", device("LTA009", "1", None))
+    served = ran("scene", device("LTA009", "1", None), group=True, role="ha_scene") | {"via": "turn_on_for"}
+    served_record(released, served)
+    code, lines, _ = gate()
+    assert code == 1
+    assert "(stop.json: no test of its own action passed, only ones another action served (via))" in lines[1]
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
+    served_record(released, own, served | {"result": "fail"}, result="fail")
+    assert "(stop.json: fails)" in gate()[1][1]
+    unsound = record_v3("fake", "stop", [own, served | {"result": "fail"}])
+    assert best_match(cr.validator().iter_errors(unsound)) is not None  # a pass with a failing via test is no record
+    served_record(released, own, served)
     assert gate()[0] == 0
 
 

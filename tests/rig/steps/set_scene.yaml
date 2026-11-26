@@ -66,7 +66,7 @@ tests:
 
   # The light the scene holds off is turned off through core's light.turn_off, and the write to the other light still
   # lands.
-  - name: turns_off_held_off
+  - name: ha_turns_off_held_off
     roles: [ha_scene]
     setup:
       - ha_scene: {light_ct: {state: on, brightness_pct: 40, color_temp_kelvin: 2732}, light_dimmable: {state: off}}

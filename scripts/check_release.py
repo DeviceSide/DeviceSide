@@ -18,7 +18,8 @@ package or `core/`). A changed action's evidence must also hold every segment HE
 action is changed when HEAD's transcript of it doesn't hold every segment of the last release tag's (the latest `vX.Y.Z`
 that is an ancestor of HEAD), or the tag has none, or there is no tag; its last change is the latest commit touching its
 transcript. Each changed action needs a sign-off of its own: its rig records (`<action>.json`, and each
-`<action>-<option>.json` there is) all format 3, passing and standing, or a format 3 `_manual.json` row whose `calls`
+`<action>-<option>.json` there is) all format 3, passing (with a test passing that has no
+`via`, so its own action served it) and standing, or a format 3 `_manual.json` row whose `calls`
 names the action and stands, by a maintainer of the integration or a repo maintainer (`REPO_MAINTAINERS`). A row's and a
 record's `commit` is provenance: nothing here checks it. A format 1 (converted from markdown) or format 2 (bound to the
 package, not the calls) record, and a format 2 row (`passed`), sign off nothing. Without a sign-off, a 🔧 Untested fix
@@ -202,6 +203,14 @@ def suites(integration: str, action: str) -> list[tuple[Path, dict]]:
             raise SystemExit(f"{where(path)}: {held}, but its name says action {action!r}, options {options}")
         found.append((path, record))
     return found
+
+
+def passes_itself(record: Mapping) -> bool:
+    """Whether a test the record's own action served passed: one with no `via` (plan Decision 6 of ha-rig's
+    2026-11-26-ha-scene-rig.md). A record whose only passes another action served (Hue's set_scene.json with only its
+    [ha_scene] tests passing) proves nothing of its own action's adapter, so it signs nothing off; a failing test, via
+    or not, fails the record (the schema's pass holds no failing test)."""
+    return any(test["result"] == "pass" and "via" not in test for test in record["tests"])
 
 
 def passing(integration: str, action: str) -> list[Path]:
@@ -537,8 +546,8 @@ def last_change(integration: str, action: str, base: str | None) -> str | None:
 
 def record_signoff(integration: str, action: str, calls: Calls) -> tuple[SignOff | None, list[str], list[str]]:
     """The action's rig records as its sign-off, when there is a plain one (`<action>.json`) and every one (each
-    option's too) is format 3, passes and signs off its calls (`reopened`); else None, why not, and the suites to
-    rerun."""
+    option's too) is format 3, passes with a test of its own action passing (`passes_itself`) and signs off its calls
+    (`reopened`); else None, why not, and the suites to rerun."""
     found = suites(integration, action)
     why, reruns = [], []
     for path, record in found:
@@ -548,6 +557,8 @@ def record_signoff(integration: str, action: str, calls: Calls) -> tuple[SignOff
             problem = f"format {record['format']}, bound to the package, not the calls"
         elif record["result"] != "pass":
             problem = "fails"
+        elif not passes_itself(record):
+            problem = "no test of its own action passed, only ones another action served (via)"
         else:
             problem = reopened(record["calls"], calls)
         if problem:
