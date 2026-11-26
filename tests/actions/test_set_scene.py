@@ -14,7 +14,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.actions.set_scene import SetScene
 from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core import ha_scene as module
-from custom_components.deviceside.core.action import Action, Ride
+from custom_components.deviceside.core.action import Action, Ride, Routed
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Status
 from custom_components.deviceside.core.runtime import get_runtime
@@ -107,6 +107,13 @@ async def test_only_a_loaded_ha_scene_is_claimed(hass):
     assert SetScene.claims(hass, SCENE)
     assert not SetScene.claims(hass, "scene.bridge")
     assert not Action.claims(hass, SCENE)
+
+
+async def test_an_action_with_no_route_plans_and_runs_nothing(hass):
+    routed = Action.route(hass, None, {SCENE: True}, None)
+    assert routed == Routed()
+    assert routed.results == []
+    assert await routed.run() == []
 
 
 async def test_a_scene_across_two_integrations_writes_each_light(hass, fake, special, reset_script):
