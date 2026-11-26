@@ -1,9 +1,10 @@
 # ZHA
 
 What DeviceSide's features do on ZHA, their limits, and what DeviceSide changes in your setup. What applies
-to every integration is in [integrations.md](../../integrations.md); which devices each feature is proven on is
-on the [device compatibility page](../../device-compatibility.md); how the calls work, and what was measured, is
-in [internals.md](internals.md).
+to every integration is in [integrations.md](../../integrations.md), and what holds for a brand on both Zigbee
+integrations in [zigbee.md](../zigbee.md); which devices each feature is proven on is on the
+[device compatibility page](../../device-compatibility.md); how the calls work, and what was measured, is in
+[internals.md](internals.md).
 
 Lights on the core `zha` integration.
 
@@ -12,18 +13,14 @@ Lights on the core `zha` integration.
 
 ## Device classes
 
-Zigbee devices given the same command can answer it differently, by brand and firmware
-([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)), so a test on one brand proves nothing
-about another. DeviceSide tells them apart by the manufacturer and model the device reports when it pairs, and by
-how ZHA's device handler for it sends commands.
+DeviceSide tells brands apart ([why](../zigbee.md#why-brands-have-classes)) by the manufacturer and model the device
+reports when it pairs, and by how ZHA's device handler for it sends commands ([internals](internals.md#classes)).
 
-- A **group** gets only what all its lights get. One with a light a feature refuses, or, with Labs off, one in
-  Labs, falls back to its lights, each on its own; with Labs on, it runs as one group.
-  Turn on with timer sends a group one command only when its lights are every device in it, so a plug in the group
-  with no light (a plug ZHA shows as a switch, say), or a light it refused, never gets the group's timer: the lights
-  get one command each instead, a fraction of a second apart.
-  A ZHA group command gives no delivery feedback, as is the way of a Zigbee groupcast
-  ([internals](internals.md#upstream-defects)).
+- A **group** gets only what all its lights get: one with a light a feature refuses, or, with Labs off, one in Labs,
+  falls back to its lights, each on its own. Turn on with timer sends a group one command only when its lights are
+  every device in it, so a plug with no light in the group, or a light refused, never gets the group's timer; the
+  lights get one command each, a fraction of a second apart ([internals](internals.md#turn_on_for)). A ZHA group
+  command gives no delivery feedback, so each light is read back.
 - A device whose manufacturer or model ZHA couldn't read when it paired (ZHA shows `unk_manufacturer` or
   `unk_model`) can't be placed, so turn on with timer refuses it (`class_unknown`), even with Labs
   on, as it could be a Tuya datapoint device. Reconfigure it from its ZHA device page, or pair it again.
@@ -31,27 +28,20 @@ how ZHA's device handler for it sends commands.
 ### Hue
 
 Signify's Hue devices (manufacturer `Signify Netherlands B.V.` or `Philips`). Raising brightness from off sends a Hue
-bulb Hue's own command. A Hue smart plug gets no turn on with timer: most plugs ignore the timer or read it as a
-delayed toggle, so it could stay on ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)).
+bulb Hue's own command.
 
 ### Tuya
 
-Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). No feature
-is built for them yet, and DeviceSide refuses them, even with Labs on: none has passed on one, and
-nothing predicts Tuya's firmware takes the standard commands. Their timer isn't the standard Zigbee one, so turn on
-with timer would leave them on or turn them on late; why, for each kind, is below.
+Tuya's devices, under any brand ([Tuya](../zigbee.md#tuya)). DeviceSide refuses them, even with Labs on. Their timer
+isn't the standard Zigbee one, so turn on with timer would leave them on or turn them on late; why, for each kind, is
+below.
 
 #### Tuya plugs and switches
 
 Tuya's plugs, switches and relays on the standard Zigbee on/off commands (models `TS011F`, `TS0001` to `TS0004`,
-`TS0011` and `TS0726`), including the Tuya TS011F: the Zigbee timer
-can turn them on long after the time asked and leave them on.
-
-#### Reported Tuya plugs
-
-A TS011F reported to fail Tuya's own timer call: `_TZ3000_gjnozsaz`, whose time left jumps back at random, so it may
-not turn off when asked ([Z2M #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)). Another of Tuya's calls
-may serve it.
+`TS0011` and `TS0726`), including the Tuya TS011F: the Zigbee timer can turn them on long after the time asked and
+leave them on ([the Zigbee timer](../zigbee.md#the-zigbee-timer)). The TS011F `_TZ3000_gjnozsaz` is also reported to
+fail Tuya's own timer call, so it may not turn off when asked; another of Tuya's calls may serve it.
 
 #### Other Tuya devices
 
@@ -66,44 +56,28 @@ would turn on and stay on, and it drops a fade's timing and reads from memory ra
 
 ### Sengled
 
-Sengled bulbs refuse the Zigbee timer command, and miss it silently when it is sent to a group (tested on the
-E11-G13; Sengled's other bulbs don't list the command either,
-[research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So turn on with timer isn't built for
-them yet: with a brightness or color temperature, or in a group, the bulb would turn on and stay on. Their other
-features aren't built either, as the E11-G13 departs from the standard commands (written while off, it jumps to full
-brightness: [Flash-free turn-on](#flash-free-turn-on)) and nothing predicts which it takes. DeviceSide refuses them,
-even with Labs on.
+Sengled's bulbs ([Sengled](../zigbee.md#sengled)). They refuse the Zigbee timer, and miss it silently when it is sent
+to a group ([the Zigbee timer](../zigbee.md#the-zigbee-timer)), so with a brightness or color temperature, or in a
+group, turn on with timer would turn a bulb on and leave it on. DeviceSide refuses them, even with Labs on.
 
 ### Sonoff SWV
 
 Sonoff's SWV water valve reads the Zigbee timer in seconds rather than tenths, so it would stay open about ten times
-longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). Turn on with timer isn't
-built for it yet, and DeviceSide refuses it, even with Labs on. The light features
-don't apply to a valve.
+longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)), so DeviceSide refuses
+it, even with Labs on. The light features don't apply to a valve.
 
 ### IKEA
 
-IKEA's TRÅDFRI lights (manufacturer `IKEA of Sweden`). Most run the Zigbee timer, by what they report when paired and
-by users' reports ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3), so they take
-the Zigbee timer. Two GU10 white spectrum bulbs, LED2005R5 and
-LED2106R3, are reported to turn on with it and never turn off
-([Z2M #29158](https://github.com/Koenkk/zigbee2mqtt/issues/29158)), so DeviceSide refuses them there, even with
-Labs on. IKEA's outlets get no turn on with timer, as no plug has passed
-([Zigbee plugs and switches](../../integrations.md#zigbee-plugs-and-switches)). Smooth dimming and stop rest on
-the standard commands every Zigbee 3.0 certified dimmable light must take, as for [other brands](#other-brands); the
-other features aren't built yet.
-
-On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
-([evidence](../hue/internals.md#device-classes)).
+IKEA's TRÅDFRI lights (manufacturer `IKEA of Sweden`). They take the Zigbee timer but for two GU10 bulbs, LED2005R5
+and LED2106R3, refused even with Labs on, and a lower to off may stop at the lowest level ([IKEA](../zigbee.md#ikea),
+[the Zigbee timer](../zigbee.md#the-zigbee-timer)). Smooth dimming and stop rest on the standard commands
+([why](../zigbee.md#smooth-dimming-and-stop)).
 
 ### Other brands
 
-Lights of every other brand, such as Innr, Ledvance or Sonoff, and their plugs and switches. A Zigbee 3.0 certified
-dimmable light must take the standard dimming and stop commands ([internals](../../internals.md#shared)), which they
-get exactly as a Hue bulb does, so they take smooth dimming and stop. Raising brightness from off sets them to their
-lowest level first, where a Hue bulb gets Hue's own command. Their other features aren't built yet: nothing
-predicts how other brands take color moves, reads and writes, and on turn on with timer some lights turn on and never
-off, and most plugs ignore the timer. If you try dimming, please report it whether it works or not: Integrations >
+Lights of every other brand, such as Innr, Ledvance or Sonoff, and their plugs and switches. Their lights take smooth
+dimming and stop ([why](../zigbee.md#smooth-dimming-and-stop)); raising brightness from off sets them to their lowest
+level first, where a Hue bulb gets Hue's own command. If you try dimming, please report it whether it works or not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug.
 
