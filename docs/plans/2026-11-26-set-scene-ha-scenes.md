@@ -142,17 +142,20 @@ cd ~/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11
 
 ## Handoff
 
-2026-11-26, from the session that ran step 5.
+2026-11-26, from the session that ran step 5 and merged main and #635.
 
-- **Done:** steps 0-5, each with its plan review (and step 3's `/audit-code`) recorded in a `Step N done` commit.
-  Full suite `--transcripts=check` passes, no transcript changed; all three generators' `--check` clean.
-- **Waiting:** on the HA-scene rig case passing live (Decision 7); the PR then targets v0.2.0rc1.
-- **Then, in the turn that marks it ready:** merge main and rerun the generators. Docs scrub step 3 (#631) and #632
-  are already merged in, the scene bullet fitted to the new tables. #633 is merged in: integrations.md's budget
-  is raised 829 → 869 for the Home Assistant scenes section; the ready PR body must say so (word-budgets.yaml's rule). Then the whole-PR audit (Opus auditor:
-  `docs/design.md` rule text changes) and `owner-findings`.
-- **Peers:** ha-rig session "ha-scene-rig-77" (agent-inbox, jasonmx/HA-rig#110) reads `SetScene.rides.action` and
-  the scene entry's `member_capabilities`/integration; tell it if either shape changes. Docs scrub sessions
-  "docs-scrub-84" / "docs-scrub-pare-living-docs" know of the overlap.
+- **Done:** steps 0-5, each plan-reviewed. Main merged in through c6d97c64 (docs scrub #631, #632, word budgets #633);
+  the rig cases (#635) squash-merged into this branch. CI green on c6d97c64; local suite `--transcripts=check`,
+  the generators' `--check` and `scripts/check_docs.py` clean. `check_release.py --signoffs` flags nothing from the
+  dispatcher change (there is no `--records` flag).
+- **Waiting on Jason:** the live HA-scene rig run (Decision 7), from this worktree:
+  `../ha-rig/scripts/rig.py --action set_scene`. If it passes, the PR rides v0.2.0rc1; if it slips, rc1 is cut without it.
+  Jason has also not yet confirmed Decision 7 himself (it was relayed) nor approved integrations.md's budget raise.
+- **Then, in the turn that marks it ready:** merge main again (GitHub runs no PR CI while the PR conflicts), rerun the
+  generators, `ci-green 630`, then the whole-PR audit (Opus auditor: `docs/design.md` rule text changes) and
+  `owner-findings`, then `gh pr ready`. The PR body must say integrations.md's word budget rose 829 → 869 for the
+  Home Assistant scenes section (word-budgets.yaml's rule), and name the run's record.
+- **Peers:** "ha-scene-rig-3a" (agent-inbox a52f41b0-2861-49b7-8d85-87f23d3c81da) owns the rig side and tells Jason
+  the run gates this PR. Tell it if `SetScene.rides` or the scene entry's `member_capabilities`/integration change.
 - **Branch / worktree / PR:** `wt/set-scene-ha-scenes`, `/Users/jason/projects/ha/deviceside-wt/set-scene-ha-scenes`, #630 (draft).
 - **Open decisions:** none.
