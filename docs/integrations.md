@@ -12,7 +12,8 @@ page, with its limits and what DeviceSide changes in your setup:
 - [Control4](integrations/control4/index.md)
 <!-- integrations:end -->
 
-Which devices each feature is proven on is on the [device compatibility page](device-compatibility.md). How the
+What holds for a brand on both Zigbee integrations is on the [Zigbee page](integrations/zigbee.md). Which devices
+each feature is proven on is on the [device compatibility page](device-compatibility.md). How the
 commands work on the wire, and what was measured on real bulbs, is in [internals.md](internals.md) and each integration's own.
 
 ## All integrations
