@@ -530,8 +530,9 @@ def tested(record: dict, clean: Clean | None = None, classed: bool = False) -> l
     test's devices, each with its class, or a group for a native group's or a scene's test (`group`), judged by its
     members' classes; `classed` (the integration names classes) drops a device with a null class, and a group with
     one, as a null class credits nothing. Format 1 names a run's devices, not which test reached which, so `clean`
-    takes all of them or none: all only when the record has a passing test and it accepts every one."""
-    passed = [test for test in record["tests"] if test["result"] == "pass"]
+    takes all of them or none: all only when the record has a passing test and it accepts every one. A test with a
+    `via` is left out: another action's adapter served its call (check_release.credited)."""
+    passed = [test for test in record["tests"] if test["result"] == "pass" and "via" not in test]
     if record["format"] == 1:
         if clean and not (passed and all(clean(test.get("domain"), set(test.get("classes", ()))) for test in passed)):
             return []
@@ -804,9 +805,12 @@ def status_cell(
     for status, label in line.features.get(feature, ()):
         text = f"{icons[status]} {part_text(feature, label)}".strip()
         if status == "works":
-            actions = [card.lent.get(action, action) for action in feature_actions(feature, label)]
+            named = feature_actions(feature, label)
+            actions = [card.lent.get(action, action) for action in named]
             # A class with no model of its own on the action (a scene is classed by its lights) takes the integration's.
-            links = record_links(proofs(held, actions) or proofs(everything, actions), part_named=label != feature)
+            pairs = proofs(held, actions) or proofs(everything, actions)
+            pairs += [(action, path) for action in named for path in card.lent_records.get(action, ())]
+            links = record_links(pairs, part_named=label != feature)
         elif status == REFUSED:
             refused = [
                 card.broken[(name, action)]
@@ -1549,6 +1553,9 @@ class Card:
     # The actions the integration takes from the action they ride (gen_features.lent), as riding -> ridden: a riding
     # action's proof is its ridden action's records.
     lent: dict[str, str] = field(default_factory=dict)
+    # Each lent action's own passing records (`set_scene.json` from a run on Home Assistant scenes), by riding action:
+    # its cell links them beside the ridden action's (docs/plans/2026-11-26-set-scene-ha-scenes.md, ha-rig Decision 2).
+    lent_records: dict[str, list[str]] = field(default_factory=dict)
     entries: list[Line] = field(default_factory=list)
     refused: list[dict] = field(default_factory=list)
     # Each class a scope refuses (no_known_method), by its (what, reason, source): the page's Not supported row.
@@ -1700,6 +1707,11 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         result.tested.append(label)
     result.key = key
     result.lent = lend
+    result.lent_records = {
+        action: [path.relative_to(REPO).as_posix() for path in found]
+        for action in lend
+        if (found := passing(key, action))
+    }
     result.entries = ordered([*lines, *extra], brand, rig)
     result.reached, result.groups = models, groups
     result.listed, result.listed_groups = works(
