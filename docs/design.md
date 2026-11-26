@@ -198,7 +198,7 @@ some targets through another action's adapters also declares:
 | Hook or field | What it buys | Where its rules live |
 |---|---|---|
 | `Action.claims`, `route` | Entities the action routes itself, kept from resolution: `route` plans them beside the other targets, so a refused named one raises before any send. | `Action` and `Routed` in `core/action.py`; `Dispatcher.handle` |
-| `Action.rides` (`Ride`) | The action whose adapters serve the routed targets, and those targets as a domain on an HA integration; generators derive its target filter and cells from it. | `Ride` in `core/action.py`; `scripts/gen_services.py`, `gen_features.py`, `gen_compat.py` |
+| `Action.rides` (`Ride`) | The action whose adapters serve the routed targets, named as a domain on an HA integration; generators derive its target filter and cells from it. | `Ride` in `core/action.py`; `scripts/gen_services.py`, `gen_features.py`, `gen_compat.py` |
 
 Core around them:
 
