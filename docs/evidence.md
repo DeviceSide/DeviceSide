@@ -11,9 +11,9 @@ one home for these rules; other docs point here.
    what it shows, dated, in the bundle's `internals.md`. A fact a shipped call depends on is a **fact test**: the rig
    reruns it (`--facts`) when that call changes, and `test-records/_facts.json` keeps each result; a watched test
    covers what only a person can see. A fact that only decided scope or design goes in `research/`, a dated file never
-   edited; if evidence suggests it has changed, repeat the probe in a new file. With no device at hand, build from a cited source (the vendor's
-   documentation, an upstream integration that ships the call, or research), at the level tenet 10 gives; in Labs, the
-   first device report is the probe. *Why:* assumed behavior is where features break.
+   edited; if evidence suggests it has changed, repeat the probe by hand in a new file. With no device at hand, build
+   from a cited source (the vendor's documentation, an upstream integration that ships the call, or research), at the
+   level tenet 10 gives; in Labs, the first device report is the probe. *Why:* assumed behavior is where features break.
 3. **Verify, then trust.** A verified fact stands across firmware, HA and code changes until evidence contradicts it.
    Nobody goes looking for things to re-prove.
 4. **Surprises reopen facts.** A bug or unexplained behavior gets a root-cause dive, and the finding joins the fact
@@ -26,9 +26,9 @@ one home for these rules; other docs point here.
    likewise cover every action that sends that call to that class or identity (`turn_on_for`, `set_auto_off` and
    `turn_off_for` where they send the same frame). Across integrations a PR argues inheritance by hand
    ([deferred](deferred.md#device-facts-across-integrations)).
-6. **Simplify relentlessly.** Prefer fewer calls, round trips and machinery. A new guardrail or rule needs evidence its
-   failure happens (a probe, record or report) and names the user-visible failure it prevents and what it replaces;
-   until then, log so the first report would show the failure. An existing guardrail stays until evidence shows its
+6. **Simplify relentlessly.** Prefer fewer calls, round trips and machinery. A new guardrail needs evidence its failure
+   happens (a probe, record or report); until then, log so the first report would show the failure. A new rule or
+   guardrail names the user-visible failure it prevents and what it replaces. An existing guardrail stays until evidence shows its
    failure doesn't happen; meanwhile, make it cheaper.
 7. **Maintainers judge sufficiency.** Tooling records evidence; maintainers decide what's enough. Gates check that a
    sign-off exists, not how thorough it was.
@@ -77,8 +77,9 @@ those classes (`fields_dropped`), not refused; with it on, the call is Labs.
 
 A **class** is the set of devices that get the same call and run the same firmware family. The integration declares
 its classes (`IntegrationInfo.classes`) and names each target's (`IntegrationInfo.capability`); every adapter sees the
-same one and maps those it serves to its own branch. A scope holds a level per class, so a record on one class proves nothing about another. On a
-single-vendor API the class is what the call addresses (Shelly: the RPC component); on a multi-vendor protocol it
+same one and maps those it serves to its own branch. A scope holds a level per class, so a record on one class proves
+nothing about another, except that it puts the class's kin in Labs ([In Labs](#no-known-method-not-built-yet-in-labs)).
+On a single-vendor API the class is what the call addresses (Shelly: the RPC component); on a multi-vendor protocol it
 follows the vendor (Zigbee2MQTT: `hue`, `tuya_countdown`, `other`) and, where evidence is per identity, the identity
 (a countdown plug's maker string with a record of its own). Classes split from one class are **kin**: the same call on
 the same firmware family, differing only in whose evidence they hold.
@@ -107,11 +108,8 @@ the same firmware family, differing only in whose evidence they hold.
   its PR argues it has one: no known device behind it answers the same call differently.
 - **One fact, one home, in code.** Classes, levels and refusal entries live in the integration's package; the cards
   are generated from them.
-- **Groups.** A native group takes the weakest level among its members' classes. When a member's class is refused,
-  takes a call of its own, or, with the Labs option off, is in Labs or holds in Labs a field the call carries, the group
-  falls back to its members, each judged on its own, and is refused only when none of them ran. One whose members the
-  integration can't list counts as a Labs item: refused with the option off, and with it on where a call is known to
-  harm. The rules: `core/dispatcher.py`'s module docstring, Native groups.
+- **Groups.** A native group takes the weakest level among its members' classes, or falls back to its members; when,
+  and what an unlisted group does: `core/dispatcher.py`'s module docstring, Native groups.
 
 ### The split rule
 
@@ -170,7 +168,7 @@ A report changes a level only through a maintainer (tenet 7):
   identity it names on that action, on the report alone, citing it: not built yet if a known or plausible call would
   serve it, otherwise no known method.
 - **The identity is the narrowest a class rule can key on:** model ID with manufacturer string, plus firmware where
-  that decides. A vendor isn't refused whole on one report; split off the exception. A rule keyed on a vendor needs
+  that decides. A vendor is not normally refused whole on one report; split off the exception. A rule keyed on a vendor needs
   research.
 - **Not evidence against the device:** a failure on a different call (an external converter's), or a report that
   contradicts the identity's own passing record. The maintainer retests, or weighs the two.
@@ -185,12 +183,8 @@ an adapter whose domains are all `labs(...)` is flagged whole. A flagged item is
 Labs option (a `labs_fields` field is dropped instead). The dispatcher is the only gate: adapters never read the
 option, and turning it on changes how no other item behaves.
 
-Per tenet 10, every new item (action, integration, domain, capability or field) ships at its evidence's level:
-`verified(...)` for what a pass exercised, `documented(...)` where a route in [Levels](#levels) admits it, argued in
-its PR, and `labs(...)` on a sourced call for the rest; without a source it isn't built. A pass is the author's own
-test or users' working reports, on record (a rig record, or a `_manual.json` row; `reports` for users', which the
-compatibility page shows "by report"), and a maintainer judges whether it is enough, by how complex the item is and how
-complete its tests are; nothing counts reports in code. A maintainer may keep a complex tested item in Labs to soak with
+A new item ships at the level tenet 10 and [Levels](#levels) give. Nothing counts users' reports in code: a maintainer
+judges whether a pass is enough (tenet 7). A maintainer may keep a complex tested item in Labs to soak with
 users who opt in, as an exception, giving the reason in its PR. A field passes only on a test that sent it, which no
 check can tell ([deferred](deferred.md#field-lifts-checked-against-a-record)). No pass lifts the default class.
 
@@ -225,8 +219,7 @@ Each action whose calls changed since the last release tag needs a sign-off, an 
 transcript**, `tests/integrations/<x>/calls/<action>.json`, holds a **segment** per distinct way the unit tests run it:
 the request, each call sent at the wire with its reply, and the result ([`tests/transcripts.py`](../tests/transcripts.py);
 CI fails a PR whose transcripts don't match its code). An action has changed when HEAD's transcript no longer holds
-every segment of the tag's, or the tag has none: a segment changed or removed counts, wherever the code that changed it
-lives; a segment added, or a source change that leaves every segment as it was, doesn't. A flag lifted or a class added
+every segment of the tag's, or the tag has none (tenet 9); a segment added doesn't count. A flag lifted or a class added
 changes no call ([the coverage check](#the-coverage-check) holds those). An action whose adapter has `native_groups`
 needs a segment run on a group.
 
@@ -308,11 +301,11 @@ every PR and says what credits a class; `scripts/check_release.py --signoffs` fa
   yet. Z2M #25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, a different call, so it keeps
   `tuya_countdown`'s level, in Labs, until a pass on its maker string.
 - **Documented routes.** Zigbee2MQTT's `standard_light` is Documented on the fades, `stop`, `set_attributes` and
-  `get_attributes` by the standard converters' call; Paulmann's 924.70, reported failing a color read, stays in `other`
+  `get_attributes`; Paulmann's 924.70, reported failing a color read, stays in `other`
   ([the table and the bump](integrations/zigbee2mqtt/internals.md#standard_lights)). Hue's `other` is Documented on
-  every action by the bridge's one request ([internals](integrations/hue/internals.md#device-classes)). Shelly's
-  `turn_on_for` and `turn_off_for` are Verified on `Switch` and `RGBCCT` and Documented as siblings on `Light`,
-  `CCT`, `RGB` and `RGBW` (`integrations/shelly/addressing.py`).
+  every action ([internals](integrations/hue/internals.md#device-classes)). Shelly's `turn_on_for` and `turn_off_for`
+  are Documented on `Light`, `CCT`, `RGB` and `RGBW` as siblings of `Switch` and `RGBCCT`
+  (`integrations/shelly/addressing.py`).
 - **Lifting a flag.** Shelly dimming on `Light` is `labs("Light")`, as a report of a Gen3 Dimmer jumping on `DimStop`
   keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer lets a Shelly maintainer, once they judge
   it enough, make it `verified("Light")`. Zigbee2MQTT's auto-off on Tuya and Sonoff inching switches entered Labs on
