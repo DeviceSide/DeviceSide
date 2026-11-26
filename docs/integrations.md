@@ -39,21 +39,15 @@ commands work on the wire, and what was measured on real bulbs, is in [internals
 
 ## Home Assistant scenes
 
-`set_scene` takes a scene made in Home Assistant, in the UI or in YAML, as well as a Hue bridge scene
-([Hue](integrations/hue/index.md)). It writes each of the scene's lights as set without turning on does, so it works
-wherever that does (the [feature table](device-compatibility.md) shows where), with each light's own [evidence
-level](evidence.md#levels). It reads the scene each time it runs, so an edit applies at once.
+`set_scene` takes a Home Assistant scene as well as a Hue bridge scene ([Hue](integrations/hue/index.md)). It writes
+each light as set without turning on does, so it works wherever that does ([feature table](device-compatibility.md)),
+at each light's own [evidence level](evidence.md#levels), reading the scene each time it runs.
 
-- **A light the scene holds on** gets the scene's brightness and its one color, picked by the state's color mode, as
-  Home Assistant picks it when it activates the scene (RGBW and RGBWW take the scene's hue and saturation). It stays
-  off if it was off, and changes at once if it was on. Effects and transitions aren't written.
-- **A light the scene holds off** is turned off, by Home Assistant's own turn off.
-- **A light DeviceSide can't write** (no adapter, a refused class, a Labs class with Labs off) is skipped and logged,
-  and the rest run, as in a group; an unavailable light is left out quietly. Switches, covers and the scene's other
-  non-light entities are left alone.
-- **Groups in the scene**, light group helpers and native groups alike, are handled as in any call.
-
-The response has one entry for the scene ([action-behavior.md](action-behavior.md#what-a-response-looks-like)).
+- **A light held on** gets the scene's brightness and the one color its color mode names, as Home Assistant picks it.
+  Effects and transitions aren't written.
+- **A light held off** is turned off by Home Assistant's own turn off.
+- **A light DeviceSide can't write** is skipped and logged while the rest run, as in a group. Other entities are left
+  alone. The response: [action-behavior.md](action-behavior.md#what-a-response-looks-like).
 
 ## What can't be done, and why
 
