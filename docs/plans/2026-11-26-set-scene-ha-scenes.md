@@ -37,8 +37,9 @@ an entity-registry lookup: a YAML scene with no `id` has no registry entry. Its 
 (`actions/set_attributes.py`), following core's `light/reproduce_state.py`:
 - brightness 0-255 to percent, no floor raised (level 1 is 0.4 %);
 - one color, picked by the state's `color_mode` (`COLOR_MODE_TO_ATTRIBUTE`): `color_temp_kelvin`, `hs_color`,
-  `rgb_color` or `xy_color`; `rgbw`, `rgbww` and `white` modes take the state's `hs_color`; an unknown mode
-  takes the first color present, as core does;
+  `rgb_color` or `xy_color`; `rgbw` and `rgbww` modes take the state's `hs_color`; `white` mode writes brightness
+  alone (core's `white` is a brightness); an unknown mode takes the first writable color present, in core's order;
+- a light whose mode's color is missing is skipped with a WARNING, as core's `reproduce_state` sends nothing for it;
 - `effect` is not written (no `set_attributes` field), as Hue's `set_scene` skips effects;
 - an on light with nothing to write is `unchanged`.
 Non-light entities (switches, covers) are skipped at DEBUG: they are not a fault.
