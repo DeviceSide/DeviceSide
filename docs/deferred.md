@@ -61,7 +61,7 @@ and its cancel path.
 
 The first time a Labs call runs on a device, one Home Assistant repair issue says the feature is on trial there and
 asks the user to report whether it worked, linking the device report form. Raised once per device and action,
-dismissable, never for Verified or Documented calls, so Labs items that show only as a folded line on a card still
+dismissable, never for Verified or Documented calls, so Labs items that show only under a card's ⚪ Labs line still
 return a signal. Shape: after a call runs at `Level.LABS`, the dispatcher calls a small `core/` helper that
 raises the issue (`issue_registry.async_create_issue`, keyed on the action and device ID, `is_persistent=False`,
 `is_fixable=False`, `learn_more_url` at the report form), its text in `strings.json`. No adapter changes.
