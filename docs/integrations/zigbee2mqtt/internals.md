@@ -210,7 +210,7 @@ SET only and Z2M's state for it is the last write's echo. Each class rule reads 
 `model` (Sonoff) or maker string (Tuya) in the allowlist, and a top-level `inching_control_set` expose. The wire bytes,
 readback, the off's report and the strings tried: [Sonoff](research/sonoff/2026-11-24-inching.md),
 [Tuya](research/tuya/2026-11-24-inching.md) (ZHC at
-[`ed29f800`](https://github.com/Koenkk/zigbee-herdsman-converters/tree/ed29f80014f11cd3234e0e7371d1aace44e08982), read
+[this commit](https://github.com/Koenkk/zigbee-herdsman-converters/tree/ed29f80014f11cd3234e0e7371d1aace44e08982), read
 2026-11-24; no device probed).
 
 **Sonoff** (`families/sonoff/inching.py`): `{"inching_control_set": {"inching_control": "ENABLE", "inching_time": t,
@@ -286,7 +286,7 @@ one, the longest.
   `moveToSaturation`. No hue rides in the payload, so each bulb keeps its own and a group is one publish. A light in
   color temperature (its stored hue may be stale, untested) makes the payload `{"color": {"hue", "saturation"}}`, the
   light's current hue, which goes out as `moveToHueAndSaturation`. Source, zigbee-herdsman-converters at
-  [`f368dcd1`](https://github.com/Koenkk/zigbee-herdsman-converters/commit/f368dcd1): `src/converters/toZigbee.ts` (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`),
+  [this commit](https://github.com/Koenkk/zigbee-herdsman-converters/commit/f368dcd1): `src/converters/toZigbee.ts` (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`),
   `src/lib/modernExtend.ts` (`light`: `meta.supportsHueAndSaturation`).
 - A brightness or saturation fade's `transition` is at most the longest ZCL transition (`docs/internals.md`, Fades),
   with `clamped_to` when a longer one is cut; the prediction matches.

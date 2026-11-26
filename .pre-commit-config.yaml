@@ -113,6 +113,18 @@ repos:
         files: ^custom_components/.*\.py$
 
   # -------------------------
+  # Living docs stay pared (scripts/check_docs.py)
+  # -------------------------
+  - repo: local
+    hooks:
+      - id: check-docs
+        name: check living docs
+        entry: python scripts/check_docs.py
+        language: python
+        pass_filenames: false
+        files: ^(docs/|CONTRIBUTING\.md$|scripts/check_docs\.py$)
+
+  # -------------------------
   # HA names as literals (CLAUDE.md Conventions: Constants)
   # -------------------------
   - repo: local

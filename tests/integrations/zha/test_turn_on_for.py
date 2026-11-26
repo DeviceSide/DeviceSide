@@ -384,7 +384,7 @@ C = "00:00:00:00:00:00:00:0c"
 @pytest.mark.parametrize(
     ("strings", "on_off", "domain", "reason"),
     [
-        # Tuya's recipe would serve it, but is parked (plan Decision 74).
+        # Tuya's recipe would serve it, but is parked: no probe has shown it serves this model.
         (TS011F, StandardOnOff, "switch", "not_built"),
         (("_TZ3000_abcdefgh", "TS0001"), StandardOnOff, "switch", "not_built"),
         # A Tuya bulb outside the countdown models: nobody has probed its timer.
@@ -393,7 +393,7 @@ C = "00:00:00:00:00:00:00:0c"
         (("_TZ3210_0jxeoadc", "TS0049"), quirk_on_off("zhaquirks.tuya.mcu"), "switch", "not_built"),
         (("sengled", "E11-G13"), StandardOnOff, "light", "not_built"),
         (("SONOFF", "SWV"), StandardOnOff, "switch", "not_built"),
-        # Fails the countdown that serves its siblings; Tuya's inching would plausibly serve it (plan Decision 41).
+        # Fails the countdown that serves its siblings; Tuya's inching would plausibly serve it, unprobed.
         (("_TZ3000_gjnozsaz", "TS011F"), StandardOnOff, "switch", "not_built"),
     ],
 )
