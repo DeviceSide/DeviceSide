@@ -25,7 +25,8 @@ difference (GitHub soft-wraps); the cost is session turns and diffs where one wo
    (dated sources, never edited after), and generated output that a generator owns wholesale (at least
    `docs/device-compatibility.md`). The exclude list lives in one place: the rumdl config, or the hook's `exclude`, not both.
 5. **Autofix.** Enable rumdl's MD013 reflow if it leaves lists, blockquotes, HTML comments and generator markers
-   intact; then the edit hook fixes long lines silently. If reflow mangles any of those, ship report-only and say so in
+   intact and touches only paragraphs with a line over 120 (it never re-fills a paragraph wrapped narrower); then the
+   edit hook fixes long lines silently. If reflow mangles any of those, ship report-only and say so in
    the PR body.
 6. **Generated sections** (README cards, generated parts of `docs/integrations.md` and CONTRIBUTING): if their long
    lines come from a generator, the generator wraps them, so `gen_compat.py --check` and the lint agree. A line a
