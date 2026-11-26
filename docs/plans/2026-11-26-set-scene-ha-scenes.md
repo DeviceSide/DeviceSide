@@ -23,6 +23,8 @@ works. Ships in v0.3.0, not v0.2.0: the PR stays a draft and merges only once v0
 5. **No rig step file here** (Jason, 2026-11-26): this PR leaves `tests/rig/steps/set_scene.yaml` untouched. A separate
    ha-rig plan owns the HA-scene case, its role and where its record lands; its step file lands in a small PR paired
    with that rig change.
+6. **The scene's entry reads like a group's** (ha-rig plan for this case, 2026-11-26): `member_capabilities` and
+   the lights' shared integration, so the rig binds the record to the lights' classes.
 
 Approach chosen: a core route (no per-integration adapters, no pseudo-integration). Rejected: a `homeassistant`
 pseudo-integration whose adapter re-enters the dispatcher (circular, meaningless class levels); native scene adapters
@@ -48,17 +50,22 @@ an entity-registry lookup: a YAML scene with no `id` has no registry entry. Its 
 Non-light entities (switches, covers) are skipped at DEBUG: they are not a fault.
 
 **The route.** `Dispatcher.handle` resolves through `resolve()`, which refuses platform `homeassistant`, so HA
-scenes are taken out before `_resolve`. Add one seam: an `Action` hook (default: takes nothing) that claims entity
-IDs from `members` and runs them; `SetScene` claims HA scenes. `Action.run`'s docstring already anticipates an
-action that routes targets elsewhere. For each claimed scene:
+scenes are taken out before `resolve_targets`. The seam, as built: `Action.claims` (default: none) picks entity IDs
+from `members`, and `Action.route` plans them; `SetScene` claims HA scenes. Both routes plan before either sends
+(`plan_adapters`, then `run_planned`), so a named target refused on either raises before anything is sent. For
+each claimed scene:
 1. lights held on, grouped by identical request: expand HA groups (`core/groups.py:expand_ha_groups`), resolve each
-   with the scene as `via_group` and `named=False` (indirect), then `dispatcher.run_adapters("set_attributes", …)`.
+   with the scene as `via_group` (a light in a nested group keeps that group, for clearer skip logs) and
+   `named=False` (indirect), then `plan_adapters("set_attributes", …)`.
    Native groups, fallback, field drops, class refusals and the Labs gate all apply unchanged, per light;
 2. lights held off: one blocking `light.turn_off` with the call's context;
 3. fold the light results into one result for the scene, in Hue's vocabulary: `sent` when any light was written or
    turned off; `unchanged` when none needed it; `rejected` with `some_lights_failed` or `error` on device
    failures (so the call raises `targets_failed`); refused when no light could run, raised if the scene was named,
-   with its lights' ranked reason (`_rank`). Skipped lights are logged by the existing skipped-targets warning.
+   with its lights' ranked reason and its text (`rank`). Skipped lights, and an adapter's `unsupported` at run time,
+   are logged by the existing skipped-targets warning, never a failure. The scene's entry carries
+   `member_capabilities`, as a native group's does, and names the lights' integration when they share one,
+   `homeassistant` otherwise (Decision 6).
 
 **Levels.** The route has no level of its own: each light is gated by `set_attributes`' scope, so evidence is
 inherited (tenet 5: same call, same class). No transcript in `tests/integrations/*/calls/` changes, so no existing
