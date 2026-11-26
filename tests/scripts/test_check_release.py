@@ -5,7 +5,6 @@ import json
 import subprocess
 from dataclasses import replace
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from homeassistant.const import Platform
@@ -433,10 +432,9 @@ def gate(capsys):
 
 
 def test_an_action_that_rides_another_needs_no_record_of_its_own(released, gate):
-    """set_scene has no adapter on an integration that takes it from set_attributes (Action.rides): no gate, no
-    record, no coverage gap names it, though the ridden action's changed call needs its record."""
+    """An action with no adapter on an integration (set_scene, which rides set_attributes) is never demanded: no gate,
+    no record, no coverage gap names it, though the ridden action's changed call needs its record."""
     reg = registry()
-    reg.actions = {"set_scene": SimpleNamespace(rides=SimpleNamespace(action="turn_on_for"))}
     pin(released, "turn_on_for", "b")
     write_record(released, "turn_on_for.json")
     code, lines, err = gate(on=reg)

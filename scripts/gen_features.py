@@ -263,7 +263,7 @@ def built(
 
 def ridden(registry: AdapterRegistry, cols: dict[str, str]) -> set[tuple[str, str]]:
     """The (feature label, integration) cells shown from a ridden action's adapter (`lent`): every action of the row
-    is the integration's own or lent, and one is lent."""
+    is looked up as the integration's own or lent (a missing one empties the cell, as in `built`), and one is lent."""
     found = set()
     for label, _, _, _, row_actions in FEATURES:
         for integration in cols:

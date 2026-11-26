@@ -38,7 +38,7 @@ DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* 
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
 
-- [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
+- [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, set scene, get attributes
 - [Aqara lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#aqara): 🟢 smooth dimming, set without turning on, set scene, get attributes
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#hue): 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, set scene, get attributes
 - [Tuya TS011F plugs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): check Manufacturer and the countdown setting on the plug's Zigbee2MQTT page
@@ -49,7 +49,7 @@ DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* 
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)**
 
-- [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢 turn on with timer, smooth dimming, set without turning on
+- [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢 turn on with timer, smooth dimming, set without turning on, set scene
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#hue): 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, set scene, get attributes
 - ⚪ [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea) (turn on with timer, smooth dimming); [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea), [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#other-brands) (smooth dimming)
 

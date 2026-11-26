@@ -1646,6 +1646,11 @@ def field_notes(integration_adapters: list) -> list[FieldNote]:
     return [(feature, status, tuple(names), classes) for (feature, status, classes), names in found.items()]
 
 
+def riding(actions: set[str], lend: dict[str, str]) -> set[str]:
+    """The tested actions with each lent one (gen_features.lent) whose ridden action is among them."""
+    return actions | {action for action, ridden in lend.items() if ridden in actions}
+
+
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:
     info = registry.integrations[key]
     result = Card(
@@ -1676,9 +1681,10 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     for name, tested in models.items():
         on = place(lines, tested, bool(info.classes))
         if not on:
-            found_shape = shape({"works": tested.actions})
+            held = riding(tested.actions, lend)
+            found_shape = shape({"works": held})
             on = [unplaced.setdefault(found_shape, Line(found_shape))]
-            on[0].features = join_features(on[0].features, feature_statuses({"works": tested.actions}))
+            on[0].features = join_features(on[0].features, feature_statuses({"works": held}))
         for line in on:
             line.models.append(name)
     for line in unplaced.values():
@@ -1687,11 +1693,12 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.tested = [result.model(name, key, data, rig) for name in models]
     if groups is not None:
         label = anchor(GROUPS_ENTRY[0], data.model_url(GROUPS_ENTRY[1])) + (f" {VERIFIED}" if groups.rig else "")
+        held = riding(groups.actions, lend)
         extra.append(
             Line(
-                shape({"works": groups.actions}),
+                shape({"works": held}),
                 label=label,
-                features=feature_statuses({"works": groups.actions}),
+                features=feature_statuses({"works": held}),
                 native=True,
             )
         )

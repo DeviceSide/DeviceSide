@@ -348,6 +348,23 @@ def test_an_action_the_integration_lacks_takes_the_status_and_records_of_the_act
     assert gc.card("zha", registry, list(own), found).lent == {}
 
 
+def test_the_native_groups_line_and_an_unplaced_models_line_take_the_lent_action(root):
+    """A group's or a classless model's line names set scene beside the set_attributes it was tested on, linking
+    set_attributes's record."""
+    record(root, "zha", "set_attributes", devices=[old_device("P1", "1"), old_group("Group", "x")])
+    adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
+    registry = FakeRegistry(*adapters)
+    registry.actions = {"set_scene": RIDE}
+    found = data(registry)
+    card = gc.card("zha", registry, list(adapters), found)
+    shown = [line for line in card.lines if "native groups" in line or "Plug" in line]
+    assert len(shown) == 2 and all("set without turning on, set scene" in line for line in shown)
+    groups = next(line for line in card.entries if line.native)
+    assert gc.status_cell(card, groups, "set scene", found, {}, dict(gc.OUTCOMES)) == (
+        "🟢 [record](integrations/zha/test-records/set_attributes.json)"
+    )
+
+
 def test_a_ridden_action_takes_each_items_level_of_its_ridden_action_but_never_a_refusal():
     scope = AdapterScope(
         capabilities=verified("Switch"),
