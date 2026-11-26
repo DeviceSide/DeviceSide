@@ -45,13 +45,23 @@ DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* 
   - [_TZ3000_0zfrhq4i, _TZ3000_gznh2xla, _TZ3000_okaz9tjs, or _TZ3000_typdpbpg](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): 🟢 turn on with timer
   - [other makers with a countdown setting](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs): ⚪ turn on with timer
 - [other brands' standard lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#standard-lights): 🟡 smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
-- ⚪ [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea) (smooth dimming); [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea) (turn on with timer, smooth dimming); [Sonoff MINI-ZBDIM](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sonoff-inching-relays) (auto-off/on, smooth dimming); [Tuya datapoint devices with one countdown](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown) (turn on with timer, turn off with timer); [Sonoff single-channel relays](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sonoff-inching-relays), [Tuya WHD02 (_TZ3000_skueekg3, model TS0001) and Mowe MW781Z (_TZ300A_rncj86af)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-inching-switches) (auto-off/on); [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands) (smooth dimming, set without turning on, get attributes)
+- ⚪ Labs:
+  - [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea): smooth dimming
+  - [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea): turn on with timer, smooth dimming
+  - [Sonoff MINI-ZBDIM](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sonoff-inching-relays): auto-off/on, smooth dimming
+  - [Sonoff single-channel relays](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sonoff-inching-relays): auto-off/on
+  - [Tuya datapoint devices with one countdown](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-datapoint-devices-with-one-countdown): turn on with timer, turn off with timer
+  - [Tuya WHD02 (_TZ3000_skueekg3, model TS0001) and Mowe MW781Z (_TZ300A_rncj86af)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-inching-switches): auto-off/on
+  - [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands): smooth dimming, set without turning on, get attributes
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)**
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢 turn on with timer, smooth dimming, set without turning on
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#hue): 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
-- ⚪ [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea) (turn on with timer, smooth dimming); [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea), [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#other-brands) (smooth dimming)
+- ⚪ Labs:
+  - [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea): smooth dimming
+  - [IKEA lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea): turn on with timer, smooth dimming
+  - [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#other-brands): smooth dimming
 
 **[Shelly](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md)** (Gen2+)
 
@@ -75,7 +85,8 @@ DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* 
 
 **[Control4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md)**
 
-- ⚪ [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#control4-lights) (smooth dimming, set without turning on, get attributes); [lights whose driver can't stop a ramp](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp) (set without turning on, get attributes)
+- [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#control4-lights): ⚪ smooth dimming, set without turning on, get attributes
+- [lights whose driver can't stop a ramp](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp): ⚪ set without turning on, get attributes
 
 Models and how each was tested are on the [compatibility page](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md). Details per integration are in [docs/integrations.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md).
 
