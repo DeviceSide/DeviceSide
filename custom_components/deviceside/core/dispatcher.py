@@ -503,7 +503,8 @@ class Dispatcher:
         """Act on every target that can take the action, as core's entity actions do (docs/action-behavior.md).
 
         A named target that can never take it raises before anything is sent; an indirect one is skipped and logged.
-        Unavailable targets are skipped. A device failure raises once every target has run.
+        Unavailable targets are skipped. A device failure raises once every target has run. An entity the action
+        claims (Action.claims) is routed by the action itself (Action.route), planned beside the rest.
         """
         request = replace(action.parse(self.hass, call), context=call.context)
         if call.data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
@@ -519,26 +520,46 @@ class Dispatcher:
             # expand_group=False: we expand group.* ourselves so members remember which group they came from.
             selected = target_helpers.async_extract_referenced_entity_ids(self.hass, selection, expand_group=False)
         members, _ = expand_ha_groups(self.hass, sorted(selected.referenced | selected.indirectly_referenced))
+        # The entities the action routes itself (Action.route), taken out before resolution, which would refuse them.
+        claimed = {
+            entity_id: entity_id in selected.referenced for entity_id in members if action.claims(self.hass, entity_id)
+        }
 
-        results, targets = self._resolve(action, selected, members)
-        if targets:
+        results, targets, missing = self.resolve_targets(
+            action.domains,
+            selected.referenced,
+            {entity_id: via for entity_id, via in members.items() if entity_id not in claimed},
+        )
+        selected.log_missing(missing & selected.referenced, _LOGGER)
+        if targets or claimed:
             # A light call from HA just before this one may still be dropping predictions this one would plan from.
             await ha_watch.settled(self.hass)
-            results += await action.run(self.hass, request, targets, self)
+            # Everything is planned before anything is sent, so a named target that can never take it raises first.
+            routed = action.route(self.hass, request, claimed, self) if claimed else None
+            planned, runs = self.plan_adapters(action.key, request, targets)
+            results += planned
+            sends = [self.run_planned(runs)]
+            if routed is not None:
+                results += routed.results
+                sends.append(routed.run())
+            for sent in await asyncio.gather(*sends):
+                results += sent
         order = {entity_id: index for index, entity_id in enumerate(members)}
         results.sort(key=lambda result: order.get(result.entity_id, len(order)))
         return self._respond(action, call, results)
 
-    def _resolve(
-        self, action: type[Action], selected: target_helpers.SelectedEntities, members: dict[str, str | None]
-    ) -> tuple[list[EntityResult], list[Target]]:
-        """The targets to plan, and a skip for each indirect one that resolution already rules out."""
+    def resolve_targets(
+        self, domains: frozenset[str], referenced: set[str], members: dict[str, str | None]
+    ) -> tuple[list[EntityResult], list[Target], set[str]]:
+        """The targets to plan from `members` (each entity_id to the group it came through), a skip for each that
+        resolution already rules out, raised for one the caller named (`referenced`), and the entity_ids left out as
+        unavailable or not loaded, for the caller to log."""
         results: list[EntityResult] = []
         missing: set[str] = set()
         targets: list[Target] = []
         for entity_id, via_group in members.items():
-            named = entity_id in selected.referenced
-            if split_entity_id(entity_id)[0] not in action.domains:
+            named = entity_id in referenced
+            if split_entity_id(entity_id)[0] not in domains:
                 # Core's entity actions never see another domain's entities in an area, so only a named one raises.
                 if named:
                     raise TargetNotSupported(entity_id, "domain_not_supported")
@@ -555,12 +576,11 @@ class Dispatcher:
                 # A gateway or API DeviceSide never supports (Hue's v1 bridge): every action, with why.
                 why = refused.unsupported
                 results += _skip(entity_id, named, Reason.INTEGRATION_NOT_SUPPORTED, target.integration, why)
-            elif target.domain not in action.domains:
+            elif target.domain not in domains:
                 results += _skip(entity_id, named, "domain_not_supported", target.integration)
             else:
                 targets.append(replace(target, named=named))
-        selected.log_missing(missing & selected.referenced, _LOGGER)
-        return results, targets
+        return results, targets, missing
 
     @staticmethod
     def _respond(action: type[Action], call: ServiceCall, results: list[EntityResult]) -> ServiceResponse:
@@ -593,8 +613,11 @@ class Dispatcher:
             return {result.entity_id: (result.data or {}) | result.class_keys() for result in ran}
         return {result.entity_id: result.as_response() for result in ran}
 
-    async def run_adapters(self, action_key: str, request: Request, targets: list[Target]) -> list[EntityResult]:
-        """Plan every target, then run each adapter once per distinct request, every run concurrently.
+    def plan_adapters(
+        self, action_key: str, request: Request, targets: list[Target]
+    ) -> tuple[list[EntityResult], list[Run]]:
+        """Plan every target: the runs, each adapter once per distinct request, for run_planned to send, and a result
+        for each target skipped or left nothing to do. Nothing is sent, so a caller plans every target first.
 
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
@@ -605,9 +628,8 @@ class Dispatcher:
         flagged call, one touching a Labs scope item, is refused while the Labs option is off; a native group
         flagged by a member's class alone falls back to its members instead, as does one with a member whose class
         takes a call of its own (AdapterScope.own_calls), and a target of such a class runs apart, on that call and its
-        duration limits. A named target that can't take the action raises then, before anything is sent. Returns a
-        result per target that ran or was left nothing to do, each with its class, and an unsupported one per indirect
-        target skipped.
+        duration limits. A named target that can't take the action raises then. The results: one per target left
+        nothing to do, with its class, and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -622,7 +644,11 @@ class Dispatcher:
         for adapter, bucket in buckets.values():
             expanded, groups = self._expand_native_groups(adapter, bucket, results)
             runs += self._plan(adapter, request, expanded, results, labs_on, groups)
+        return results, runs
 
+    async def run_planned(self, runs: list[Run]) -> list[EntityResult]:
+        """Send the runs plan_adapters gave, every run concurrently: a result per target, each with its class."""
+        results: list[EntityResult] = []
         for adapter_results in await asyncio.gather(*(self._run_adapter(*run) for run in runs)):
             results.extend(adapter_results)
         return results
@@ -751,7 +777,7 @@ class Dispatcher:
         clamped_to = None
         if isinstance(request, TimedRequest):
             request, clamped_to = duration.clamp(request, adapter.scope.call_limits(own))
-        # Each run is its own task (run_adapters gathers them), so the deadline set here is this run's alone.
+        # Each run is its own task (run_planned gathers them), so the deadline set here is this run's alone.
         deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
         DEADLINE.set(deadline)
         try:
