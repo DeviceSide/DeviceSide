@@ -71,8 +71,8 @@ is `GLEDOPTO`
 ([`gledopto.ts`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/devices/gledopto.ts#L400)):
 inferred, as no Hue diagnostics in either issue show it.
 
-**Reported, no key yet:** a maker whose report gives no identity the bridge reports stays in `other`, keeping
-`get_attributes`, until a report gives one. Any other maker reported the same way is split off alike.
+**Reported, no key yet:** Müller Licht and Livarno stay in `other`, as the [index](index.md#other-brands) says, until a
+report gives an identity the bridge reports. Any other maker reported the same way is split off alike. What earns a key:
 
 - **Müller Licht:** #62497's one tint loris, with no Zigbee strings. It earns a key on a Hue diagnostics
   `product_data` of a Müller Licht light, or a second Müller Licht report on another model; Müller Licht lights made by

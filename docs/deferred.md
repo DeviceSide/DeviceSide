@@ -163,7 +163,7 @@ When `hue_native_control` can't be set for a soft off (MQTT or Zigbee2MQTT slow 
 
 ## Sengled lights on Zigbee2MQTT
 
-Place Sengled's other features on Zigbee2MQTT with a run. Written while off, the E11-G13 jumps to full brightness on ZHA, with `MoveToLevel` with or without `ExecuteIfOff` ([ZHA internals](integrations/zha/internals.md#tested-behavior)). Zigbee2MQTT sends an off light a Level command in `set_attributes` (`MoveToLevel` with `ExecuteIfOff`, then its kept-level publish without it), `raise_brightness` from off and `turn_on_for` with brightness (both `moveToLevelWithOnOff`, untested on the Sengled). The `sengled` family holds no scope, so every feature is refused until a run.
+Place Sengled's other features on Zigbee2MQTT with a run. Written while off, the E11-G13 jumps to full brightness on ZHA, with `MoveToLevel` with or without `ExecuteIfOff` ([ZHA internals](integrations/zha/internals.md#tested-behavior)). Zigbee2MQTT sends an off light a Level command in `set_attributes` (`MoveToLevel` with `ExecuteIfOff`, then its kept-level publish without it), `raise_brightness` from off and `turn_on_for` with brightness (both `moveToLevelWithOnOff`, untested on the Sengled); `lower_brightness`, the hue and saturation ramps and `stop` send none. The `sengled` family holds no scope, so every feature is refused until a run.
 
 **Why not now:** nothing probed on Zigbee2MQTT, and no request for a Sengled feature.
 

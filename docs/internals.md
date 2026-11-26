@@ -29,8 +29,8 @@ repeated here; result and detail codes are in the code.
   the off light ignores; on ZHA and Hue on the light entity, and on the group or room entity for an explicit
   `brightness` there.
 - **Zigbee 3.0 dimming.** A certified dimmable light must take the standard Level Control Move, Step and Stop commands,
-  so ZHA's and Zigbee2MQTT's `other` takes `raise_brightness`, `lower_brightness` and `stop` on that basis, and a failure
-  on an uncertified one shows at once. The argument and sources: [Zigbee](integrations/zigbee.md#smooth-dimming-and-stop).
+  so ZHA's and Zigbee2MQTT's `other` is admitted to `raise_brightness`, `lower_brightness` and `stop` on that basis, and a
+  failure on an uncertified one shows at once. The argument and sources: [Zigbee](integrations/zigbee.md#smooth-dimming-and-stop).
 
 ## Tested behavior
 

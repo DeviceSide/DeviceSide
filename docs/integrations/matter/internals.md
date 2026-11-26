@@ -85,7 +85,7 @@ stale OnTime while off.
 
 OffWaitTime is 1 (0.1 s), not 0, since 2026-11-14: matter.js before v0.17.2 never turns off on
 OffWaitTime 0 (Upstream defects), and a non-zero value is the branch certification exercises (What decides the call). The
-2026-10-28 and 2026-11-11 records ran OffWaitTime 0; the 2026-11-16 one ran 1.
+2026-10-28 and 2026-11-11 records ran OffWaitTime 0; the 2026-11-16 one, the WiZ Smart Plug's record, ran 1.
 
 ### `get_attributes`
 
