@@ -108,7 +108,7 @@
         {"if": {"required": ["reason"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
         {"if": {"required": ["fact"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
         {
-          "description": "A scene's test is a group's: the one call is the scene's, not its members' (device-classes plan, Decision 27).",
+          "description": "A scene's test is a group's: the one call is the scene's, not its members'.",
           "if": {"properties": {"role": {"const": "scene"}, "result": {"not": {"const": "skipped"}}}, "required": ["role", "result"]},
           "then": {"required": ["group"]}
         }
