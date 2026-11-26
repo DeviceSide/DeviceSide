@@ -24,7 +24,7 @@ works. Ships in v0.2.0 if the HA-scene rig case passes live (Decision 7).
    with that rig change.
 6. **The scene's entry reads like a group's** (ha-rig plan for this case, 2026-11-26): `member_capabilities` and
    the lights' shared integration, so the rig binds the record to the lights' classes.
-7. **Ships in v0.2.0, not v0.3.0** (Jason, 2026-11-26, relayed by the planning session): it rides v0.2.0rc1 only if the
+7. **Ships in v0.2.0, not v0.3.0** (Jason, 2026-11-26; relayed by the planning session, confirmed by him the same day): it rides v0.2.0rc1 only if the
    HA-scene rig case (ha-rig#110 and its paired step-file PR) passes live. If that slips, rc1 is cut without this PR;
    it never blocks the RC. So the PR no longer waits for v0.2.0 to be tagged.
 
@@ -150,7 +150,7 @@ cd ~/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11
   dispatcher change (there is no `--records` flag).
 - **Waiting on Jason:** the live HA-scene rig run (Decision 7), from this worktree:
   `../../ha-rig/scripts/rig.py --action set_scene`. If it passes, the PR rides v0.2.0rc1; if it slips, rc1 is cut without it.
-  Jason has also not yet confirmed Decision 7 himself (it was relayed) nor approved integrations.md's budget raise.
+  Jason has confirmed Decision 7 and approved integrations.md's budget raise (829 → 869).
 - **Then, in the turn that marks it ready:** merge main again (GitHub runs no PR CI while the PR conflicts), rerun the
   generators, `ci-green 630`, then the whole-PR audit (Opus auditor: `docs/design.md` rule text changes) and
   `owner-findings`, then `gh pr ready`. The PR body must say integrations.md's word budget rose 829 → 869 for the
