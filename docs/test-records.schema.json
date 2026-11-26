@@ -24,7 +24,7 @@
     "class": {"description": "The class the call reached (IntegrationInfo.capability, as the action's result reports it); null where the integration named none, or names no classes, or, for a device not yet placed, the response leaves it out.", "type": ["string", "null"], "minLength": 1},
 
     "record": {
-      "description": "A rig run of one suite. Format 3 is what the rig writes: the devices each test reached, and the call transcript it tested (`calls`). Format 2 is the same, bound to the package tree instead (`package`); it credits classes and cards but is no sign-off. Format 1 is a markdown record converted once (device-classes plan, step 5b), with the run's devices on the record, not per test; it credits as the markdown did and is no sign-off.",
+      "description": "A rig run of one suite. Format 3 is what the rig writes: the devices each test reached, and the call transcript it tested (`calls`). Format 2 is the same, bound to the package tree instead (`package`); it credits classes and cards but is no sign-off. Format 1 is a markdown record converted once, with the run's devices on the record, not per test; it credits as the markdown did and is no sign-off. A rerun replaces formats 1 and 2 with format 3. Counts are derived from the tests, never stored.",
       "type": "object",
       "required": ["format", "integration", "action", "result", "date", "source", "home_assistant", "tests"],
       "properties": {
@@ -108,7 +108,7 @@
         {"if": {"required": ["reason"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
         {"if": {"required": ["fact"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
         {
-          "description": "A scene's test is a group's: the one call is the scene's, not its members' (device-classes plan, Decision 27).",
+          "description": "A scene's test is a group's: the one call is the scene's, not its members'.",
           "if": {"properties": {"role": {"const": "scene"}, "result": {"not": {"const": "skipped"}}}, "required": ["role", "result"]},
           "then": {"required": ["group"]}
         }
@@ -227,7 +227,7 @@
         "test": {"description": "The case's id.", "type": "string", "minLength": 1},
         "kind": {"description": "How the fact was seen: automated (a firmware fact's case that passed or failed) or observed (a watched case a person answered).", "enum": ["automated", "observed"]},
         "result": {"enum": ["pass", "fail"]},
-        "converted": {"description": "The row was converted from _facts.md (device-classes plan, step 5b): its devices have no manufacturer or class, and keep the name their record gave the model.", "const": true},
+        "converted": {"description": "The row was converted from _facts.md: its devices have no manufacturer or class, and keep the name their record gave the model.", "const": true},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fact_device"}}
       },
       "if": {"required": ["converted"]},
