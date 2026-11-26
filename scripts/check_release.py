@@ -41,11 +41,6 @@ naming the action (format 3: in `calls`; format 2: in `passed`) one of whose dev
 warning (`default_class_credits`) for each model a passing record or manual row credits in the integration's default
 class where that is in Labs, as its pass can never lift a flag.
 
---notes notes.md: writes the release notes' call for testers, with a link to the device report form: the
-integrations with a changed action that has no sign-off (an all-Labs one too: its report arrives that way), and every
-adapter with an Untested fix caveat. Empty when
-there are none.
-
 Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked against docs/test-records.schema.json
 (the format's one home; docs/evidence.md, Sign-off format, describes it); a file of the wrong kind for its name, or of
 another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
@@ -63,7 +58,7 @@ record).
 Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for. A
 git error fails the run rather than pass a gate unseen.
 
-Usage: scripts/check_release.py [--coverage coverage.json] [--signoffs [--json | --reruns]] [--notes notes.md]
+Usage: scripts/check_release.py [--coverage coverage.json] [--signoffs [--json | --reruns]]
 """
 
 import argparse
@@ -83,7 +78,6 @@ from jsonschema.exceptions import best_match
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from custom_components.deviceside.config_flow import REPORT_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import AdapterScope, CaveatKind, Level  # noqa: E402
 from scripts.check_tag import git as git_in  # noqa: E402
@@ -99,7 +93,6 @@ FACTS = "_facts.json"
 FORMAT = 3  # the format the rig writes, and the only one a sign-off takes
 # Where the call transcripts live: tests/integrations/<key>/calls/<action>.json (tests/transcripts.py writes them).
 TRANSCRIPTS = Path("tests") / "integrations"
-DEVICE_REPORT = f"{REPORT_URL}?template=device_report.yml"
 
 
 def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
@@ -684,38 +677,14 @@ def describe(gate: Gate) -> str:
     return f"{head}; no sign-off{rejected}, and no Untested fix"
 
 
-def unsigned(found: Sequence[Gate], *, in_labs: bool = False) -> dict[str, list[str]]:
+def unsigned(found: Sequence[Gate]) -> dict[str, list[str]]:
     """The integrations with a changed action that has no sign-off, caveated or not, each with the suites to run. An
-    all-Labs action's is left out (it needs none to run), unless `in_labs`: the call for testers names it."""
+    all-Labs action's is left out: it needs none to run."""
     reruns: dict[str, set[str]] = {}
     for gate in found:
-        if gate.signoff is None and (in_labs or not gate.in_labs):
+        if gate.signoff is None and not gate.in_labs:
             reruns.setdefault(gate.integration, set()).update(gate.reruns)
     return {integration: sorted(suites) for integration, suites in reruns.items()}
-
-
-def release_notes(registry, found: list[Gate]) -> str:
-    """The release notes' call for testers: the integrations with a changed action that has no sign-off, and every
-    adapter with an Untested fix caveat."""
-    titles = [registry.integrations[integration].title for integration in unsigned(found, in_labs=True)]
-    untested = [
-        name
-        for name, adapter in adapters(registry)
-        if adapter.scope.caveat is not None and adapter.scope.caveat.kind is CaveatKind.UNTESTED_FIX
-    ]
-    parts = []
-    if titles:
-        parts.append(
-            "## Help us test\n\nThese integrations have an action whose calls changed since the last release, and no"
-            " maintainer has tested the change on a device yet. If you use one, please"
-            f" [report whether it works]({DEVICE_REPORT}).\n\n" + "".join(f"- {title}\n" for title in titles)
-        )
-    if untested:
-        parts.append(
-            "## 🔧 Untested fix\n\nThese ship a fix nobody could test before the release. If you use one, please"
-            f" [report whether it works]({DEVICE_REPORT}).\n\n" + "".join(f"- {name}\n" for name in untested)
-        )
-    return "\n".join(parts)
 
 
 def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None) -> int:
@@ -727,7 +696,6 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     printed = parser.add_mutually_exclusive_group()
     printed.add_argument("--json", action="store_true", help="with --signoffs: list the integrations without one")
     printed.add_argument("--reruns", action="store_true", help="with --signoffs: those, each with the suites to rerun")
-    parser.add_argument("--notes", type=Path, help="write the release notes' call for testers here")
     args = parser.parse_args(argv)
     if (args.json or args.reruns) and not args.signoffs:
         parser.error("--json and --reruns need --signoffs")
@@ -741,24 +709,21 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     ]
     if args.coverage:
         errors += coverage_errors(json.loads(args.coverage.read_text()))
-    if args.signoffs or args.notes:
+    if args.signoffs:
         base, found, manual_errors = gates(registry)
-        if args.notes:
-            args.notes.write_text(release_notes(registry, found))
-        if args.signoffs:
-            errors += manual_errors
-            errors += [describe(gate) for gate in found if not gate.passes]
-            errors += coverage_gaps(registry)
-            lines = [f"Since {base or 'the first commit'}:", *(describe(gate) for gate in found)]
-            if args.reruns:
-                print(json.dumps(unsigned(found)))
-            elif args.json:
-                print(json.dumps(list(unsigned(found))))
-            else:
-                print("\n".join(lines))
-            if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
-                with open(summary, "a") as handle:
-                    handle.write("## Sign-offs\n\n" + "".join(f"- {line}\n" for line in lines))
+        errors += manual_errors
+        errors += [describe(gate) for gate in found if not gate.passes]
+        errors += coverage_gaps(registry)
+        lines = [f"Since {base or 'the first commit'}:", *(describe(gate) for gate in found)]
+        if args.reruns:
+            print(json.dumps(unsigned(found)))
+        elif args.json:
+            print(json.dumps(list(unsigned(found))))
+        else:
+            print("\n".join(lines))
+        if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(summary, "a") as handle:
+                handle.write("## Sign-offs\n\n" + "".join(f"- {line}\n" for line in lines))
     for error in errors:
         print(f"error: {error}", file=sys.stderr)
     return 1 if errors else 0
