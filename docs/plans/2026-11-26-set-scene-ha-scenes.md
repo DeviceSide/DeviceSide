@@ -145,10 +145,9 @@ cd ~/projects/ha/deviceside && claude --model opus 'Implement docs/plans/2026-11
 - **Done:** steps 0-5, each with its plan review (and step 3's `/audit-code`) recorded in a `Step N done` commit.
   Full suite `--transcripts=check` passes, no transcript changed; all three generators' `--check` clean.
 - **Waiting:** the PR stays a draft until v0.2.0 is tagged (or cut to `release/v0.2.0`); neither exists yet.
-- **Then, in the turn that marks it ready:** merge main (expect conflicts with the docs scrub's step 3 in design.md,
-  action-behavior.md, deferred.md, and with #632's gen_compat fold and README; rerun the generators). If the scrub
-  brought action-behavior.md's Refused | Dropped and response-key tables, recast the "Home Assistant scenes" bullet
-  as rows of them; if `scripts/check_docs.py` landed, fit its word budget. Then the whole-PR audit (Opus auditor:
+- **Then, in the turn that marks it ready:** merge main and rerun the generators. Docs scrub step 3 (#631) and #632
+  are already merged in, the scene bullet fitted to the new tables. #633 adds `scripts/check_docs.py`: if a doc
+  overruns its budget, raise that line in `docs/word-budgets.yaml` here. Then the whole-PR audit (Opus auditor:
   `docs/design.md` rule text changes) and `owner-findings`.
 - **Peers:** ha-rig session "ha-scene-rig-77" (agent-inbox, jasonmx/HA-rig#110) reads `SetScene.rides.action` and
   the scene entry's `member_capabilities`/integration; tell it if either shape changes. Docs scrub sessions
