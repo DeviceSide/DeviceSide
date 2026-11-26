@@ -16,13 +16,11 @@ Lights on the core `zha` integration.
 DeviceSide tells brands apart ([why](../zigbee.md#why-brands-have-classes)) by the manufacturer and model the device
 reports when it pairs, and by how ZHA's device handler for it sends commands ([internals](internals.md#classes)).
 
-- A **group** gets only what all its lights get. One with a light a feature refuses, or, with Labs off, one in
-  Labs, falls back to its lights, each on its own; with Labs on, it runs as one group.
-  Turn on with timer sends a group one command only when its lights are every device in it, so a plug in the group
-  with no light (a plug ZHA shows as a switch, say), or a light it refused, never gets the group's timer: the lights
-  get one command each instead, a fraction of a second apart.
-  A ZHA group command gives no delivery feedback, as is the way of a Zigbee groupcast
-  ([internals](internals.md#upstream-defects)).
+- A **group** gets only what all its lights get: one with a light a feature refuses, or, with Labs off, one in Labs,
+  falls back to its lights, each on its own. Turn on with timer sends a group one command only when its lights are
+  every device in it, so a plug with no light in the group, or a light refused, never gets the group's timer; the
+  lights get one command each, a fraction of a second apart ([internals](internals.md#turn_on_for)). A ZHA group
+  command gives no delivery feedback, so each light is read back.
 - A device whose manufacturer or model ZHA couldn't read when it paired (ZHA shows `unk_manufacturer` or
   `unk_model`) can't be placed, so turn on with timer refuses it (`class_unknown`), even with Labs
   on, as it could be a Tuya datapoint device. Reconfigure it from its ZHA device page, or pair it again.
@@ -65,9 +63,8 @@ group, turn on with timer would turn a bulb on and leave it on. DeviceSide refus
 ### Sonoff SWV
 
 Sonoff's SWV water valve reads the Zigbee timer in seconds rather than tenths, so it would stay open about ten times
-longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). Turn on with timer isn't
-built for it yet, and DeviceSide refuses it, even with Labs on. The light features
-don't apply to a valve.
+longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)), so DeviceSide refuses
+it, even with Labs on. The light features don't apply to a valve.
 
 ### IKEA
 

@@ -3,7 +3,18 @@ rate, through zha.issue_zigbee_cluster_command (or one zha.issue_zigbee_group_co
 action's adapter is a ZHARamp.
 
 Saturation is MoveToSaturation, not an xy fade, where the light has hue and saturation: the stop of a MoveToColor fade
-visibly jumps (docs/integrations/zha/internals.md, Tested behavior)."""
+visibly jumps (docs/integrations/zha/internals.md, Tested behavior).
+
+ZHA can't tell a change from a remote or app from the bulb's own reports, so the remembered position can go stale. To
+keep hold-to-dim instant, the brightness fade is sent first and CurrentLevel read just after; the read, timed at the
+middle of its round trip, lies on the bulb's ramp, so the ramp's real start is fitted to it. A brightness call the
+remembered value says is `at_limit` or `off` is replanned from Home Assistant's state.
+
+A group gets one command when every light in it moves; otherwise, such as a soft off with a member off, each moving
+member gets its own, since a group soft off would drop an off member's stored level. The bottom level and the restore
+are always per member. A failed command rejects only the lights it was for, each keeping the remembered position and
+soft off restore it had; the rest fade on. A groupcast that fails rejects every member it was for. A member whose
+bottom level failed gets no fade, and the rest get one command each, as a groupcast would reach it."""
 
 import asyncio
 import logging

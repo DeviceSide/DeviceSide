@@ -51,12 +51,10 @@ endpoint in the group but the coordinator; per-member commands would start about
 Otherwise each light gets its own: a groupcast reaches every member, so a plug in a light group, which has a switch
 entity and no light, or a member the call refused or flagged, would take the timer (zha's group light entity reaches
 only its lights; [`Group.members`](https://github.com/zigpy/zha/blob/0ea5e1adb01692b7014d6f77b8255787af899d36/zha/zigbee/group.py#L190-L197) drops a member ZHA doesn't know, which zigpy's
-group still holds, so a group with one isn't covered either). A group command gets no reply, so every member is still read back. A slow end device (the rig's
-Sengled) can read `not_on` before it takes the group's `light.turn_on` (Tested behavior). A member's read can also
-overtake the group `OnWithTimedOff`: on the rig (2026-11-13, house run), the LTA004 read on with no timer straight
-after a groupcast with brightness, then went off 6.57 s after coming on, where the cases before it went off at 6.0 to
-6.1 s; the timer had landed about 0.5 s after the group's `light.turn_on`. So a member that reads `not_on` or no
-timer is read again every 0.5 s, up to 3 times, before it is reported `sent`.
+group still holds, so a group with one isn't covered either). A group command gets no reply, so every member is still
+read back, and a slow member's read can come before it takes the group's `light.turn_on` or `OnWithTimedOff` (Tested
+behavior). So a member that reads `not_on` or no timer is read again every 0.5 s, up to 3 times, before it is reported
+`sent`.
 
 ### `set_attributes`
 
@@ -101,18 +99,7 @@ A transition longer than ZCL carries is clamped, with `clamped_to` (`docs/intern
 DeviceSide calls `homeassistant.update_entity` 1 s after a fade should end and straight after a stop; raw commands
 leave ZHA's transition guard down, so the read is the bulb's.
 
-ZHA can't tell a change from a remote or app from the bulb's own reports, so the remembered position can go stale.
-To keep hold-to-dim instant, the brightness fade is sent first and CurrentLevel read just after; the read, timed at
-the middle of its round trip, lies on the bulb's ramp, so DeviceSide fits the ramp's real start to it. A brightness
-call the remembered value says is `at_limit` or `off` is replanned from Home Assistant's state.
-
-A group gets one command when every light in it moves; otherwise, such as a soft off with a member off, each moving
-member gets its own, since a group soft off would drop an off member's stored level. The bottom level and the
-restore are always per member.
-
-A failed command rejects only the lights it was for, each keeping the remembered position and soft off restore it
-had; the rest fade on. A groupcast that fails rejects every member it was for. A member whose bottom level failed
-gets no fade, and the rest get one command each, as a groupcast would reach it.
+The remembered position, a group's one command or per-member ones, and failures: `fade.py`'s docstring.
 
 ### `stop`
 
@@ -122,16 +109,11 @@ its move, hue cycle and soft-off restore; the lights that halted record the halt
 
 ## Tested behavior
 
-Color fades, on a Philips Hue A60 (LCA016, firmware 1.164.2): `MoveToColor` runs linearly in the bulb's own hue and
-saturation, not along a straight xy line, so a saturation fade toward white swings the hue (136° to 100° in 2.5 s of
-a 9 s fade). `StopMoveStep` halts on that path, and the reads hold after it; the same on Zigbee2MQTT. Probe:
-[research/2026-11-13-a60-color-fade-path.md](research/2026-11-13-a60-color-fade-path.md). Watched, the stop of that
-saturation fade shows as a jump in saturation, on ZHA and Zigbee2MQTT, though the reads have none: the bulb renders
-the fade unlike the state it reports
-([research/2026-11-13-a60-stop-jump-watched.md](research/2026-11-13-a60-stop-jump-watched.md)). A `MoveToSaturation`
-fade halted the same way looked closest to smooth, staying at its hue, with a small step back at the halt left as is;
-halting the `MoveToColor` fade at its straight-line xy, as Hue does, also left a small step:
-[research/2026-11-15-a60-stop-halt-probe.md](research/2026-11-15-a60-stop-halt-probe.md).
+Color fades, on a Philips Hue A60 (LCA016, firmware 1.164.2): `MoveToColor` runs in the bulb's own hue and saturation,
+so a saturation fade toward white swings the hue, and its stop shows as a jump though the reads have none; a
+`MoveToSaturation` fade halted by `StopMoveStep` looked closest to smooth
+([path](research/2026-11-13-a60-color-fade-path.md), [watched](research/2026-11-13-a60-stop-jump-watched.md),
+[halt](research/2026-11-15-a60-stop-halt-probe.md)).
 
 Timers, on a Philips Hue LTA004 (firmware `0x01001416`, Home Assistant 2026.10.2). Firmware decides this, so other
 devices may differ.
@@ -153,6 +135,11 @@ Moves, on the LTA004: a Level `Stop` 3 s into a 6 s soft off from 200
 held at 100 with the bulb on, and Home Assistant showed 100 from the bulb's report. A 4 s fade read its end level by
 3.9 s; a 4 s soft off read off, at level 1, by 4.3 s. Group `MoveToLevelWithOnOff` and `Stop` act as the unicast
 ones.
+
+A member's read can overtake the group `OnWithTimedOff` (rig, 2026-11-13): the LTA004 read on with no timer straight
+after a groupcast with brightness, then went off 6.57 s after coming on, where the cases before it went off at 6.0 to
+6.1 s; the timer had landed about 0.5 s after the group's `light.turn_on`. A slow end device (the Sengled) can read
+`not_on` before it takes the group's `light.turn_on`.
 
 Groups (2026-10-27, the LTA004, a Sengled E11-G13 and a plug): a unicast `turn_on_for` takes about 0.23 s per member
 (0.34 s with brightness), so under `max_concurrency` 2 the last of 8 lights starts 0.7 to 1 s after the first. A

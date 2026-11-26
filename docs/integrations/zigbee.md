@@ -47,13 +47,12 @@ bulbs take.
 Tuya builds devices that other brands sell (Lidl, Moes, BlitzWolf, AVATTO, Gledopto's GL-SPI-206P and more). The
 device's own Zigbee manufacturer string says it is Tuya's whatever the label: `_TZE…` for a datapoint device,
 `_TZ3000_…`, `_TZ3210_…` or `_TYZB01_…` for the rest
-([research](zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §4). Before an integration has read that
-string, it knows a Tuya device only by the vendor `Tuya` or a model starting `TS`, so one shown under another brand
-looks like that brand's own.
+([research](zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §4).
 
 | Kind | Models | What sets it apart |
 |---|---|---|
-| ZCL devices | TS011F, TS0001 to TS0004, TS0011, TS0726, bulbs such as TS0505B | The standard on/off commands, but most run Tuya's own countdown in place of the Zigbee timer |
+| ZCL plugs and switches | TS011F, TS0001 to TS0004, TS0011, TS0726 | The standard on/off commands, but most run Tuya's own countdown in place of the Zigbee timer |
+| Other ZCL devices | Bulbs such as TS0505B, dimmers, `_TYZB01_…` white labels | The standard commands; their timer is unprobed, and may be read in seconds, as the plugs read it |
 | Datapoint devices | TS0601 | Tuya's own protocol alone: the integration turns DeviceSide's commands into Tuya's, and no standard read or write reaches them |
 
 None has passed on DeviceSide's dimming, color or write commands, and nothing predicts Tuya's firmware takes them.
