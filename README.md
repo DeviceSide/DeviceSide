@@ -38,7 +38,7 @@ the automation editor. Because features run on the device, timers still work if 
 <summary><b>View device compatibility by integration</b></summary>
 
 🟢 Verified: works, tested on a real device<br>
-🟡 Documented: should work, same call pattern as a tested device<br>
+🟡 Documented: should work, uses the same call as a verified device or a standard call<br>
 ⚪ Labs: built, but not yet shown to work. Turn on Labs in Configure > Settings to try it
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
