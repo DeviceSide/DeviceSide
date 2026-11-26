@@ -191,7 +191,7 @@ as the list's column says; one without is left unchanged (`fields_dropped`).
 ### Other brands
 
 Lights of every other brand, such as Innr, and their plugs and switches. Their lights take smooth dimming and stop
-([why](../zigbee.md#smooth-dimming-and-stop)), and get and set attributes in Labs: none is reported to come on when
+([why](../zigbee.md#smooth-dimming-and-stop)), and get and set attributes: none is reported to come on when
 written while off, and a bulb that rejects the write, or can't read a color attribute, fails with an error
 ([research](research/2026-11-24-other-brands-execute-if-off-and-reads.md)). Please report a try, whether it works or
 not: Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure >
@@ -228,8 +228,8 @@ or Gledopto's GL-SPI-206P) can't be told apart from that brand's own devices ([T
   clear auto-off refuse it (`class_unknown`), even with Labs on, as it could be a Tuya device that stays on; Hue's are
   known from the start. A group with such a device runs its other lights, each on its own. A device whose pairing
   never completes stays refused until you pair it again in Zigbee2MQTT.
-- **A group, until Zigbee2MQTT republishes its groups:** DeviceSide can't tell its members, so the group is in Labs, and
-  turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on.
+- **A group, until Zigbee2MQTT republishes its groups:** DeviceSide can't tell its members, so the group runs only with
+  Labs on, and turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on.
 - **If DeviceSide can't subscribe to Zigbee2MQTT's bridge at all,** it logs a warning, groups run only with Labs on,
   and, until the integration reloads, turn on with timer refuses every group and every light, plug or switch but Hue's
   (IKEA's included).
@@ -320,7 +320,7 @@ directly, with the command Flash-free turn-on uses, to the lights below that hol
 
 `get_attributes` reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can be stale.
 A group returns one entry, averaged over the lights that are on, as Hue averages a room. Other brands' lights are read
-in Labs, without a timer ([other brands](#other-brands)); Tuya's datapoint devices' reads aren't built, and Tuya's
+without a timer ([other brands](#other-brands)); Tuya's datapoint devices' reads aren't built, and Tuya's
 countdown plugs are refused ([why](#tuya-ts011f-plugs)).
 
 ## Sharp edges
