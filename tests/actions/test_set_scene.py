@@ -1,5 +1,6 @@
 """set_scene on Home Assistant scenes: each light routed through set_attributes (core/ha_scene.py, route)."""
 
+import asyncio
 from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -12,10 +13,12 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.actions.set_scene import SetScene
 from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.core import ha_scene as module
 from custom_components.deviceside.core.action import Action, Ride
+from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Status
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import AdapterScope, labs, verified
+from custom_components.deviceside.core.scope import AdapterScope, NoKnownMethod, labs, verified
 
 from ..conftest import allow_labs, call, refusal, result
 from ..fakes.fake_integration import FakeSetAttributes
@@ -25,7 +28,8 @@ from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group
 pytestmark = pytest.mark.usefixtures("setup_integration")
 
 SCENE = "scene.evening"
-SENT = result("homeassistant", "sent")
+SENT = result("homeassistant", "sent")  # a scene whose lights span integrations, or none DeviceSide resolves
+FAKE_SENT = result("fake", "sent")  # one whose lights are all the fake's
 
 
 class SpecialSetAttributes(ScriptedAdapter):
@@ -53,6 +57,20 @@ def special(hass, setup_integration):
 @pytest.fixture
 def turn_off(hass):
     return async_mock_service(hass, "light", "turn_off")
+
+
+@pytest.fixture
+def classed(hass, setup_integration):
+    """The fake naming each light's class from its object id (light.a is class A), A to D."""
+    registry = get_runtime(hass).registry
+    info = registry.integrations["fake"]
+    registry.integrations["fake"] = replace(
+        info,
+        capability=lambda hass, target: target.entity_id.partition(".")[2].upper(),
+        classes=dict.fromkeys("ABCD", frozenset({"light"})),
+    )
+    yield
+    registry.integrations["fake"] = info
 
 
 def on(entity_id: str, **attributes) -> State:
@@ -121,7 +139,7 @@ async def test_a_light_with_no_adapter_is_skipped_and_logged_while_the_rest_run(
     add_fake_entity(hass, fake, "light.s", identifier="special_s")  # fake_special has no set_attributes here
     scene(hass, [on("light.a", brightness=255), on("light.s", brightness=255)])
 
-    assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: SENT}
+    assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: FAKE_SENT}
 
     assert sent(reset_script) == [("fake", 100.0, ["light.a"])]
     assert "set_scene skipped targets that can't take it: light.s (no_adapter), so they got no command" in caplog.text
@@ -143,7 +161,7 @@ async def test_an_indirect_scene_none_of_whose_lights_can_run_is_skipped_and_log
     scene(hass, [on("light.s", brightness=255)])
     scene(hass, [on("light.a", brightness=255)], entity_id="scene.other")
 
-    assert await call(hass, "set_scene", {"entity_id": "all"}) == {"scene.other": SENT}
+    assert await call(hass, "set_scene", {"entity_id": "all"}) == {"scene.other": FAKE_SENT}
     assert f"{SCENE} (no_adapter), light.s (no_adapter)" in caplog.text
 
 
@@ -156,7 +174,7 @@ async def test_a_light_held_off_is_turned_off_with_the_callers_context(hass, fak
         DOMAIN, "set_scene", {"entity_id": SCENE}, blocking=True, return_response=True, context=context
     )
 
-    assert response == {SCENE: SENT}
+    assert response == {SCENE: FAKE_SENT}
     assert [(c.data["entity_id"], c.context) for c in turn_off] == [(["light.b", "light.c"], context)]
     assert [request.context for _, _, request, _ in reset_script.calls] == [context]
 
@@ -190,7 +208,7 @@ async def test_a_nested_ha_light_group_and_a_native_group_are_expanded(hass, fak
     add_fake_native_group(hass, fake, "light.fake_group", ["light.c", "light.d"])
     scene(hass, [on("light.room", brightness=255), on("light.fake_group", brightness=255)])
 
-    assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: SENT}
+    assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: FAKE_SENT}
 
     # The fake's set_attributes can't address a native group, so core expands it too.
     assert sent(reset_script) == [("fake", 100.0, ["light.a", "light.b", "light.c", "light.d"])]
@@ -228,7 +246,9 @@ async def test_labs_off_drops_a_labs_class_light_and_the_rest_run(hass, fake, re
     allow_labs(hass, False)
     try:
         with patch.object(FakeSetAttributes, "scope", scope):
-            assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: SENT}
+            assert await call(hass, "set_scene", {"entity_id": SCENE}) == {
+                SCENE: FAKE_SENT | {"member_capabilities": {"light.a": "A"}}
+            }
             assert sent(reset_script) == [("fake", 100.0, ["light.a"])]
             assert "light.b (labs_off)" in caplog.text
 
@@ -237,7 +257,9 @@ async def test_labs_off_drops_a_labs_class_light_and_the_rest_run(hass, fake, re
 
             allow_labs(hass, True)
             reset_script.reset()
-            assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: SENT}
+            assert await call(hass, "set_scene", {"entity_id": SCENE}) == {
+                SCENE: FAKE_SENT | {"member_capabilities": {"light.b": "B"}}
+            }
             assert sent(reset_script) == [("fake", 100.0, ["light.b"])]
     finally:
         registry.integrations["fake"] = info
@@ -266,7 +288,7 @@ async def test_a_light_whose_color_is_missing_is_skipped_and_logged(hass, fake, 
     add_fake_entity(hass, fake, "light.b")
     scene(hass, [on("light.a", color_mode="xy", brightness=255), on("light.b", brightness=255)])
 
-    assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: SENT}
+    assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: FAKE_SENT}
 
     assert sent(reset_script) == [("fake", 100.0, ["light.b"])]
     assert "light.a (color_missing)" in caplog.text
@@ -277,7 +299,7 @@ async def test_a_scene_with_nothing_to_write_is_unchanged(hass, fake, reset_scri
     scene(hass, [on("light.a"), State("switch.plug", "on")])
 
     assert await call(hass, "set_scene", {"entity_id": SCENE}) == {
-        SCENE: result("homeassistant", "unchanged", detail="nothing_to_set")
+        SCENE: result("fake", "unchanged", detail="nothing_to_set")
     }
     assert reset_script.calls == []
 
@@ -288,7 +310,7 @@ async def test_a_light_left_nothing_to_write_after_drops_is_unchanged(hass, fake
     scene(hass, [on("light.a", color_mode="color_temp", color_temp_kelvin=2700)])
 
     assert await call(hass, "set_scene", {"entity_id": SCENE}) == {
-        SCENE: result("homeassistant", "unchanged", detail="nothing_to_set")
+        SCENE: result("fake", "unchanged", detail="nothing_to_set")
     }
 
 
@@ -298,7 +320,7 @@ async def test_a_scene_whose_lights_are_each_unavailable_gets_no_result(hass, fa
     scene(hass, [on("light.a", brightness=255)])
     scene(hass, [on("light.b", brightness=255)], entity_id="scene.other")
 
-    assert await call(hass, "set_scene", {"entity_id": [SCENE, "scene.other"]}) == {"scene.other": SENT}
+    assert await call(hass, "set_scene", {"entity_id": [SCENE, "scene.other"]}) == {"scene.other": FAKE_SENT}
 
 
 async def test_a_scene_removed_before_planning_is_rejected(hass, fake, reset_script):
@@ -310,3 +332,87 @@ async def test_a_scene_removed_before_planning_is_rejected(hass, fake, reset_scr
         await call(hass, "set_scene", {"entity_id": SCENE})
 
     assert err.value.translation_placeholders == {"summary": f"{SCENE}: scene_not_found"}
+
+
+async def test_a_light_an_adapter_skips_while_running_is_no_failure(hass, fake, reset_script, caplog):
+    """Zigbee2MQTT's set_attributes skips an empty group as it runs."""
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+    scene(hass, [on("light.a", brightness=255), on("light.b", brightness=255)])
+
+    async def execute(adapter, hass, request, targets):
+        return [
+            adapter.result(target, Status.UNSUPPORTED, detail="empty_group")
+            if target.entity_id == "light.b"
+            else adapter.result(target, Status.SENT)
+            for target in targets
+        ]
+
+    with patch.object(FakeSetAttributes, "execute", execute):
+        assert await call(hass, "set_scene", {"entity_id": SCENE}) == {SCENE: FAKE_SENT}
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_scene_refused_by_its_lights_class_raises_with_why(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.d")
+    scene(hass, [on("light.d", brightness=255)])
+    entry = NoKnownMethod("Bulb D", "It ignores brightness", "https://example.com/d")
+    scope = replace(FakeSetAttributes.scope, capabilities=verified("A"), no_known_method={"D": entry})
+
+    with patch.object(FakeSetAttributes, "scope", scope), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "set_scene", {"entity_id": SCENE})
+
+    assert raised.value.reason == "no_known_method"
+    assert raised.value.translation_placeholders["why"] == "It ignores brightness"
+    assert reset_script.calls == []
+
+
+async def test_a_turn_off_that_hangs_times_out_as_a_device_failure(hass, fake, reset_script, caplog, monkeypatch):
+    monkeypatch.setattr(module, "ADAPTER_TIMEOUT_S", 0)
+    monkeypatch.setattr(module, "ADAPTER_BACKSTOP_S", 0.01)
+
+    async def hang(call):
+        await asyncio.sleep(1)
+
+    hass.services.async_register("light", "turn_off", hang)
+    scene(hass, [State("light.b", "off")])
+
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, "set_scene", {"entity_id": SCENE})
+
+    assert err.value.translation_placeholders == {"summary": f"{SCENE}: error"}
+    assert f"set_scene {SCENE}: turning off light.b timed out after 0.01s, so they may stay on" in caplog.text
+
+
+async def test_a_named_scene_whose_lights_are_each_unavailable_is_logged_as_skipped(hass, fake, reset_script, caplog):
+    add_fake_entity(hass, fake, "light.a", state="unavailable")
+    scene(hass, [on("light.a", brightness=255)])
+
+    assert await call(hass, "set_scene", {"entity_id": SCENE}, return_response=False) is None
+    assert f"set_scene skipped targets that can't take it: {SCENE} (lights_unavailable)" in caplog.text
+    # As for a named group whose members are each unavailable: nothing could answer.
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, "set_scene", {"entity_id": SCENE})
+    assert err.value.translation_key == "no_entities_matched"
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_the_scene_names_each_lights_class_and_their_integration(hass, fake, special, reset_script):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+    add_fake_entity(hass, fake, "light.c")
+    add_fake_native_group(hass, fake, "light.fake_group", ["light.c"])
+    scene(hass, [on("light.a", brightness=255), on("light.b", brightness=51), on("light.fake_group", brightness=255)])
+    scope = replace(FakeSetAttributes.scope, capabilities=verified("A", "B", "C"), native_groups=True)
+
+    with patch.object(FakeSetAttributes, "scope", scope):
+        assert await call(hass, "set_scene", {"entity_id": SCENE}) == {
+            SCENE: FAKE_SENT | {"member_capabilities": {"light.a": "A", "light.b": "B", "light.c": "C"}}
+        }
+
+        add_fake_entity(hass, fake, "light.s", identifier="special_s")
+        scene(hass, [on("light.a", brightness=255), on("light.s", brightness=255)])
+        assert await call(hass, "set_scene", {"entity_id": SCENE}) == {
+            SCENE: SENT | {"member_capabilities": {"light.a": "A"}}
+        }

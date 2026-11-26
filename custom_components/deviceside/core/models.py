@@ -183,3 +183,13 @@ class EntityResult:
             if (value := getattr(self, name)) is not None:
                 response[name] = value
         return response
+
+
+@dataclass(slots=True)
+class Skip(EntityResult):
+    """An indirect target's skip (Status.UNSUPPORTED), with the refusal text a named one raises with
+    (TargetNotSupported's why and title), for a target that answers for it: a Home Assistant scene refused with its
+    lights' reason. Neither is in a response, and a run's results are never one, so transcripts don't change."""
+
+    why: str | None = None
+    title: str | None = None

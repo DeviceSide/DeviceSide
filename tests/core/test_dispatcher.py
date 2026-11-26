@@ -2393,7 +2393,7 @@ async def test_a_bridge_scene_and_an_ha_scene_run_in_one_call(hass, fake, reset_
 
     response = await call(hass, "set_scene", {"entity_id": ["scene.bridge", "scene.evening"]})
 
-    assert response == {"scene.bridge": SENT, "scene.evening": {"status": "sent", "integration": "homeassistant"}}
+    assert response == {"scene.bridge": SENT, "scene.evening": SENT}
     assert sorted((action, targets) for _, action, _, targets in reset_script.calls) == [
         ("set_attributes", ["light.a"]),
         ("set_scene", ["scene.bridge"]),

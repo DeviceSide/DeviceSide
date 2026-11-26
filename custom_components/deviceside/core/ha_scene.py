@@ -35,11 +35,13 @@ from homeassistant.core import DOMAIN as HA_DOMAIN
 from homeassistant.core import HomeAssistant, State
 
 from .action import Routed
-from .dispatcher import Run, _rank, _skip
+from .dispatcher import Run, rank, skip
 from .errors import describe
 from .groups import expand_ha_groups
-from .models import FAILED, EntityResult, LightFields, Request, Status
+from .models import EntityResult, LightFields, Request, Skip, Status
+from .resolver import resolve
 from ..actions.set_attributes import SetAttributes, SetAttributesRequest
+from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S
 
 if TYPE_CHECKING:
     from .dispatcher import Dispatcher
@@ -50,6 +52,8 @@ OFF: Final = "off"  # a light the scene holds off: turned off, not written
 SKIPPED: Final = "skipped"  # a light whose state can't be read (its mode's color is missing): nothing is sent
 # A SKIPPED light's skip reason, in the skipped-targets warning.
 COLOR_MISSING: Final = "color_missing"
+# A named scene's skip reason when each of its lights was left out as unavailable, in the skipped-targets warning.
+LIGHTS_UNAVAILABLE: Final = "lights_unavailable"
 LIGHTS: Final = frozenset({Platform.LIGHT})
 LightWrite = SetAttributesRequest | str | None  # a request, OFF, SKIPPED, or None: on, nothing to write (unchanged)
 
@@ -160,13 +164,16 @@ def _typed(name: str, value: Any) -> Any:
 
 @dataclass(slots=True)
 class _Planned:
-    """One scene, planned (_plan): the set_attributes runs, the lights to turn off, and how many lights were left
-    nothing to write."""
+    """One scene, planned (_plan): the set_attributes runs, the lights to turn off, the results of the lights left
+    nothing to write (`unchanged`, and `idle`: those ha_scene found so, which carry no result), and the integrations
+    of the lights that carry no result (`unresolved`: turned off or idle)."""
 
     entity_id: str
     runs: list[Run] = field(default_factory=list)
     off: list[str] = field(default_factory=list)
-    unchanged: int = 0
+    unchanged: list[EntityResult] = field(default_factory=list)
+    idle: list[str] = field(default_factory=list)
+    unresolved: set[str] = field(default_factory=set)
 
 
 def route(hass: HomeAssistant, request: Request, claimed: dict[str, bool], dispatcher: Dispatcher) -> Routed:
@@ -180,7 +187,10 @@ def route(hass: HomeAssistant, request: Request, claimed: dict[str, bool], dispa
     ]
 
     async def run() -> list[EntityResult]:
-        return list(await asyncio.gather(*(_run(hass, request, scene, dispatcher) for scene in planned)))
+        sent: list[EntityResult] = []
+        for scene_results in await asyncio.gather(*(_run(hass, request, scene, dispatcher) for scene in planned)):
+            sent += scene_results
+        return sent
 
     return Routed(results, run)
 
@@ -196,7 +206,8 @@ def _plan(
     """One scene's plan, or None when it has nothing to send; its skips, and a result it has without sending, go in
     results. Lights held on with the same write are planned as one set_attributes call on them, HA groups expanded
     and each light indirect, through the scene. A scene none of whose lights can run is refused with their ranked
-    reason (_rank), raised if named; one whose lights were each left out as unavailable gets no result."""
+    reason (rank), raised if named with that light's refusal text; one whose lights were each left out as
+    unavailable gets no result, and is logged as skipped if named, as core logs a named target it can't find."""
     if (lights := scene_lights(hass, entity_id)) is None:  # removed since the call began
         results.append(EntityResult(entity_id, Status.REJECTED, integration=HA_DOMAIN, detail="scene_not_found"))
         return None
@@ -212,11 +223,9 @@ def _plan(
         planned, runs = dispatcher.plan_adapters(SetAttributes.key, write, targets)
         skipped += unresolved
         for result in planned:
-            if result.status is Status.UNSUPPORTED:
-                skipped.append(result)
-            else:  # left nothing to do
-                scene.unchanged += 1
+            (skipped if result.status is Status.UNSUPPORTED else scene.unchanged).append(result)
         scene.runs += runs
+    scene.unresolved = _integrations(hass, dispatcher, [*scene.off, *scene.idle])
     results += skipped
     _LOGGER.debug(
         "set_scene %s: %d set_attributes runs, %d lights to turn off, %d skipped",
@@ -225,19 +234,32 @@ def _plan(
         len(scene.off),
         len(skipped),
     )
-    if scene.runs or scene.off or scene.unchanged or not lights:
+    if scene.runs or scene.off or scene.unchanged or scene.idle or not lights:
         return scene
-    # No light could run: refused with the most useful reason, or, each left out as unavailable, no result.
-    if (reason := min((r.detail for r in skipped if r.detail), key=_rank, default=None)) is not None:
-        results += _skip(entity_id, named, reason, HA_DOMAIN)
+    # No light could run: refused with the most useful light's reason and refusal text.
+    if best := min((r for r in skipped if r.detail), key=lambda r: rank(r.detail), default=None):
+        why, title = (best.why, best.title) if isinstance(best, Skip) else (None, None)
+        results += skip(entity_id, named, best.detail, HA_DOMAIN, why, title)
+    elif named:  # each light left out as unavailable
+        results.append(EntityResult(entity_id, Status.UNSUPPORTED, integration=HA_DOMAIN, detail=LIGHTS_UNAVAILABLE))
     return None
+
+
+def _integrations(hass: HomeAssistant, dispatcher: Dispatcher, lights: list[str]) -> set[str]:
+    """The integrations of the lights (HA groups expanded) that DeviceSide resolves, for the scene's `integration`."""
+    members, _ = expand_ha_groups(hass, lights)
+    return {
+        target.integration
+        for member in members
+        if not isinstance(target := resolve(hass, dispatcher.registry, member), str)
+    }
 
 
 def _sort(
     request: Request, lights: dict[str, LightWrite], scene: _Planned, skipped: list[EntityResult]
 ) -> dict[SetAttributesRequest, list[str]]:
     """The lights held on with something to write, grouped by their write; the rest go to
-    the scene's off lights, its unchanged count, or `skipped`."""
+    the scene's off lights, its idle count, or `skipped`."""
     by_write: dict[SetAttributesRequest, list[str]] = {}
     for light, write in lights.items():
         if isinstance(write, SetAttributesRequest):  # ha_scene's writes carry no context, so they hash
@@ -247,32 +269,60 @@ def _sort(
         elif write == SKIPPED:
             skipped.append(EntityResult(light, Status.UNSUPPORTED, detail=COLOR_MISSING))
         else:
-            scene.unchanged += 1
+            scene.idle.append(light)
     return by_write
 
 
-async def _run(hass: HomeAssistant, request: Request, scene: _Planned, dispatcher: Dispatcher) -> EntityResult:
-    """Send one scene's runs and turn its off lights off, concurrently, and fold the lights' results into the scene's:
-    rejected if any failed (error if each did), sent if any was written or turned off, else unchanged."""
+async def _run(hass: HomeAssistant, request: Request, scene: _Planned, dispatcher: Dispatcher) -> list[EntityResult]:
+    """Send one scene's runs and turn its off lights off, concurrently, then fold the lights' results into the scene's
+    (_fold). A light an adapter skipped while running (an empty group) is no failure: its result is kept beside the
+    scene's, for the skipped-targets warning."""
     written, off_failed = await asyncio.gather(dispatcher.run_planned(scene.runs), _turn_off(hass, request, scene))
-    failed = sum(result.status in FAILED for result in written) + off_failed
-    if failed:
-        detail = "error" if failed == len(written) + len(scene.off) else "some_lights_failed"
-        return EntityResult(scene.entity_id, Status.REJECTED, integration=HA_DOMAIN, detail=detail)
-    if scene.off or any(result.status is not Status.UNCHANGED for result in written):
-        return EntityResult(scene.entity_id, Status.SENT, integration=HA_DOMAIN)
-    return EntityResult(scene.entity_id, Status.UNCHANGED, integration=HA_DOMAIN, detail="nothing_to_set")
+    skipped = [result for result in written if result.status is Status.UNSUPPORTED]
+    reached = [result for result in written if result.status is not Status.UNSUPPORTED]
+    return [_fold(scene, reached, off_failed), *skipped]
+
+
+def _fold(scene: _Planned, reached: list[EntityResult], off_failed: int) -> EntityResult:
+    """The scene's result: rejected if any light failed (error if each written or turned off did), sent if any was
+    written or turned off, else unchanged. Its integration is its lights' when they share one, else homeassistant;
+    `member_classes` maps each light the call reached to its class, as a native group's entry does."""
+    integrations = {r.integration for r in (*reached, *scene.unchanged) if r.integration} | scene.unresolved
+    integration = integrations.pop() if len(integrations) == 1 else HA_DOMAIN
+    if failed := sum(result.status is Status.REJECTED for result in reached) + off_failed:
+        detail = "error" if failed == len(reached) + len(scene.off) else "some_lights_failed"
+        return EntityResult(scene.entity_id, Status.REJECTED, integration=integration, detail=detail)
+    classes: dict[str, str] = {}
+    for result in (*reached, *scene.unchanged):
+        if isinstance(result.classes, str):
+            classes[result.entity_id] = result.classes
+        classes |= result.member_classes or {}
+    folded = EntityResult(scene.entity_id, Status.UNCHANGED, integration=integration, detail="nothing_to_set")
+    if scene.off or any(result.status is not Status.UNCHANGED for result in reached):
+        folded = EntityResult(scene.entity_id, Status.SENT, integration=integration)
+    folded.member_classes = dict(sorted(classes.items())) or None
+    return folded
 
 
 async def _turn_off(hass: HomeAssistant, request: Request, scene: _Planned) -> int:
-    """Turn the scene's off lights off with the caller's context, in one blocking call: how many failed."""
+    """Turn the scene's off lights off with the caller's context, in one blocking call bounded as an adapter's run
+    is: how many failed."""
     if not scene.off:
         return 0
     _LOGGER.debug("set_scene %s: light.turn_off %s", scene.entity_id, ", ".join(scene.off))
     try:
-        await hass.services.async_call(
-            Platform.LIGHT, SERVICE_TURN_OFF, {ATTR_ENTITY_ID: scene.off}, blocking=True, context=request.context
+        async with asyncio.timeout(ADAPTER_TIMEOUT_S + ADAPTER_BACKSTOP_S):
+            await hass.services.async_call(
+                Platform.LIGHT, SERVICE_TURN_OFF, {ATTR_ENTITY_ID: scene.off}, blocking=True, context=request.context
+            )
+    except TimeoutError:
+        _LOGGER.warning(
+            "set_scene %s: turning off %s timed out after %ss, so they may stay on",
+            scene.entity_id,
+            ", ".join(scene.off),
+            ADAPTER_TIMEOUT_S + ADAPTER_BACKSTOP_S,
         )
+        return len(scene.off)
     except Exception as err:  # noqa: BLE001 - the scene's other lights still get their writes and a result
         _LOGGER.warning(
             "set_scene %s: turning off %s failed: %s, so they may stay on",

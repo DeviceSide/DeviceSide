@@ -42,7 +42,7 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   target included, so naming a member beside it changes nothing. Only when none of its members is planned or left
   nothing to do (each refused, gated or unavailable) is the group itself refused, raised if named, else skipped and
   logged: with the refusal its members' classes gave it, or labs_off; for own_call, a skipped member's, ranked labs_off,
-  then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none was skipped (each
+  then a class's refusal, then any other, not_addressable last (rank), own_call itself only when none was skipped (each
   unavailable). A group core expands is refused the same way, by that ranking, with nothing when none was skipped.
 
 Labs gating, the one place the option gates anything (docs/evidence.md, The Labs flag). After supports() passes and
@@ -80,7 +80,7 @@ from .adapter import Adapter
 from .errors import LABS_OFF, Reason, TargetNotSupported, describe, traceback_is_safe
 from .fields import lacking
 from .groups import expand_ha_groups
-from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
+from .models import FAILED, ActionKind, EntityResult, Request, Skip, Status, Target, TimedRequest
 from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
@@ -180,7 +180,7 @@ def _targeted(member: Target, by_device: ByDevice) -> set[str]:
     return by_device.get(member.device.id, set()) if member.stand_in and member.device is not None else set()
 
 
-def _rank(reason: str) -> int:
+def rank(reason: str) -> int:
     """Which member's skip a group refused for own_call, or expanded by core, takes (_unanswered): labs_off, which
     says how to let the call through; then a class's refusal, which says why it can't; then any other;
     not_addressable last."""
@@ -191,7 +191,7 @@ def _rank(reason: str) -> int:
     return 3 if reason == Reason.NOT_ADDRESSABLE else 2
 
 
-def _skip(
+def skip(
     entity_id: str,
     named: bool,
     reason: str,
@@ -206,7 +206,7 @@ def _skip(
         return []
     if named:
         raise TargetNotSupported(entity_id, reason, why, title)
-    return [EntityResult(entity_id, Status.UNSUPPORTED, integration=integration, detail=reason)]
+    return [Skip(entity_id, Status.UNSUPPORTED, integration=integration, detail=reason, why=why, title=title)]
 
 
 def _unanswered(
@@ -220,7 +220,7 @@ def _unanswered(
     """Each group that fell back with no member planned or left nothing to do, refused with its reason: raised if
     named, else skipped. A group a member answers for gets no result of its own, nor one a target on a stand-in's
     device answers for (`by_device`). One that fell back only because a member takes a call of its own (own_call) is
-    refused with its members' reason, ranked by _rank (`skipped`: the skips so far); own_call only when none was
+    refused with its members' reason, ranked by rank (`skipped`: the skips so far); own_call only when none was
     skipped (each unavailable). A group core expanded (reason None) is refused the same way, with no result when none
     was skipped."""
     results: list[EntityResult] = []
@@ -241,10 +241,10 @@ def _unanswered(
                 if not member.stand_in:
                     ids.add(member.reported_id)
             details = [r.detail for r in skipped if r.entity_id in ids and r.status is Status.UNSUPPORTED and r.detail]
-            reason = min(details, key=_rank, default=reason)
+            reason = min(details, key=rank, default=reason)
             if reason is None:
                 continue
-        results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
+        results += skip(group.reported_id, group.named, reason, adapter.integration, why, title)
     return results
 
 
@@ -571,13 +571,13 @@ class Dispatcher:
             if target == Reason.INTEGRATION_NOT_LOADED:
                 missing.add(entity_id)
             elif isinstance(target, str):
-                results += _skip(entity_id, named, target)
+                results += skip(entity_id, named, target)
             elif refused := self.registry.unsupported.get(target.integration):
                 # A gateway or API DeviceSide never supports (Hue's v1 bridge): every action, with why.
                 why = refused.unsupported
-                results += _skip(entity_id, named, Reason.INTEGRATION_NOT_SUPPORTED, target.integration, why)
+                results += skip(entity_id, named, Reason.INTEGRATION_NOT_SUPPORTED, target.integration, why)
             elif target.domain not in domains:
-                results += _skip(entity_id, named, "domain_not_supported", target.integration)
+                results += skip(entity_id, named, "domain_not_supported", target.integration)
             else:
                 targets.append(replace(target, named=named))
         return results, targets, missing
@@ -635,7 +635,7 @@ class Dispatcher:
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
         for target in targets:
             if (adapter := self.registry.adapter(action_key, target.integration)) is None:
-                results += _skip(target.reported_id, target.named, "no_adapter", target.integration)
+                results += skip(target.reported_id, target.named, "no_adapter", target.integration)
                 continue
             buckets.setdefault(target.integration, (adapter, []))[1].append(target)
 
@@ -703,7 +703,7 @@ class Dispatcher:
             elif judged.device:
                 # A member the integration can't address on its own stands for its whole device, so the skip names
                 # the device (_device_of), with no address.
-                results += _skip(
+                results += skip(
                     _device_of(target), target.named, decided.reason, adapter.integration, decided.why, title
                 )
             elif _falls_back(judged):
@@ -715,7 +715,7 @@ class Dispatcher:
                 fallen.append((target, judged.members, decided.reason, decided.why))
                 pending.extend(self._fallback(adapter, target, judged.members, seen, by_device, decided.reason))
             else:
-                results += _skip(
+                results += skip(
                     target.reported_id, target.named, decided.reason, adapter.integration, decided.why, title
                 )
         results += _unanswered(adapter, fallen, answered, by_device, title, results)
@@ -748,7 +748,7 @@ class Dispatcher:
                 expanded.append(target)
             elif (members := _members(self.hass, self.registry, adapter, target)) is None:
                 # No expand_group, or one that answered None or raised (logged): membership is unknowable here.
-                results += _skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
+                results += skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
             else:
                 groups.append((target, members))
                 expanded += _members_planned(members, set(), by_device)
