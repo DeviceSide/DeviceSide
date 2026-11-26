@@ -7,7 +7,7 @@ in [internals.md](internals.md).
 
 Plugs and lights on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which
 Matter's timer needs; one without it is refused (`no_lt_feature`). A light can also be dimmed and faded
-([below](#smooth-dimming)) and set without turning on ([below](#flash-free-turn-on)); one with no brightness control on
+([below](#smooth-dimming)) and set while off ([below](#flash-free-turn-on)); one with no brightness control on
 that endpoint is refused these (`not_dimmable`).
 
 ## Turn on with timer
@@ -44,7 +44,7 @@ outside that is clamped (`clamped_to`).
   (`unchanged`, `off`).
 - **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 65535 s, or 1 to 254 s on a light
   without enhanced hue; one outside that is clamped (`clamped_to`). A light that is off is `unchanged` (`off`).
-- A light without hue and saturation (its Color Control lacks the HS feature) keeps its color: saturation and hue
+- A light without hue and saturation (its Color Control lacks the HS feature) keeps its color: hue and saturation
   moves leave it `unchanged` (`fields_dropped`).
 - `stop` halts a color move too, and on a light with hue and saturation its read-back covers them.
 

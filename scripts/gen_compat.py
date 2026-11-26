@@ -38,7 +38,7 @@ its maker strings.
   Where the integration names no classes, its domains stand in for them.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
   `domains` phrases, so a plug never lists dimming. A scene domain is never one of them: a scene is classed by its
-  lights, so its features join the class's light line ("set scene"); a class of scenes alone keeps its own.
+  lights, so its features join the class's light line ("set scene while off"); a class of scenes alone keeps its own.
   Classes of one page section share a link, and a line holding every class its section shows in its domains names
   the section instead, by its devices.yaml `sections` phrase.
 - Variants: a section with `variants` (a model whose classes its page tells apart) is a parent line, "Tuya TS011F
@@ -142,7 +142,7 @@ import re
 import sys
 import unicodedata
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -1070,6 +1070,29 @@ def part(action: str) -> str:
 # The feature each part label (`part`) belongs to; a label that isn't one is its own feature.
 PART_FEATURE = {part(action): FEATURES[action] for action in FEATURES}
 
+# The smooth moves, which a line names as one phrase ("smooth brightness/hue/saturation changes"): each one's word in
+# it, in the phrase's order.
+SMOOTH_WORDS = {"smooth dimming": "brightness", "smooth hue": "hue", "smooth saturation": "saturation"}
+
+
+def spoken(labels: Iterable[str]) -> list[str]:
+    """Labels as a line says them: the whole smooth moves among them as one phrase where the first stood ("smooth
+    brightness/saturation changes"), and a smooth move's part by its word ("smooth brightness up")."""
+    labels = list(labels)
+    words = [word for feature, word in SMOOTH_WORDS.items() if feature in labels]
+    said: list[str] = []
+    for label in labels:
+        feature = PART_FEATURE.get(label, label)
+        if label in SMOOTH_WORDS:
+            phrase = f"smooth {'/'.join(words)} changes"
+            if phrase not in said:
+                said.append(phrase)
+        elif feature in SMOOTH_WORDS:
+            said.append(f"smooth {SMOOTH_WORDS[feature]}{label.removeprefix(feature)}")
+        else:
+            said.append(label)
+    return said
+
 
 # A line's features with their statuses, `stop` included: {feature: ((status, label), ...)}, in the feature table's
 # order.
@@ -1255,7 +1278,7 @@ class Line:
             return f"{self.name(card, key, data, rig, readme)}: {self.note}{children}"
         icons = dict(OUTCOMES)
         found = " · ".join(
-            f"{icons[status]} {', '.join(labels)}" for status, labels in (self.claims if readme else self.shape)
+            f"{icons[status]} {', '.join(spoken(labels))}" for status, labels in (self.claims if readme else self.shape)
         )
         return f"{self.name(card, key, data, rig, readme)}: {found}" if found else None
 
@@ -1276,7 +1299,7 @@ def fold(lines: list[Line], card: Card, key: str, data: Data) -> tuple[list[Line
         return lines, None
     children = "".join(
         f"\n  - {line.name(card, key, data, set(), readme=True)}: "
-        + ", ".join(label for _, labels in line.claims for label in labels)  # only ⚪ is left
+        + ", ".join(spoken(label for _, labels in line.claims for label in labels))  # only ⚪ is left
         for line in labs_only
     )
     return [line for line in lines if line not in labs_only], f"{LABS} {LABS_NAME}:{children}"

@@ -27,7 +27,7 @@ _STOP_MOVE_STEP = (zcl.COLOR_CLUSTER, zcl.STOP_MOVE_STEP, {"options_mask": 0, "o
 
 
 class ZHAStop(Adapter[Request]):
-    """Send level Stop to each lit light, with StopMoveStep where a saturation or hue move of ours runs, record the
+    """Send level Stop to each lit light, with StopMoveStep where a hue or saturation move of ours runs, record the
     predicted values as where it halted, and refresh HA at once.
 
     Members from one ZHA group get one groupcast per command, as in a raise or lower. The stop replaces the light's

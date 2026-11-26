@@ -308,7 +308,7 @@ directly, with the command Flash-free turn-on uses, to the lights below that hol
 
 ## Smooth color changes
 
-- **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 254 s. Saturation and hue need a
+- **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 254 s. Hue and saturation need a
   light that is on and supports hue and saturation, or a group whose lights all do.
 
 ## Flash-free turn-on

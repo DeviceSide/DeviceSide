@@ -56,8 +56,8 @@ class Column:
 
 COLUMNS = (
     Column(("smooth dimming",), "Smooth dimming"),
-    Column(("smooth saturation", "smooth hue"), "Smooth color"),
-    Column(("set without turning on",), "Set while off"),
+    Column(("smooth hue", "smooth saturation"), "Smooth color"),
+    Column(("set attributes while off",), "Flash-free turn-on"),
     Column(("turn on with timer",), "Timed on"),
     Column(("turn off with timer",), "Timed off"),
     Column(("auto-off/on",), "Auto off/on"),
@@ -326,5 +326,8 @@ def legend_entries(labs_pointer: str) -> list[tuple[Mark, str]]:
 
 
 def legend() -> str:
-    """What each mark means, a paragraph each."""
-    return "\n\n".join(line for _, line in legend_entries(LABS_BELOW))
+    """What each mark means, a line each.
+
+    HA renders the form's markdown with breaks on, so a newline after each <br> would add a blank line.
+    """
+    return "<br>".join(line for _, line in legend_entries(LABS_BELOW))

@@ -338,9 +338,11 @@ def test_an_action_the_integration_lacks_takes_the_status_and_records_of_the_act
     registry.actions = {"set_scene": RIDE}
     found = data(registry)
     card = gc.card("zha", registry, list(adapters), found)
-    assert card.lines[0] == f"[lights]({URL}#lights): 🟢 set without turning on, set scene"
+    assert card.lines[0] == f"[lights]({URL}#lights): 🟢 set attributes while off, set scene while off"
     assert card.lent == {"set_scene": "set_attributes"}
-    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    cells = gc.matrix_rows(card, ["set attributes while off", "set scene while off"], found, {}, dict(gc.OUTCOMES))[0][
+        1:
+    ]
     assert cells == ["🟢 [record](integrations/zha/test-records/set_attributes.json)"] * 2
     own = (*adapters, adapter("zha", "set_scene", AdapterScope(domains=verified("light"))))
     registry = FakeRegistry(*own)
@@ -360,7 +362,9 @@ def test_a_lent_cell_links_the_riding_actions_own_passing_record_beside_the_ridd
     found = data(registry)
     card = gc.card("zha", registry, list(adapters), found)
     assert card.lent_records == {"set_scene": ["docs/integrations/zha/test-records/set_scene.json"]}
-    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    cells = gc.matrix_rows(card, ["set attributes while off", "set scene while off"], found, {}, dict(gc.OUTCOMES))[0][
+        1:
+    ]
     assert cells == [
         "🟢 [record](integrations/zha/test-records/set_attributes.json)",
         "🟢 [set attributes](integrations/zha/test-records/set_attributes.json)"
@@ -382,8 +386,8 @@ def test_a_test_another_action_served_is_left_out_of_what_a_record_tested(root):
 
 
 def test_the_native_groups_line_and_an_unplaced_models_line_take_the_lent_action(root):
-    """A group's or a classless model's line names set scene beside the set_attributes it was tested on, linking
-    set_attributes's record."""
+    """A group's or a classless model's line names set scene while off beside the set_attributes it was tested
+    on, linking set_attributes's record."""
     record(root, "zha", "set_attributes", devices=[old_device("P1", "1"), old_group("Group", "x")])
     adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
     registry = FakeRegistry(*adapters)
@@ -391,9 +395,9 @@ def test_the_native_groups_line_and_an_unplaced_models_line_take_the_lent_action
     found = data(registry)
     card = gc.card("zha", registry, list(adapters), found)
     shown = [line for line in card.lines if "native groups" in line or "Plug" in line]
-    assert len(shown) == 2 and all("set without turning on, set scene" in line for line in shown)
+    assert len(shown) == 2 and all("set attributes while off, set scene while off" in line for line in shown)
     groups = next(line for line in card.entries if line.native)
-    assert gc.status_cell(card, groups, "set scene", found, {}, dict(gc.OUTCOMES)) == (
+    assert gc.status_cell(card, groups, "set scene while off", found, {}, dict(gc.OUTCOMES)) == (
         "🟢 [record](integrations/zha/test-records/set_attributes.json)"
     )
 
@@ -474,7 +478,7 @@ def test_a_card_puts_flagged_adapters_under_labs_and_leaves_out_failing_records(
     assert card.tested == []
     # An adapter flagged whole is in Labs on every domain, evidence or not; stop rides the smooth move.
     assert card.lines[:2] == [
-        f"[lights]({URL}#lights): 🟢 turn on with timer · ⚪ smooth hue",
+        f"[lights]({URL}#lights): 🟢 turn on with timer · ⚪ smooth hue changes",
         f"[plugs]({URL}#zigbee-plugs): ⚪ stop",
     ]
 
@@ -524,10 +528,10 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
     # switch, is named per domain, its timer at the switch domain's Documented level there. CCT, left out of the timer's
     # scope, isn't built yet there: the card leaves the feature out. Lines sort alphabetically.
     assert card.lines == [
-        f"[CCT controllers]({URL}#dimmers): ⚪ smooth dimming",
-        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
+        f"[CCT controllers]({URL}#dimmers): ⚪ smooth brightness changes",
+        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth brightness changes",
         f"[relays]({URL}#relays): 🟡 turn on with timer",
-        f"[relays as lights]({URL}#relays): 🟢 turn on with timer, smooth dimming",
+        f"[relays as lights]({URL}#relays): 🟢 smooth brightness changes, turn on with timer",
     ]  # devices.yaml's Old plug has no known method, which the README leaves to the page
     assert card.render().splitlines()[2:] == [f"- {line}" for line in card.lines]
 
@@ -562,8 +566,8 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
         capabilities=capabilities,
     )
     assert card.lines[:3] == [
-        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🟡 turn on with timer, smooth dimming",
-        f"[multicolor bulbs]({URL}#bulbs): 🟢 turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🟡 smooth brightness changes, turn on with timer",
+        f"[multicolor bulbs]({URL}#bulbs): 🟢 smooth brightness changes, turn on with timer",
         f"[relays]({URL}#relays): 🟡 turn on with timer",
     ]
     # Where both domains show the same features, the class keeps one line, by its phrase.
@@ -579,7 +583,7 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
 
 def test_a_classs_scene_domain_joins_its_light_line(root):
     """A scene is classed by its lights, so a class that is a light and a scene shows one line, named by
-    its phrase, with set scene among its features; a class that is only scenes keeps its own line."""
+    its phrase, with set scene while off among its features; a class that is only scenes keeps its own line."""
     phrase = {"phrase": "lights", "section": "Lights"}
     data = gc.Data(
         requires={},
@@ -597,8 +601,12 @@ def test_a_classs_scene_domain_joins_its_light_line(root):
     domains = {"hue": frozenset({Platform.LIGHT, Platform.SCENE}), "smart": frozenset({Platform.SCENE})}
     lines = gc.class_lines("x", found, data, domains, ["light", "scene"], {})
     assert [(line.sections, line.shape, line.items) for line in lines] == [
-        ({"Lights": ["lights"]}, ((("works", ("smooth dimming", "set scene"))),), [("hue", "light"), ("hue", "scene")]),
-        ({"Scenes": ["smart scenes"]}, ((("works", ("set scene",))),), [("smart", "scene")]),
+        (
+            {"Lights": ["lights"]},
+            ((("works", ("smooth dimming", "set scene while off"))),),
+            [("hue", "light"), ("hue", "scene")],
+        ),
+        ({"Scenes": ["smart scenes"]}, ((("works", ("set scene while off",))),), [("smart", "scene")]),
     ]
 
 
@@ -928,7 +936,7 @@ def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root
     )
     # A warning names every feature, stop beside the others.
     assert card.render().splitlines()[2:4] == [
-        f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, turn off with timer, set scene, stop",
+        f"- [⚠️ Unmaintained]({ISSUE_REASON}): set scene while off, turn on with timer, turn off with timer, stop",
         "- ⚠️ Unmaintained (the maintainer left): get attributes",
     ]
 
@@ -962,7 +970,7 @@ def test_a_card_marks_unmaintained_ones_after_untested_fixes(root):
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith(("- ⚠️", "- [⚠️", "- [🔧"))]
     assert marks == [
-        f"- [🔧 Untested fix]({ISSUE_REASON}): turn on with timer, set scene",
+        f"- [🔧 Untested fix]({ISSUE_REASON}): set scene while off, turn on with timer",
         "- ⚠️ Unmaintained (gone): turn off with timer",
     ]
     # An untested fix is not unmaintained: the heading still names the maintainers.
@@ -1136,7 +1144,7 @@ def test_a_class_an_adapter_serves_in_neither_axis_shows_nothing_for_it(root):
     # features out, and names nothing as not built.
     assert card.lines == [
         f"[CCT controllers, dimmers]({URL}#dimmers): 🟢 turn on with timer",
-        f"[relays]({URL}#relays): 🟢 turn on with timer, turn off with timer, set without turning on",
+        f"[relays]({URL}#relays): 🟢 set attributes while off, turn on with timer, turn off with timer",
     ]
 
 
@@ -1258,9 +1266,9 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     # Native groups first, then tested lines, then alphabetically.
     assert card.lines == [
         f"[native groups]({URL}#native-groups): 🟢 turn on with timer",
-        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers): 🟢 smooth brightness changes, turn on with timer",
         f"[relays]({URL}#relays): 🟢 turn on with timer",
-        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · ⚪ smooth dimming",
+        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · ⚪ smooth brightness changes",
     ]
     # A class named as its one model gives it once.
     capabilities = copy.deepcopy(DATA["capabilities"])
@@ -1270,12 +1278,25 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     assert card.lines[0] == f"[Plug]({URL}#plug): 🟢 turn on with timer"
 
 
+def test_spoken_merges_the_smooth_moves_into_one_phrase_where_the_first_stood():
+    assert gc.spoken(["smooth dimming", "smooth hue", "smooth saturation"]) == [
+        "smooth brightness/hue/saturation changes"
+    ]
+    assert gc.spoken(["turn on with timer", "smooth saturation", "smooth dimming", "get attributes"]) == [
+        "turn on with timer",
+        "smooth brightness/saturation changes",
+        "get attributes",
+    ]
+    assert gc.spoken(["smooth dimming up", "smooth hue down"]) == ["smooth brightness up", "smooth hue down"]
+    assert gc.spoken(["set scene while off", "auto-off"]) == ["set scene while off", "auto-off"]
+
+
 def test_a_feature_whose_actions_differ_in_status_names_its_parts():
     """Never one feature under two statuses."""
     dimming = {"should": {"lower_brightness", "stop"}, "labs": {"raise_brightness", "turn_on_for"}}
     assert gc.shape(dimming) == (
         ("should", ("smooth dimming down",)),
-        ("labs", ("turn on with timer", "smooth dimming up")),
+        ("labs", ("smooth dimming up", "turn on with timer")),
     )
     auto = {"works": {"set_auto_off", "clear_auto_off"}, "should": {"set_auto_on"}}
     assert gc.shape(auto) == (("works", ("auto-off",)), ("should", ("auto-on",)))
@@ -1327,7 +1348,7 @@ def test_a_class_refused_on_every_action_has_no_line(root):
     )
     registry = classed_registry(*adapters)
     card = gc.card("zha", registry, list(adapters), data(registry, no_known_method=[]))
-    assert card.lines == [f"[dimmers]({URL}#dimmers): 🟢 turn on with timer, smooth dimming"]
+    assert card.lines == [f"[dimmers]({URL}#dimmers): 🟢 smooth brightness changes, turn on with timer"]
 
 
 def brand_registry(*adapters) -> FakeRegistry:
@@ -1368,9 +1389,9 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
         f"[native groups]({URL}#native-groups): 🟢 turn on with timer",  # native groups first
         f"[relays]({URL}#relays): 🟢 turn on with timer",  # acme's tested line first
         f"[RGB controllers]({URL}#dimmers): 🟡 turn on with timer",
-        f"[other Acme lights]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
-        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · ⚪ smooth dimming",  # Beta
-        f"[other brands]({URL}#lights): 🟡 turn on with timer · ⚪ smooth dimming",
+        f"[other Acme lights]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth brightness changes",
+        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · ⚪ smooth brightness changes",  # Beta
+        f"[other brands]({URL}#lights): 🟡 turn on with timer · ⚪ smooth brightness changes",
     ]
 
 
@@ -1466,7 +1487,7 @@ def test_two_lines_that_show_only_labs_fold_into_one_last_line_a_sub_line_each(r
     assert card.lines == [
         f"[bulbs]({URL}#bulbs): 🟡 turn on with timer",
         f"⚪ Labs:\n  - [CCT controllers]({URL}#dimmers): turn on with timer"
-        f"\n  - [dimmers]({URL}#dimmers): turn on with timer, smooth dimming",
+        f"\n  - [dimmers]({URL}#dimmers): smooth brightness changes, turn on with timer",
     ]
 
 
@@ -1476,7 +1497,7 @@ def test_a_card_whose_every_line_is_in_labs_folds_nothing(root):
     card = labs_card(timer_labs("Light", "CCT"), dimming)
     assert card.lines == [
         f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer",
-        f"[dimmers]({URL}#dimmers): ⚪ turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers): ⚪ smooth brightness changes, turn on with timer",
     ]
 
 
@@ -1494,8 +1515,8 @@ def test_sub_lines_keep_card_order_so_other_brands_comes_last(root):
     capabilities["zha"]["other"] = {"phrase": "other brands", "section": "Lights"}
     card = gc.card("zha", registry, [dimming, reading], data(registry, capabilities=capabilities))
     assert card.lines[-1] == (
-        f"⚪ Labs:\n  - [CCT controllers]({URL}#dimmers): smooth dimming"
-        f"\n  - [other brands]({URL}#lights): smooth dimming"
+        f"⚪ Labs:\n  - [CCT controllers]({URL}#dimmers): smooth brightness changes"
+        f"\n  - [other brands]({URL}#lights): smooth brightness changes"
     )
 
 
@@ -1517,7 +1538,7 @@ def test_a_mixed_line_is_no_labs_line_and_never_folds_with_one(root):
     card = labs_card(timer, dimming)
     assert card.lines[:2] == [
         f"[CCT controllers]({URL}#dimmers): ⚪ turn on with timer",
-        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth dimming",
+        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · ⚪ smooth brightness changes",
     ]
 
 

@@ -15,7 +15,7 @@ from ...fixtures.zigbee2mqtt import add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
-COLOR_ACTIONS = ["raise_saturation", "lower_saturation", "raise_hue", "lower_hue"]
+COLOR_ACTIONS = ["raise_hue", "lower_hue", "raise_saturation", "lower_saturation"]
 
 
 @pytest.mark.parametrize("action", COLOR_ACTIONS)

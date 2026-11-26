@@ -144,3 +144,4 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
   `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined. Tests pin the
   values they assert as literals, so a wrong constant fails its test; they may import a constant to build inputs.
 - American English, matching HA.
+- Hue before saturation, in prose and in lists: people say "hue and saturation".

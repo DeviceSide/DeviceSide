@@ -12,7 +12,7 @@ RAMPS = [action for action in discover() if issubclass(action, Ramp)]
 
 def test_six_actions_one_per_attribute_and_direction():
     assert sorted((action.attribute, action.up) for action in RAMPS) == sorted(
-        (attribute, up) for attribute in ("brightness", "saturation", "hue") for up in (True, False)
+        (attribute, up) for attribute in ("brightness", "hue", "saturation") for up in (True, False)
     )
 
 
@@ -68,10 +68,10 @@ def test_a_lacked_attribute_is_dropped_and_leaves_nothing_to_do():
 LIMITS = {
     "raise_brightness": (1, 100),
     "lower_brightness": (0, 99),
-    "raise_saturation": (0, 100),
-    "lower_saturation": (0, 100),
     "raise_hue": None,
     "lower_hue": None,
+    "raise_saturation": (0, 100),
+    "lower_saturation": (0, 100),
 }
 
 
