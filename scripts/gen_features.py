@@ -50,6 +50,8 @@ DOC_URL = DOCS_URL + "{}#{}"
 INTEGRATIONS = "docs/integrations.md"
 # The integrations.md section explaining every NO_PATH entry to users; keep the two in step.
 IMPOSSIBLE = "what-cant-be-done-and-why"
+# The integrations.md section explaining a cell shown from a ridden action's adapter (`ridden`).
+RIDDEN = "home-assistant-scenes"
 
 # Icon key -> alt text in a cell, in the order a cell shows them.
 ICONS = {"light": "light", "switch": "switch", "group": "native group", "scene": "native scene"}
@@ -222,11 +224,23 @@ def keys(adapter, registry: AdapterRegistry, labs: bool = False) -> set[str]:
     return found
 
 
+def lent(registry: AdapterRegistry, integration: str) -> dict[str, str]:
+    """The actions the integration has no adapter for but takes from the action they ride (`Action.rides`): riding key
+    -> ridden key, where the integration has the ridden action's adapter."""
+    have = {adapter.action for _, adapter in adapters(registry) if adapter.integration == integration}
+    return {
+        key: action.rides.action
+        for key, action in registry.actions.items()
+        if action.rides and key not in have and action.rides.action in have
+    }
+
+
 def built(
     registry: AdapterRegistry, labs: bool = False, cols: dict[str, str] | None = None
 ) -> dict[tuple[str, str], set[str]]:
     """(feature label, integration) -> icon keys every one of the row's actions covers, with the Labs option
-    on when `labs`. Every integration has a column."""
+    on when `labs`. Every integration has a column. An action the integration has no adapter for takes the cell of
+    the action it rides (`lent`)."""
     by_pair = {(adapter.action, adapter.integration): adapter for _, adapter in adapters(registry)}
     actions = {action for action, _ in by_pair}
     if cols is None:
@@ -236,11 +250,27 @@ def built(
         if missing := [action for action in row_actions if action not in actions]:
             raise SystemExit(f"{label}: no adapter anywhere for {', '.join(missing)}; was it renamed?")
         for integration in cols:
-            found = [by_pair.get((action, integration)) for action in row_actions]
+            lend = lent(registry, integration)
+            found = [
+                by_pair.get((action, integration)) or by_pair.get((lend.get(action), integration))
+                for action in row_actions
+            ]
             cells[label, integration] = (
                 set.intersection(*(keys(adapter, registry, labs) for adapter in found)) if all(found) else set()
             )
     return cells
+
+
+def ridden(registry: AdapterRegistry, cols: dict[str, str]) -> set[tuple[str, str]]:
+    """The (feature label, integration) cells shown from a ridden action's adapter (`lent`): every action of the row
+    is the integration's own or lent, and one is lent."""
+    found = set()
+    for label, _, _, _, row_actions in FEATURES:
+        for integration in cols:
+            lend = lent(registry, integration)
+            if any(action in lend for action in row_actions):
+                found.add((label, integration))
+    return found
 
 
 def img(name: str, text: str, href: str) -> str:
@@ -283,6 +313,7 @@ def generate(registry: AdapterRegistry) -> str:
     cols = integration_columns(registry)
     cells = built(registry, cols=cols)
     in_labs = built(registry, labs=True, cols=cols)
+    lent_cells = ridden(registry, cols)
     labels = {label for label, *_ in FEATURES}
     for label, integration in NO_PATH:
         if label not in labels or integration not in cols:
@@ -305,7 +336,7 @@ def generate(registry: AdapterRegistry) -> str:
                 cells[label, integration],
                 (label, integration) in NO_PATH,
                 in_labs[label, integration],
-                cell_link(integration, topic),
+                href(INTEGRATIONS, RIDDEN) if (label, integration) in lent_cells else cell_link(integration, topic),
                 why,
             )
             for integration in cols

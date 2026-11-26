@@ -173,7 +173,7 @@ from scripts.check_release import load as read_record  # noqa: E402
 from scripts.check_release import manual as read_manual  # noqa: E402
 from scripts.gen_codeowners import plain_title  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
-from scripts.gen_features import anchors, bundle, columns, integration_columns, page, slug  # noqa: E402
+from scripts.gen_features import anchors, bundle, columns, integration_columns, lent, page, slug  # noqa: E402
 
 PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
@@ -803,7 +803,7 @@ def status_cell(
     for status, label in line.features.get(feature, ()):
         text = f"{icons[status]} {part_text(feature, label)}".strip()
         if status == "works":
-            actions = feature_actions(feature, label)
+            actions = [card.lent.get(action, action) for action in feature_actions(feature, label)]
             # A class with no model of its own on the action (a scene is classed by its lights) takes the integration's.
             links = record_links(proofs(held, actions) or proofs(everything, actions), part_named=label != feature)
         elif status == REFUSED:
@@ -1119,12 +1119,15 @@ def shape(by_status: dict[str, set[str]]) -> Shape:
     return tuple((key, labels[key]) for key, _ in OUTCOMES if labels.get(key))
 
 
-def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[Item, dict[str, set[str]]]:
+def statuses(
+    integration_adapters: list, class_domains: ClassDomains, lend: dict[str, str] | None = None
+) -> dict[Item, dict[str, set[str]]]:
     """Each item the adapters serve, with its actions by status, in first-seen order. A class counts on each entity
     domain it can be (IntegrationInfo.classes) that the adapter serves, at the level a call there runs at
     (AdapterScope.level: the weaker of the domain and the class); a class in the scope's `no_known_method` has none
     there; one the scope names in neither (not built yet) is left out. An adapter flagged whole is in Labs
-    throughout."""
+    throughout. An action the integration has no adapter for (`lend`: riding -> ridden, gen_features.lent) takes the
+    status of the action it rides on each item, but never a refusal: that action's own entry says it."""
     found: dict[Item, dict[str, set[str]]] = {}
     for adapter in integration_adapters:
         scope = adapter.scope
@@ -1141,6 +1144,10 @@ def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[It
                         held.append(((name, domain), TIER[scope.level(domain, [name])]))
         for item, status in held:
             found.setdefault(item, {}).setdefault(status, set()).add(adapter.action)
+    for by_status in found.values():
+        for status, actions in by_status.items():
+            if status != REFUSED:
+                actions |= {riding for riding, ridden in (lend or {}).items() if ridden in actions}
     return found
 
 
@@ -1544,6 +1551,9 @@ class Card:
     # children under it, each with its `parent`), then the no_known_method entries that name no action, each a 🔴
     # line; and what the evidence tested of each model, by name (`Reached`: its places, actions, rig or by hand).
     key: str = ""
+    # The actions the integration takes from the action they ride (gen_features.lent), as riding -> ridden: a riding
+    # action's proof is its ridden action's records.
+    lent: dict[str, str] = field(default_factory=dict)
     entries: list[Line] = field(default_factory=list)
     refused: list[dict] = field(default_factory=list)
     # Each class a scope refuses (no_known_method), by its (what, reason, source): the page's Not supported row.
@@ -1655,7 +1665,10 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     # The domains the integration's adapters serve, in first-seen order: those a class's line is split by.
     served = list(dict.fromkeys(domain for adapter in integration_adapters for domain in adapter.scope.domains))
     brand = brands(info)
-    lines = class_lines(key, statuses(integration_adapters, info.classes), data, info.classes, served, broken, brand)
+    lend = lent(registry, key)
+    lines = class_lines(
+        key, statuses(integration_adapters, info.classes, lend), data, info.classes, served, broken, brand
+    )
     models, groups = works(integration_adapters, data)
     rig = {name for name, tested in models.items() if tested.rig}
     # A model no class line takes gets a line of its own per feature set, with the features it was tested on.
@@ -1684,6 +1697,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         )
         result.tested.append(label)
     result.key = key
+    result.lent = lend
     result.entries = ordered([*lines, *extra], brand, rig)
     result.reached, result.groups = models, groups
     result.listed, result.listed_groups = works(

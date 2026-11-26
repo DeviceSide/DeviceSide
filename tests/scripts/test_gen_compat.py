@@ -109,6 +109,8 @@ class FakeRegistry:
         ),
     }
 
+    actions: dict = {}  # key -> Action class; a test that needs a ride sets it on the instance
+
     def __init__(self, *adapters):
         self._adapters = adapters
         # The cards read a class's domains, so each class a scope names is declared, as the registry holds it.
@@ -322,6 +324,52 @@ def test_a_manual_row_names_models_in_models_yaml(root):
 def zha_card(*adapters, **changes):
     registry = FakeRegistry(*adapters)
     return gc.card("zha", registry, list(adapters), data(registry, **changes))
+
+
+RIDE = SimpleNamespace(rides=SimpleNamespace(action="set_attributes", domain="scene", integration="homeassistant"))
+
+
+def test_an_action_the_integration_lacks_takes_the_status_and_records_of_the_action_it_rides(root):
+    """Set scene on an integration with set_attributes and no set_scene adapter: at set_attributes's level, linking
+    its record; an integration with its own set_scene adapter keeps it."""
+    record(root, "zha", "set_attributes", devices=[old_device("LTA009", "1")])
+    adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
+    registry = FakeRegistry(*adapters)
+    registry.actions = {"set_scene": RIDE}
+    found = data(registry)
+    card = gc.card("zha", registry, list(adapters), found)
+    assert card.lines[0] == f"[lights]({URL}#lights): 🟢 set without turning on, set scene"
+    assert card.lent == {"set_scene": "set_attributes"}
+    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    assert cells == ["🟢 [record](integrations/zha/test-records/set_attributes.json)"] * 2
+    own = (*adapters, adapter("zha", "set_scene", AdapterScope(domains=verified("light"))))
+    registry = FakeRegistry(*own)
+    registry.actions = {"set_scene": RIDE}
+    assert gc.card("zha", registry, list(own), found).lent == {}
+
+
+def test_a_ridden_action_takes_each_items_level_of_its_ridden_action_but_never_a_refusal():
+    scope = AdapterScope(
+        capabilities=verified("Switch"),
+        no_known_method={"Hidden": NoKnownMethod("Old plug", "No timer", "https://x.y/z")},
+    )
+    found = gc.statuses(
+        [adapter("zha", "set_attributes", scope)],
+        {"Switch": CLASSES["Switch"], "Hidden": LIGHT},
+        {"set_scene": "set_attributes"},
+    )
+    works = {
+        action
+        for by_status in found.values()
+        for status, actions in by_status.items()
+        if status == "works"
+        for action in actions
+    }
+    assert works == {"set_attributes", "set_scene"}
+    assert found[("Hidden", "light")] == {gc.REFUSED: {"set_attributes"}}
+    # An action the integration has an adapter for is never lent.
+    own = [adapter("zha", "set_attributes", scope), adapter("zha", "set_scene", scope)]
+    assert gc.statuses(own, {"Switch": CLASSES["Switch"]}, {}) == gc.statuses(own, {"Switch": CLASSES["Switch"]})
 
 
 def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(root):

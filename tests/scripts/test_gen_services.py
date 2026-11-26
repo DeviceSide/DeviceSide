@@ -32,11 +32,13 @@ stop:
 """
 
 
-def registry(served, actions=("turn_on", "turn_off", "stop")):
-    """Each integration key is its HA domain here; `served` maps it to the domains it serves."""
+def registry(served, actions=("turn_on", "turn_off", "stop"), rides=None):
+    """Each integration key is its HA domain here; `served` maps it to the domains it serves; `rides` maps an action
+    key to the Ride it declares."""
     integrations = {key: SimpleNamespace(ha_domain=key, domains=domains) for key, domains in served.items()}
     matrix = [(action, key, key) for action in actions for key in served]
-    return SimpleNamespace(integrations=integrations, matrix=lambda: matrix)
+    classes = {key: SimpleNamespace(rides=ride) for key, ride in (rides or {}).items()}
+    return SimpleNamespace(integrations=integrations, matrix=lambda: matrix, actions=classes)
 
 
 @pytest.fixture
@@ -51,6 +53,20 @@ def test_an_entry_per_ha_domain_sorted_a_scalar_for_one_domain_and_a_sorted_flow
         "      - domain: [light, switch]\n        integration: shelly\n"
         "      - domain: light\n        integration: zha\n"
     )
+
+
+def test_an_action_that_rides_another_serves_its_extra_targets_beside_the_adapters(reg):
+    """set_scene: Hue's own adapter, and the HA scenes it routes through set_attributes's."""
+    ride = SimpleNamespace(action="turn_on", domain="scene", integration="homeassistant")
+    found = gs.targets(registry({"zha": {"light"}}, actions=("set_scene",), rides={"set_scene": ride}))
+    assert found == {"set_scene": {"zha": {"light"}, "homeassistant": {"scene"}}}
+
+
+def test_a_ride_names_a_target_even_for_an_action_no_adapter_serves(reg):
+    ride = SimpleNamespace(action="turn_on", domain="scene", integration="homeassistant")
+    assert gs.targets(registry({"zha": {"light"}}, actions=(), rides={"set_scene": ride})) == {
+        "set_scene": {"homeassistant": {"scene"}}
+    }
 
 
 def test_anchor_and_alias_targets_are_replaced_by_full_blocks(reg):
