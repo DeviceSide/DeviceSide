@@ -42,7 +42,7 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   target included, so naming a member beside it changes nothing. Only when none of its members is planned or left
   nothing to do (each refused, gated or unavailable) is the group itself refused, raised if named, else skipped and
   logged: with the refusal its members' classes gave it, or labs_off; for own_call, a skipped member's, ranked labs_off,
-  then a class's refusal, then any other, not_addressable last (_rank), own_call itself only when none was skipped (each
+  then a class's refusal, then any other, not_addressable last (rank), own_call itself only when none was skipped (each
   unavailable). A group core expands is refused the same way, by that ranking, with nothing when none was skipped.
 
 Labs gating, the one place the option gates anything (docs/evidence.md, The Labs flag). After supports() passes and
@@ -80,7 +80,7 @@ from .adapter import Adapter
 from .errors import LABS_OFF, Reason, TargetNotSupported, describe, traceback_is_safe
 from .fields import lacking
 from .groups import expand_ha_groups
-from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
+from .models import FAILED, ActionKind, EntityResult, Request, Skip, Status, Target, TimedRequest
 from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
@@ -180,7 +180,7 @@ def _targeted(member: Target, by_device: ByDevice) -> set[str]:
     return by_device.get(member.device.id, set()) if member.stand_in and member.device is not None else set()
 
 
-def _rank(reason: str) -> int:
+def rank(reason: str) -> int:
     """Which member's skip a group refused for own_call, or expanded by core, takes (_unanswered): labs_off, which
     says how to let the call through; then a class's refusal, which says why it can't; then any other;
     not_addressable last."""
@@ -191,7 +191,7 @@ def _rank(reason: str) -> int:
     return 3 if reason == Reason.NOT_ADDRESSABLE else 2
 
 
-def _skip(
+def skip(
     entity_id: str,
     named: bool,
     reason: str,
@@ -206,7 +206,7 @@ def _skip(
         return []
     if named:
         raise TargetNotSupported(entity_id, reason, why, title)
-    return [EntityResult(entity_id, Status.UNSUPPORTED, integration=integration, detail=reason)]
+    return [Skip(entity_id, Status.UNSUPPORTED, integration=integration, detail=reason, why=why, title=title)]
 
 
 def _unanswered(
@@ -220,7 +220,7 @@ def _unanswered(
     """Each group that fell back with no member planned or left nothing to do, refused with its reason: raised if
     named, else skipped. A group a member answers for gets no result of its own, nor one a target on a stand-in's
     device answers for (`by_device`). One that fell back only because a member takes a call of its own (own_call) is
-    refused with its members' reason, ranked by _rank (`skipped`: the skips so far); own_call only when none was
+    refused with its members' reason, ranked by rank (`skipped`: the skips so far); own_call only when none was
     skipped (each unavailable). A group core expanded (reason None) is refused the same way, with no result when none
     was skipped."""
     results: list[EntityResult] = []
@@ -241,10 +241,10 @@ def _unanswered(
                 if not member.stand_in:
                     ids.add(member.reported_id)
             details = [r.detail for r in skipped if r.entity_id in ids and r.status is Status.UNSUPPORTED and r.detail]
-            reason = min(details, key=_rank, default=reason)
+            reason = min(details, key=rank, default=reason)
             if reason is None:
                 continue
-        results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
+        results += skip(group.reported_id, group.named, reason, adapter.integration, why, title)
     return results
 
 
@@ -503,7 +503,8 @@ class Dispatcher:
         """Act on every target that can take the action, as core's entity actions do (docs/action-behavior.md).
 
         A named target that can never take it raises before anything is sent; an indirect one is skipped and logged.
-        Unavailable targets are skipped. A device failure raises once every target has run.
+        Unavailable targets are skipped. A device failure raises once every target has run. An entity the action
+        claims (Action.claims) is routed by the action itself (Action.route), planned beside the rest.
         """
         request = replace(action.parse(self.hass, call), context=call.context)
         if call.data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
@@ -519,26 +520,46 @@ class Dispatcher:
             # expand_group=False: we expand group.* ourselves so members remember which group they came from.
             selected = target_helpers.async_extract_referenced_entity_ids(self.hass, selection, expand_group=False)
         members, _ = expand_ha_groups(self.hass, sorted(selected.referenced | selected.indirectly_referenced))
+        # The entities the action routes itself (Action.route), taken out before resolution, which would refuse them.
+        claimed = {
+            entity_id: entity_id in selected.referenced for entity_id in members if action.claims(self.hass, entity_id)
+        }
 
-        results, targets = self._resolve(action, selected, members)
-        if targets:
+        results, targets, missing = self.resolve_targets(
+            action.domains,
+            selected.referenced,
+            {entity_id: via for entity_id, via in members.items() if entity_id not in claimed},
+        )
+        selected.log_missing(missing & selected.referenced, _LOGGER)
+        if targets or claimed:
             # A light call from HA just before this one may still be dropping predictions this one would plan from.
             await ha_watch.settled(self.hass)
-            results += await action.run(self.hass, request, targets, self)
+            # Everything is planned before anything is sent, so a named target that can never take it raises first.
+            routed = action.route(self.hass, request, claimed, self) if claimed else None
+            planned, runs = self.plan_adapters(action.key, request, targets)
+            results += planned
+            sends = [self.run_planned(runs)]
+            if routed is not None:
+                results += routed.results
+                sends.append(routed.run())
+            for sent in await asyncio.gather(*sends):
+                results += sent
         order = {entity_id: index for index, entity_id in enumerate(members)}
         results.sort(key=lambda result: order.get(result.entity_id, len(order)))
         return self._respond(action, call, results)
 
-    def _resolve(
-        self, action: type[Action], selected: target_helpers.SelectedEntities, members: dict[str, str | None]
-    ) -> tuple[list[EntityResult], list[Target]]:
-        """The targets to plan, and a skip for each indirect one that resolution already rules out."""
+    def resolve_targets(
+        self, domains: frozenset[str], referenced: set[str], members: dict[str, str | None]
+    ) -> tuple[list[EntityResult], list[Target], set[str]]:
+        """The targets to plan from `members` (each entity_id to the group it came through), a skip for each that
+        resolution already rules out, raised for one the caller named (`referenced`), and the entity_ids left out as
+        unavailable or not loaded, for the caller to log when named."""
         results: list[EntityResult] = []
         missing: set[str] = set()
         targets: list[Target] = []
         for entity_id, via_group in members.items():
-            named = entity_id in selected.referenced
-            if split_entity_id(entity_id)[0] not in action.domains:
+            named = entity_id in referenced
+            if split_entity_id(entity_id)[0] not in domains:
                 # Core's entity actions never see another domain's entities in an area, so only a named one raises.
                 if named:
                     raise TargetNotSupported(entity_id, "domain_not_supported")
@@ -550,17 +571,16 @@ class Dispatcher:
             if target == Reason.INTEGRATION_NOT_LOADED:
                 missing.add(entity_id)
             elif isinstance(target, str):
-                results += _skip(entity_id, named, target)
+                results += skip(entity_id, named, target)
             elif refused := self.registry.unsupported.get(target.integration):
                 # A gateway or API DeviceSide never supports (Hue's v1 bridge): every action, with why.
                 why = refused.unsupported
-                results += _skip(entity_id, named, Reason.INTEGRATION_NOT_SUPPORTED, target.integration, why)
-            elif target.domain not in action.domains:
-                results += _skip(entity_id, named, "domain_not_supported", target.integration)
+                results += skip(entity_id, named, Reason.INTEGRATION_NOT_SUPPORTED, target.integration, why)
+            elif target.domain not in domains:
+                results += skip(entity_id, named, "domain_not_supported", target.integration)
             else:
                 targets.append(replace(target, named=named))
-        selected.log_missing(missing & selected.referenced, _LOGGER)
-        return results, targets
+        return results, targets, missing
 
     @staticmethod
     def _respond(action: type[Action], call: ServiceCall, results: list[EntityResult]) -> ServiceResponse:
@@ -593,8 +613,11 @@ class Dispatcher:
             return {result.entity_id: (result.data or {}) | result.class_keys() for result in ran}
         return {result.entity_id: result.as_response() for result in ran}
 
-    async def run_adapters(self, action_key: str, request: Request, targets: list[Target]) -> list[EntityResult]:
-        """Plan every target, then run each adapter once per distinct request, every run concurrently.
+    def plan_adapters(
+        self, action_key: str, request: Request, targets: list[Target]
+    ) -> tuple[list[EntityResult], list[Run]]:
+        """Plan every target: the runs, each adapter once per distinct request, for run_planned to send, and a result
+        for each target skipped or left nothing to do. Nothing is sent, so a caller plans every target first.
 
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
@@ -605,15 +628,14 @@ class Dispatcher:
         flagged call, one touching a Labs scope item, is refused while the Labs option is off; a native group
         flagged by a member's class alone falls back to its members instead, as does one with a member whose class
         takes a call of its own (AdapterScope.own_calls), and a target of such a class runs apart, on that call and its
-        duration limits. A named target that can't take the action raises then, before anything is sent. Returns a
-        result per target that ran or was left nothing to do, each with its class, and an unsupported one per indirect
-        target skipped.
+        duration limits. A named target that can't take the action raises then. The results: one per target left
+        nothing to do, with its class, and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
         for target in targets:
             if (adapter := self.registry.adapter(action_key, target.integration)) is None:
-                results += _skip(target.reported_id, target.named, "no_adapter", target.integration)
+                results += skip(target.reported_id, target.named, "no_adapter", target.integration)
                 continue
             buckets.setdefault(target.integration, (adapter, []))[1].append(target)
 
@@ -622,7 +644,11 @@ class Dispatcher:
         for adapter, bucket in buckets.values():
             expanded, groups = self._expand_native_groups(adapter, bucket, results)
             runs += self._plan(adapter, request, expanded, results, labs_on, groups)
+        return results, runs
 
+    async def run_planned(self, runs: list[Run]) -> list[EntityResult]:
+        """Send the runs plan_adapters gave, every run concurrently: a result per target, each with its class."""
+        results: list[EntityResult] = []
         for adapter_results in await asyncio.gather(*(self._run_adapter(*run) for run in runs)):
             results.extend(adapter_results)
         return results
@@ -677,7 +703,7 @@ class Dispatcher:
             elif judged.device:
                 # A member the integration can't address on its own stands for its whole device, so the skip names
                 # the device (_device_of), with no address.
-                results += _skip(
+                results += skip(
                     _device_of(target), target.named, decided.reason, adapter.integration, decided.why, title
                 )
             elif _falls_back(judged):
@@ -689,7 +715,7 @@ class Dispatcher:
                 fallen.append((target, judged.members, decided.reason, decided.why))
                 pending.extend(self._fallback(adapter, target, judged.members, seen, by_device, decided.reason))
             else:
-                results += _skip(
+                results += skip(
                     target.reported_id, target.named, decided.reason, adapter.integration, decided.why, title
                 )
         results += _unanswered(adapter, fallen, answered, by_device, title, results)
@@ -722,7 +748,7 @@ class Dispatcher:
                 expanded.append(target)
             elif (members := _members(self.hass, self.registry, adapter, target)) is None:
                 # No expand_group, or one that answered None or raised (logged): membership is unknowable here.
-                results += _skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
+                results += skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
             else:
                 groups.append((target, members))
                 expanded += _members_planned(members, set(), by_device)
@@ -751,7 +777,7 @@ class Dispatcher:
         clamped_to = None
         if isinstance(request, TimedRequest):
             request, clamped_to = duration.clamp(request, adapter.scope.call_limits(own))
-        # Each run is its own task (run_adapters gathers them), so the deadline set here is this run's alone.
+        # Each run is its own task (run_planned gathers them), so the deadline set here is this run's alone.
         deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
         DEADLINE.set(deadline)
         try:

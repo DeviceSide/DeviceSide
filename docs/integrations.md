@@ -37,6 +37,18 @@ and what was measured on real bulbs, is in [internals.md](internals.md) and each
 - **Dimming to 0 % is a soft off.** The light fades out and keeps its level, so a plain turn on brings it back
   there. Raising brightness on a light that is off fades in from the bottom.
 
+## Home Assistant scenes
+
+`set_scene` takes a Home Assistant scene as well as a Hue bridge scene ([Hue](integrations/hue/index.md)). It writes
+each light as set without turning on does, so it works wherever that does ([feature table](device-compatibility.md)),
+at each light's own [evidence level](evidence.md#levels), reading the scene each time it runs.
+
+- **A light held on** gets the scene's brightness and the one color its color mode names, as Home Assistant picks it.
+  Effects and transitions aren't written.
+- **A light held off** is turned off by Home Assistant's own turn off.
+- **A light DeviceSide can't write** is skipped and logged while the rest run, as in a group. Other entities are left
+  alone. The response: [action-behavior.md](action-behavior.md#what-a-response-looks-like).
+
 ## What can't be done, and why
 
 The README's prohibited signs mark these: a feature that is impossible on that whole integration, for every device

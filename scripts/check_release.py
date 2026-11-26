@@ -18,7 +18,8 @@ package or `core/`). A changed action's evidence must also hold every segment HE
 action is changed when HEAD's transcript of it doesn't hold every segment of the last release tag's (the latest `vX.Y.Z`
 that is an ancestor of HEAD), or the tag has none, or there is no tag; its last change is the latest commit touching its
 transcript. Each changed action needs a sign-off of its own: its rig records (`<action>.json`, and each
-`<action>-<option>.json` there is) all format 3, passing and standing, or a format 3 `_manual.json` row whose `calls`
+`<action>-<option>.json` there is) all format 3, passing (with a test passing that has no
+`via`, so its own action served it) and standing, or a format 3 `_manual.json` row whose `calls`
 names the action and stands, by a maintainer of the integration or a repo maintainer (`REPO_MAINTAINERS`). A row's and a
 record's `commit` is provenance: nothing here checks it. A format 1 (converted from markdown) or format 2 (bound to the
 package, not the calls) record, and a format 2 row (`passed`), sign off nothing. Without a sign-off, a 🔧 Untested fix
@@ -33,9 +34,10 @@ coverage check, failing on each gap: for an integration that names no classes, e
 Verified needs a passing test in that domain in a passing record of the action, or a `_manual.json` row naming it; for
 one that names classes (`IntegrationInfo.capability`), every class an adapter not flagged whole holds as Verified needs
 a passing test that reached it in a passing record of the action
-(format 2 and 3: a device of the test with that class, a native group's test crediting each member's; format 1: the
-test's `classes`), or a `_manual.json` row naming the action (format 3: in `calls`; format 2: in `passed`) one of whose
-devices has the class. `scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`), with a
+(format 2 and 3: a device of the test with that class, a native group's test crediting each member's, a test whose
+`via` names another action that served it crediting none; format 1: the test's `classes`), or a `_manual.json` row
+naming the action (format 3: in `calls`; format 2: in `passed`) one of whose devices has the class.
+`scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`), with a
 warning (`default_class_credits`) for each model a passing record or manual row credits in the integration's default
 class where that is in Labs, as its pass can never lift a flag.
 
@@ -47,8 +49,10 @@ there are none.
 Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked against docs/test-records.schema.json
 (the format's one home; docs/evidence.md, Sign-off format, describes it); a file of the wrong kind for its name, or of
 another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
-read as the action's evidence; another suite's, as `config_entry.json`, is none's), `_manual.json`, whose rows are
-manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads; a dotfile is ignored. A manual
+read as the action's evidence; another suite's, as `config_entry.json`, is none's; one of an action riding another on
+the integration, as `set_scene.json` where set_scene rides set_attributes, is checked when read and never demanded),
+`_manual.json`, whose rows are manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here
+reads; a dotfile is ignored. A manual
 row whose signer (`signed_by`) is neither a maintainer of the integration nor a repo
 maintainer is an error. A manual row's devices, and a record's tests, may name a class only on an integration that names
 classes (`names_classes`, which gen_compat shares). A record names no signer: review of the PR that lands it checks who
@@ -201,6 +205,14 @@ def suites(integration: str, action: str) -> list[tuple[Path, dict]]:
     return found
 
 
+def passes_itself(record: Mapping) -> bool:
+    """Whether a test the record's own action served passed: one with no `via` (plan Decision 6 of ha-rig's
+    2026-11-26-ha-scene-rig.md). A record whose only passes another action served (Hue's set_scene.json with only its
+    [ha_scene] tests passing) proves nothing of its own action's adapter, so it signs nothing off; a failing test, via
+    or not, fails the record (the schema's pass holds no failing test)."""
+    return any(test["result"] == "pass" and "via" not in test for test in record["tests"])
+
+
 def passing(integration: str, action: str) -> list[Path]:
     """The action's passing test records (`suites`)."""
     return [path for path, record in suites(integration, action) if record["result"] == "pass"]
@@ -234,11 +246,13 @@ def manual_rows(integration: str, action: str) -> list[tuple[bool, list[tuple[st
 def credited(integration: str, action: str) -> Iterator[tuple[str | None, str | None, str | None]]:
     """What the action's passing records credit, as (model id, class, domain of the test) per device: each passing
     test's devices (format 2 and 3: a native group's are its members); format 1 names no model, so it yields each of
-    the test's `classes` with a model of None. The one walk `reached` and `credited_models` share."""
+    the test's `classes` with a model of None. A test with a `via` credits nothing: another action's adapter served
+    its call (an [ha_scene] test in set_scene.json, served by set_attributes), so its pass is no proof of this action's
+    adapter. The one walk `reached` and `credited_models` share."""
     for path in passing(integration, action):
         record = load(path)
         for test in record["tests"]:
-            if test["result"] != "pass":
+            if test["result"] != "pass" or "via" in test:
                 continue
             if record["format"] == 1:
                 yield from ((None, name, test.get("domain")) for name in test.get("classes", ()))
@@ -276,13 +290,13 @@ def runs_only_in_labs(scope: AdapterScope) -> bool:
 
 
 def tested_domains(integration: str, action: str) -> set[str]:
-    """The domains the action's passing records tested: each passing test's, in a passing record. A `_manual.json`
-    row names none (`manual_rows`); the caller counts it as covering each."""
+    """The domains the action's passing records tested: each passing test's, in a passing record, bar one with a
+    `via` (`credited`). A `_manual.json` row names none (`manual_rows`); the caller counts it as covering each."""
     return {
         test["domain"]
         for path in passing(integration, action)
         for test in load(path)["tests"]
-        if test["result"] == "pass" and "domain" in test
+        if test["result"] == "pass" and "domain" in test and "via" not in test
     }
 
 
@@ -532,8 +546,8 @@ def last_change(integration: str, action: str, base: str | None) -> str | None:
 
 def record_signoff(integration: str, action: str, calls: Calls) -> tuple[SignOff | None, list[str], list[str]]:
     """The action's rig records as its sign-off, when there is a plain one (`<action>.json`) and every one (each
-    option's too) is format 3, passes and signs off its calls (`reopened`); else None, why not, and the suites to
-    rerun."""
+    option's too) is format 3, passes with a test of its own action passing (`passes_itself`) and signs off its calls
+    (`reopened`); else None, why not, and the suites to rerun."""
     found = suites(integration, action)
     why, reruns = [], []
     for path, record in found:
@@ -543,6 +557,8 @@ def record_signoff(integration: str, action: str, calls: Calls) -> tuple[SignOff
             problem = f"format {record['format']}, bound to the package, not the calls"
         elif record["result"] != "pass":
             problem = "fails"
+        elif not passes_itself(record):
+            problem = "no test of its own action passed, only ones another action served (via)"
         else:
             problem = reopened(record["calls"], calls)
         if problem:

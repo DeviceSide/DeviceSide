@@ -1,0 +1,93 @@
+{
+  "format": 2,
+  "integration": "zha",
+  "action": "set_scene",
+  "result": "pass",
+  "date": "2026-11-26",
+  "source": {
+    "kind": "rig",
+    "commit": "688d6f05"
+  },
+  "package": "c91b6f285323",
+  "home_assistant": "2026.10.4",
+  "tests": [
+    {
+      "id": "sets_while_off[scene]",
+      "role": "scene",
+      "result": "skipped",
+      "reason": "no scene entity in the profile"
+    },
+    {
+      "id": "applies_while_on[scene]",
+      "role": "scene",
+      "result": "skipped",
+      "reason": "no scene entity in the profile"
+    },
+    {
+      "id": "ha_sets_while_off[ha_scene]",
+      "domain": "scene",
+      "role": "ha_scene",
+      "result": "pass",
+      "group": true,
+      "via": "set_attributes",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": null
+        }
+      ]
+    },
+    {
+      "id": "ha_applies_while_on[ha_scene]",
+      "domain": "scene",
+      "role": "ha_scene",
+      "result": "pass",
+      "group": true,
+      "via": "set_attributes",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": null
+        }
+      ]
+    },
+    {
+      "id": "ha_turns_off_held_off[ha_scene]",
+      "domain": "scene",
+      "role": "ha_scene",
+      "result": "pass",
+      "group": true,
+      "via": "set_attributes",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": null
+        }
+      ]
+    }
+  ]
+}

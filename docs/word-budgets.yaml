@@ -23,7 +23,7 @@ docs/integrations/zha/internals.md: 2348
 docs/integrations/zigbee.md: 777
 docs/integrations/zigbee2mqtt/index.md: 3805
 docs/integrations/zigbee2mqtt/internals.md: 6461
-docs/integrations.md: 829
+docs/integrations.md: 869
 docs/internals.md: 659
 docs/logging.md: 722
 docs/repo-maintainers.md: 697

@@ -88,10 +88,10 @@ A response entry holds these keys:
 | `timer` | a query, for a target with an on/off timer running (from `turn_on_for`, `turn_off_for` or the device's own) | `{turns, ends_at, remaining_s}`: `turns` is `on` or `off`, the state the timer leaves it in; `ends_at` is UTC ISO 8601; `remaining_s` is seconds, to one decimal. Absent with no timer running. The time left is always the device's; DeviceSide never tracks one. A device whose time left DeviceSide can't read is refused (`no_known_method`); one it can read but not trust at the moment (its clock unsynced) has no `timer` key. The integration's page says which. |
 | `auto_off`, `auto_on` | a query, for a target whose device has these settings | `{duration}` (seconds) while set, `null` while clear. A key is absent when the setting couldn't be read, so absent never means clear. |
 | `status` | a command | `confirmed`, `sent` or `unchanged` |
-| `integration`, `detail`, `clamped_to` | a command | the integration; `detail` and `clamped_to` where they apply |
+| `integration`, `detail`, `clamped_to` | a command | the integration (an HA scene's: its lights' when they share one, else `homeassistant`); `detail` and `clamped_to` where they apply |
 | `capability` | an entry, on an integration that names [classes](evidence.md#device-classes) | the class the call reached (a string: `"RGBCCT"`). A command's is beside `status`, a query's among its data. Absent when the integration couldn't name one, or only provisionally (a device not yet [placed](design.md#glossary)). Appears on an `unchanged` entry too |
 | `capabilities` | a native group's entry | its members' classes once each, sorted (a list: `["hue", "other"]`). Absent when any member's is absent, so a list stands for the whole group and never for a class that could still move |
-| `member_capabilities` | a native group's entry | each member's entity_id to its class (a map: `{"light.one": "hue", "light.two": "other"}`), as the one call reached each member. Absent when no member is left. Appears on an `unchanged` entry too, where nothing was sent: a reader crediting evidence credits only an entry whose status shows a send |
+| `member_capabilities` | a native group's or an HA scene's entry | each member's entity_id to its class (a map: `{"light.one": "hue", "light.two": "other"}`), as the one call reached each member. Absent when no member is left. Appears on an `unchanged` entry too, where nothing was sent: a reader crediting evidence credits only an entry whose status shows a send |
 
 `member_capabilities` leaves out a member with no class or only a provisional one, and only that member, so a group with
 one member not yet placed still names the rest. It also leaves out every member core didn't reach through its own
@@ -116,6 +116,15 @@ DeviceSide can't address on its own.
 - **A native group** that falls back to its members has no entry of its own, so no `member_capabilities`: each member's
   entry carries its `capability`. When it is refused, and what its members answer for: Native groups in
   [`core/dispatcher.py`](../custom_components/deviceside/core/dispatcher.py).
+- **A Home Assistant scene** (`set_scene` on a `scene.homeassistant` entity) is a group of its lights: each held on
+  is an indirect `set_attributes` target through it; each held off goes through core's `light.turn_off`. Brightness 0
+  writes no brightness; a light lacking its color mode's color is skipped (`color_missing`); other entities are left
+  out at DEBUG. A light in two scenes of one call gets both writes, in no set order, as in core. The scene's entry is
+  `sent`, `unchanged` (`nothing_to_set`) or `rejected` (`some_lights_failed`; `error` when every light written or
+  turned off failed; `scene_not_found` when removed mid-call), raising `targets_failed` once every light has run.
+  With no light able to run it is refused like a native group; each unavailable: logged as skipped
+  (`lights_unavailable`) if named. `member_capabilities` holds each light `set_attributes` reached; there is no
+  `capabilities`.
 
 ## Replacing hue_dimmer
 

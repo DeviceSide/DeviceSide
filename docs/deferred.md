@@ -251,11 +251,22 @@ after, it reads OnTime in whole seconds, ten times the spec's tenths.
 **Revisit when:**
 - a device report or request asks for turn on with timer on a Tuya plug or switch on ZHA.
 
+## Native scenes beyond Hue
+
+`set_scene` serves Hue bridge scenes and Home Assistant scenes. Scenes held by ZHA, Matter, Shelly, Control4 or
+Zigbee2MQTT would be written per light the same way.
+
+**Why not now:** no readable contents. HA core 2026.11.3: none of the four has a scene platform; Zigbee2MQTT's
+([research](integrations/zigbee2mqtt/research/2026-11-26-scenes.md)) are command-only.
+
+**Revisit when:**
+- one of these integrations exposes scene entities with readable contents.
+
 ## Split this register into a file per entry
 
 One file per entry, in place of this page, once one file costs more than it saves.
 
-**Why not now:** nineteen entries.
+**Why not now:** twenty entries.
 
 **Revisit when:**
 - it holds more than 30 entries;

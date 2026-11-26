@@ -1,14 +1,40 @@
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import probatio
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv
 
-from .models import ActionKind, EntityResult, Request, Target
+from .models import ActionKind, EntityResult, Request
 
 if TYPE_CHECKING:
     from .dispatcher import Dispatcher
+
+
+async def _nothing() -> list[EntityResult]:
+    return []
+
+
+@dataclass(frozen=True, slots=True)
+class Routed:
+    """The entities an action routes itself, once planned (Action.route): `results`, those known before anything is
+    sent (a skip, a refusal), and `run`, which sends the rest and gives their results."""
+
+    results: list[EntityResult] = field(default_factory=list)
+    run: Callable[[], Awaitable[list[EntityResult]]] = _nothing
+
+
+@dataclass(frozen=True, slots=True)
+class Ride:
+    """An action that serves some targets through another's adapters (Action.route): that action's key, and the
+    targets it serves beyond its own adapters', as a domain on an HA integration. Generators derive its cells from
+    the ridden action's."""
+
+    action: str
+    domain: str
+    integration: str
 
 
 class Action[RequestT: Request](ABC):
@@ -22,6 +48,8 @@ class Action[RequestT: Request](ABC):
     domains: ClassVar[frozenset[str]]
     supports_response: ClassVar[SupportsResponse] = SupportsResponse.OPTIONAL
     fields: ClassVar[dict[probatio.Marker, Any]] = {}
+    # The action whose adapters serve the targets it routes itself (route), and which; None for one with no route.
+    rides: ClassVar[Ride | None] = None
 
     @classmethod
     def schema(cls):
@@ -33,8 +61,14 @@ class Action[RequestT: Request](ABC):
         """Build the request from validated call data; raise ServiceValidationError on input the schema can't catch."""
 
     @classmethod
-    async def run(
-        cls, hass: HomeAssistant, request: RequestT, targets: list[Target], dispatcher: Dispatcher
-    ) -> list[EntityResult]:
-        """Run this action's adapters; a action that routes targets elsewhere overrides this."""
-        return await dispatcher.run_adapters(cls.key, request, targets)
+    def claims(cls, hass: HomeAssistant, entity_id: str) -> bool:
+        """Whether the action routes this entity itself (route), so the dispatcher doesn't resolve it. None by
+        default."""
+        return False
+
+    @classmethod
+    def route(cls, hass: HomeAssistant, request: RequestT, claimed: dict[str, bool], dispatcher: Dispatcher) -> Routed:
+        """Plan the entities claimed (each entity_id to whether the caller named it), sending nothing: a named one
+        that can never take the action raises here, before anything is sent. The dispatcher sends the rest by
+        Routed.run, beside its own targets' runs."""
+        return Routed()

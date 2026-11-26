@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from homeassistant.const import Platform
+from jsonschema.exceptions import best_match
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.registry import AdapterRegistry
@@ -431,6 +432,40 @@ def gate(capsys):
     return run
 
 
+def test_an_action_that_rides_another_needs_no_record_of_its_own(released, gate):
+    """An action with no adapter on an integration (set_scene, which rides set_attributes) is never demanded: no gate,
+    no record, no coverage gap names it, though the ridden action's changed call needs its record."""
+    reg = registry()
+    pin(released, "turn_on_for", "b")
+    write_record(released, "turn_on_for.json")
+    code, lines, err = gate(on=reg)
+    assert code == 0 and err == []
+    assert not [line for line in [*lines, *err] if "set_scene" in line]
+    assert [gate.action for gate in cr.gates(reg)[1]] == ["turn_on_for"]
+    assert cr.coverage_gaps(reg) == []
+    # Without its record, the failure names the ridden action, never the riding one.
+    pin(released, "turn_on_for", "c")
+    code, lines, err = gate(on=reg)
+    assert code == 1 and not [line for line in err if "set_scene" in line]
+
+
+def test_a_record_of_an_action_that_rides_another_is_checked_when_read_and_never_demanded(released, gate):
+    """set_scene.json from a run on Home Assistant scenes, on an integration where set_scene rides set_attributes: no
+    gate or coverage gap names it, and it holds to the schema when read."""
+    reg = registry()
+    scene = ran("scene", device("LTA009", "1", None), group=True, role="ha_scene") | {"via": "turn_on_for"}
+    written = record_v3("fake", "set_scene", [scene], commit=released.git("rev-parse", "HEAD"))
+    released.commit(f"{RECORDS}/set_scene.json", text(written))
+    code, lines, err = gate(on=reg)
+    assert code == 0 and err == []
+    assert not [line for line in lines if "set_scene" in line]
+    assert cr.coverage_gaps(reg) == []
+    assert [path.name for path in cr.passing("fake", "set_scene")] == ["set_scene.json"]
+    released.commit(f"{RECORDS}/set_scene.json", text(written | {"tests": [scene | {"via": "Set Attributes"}]}))
+    with pytest.raises(SystemExit, match=r"set_scene\.json: 'Set Attributes' does not match"):
+        cr.passing("fake", "set_scene")
+
+
 def test_the_last_release_is_the_latest_release_tag_under_head(released):
     assert cr.last_release() == "v0.1.0"
     released.git("tag", "v0.0.9", "HEAD~1")
@@ -616,6 +651,32 @@ def test_a_failing_record_is_no_signoff_and_a_rerun_completes_it(released, gate)
     write_record(released, "stop.json", result="fail")
     assert "(stop.json: fails)" in gate()[1][1]
     write_record(released, "stop.json")
+    assert gate()[0] == 0
+
+
+def served_record(repo, *tests: dict, result: str = "pass") -> str:
+    """Commit stop.json with these tests, bound to HEAD's transcript of stop."""
+    data = record_v3("fake", "stop", list(tests), result=result, commit=repo.git("rev-parse", "HEAD"))
+    return repo.commit(f"{RECORDS}/stop.json", text(data | {"calls": blob(repo, "stop")}))
+
+
+def test_a_record_signs_off_its_action_only_when_a_test_of_its_own_passed(released, gate):
+    """Plan Decision 6: a test another action served (`via`) proves nothing of the record's own adapter, so a record
+    whose only passes are such tests signs nothing off; one of its own beside them does; a failing via test fails the
+    record, as any failing test does."""
+    pin(released, "stop", "b")
+    own = ran("light", device("LTA009", "1", None))
+    served = ran("scene", device("LTA009", "1", None), group=True, role="ha_scene") | {"via": "turn_on_for"}
+    served_record(released, served)
+    code, lines, _ = gate()
+    assert code == 1
+    assert "(stop.json: no test of its own action passed, only ones another action served (via))" in lines[1]
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
+    served_record(released, own, served | {"result": "fail"}, result="fail")
+    assert "(stop.json: fails)" in gate()[1][1]
+    unsound = record_v3("fake", "stop", [own, served | {"result": "fail"}])
+    assert best_match(cr.validator().iter_errors(unsound)) is not None  # a pass with a failing via test is no record
+    served_record(released, own, served)
     assert gate()[0] == 0
 
 
@@ -947,6 +1008,16 @@ def test_a_test_credits_its_devices_classes_and_a_group_test_each_members(fake_r
         {("hue", "light")},
         {("hue", "light"), ("ikea", "light")},
     )
+
+
+def test_a_test_a_ridden_action_served_credits_nothing_to_the_records_action(fake_repo):
+    """A test whose `via` names the action that served its call (an [ha_scene] test, by set_attributes) is no proof of
+    the record's own adapter: no class, model or domain of it is credited, though the record's other tests are."""
+    scene = ran("scene", device("LWA012", "1", "ikea"), device("LCA001", "1", None), group=True, role="ha_scene")
+    classes_record_v3(fake_repo, "stop", ran("light", device("LTA009", "1", "hue")), scene | {"via": "turn_on_for"})
+    assert cr.reached("fake", "stop") == {("hue", "light")}
+    assert cr.credited_models("fake", "stop") == {("LTA009", "hue")}
+    assert cr.tested_domains("fake", "stop") == {"light"}
 
 
 def test_a_format_2_record_still_credits_its_classes(fake_repo):

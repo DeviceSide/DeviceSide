@@ -4,13 +4,17 @@ import asyncio
 import logging
 from contextlib import ExitStack, contextmanager
 from dataclasses import replace
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from aiohttp import ClientResponseError, RequestInfo
+from homeassistant.components.homeassistant.scene import DATA_PLATFORM as SCENE_PLATFORM
+from homeassistant.components.homeassistant.scene import SceneConfig
 from homeassistant.components.light import ColorMode, LightEntityFeature
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import Platform
+from homeassistant.core import State
 from homeassistant.exceptions import HomeAssistantError, ServiceNotSupported, ServiceValidationError, Unauthorized
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
@@ -41,7 +45,7 @@ from custom_components.deviceside.core.scope import (
 
 from ..conftest import allow_labs, call, refusal
 from ..fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOffFor, FakeTurnOnFor
-from ..fakes.scripted import SCRIPT
+from ..fakes.scripted import SCRIPT, ScriptedAdapter
 from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group, add_switch_as_x, fake_config_entry
 
 pytestmark = pytest.mark.usefixtures("setup_integration")
@@ -2343,3 +2347,68 @@ async def test_a_group_expanded_by_core_skips_its_stand_ins(hass, fake, reset_sc
         "skipped targets that can't take it: a member device of light.fake_group (no_known_method),"
         " a member device of light.fake_group (not_addressable), so they got no command\n" in caplog.text
     )
+
+
+# An action's own route (Action.claims, Action.route): set_scene's for Home Assistant scenes, beside its adapters.
+
+
+class FakeSetScene(ScriptedAdapter):
+    action = "set_scene"
+    integration = "fake"
+    scope = AdapterScope(domains=verified(Platform.SCENE))
+
+
+@pytest.fixture
+def bridge_scenes(hass, setup_integration):
+    """The fake with a set_scene adapter, as Hue's, for a scene its bridge holds."""
+    registry = get_runtime(hass).registry
+    adapter = FakeSetScene()
+    adapter.kind = registry.adapter("set_attributes", "fake").kind
+    registry._adapters[("set_scene", "fake")] = adapter
+    yield
+    del registry._adapters[("set_scene", "fake")]
+
+
+def ha_scene(hass, entity_id: str, states: dict[str, dict | None]) -> str:
+    """A Home Assistant scene: each light on with the attributes given, or off for None."""
+    platform = hass.data.get(SCENE_PLATFORM) or SimpleNamespace(entities={})
+    platform.entities[entity_id] = SimpleNamespace(
+        scene_config=SceneConfig(
+            None,
+            entity_id,
+            None,
+            {light: State(light, "off" if a is None else "on", a or {}) for light, a in states.items()},
+        )
+    )
+    hass.data[SCENE_PLATFORM] = platform
+    hass.states.async_set(entity_id, "unknown")
+    return entity_id
+
+
+@pytest.mark.usefixtures("bridge_scenes")
+async def test_a_bridge_scene_and_an_ha_scene_run_in_one_call(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "scene.bridge")
+    add_fake_entity(hass, fake, "light.a")
+    ha_scene(hass, "scene.evening", {"light.a": {"brightness": 255}})
+
+    response = await call(hass, "set_scene", {"entity_id": ["scene.bridge", "scene.evening"]})
+
+    assert response == {"scene.bridge": SENT, "scene.evening": SENT}
+    assert sorted((action, targets) for _, action, _, targets in reset_script.calls) == [
+        ("set_attributes", ["light.a"]),
+        ("set_scene", ["scene.bridge"]),
+    ]
+
+
+@pytest.mark.usefixtures("bridge_scenes")
+async def test_a_named_target_refused_on_either_route_raises_before_the_other_sends(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "scene.bridge")
+    add_fake_entity(hass, fake, "light.s", identifier="special_s")  # fake_special has no set_attributes
+    add_fake_entity(hass, fake, "scene.special", identifier="special_scene")  # nor set_scene
+    add_fake_entity(hass, fake, "light.a")
+    ha_scene(hass, "scene.evening", {"light.a": {"brightness": 255}})
+    ha_scene(hass, "scene.dead", {"light.s": {"brightness": 255}})
+
+    assert await refusal(hass, "set_scene", {"entity_id": ["scene.bridge", "scene.dead"]}) == "no_adapter"
+    assert await refusal(hass, "set_scene", {"entity_id": ["scene.evening", "scene.special"]}) == "no_adapter"
+    assert reset_script.calls == []

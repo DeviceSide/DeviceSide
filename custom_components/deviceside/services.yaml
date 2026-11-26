@@ -340,4 +340,6 @@ set_scene:
   target:
     entity:
       - domain: scene
+        integration: homeassistant
+      - domain: scene
         integration: hue

@@ -251,7 +251,7 @@
     },
     "set_scene": {
       "name": "Set scene",
-      "description": "Set a Hue scene without turning on its lights."
+      "description": "Set a Home Assistant or Hue scene without turning on its lights."
     },
     "stop": {
       "name": "Stop",

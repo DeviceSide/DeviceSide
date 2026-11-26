@@ -126,6 +126,25 @@ def test_a_scenes_test_is_a_groups():
     assert errors(changed(RECORD, lambda d: d["tests"].append(unrun))) == []
 
 
+def test_a_test_names_the_action_that_served_it_only_when_it_ran():
+    """An [ha_scene] test's call is served by set_attributes, which set_scene rides; its `via` says so, and a skipped
+    test, which made no call, names none."""
+    scene = ran("scene", HUE, device("LTA009", "1", None), group=True, role="ha_scene") | {"via": "set_attributes"}
+    assert errors(changed(RECORD, lambda d: d["tests"].append(scene))) == []
+    assert errors(changed(PACKAGED, lambda d: d["tests"].append(scene))) == []
+    assert any(
+        "does not match" in message
+        for message in errors(changed(RECORD, lambda d: d["tests"].append(scene | {"via": "Set"})))
+    )
+    unrun = skipped("ha_scene") | {"via": "set_attributes"}
+    assert any(
+        "should not be valid" in message for message in errors(changed(RECORD, lambda d: d["tests"].append(unrun)))
+    )
+    ungrouped = {key: value for key, value in scene.items() if key != "group"}
+    assert "'group' is a required property" in errors(changed(RECORD, lambda d: d["tests"].append(ungrouped)))
+    assert errors(changed(RECORD, lambda d: d["tests"].append(skipped("ha_scene")))) == []
+
+
 @pytest.mark.parametrize("role", ["group", "group_color"])
 def test_a_group_roles_test_is_a_groups(role):
     """Without `group`, a group's test would credit each member as tested on its own."""
