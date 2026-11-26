@@ -46,8 +46,8 @@ Users paste logs into public issues.
   failure line, or a friendly name quoted or ahead of an endpoint (their `conftest.py`).
 
 `scripts/check_logging.py` (a pre-commit hook) flags a caught exception logged as itself rather than through `describe`,
-and a log line naming an address field. It reads names, so it can't see an address inside a dict or a payload: keep those out by hand. A line that
-needs an exception ends with `# log-ok: <reason>`.
+and a log line naming an address field. It reads names, so it can't see an address inside a dict or a payload: keep
+those out by hand. A line that needs an exception ends with `# log-ok: <reason>`.
 
 ## Cost
 

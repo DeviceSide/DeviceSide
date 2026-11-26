@@ -9,9 +9,11 @@ Scope comes from the design, the device's capabilities and the Labs flag (Eviden
 README: it records what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README
 after the work lands.
 
-**The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
+**The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages
+included.
 
-**No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
+**No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`,
+`notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
 
 ## Where facts go
 
@@ -64,9 +66,9 @@ every integration shares is in `docs/integrations.md`: add your value there, don
    user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
 8. Test to decide: a hardware run needs a decision its result takes (a design choice, a foundation, lifting a Labs flag,
-   a surprise, a release), run at the last point that can take it: the release's run for a device a maintainer
-   reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step on a run without
-   naming the decision.
+   a surprise, a release), run at the last point that can take it: the release's run for a device a maintainer reaches,
+   so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step on a run without naming
+   the decision.
 9. Retest what the change exercises: only the cases whose call or reply handling changed. Evidence binds to the
    action's call transcript, and a change reopens it only when a segment it was tested on changes or goes.
 10. Include unless harmful: an item ships outside Labs unless it is likely to harm or no route in `docs/evidence.md`
@@ -124,7 +126,8 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 ## Pull requests
 
 - Base: `main`, or a `release/vX.Y.Z` fix branch when one exists for the change.
-- Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`, as the next sync removes it.
+- Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`,
+  as the next sync removes it.
 - Before each push: `.venv/bin/pytest -n auto --transcripts=check`. A call or reply handling changed on purpose:
   `docs/evidence.md`, Release gate.
 - Audits: as the global `## Code audits` rule says, then `owner-findings` (Maintainers, Changing someone else's
@@ -136,5 +139,8 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 ## Conventions
 
 - Logging: [`docs/logging.md`](docs/logging.md): levels, the per-call DEBUG line, and never a device address.
-- Constants: before defining one, `rg` for its value and meaning and import the existing one; `scripts/check_ha_literals.py` flags an HA name written as a literal. A duration's name carries its unit (`_S`, `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined. Tests pin the values they assert as literals, so a wrong constant fails its test; they may import a constant to build inputs.
+- Constants: before defining one, `rg` for its value and meaning and import the existing one;
+  `scripts/check_ha_literals.py` flags an HA name written as a literal. A duration's name carries its unit (`_S`,
+  `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined. Tests pin the
+  values they assert as literals, so a wrong constant fails its test; they may import a constant to build inputs.
 - American English, matching HA.

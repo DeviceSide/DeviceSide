@@ -12,18 +12,18 @@ page, with its limits and what DeviceSide changes in your setup:
 - [Control4](integrations/control4/index.md)
 <!-- integrations:end -->
 
-What holds for a brand on both Zigbee integrations is on the [Zigbee page](integrations/zigbee.md). Which devices
-each feature is proven on is on the [device compatibility page](device-compatibility.md). How the
-commands work on the wire, and what was measured on real bulbs, is in [internals.md](internals.md) and each integration's own.
+What holds for a brand on both Zigbee integrations is on the [Zigbee page](integrations/zigbee.md). Which devices each
+feature is proven on is on the [device compatibility page](device-compatibility.md). How the commands work on the wire,
+and what was measured on real bulbs, is in [internals.md](internals.md) and each integration's own.
 
 ## All integrations
 
 - **Refused targets.** A target that can't take an action fails the call if you named it, and is skipped if it
   came through an area, device, label or group ([action-behavior.md](action-behavior.md)). The error names the
   reason, such as `not_built`.
-- **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and Control4 light groups get one
-  command, so their lights move together. `set_attributes` writes a ZHA group's or Hue room's lights one by one. A group
-  that can't take a call falls back to its lights, each on its own (the rules: Native groups in
+- **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and Control4 light groups
+  get one command, so their lights move together. `set_attributes` writes a ZHA group's or Hue room's lights one by one.
+  A group that can't take a call falls back to its lights, each on its own (the rules: Native groups in
   [`core/dispatcher.py`](../custom_components/deviceside/core/dispatcher.py); each integration's page lists its cases).
   Any other group, such as a light group helper, is expanded and each light gets its own command.
 - **Switches shown as lights.** A light made from a supported switch with Home Assistant's "Change device type of a

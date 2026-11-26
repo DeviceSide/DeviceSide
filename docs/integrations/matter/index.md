@@ -57,8 +57,8 @@ the next plain on comes up with them. Research admitted it on [certified lights]
 ([research](research/2026-11-24-level-color.md)).
 
 - **Read back.** The result is `confirmed` only when the light reads back what was sent; otherwise it is `sent`
-  (`attributes_not_reported`, or `readback_failed` when the read fails). A light that ignores the command while off still answers that it took it, so `sent`
-  is the result to check ([internals](internals.md#set_attributes)).
+  (`attributes_not_reported`, or `readback_failed` when the read fails). A light that ignores the command while off
+  still answers that it took it, so `sent` is the result to check ([internals](internals.md#set_attributes)).
 - **On Level.** A light whose On Level setting holds a value comes on at that level, not at the brightness set while
   off: that is the spec. DeviceSide never changes On Level, as it is your device's setting, so a brightness set on such
   a light that is off reports `sent` (`on_level_set`). Clear the setting for the light to come on at the stored level.

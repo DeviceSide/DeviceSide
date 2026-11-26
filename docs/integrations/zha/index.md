@@ -77,9 +77,9 @@ and LED2106R3, refused even with Labs on, and a lower to off may stop at the low
 
 Lights of every other brand, such as Innr, Ledvance or Sonoff, and their plugs and switches. Their lights take smooth
 dimming and stop ([why](../zigbee.md#smooth-dimming-and-stop)); raising brightness from off sets them to their lowest
-level first, where a Hue bulb gets Hue's own command. If you try dimming, please report it whether it works or not: Integrations >
-[DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
-result or bug.
+level first, where a Hue bulb gets Hue's own command. If you try dimming, please report it whether it works or not:
+Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a
+device test result or bug.
 
 ## Turn on with timer
 

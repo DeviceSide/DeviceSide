@@ -1,10 +1,10 @@
 # Internals
 
-What every adapter shares: how a target is resolved, how fades and writes while off work, and the levels Home
-Assistant keeps. Each integration's addressing, calls and measurements are in its own `internals.md`:
+What every adapter shares: how a target is resolved, how fades and writes while off work, and the levels Home Assistant
+keeps. Each integration's addressing, calls and measurements are in its own `internals.md`:
 [Shelly](integrations/shelly/internals.md), [Zigbee2MQTT](integrations/zigbee2mqtt/internals.md),
-[ZHA](integrations/zha/internals.md), [Matter](integrations/matter/internals.md),
-[Hue](integrations/hue/internals.md) and [Control4](integrations/control4/internals.md). What a user sees is in [integrations.md](integrations.md) and isn't
+[ZHA](integrations/zha/internals.md), [Matter](integrations/matter/internals.md), [Hue](integrations/hue/internals.md)
+and [Control4](integrations/control4/internals.md). What a user sees is in [integrations.md](integrations.md) and isn't
 repeated here; result and detail codes are in the code.
 
 ## Shared
@@ -29,8 +29,9 @@ repeated here; result and detail codes are in the code.
   the off light ignores; on ZHA and Hue on the light entity, and on the group or room entity for an explicit
   `brightness` there.
 - **Zigbee 3.0 dimming.** A certified dimmable light must take the standard Level Control Move, Step and Stop commands,
-  so ZHA's and Zigbee2MQTT's `other` is admitted to `raise_brightness`, `lower_brightness` and `stop` on that basis, and a
-  failure on an uncertified one shows at once. The argument and sources: [Zigbee](integrations/zigbee.md#smooth-dimming-and-stop).
+  so ZHA's and Zigbee2MQTT's `other` is admitted to `raise_brightness`, `lower_brightness` and `stop` on that basis, and
+  a failure on an uncertified one shows at once. The argument and sources:
+  [Zigbee](integrations/zigbee.md#smooth-dimming-and-stop).
 
 ## Tested behavior
 

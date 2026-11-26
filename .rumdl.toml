@@ -1,0 +1,21 @@
+# Markdown lint: line length only (docs/plans/2026-11-26-markdown-line-length.md). 120 matches ruff's line-length.
+[global]
+enable = ["MD013"]
+# Historical records, dated sources, and output a generator owns wholesale.
+exclude = [
+  "docs/plans/**",
+  "docs/audits/**",
+  "notes/**",
+  "**/research/**",
+  "docs/device-compatibility.md",
+  "docs/integrations/zigbee2mqtt/standard-lights.md",
+]
+
+[MD013]
+line-length = 120
+tables = false
+code-blocks = false
+headings = false
+code-spans = false
+reflow = true
+reflow-mode = "default"
