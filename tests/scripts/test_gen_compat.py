@@ -348,6 +348,39 @@ def test_an_action_the_integration_lacks_takes_the_status_and_records_of_the_act
     assert gc.card("zha", registry, list(own), found).lent == {}
 
 
+def test_a_lent_cell_links_the_riding_actions_own_passing_record_beside_the_ridden_ones(root):
+    """set_scene.json from a run on Home Assistant scenes (its tests served by set_attributes, `via`) is linked in the
+    derived set-scene cell; a failing one is not."""
+    record(root, "zha", "set_attributes", devices=[old_device("LTA009", "1")])
+    scene = ran("scene", device("LTA009", "1", None), group=True, role="ha_scene") | {"via": "set_attributes"}
+    path = record2(root, "zha", "set_scene", scene)
+    adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
+    registry = FakeRegistry(*adapters)
+    registry.actions = {"set_scene": RIDE}
+    found = data(registry)
+    card = gc.card("zha", registry, list(adapters), found)
+    assert card.lent_records == {"set_scene": ["docs/integrations/zha/test-records/set_scene.json"]}
+    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    assert cells == [
+        "🟢 [record](integrations/zha/test-records/set_attributes.json)",
+        "🟢 [set attributes](integrations/zha/test-records/set_attributes.json)"
+        " [set scene](integrations/zha/test-records/set_scene.json)",
+    ]
+    path.unlink()
+    record2(root, "zha", "set_scene", scene | {"result": "fail"}, result="fail")
+    assert gc.card("zha", registry, list(adapters), found).lent_records == {}
+
+
+def test_a_test_another_action_served_is_left_out_of_what_a_record_tested(root):
+    """An [ha_scene] test in Hue's set_scene.json (`via`: set_attributes) credits HueSetScene nothing, listed or not;
+    the bridge scene's test beside it still does."""
+    bridge = ran("scene", device("LTA009", "1", "hue"), group=True, role="scene")
+    served = ran("scene", device("LTA009", "1", "hue"), group=True, role="ha_scene") | {"via": "set_attributes"}
+    path = record2(root, "hue", "set_scene", bridge, served)
+    assert what_it_tested(path) == [gc.Tested(None, domain="scene")]
+    assert gc.tested(cr.load(path), classed=True) == [gc.Tested(None, domain="scene")]
+
+
 def test_the_native_groups_line_and_an_unplaced_models_line_take_the_lent_action(root):
     """A group's or a classless model's line names set scene beside the set_attributes it was tested on, linking
     set_attributes's record."""

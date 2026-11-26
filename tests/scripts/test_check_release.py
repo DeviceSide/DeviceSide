@@ -448,6 +448,23 @@ def test_an_action_that_rides_another_needs_no_record_of_its_own(released, gate)
     assert code == 1 and not [line for line in err if "set_scene" in line]
 
 
+def test_a_record_of_an_action_that_rides_another_is_checked_when_read_and_never_demanded(released, gate):
+    """set_scene.json from a run on Home Assistant scenes, on an integration where set_scene rides set_attributes: no
+    gate or coverage gap names it, and it holds to the schema when read."""
+    reg = registry()
+    scene = ran("scene", device("LTA009", "1", None), group=True, role="ha_scene") | {"via": "turn_on_for"}
+    written = record_v3("fake", "set_scene", [scene], commit=released.git("rev-parse", "HEAD"))
+    released.commit(f"{RECORDS}/set_scene.json", text(written))
+    code, lines, err = gate(on=reg)
+    assert code == 0 and err == []
+    assert not [line for line in lines if "set_scene" in line]
+    assert cr.coverage_gaps(reg) == []
+    assert [path.name for path in cr.passing("fake", "set_scene")] == ["set_scene.json"]
+    released.commit(f"{RECORDS}/set_scene.json", text(written | {"tests": [scene | {"via": "Set Attributes"}]}))
+    with pytest.raises(SystemExit, match=r"set_scene\.json: 'Set Attributes' does not match"):
+        cr.passing("fake", "set_scene")
+
+
 def test_the_last_release_is_the_latest_release_tag_under_head(released):
     assert cr.last_release() == "v0.1.0"
     released.git("tag", "v0.0.9", "HEAD~1")
@@ -964,6 +981,16 @@ def test_a_test_credits_its_devices_classes_and_a_group_test_each_members(fake_r
         {("hue", "light")},
         {("hue", "light"), ("ikea", "light")},
     )
+
+
+def test_a_test_a_ridden_action_served_credits_nothing_to_the_records_action(fake_repo):
+    """A test whose `via` names the action that served its call (an [ha_scene] test, by set_attributes) is no proof of
+    the record's own adapter: no class, model or domain of it is credited, though the record's other tests are."""
+    scene = ran("scene", device("LWA012", "1", "ikea"), device("LCA001", "1", None), group=True, role="ha_scene")
+    classes_record_v3(fake_repo, "stop", ran("light", device("LTA009", "1", "hue")), scene | {"via": "turn_on_for"})
+    assert cr.reached("fake", "stop") == {("hue", "light")}
+    assert cr.credited_models("fake", "stop") == {("LTA009", "hue")}
+    assert cr.tested_domains("fake", "stop") == {"light"}
 
 
 def test_a_format_2_record_still_credits_its_classes(fake_repo):
