@@ -10,7 +10,7 @@ FEATURE_ACTIONS: dict[str, tuple[str, ...]] = {
     "smooth dimming": ("raise_brightness", "lower_brightness", "stop"),
     "smooth saturation": ("raise_saturation", "lower_saturation", "stop"),
     "smooth hue": ("raise_hue", "lower_hue", "stop"),
-    "set without turning on": ("set_attributes",),
-    "set scene": ("set_scene",),
+    "set attributes while off": ("set_attributes",),
+    "set scene while off": ("set_scene",),
     "get attributes": ("get_attributes",),
 }

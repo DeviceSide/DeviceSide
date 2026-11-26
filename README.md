@@ -44,11 +44,13 @@ the automation editor. Because features run on the device, timers still work if 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢
-  turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, set scene, get attributes
+  turn on with timer, smooth dimming, smooth saturation, smooth hue, set attributes while off, set scene while off, get
+  attributes
 - [Aqara lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#aqara): 🟢
-  smooth dimming, set without turning on, set scene, get attributes
+  smooth dimming, set attributes while off, set scene while off, get attributes
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#hue): 🟢 turn
-  on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, set scene, get attributes
+  on with timer, smooth dimming, smooth saturation, smooth hue, set attributes while off, set scene while off, get
+  attributes
 - [Tuya TS011F plugs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs):
   check Manufacturer and the countdown setting on the plug's Zigbee2MQTT page
   - [_TZ3000_0zfrhq4i, _TZ3000_gznh2xla, _TZ3000_okaz9tjs, or _TZ3000_typdpbpg](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs):
@@ -56,7 +58,7 @@ the automation editor. Because features run on the device, timers still work if 
   - [other makers with a countdown setting](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs):
     ⚪ turn on with timer
 - [other brands' standard lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#standard-lights):
-  🟡 smooth dimming, smooth saturation, smooth hue, set without turning on, set scene, get attributes
+  🟡 smooth dimming, smooth saturation, smooth hue, set attributes while off, set scene while off, get attributes
 - ⚪ Labs:
   - [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#ikea):
     smooth dimming
@@ -71,14 +73,14 @@ the automation editor. Because features run on the device, timers still work if 
   - [Tuya WHD02 (_TZ3000_skueekg3, model TS0001) and Mowe MW781Z (_TZ300A_rncj86af)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-inching-switches):
     auto-off/on
   - [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands):
-    smooth dimming, set without turning on, set scene, get attributes
+    smooth dimming, set attributes while off, set scene while off, get attributes
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)**
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢
-  turn on with timer, smooth dimming, set without turning on, set scene
+  turn on with timer, smooth dimming, set attributes while off, set scene while off
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#hue): 🟢 turn on with
-  timer, smooth dimming, smooth saturation, smooth hue, set without turning on, set scene, get attributes
+  timer, smooth dimming, smooth saturation, smooth hue, set attributes while off, set scene while off, get attributes
 - ⚪ Labs:
   - [IKEA LED2005R5 and LED2106R3 (TRÅDFRI GU10 white spectrum)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#ikea):
     smooth dimming
@@ -90,44 +92,44 @@ the automation editor. Because features run on the device, timers still work if 
 **[Shelly](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md)** (Gen2+)
 
 - [multicolor bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#multicolor-bulbs):
-  🟢 turn on with timer, turn off with timer, auto-off/on, smooth dimming, set without turning on, set scene, get
-  attributes
+  🟢 turn on with timer, turn off with timer, auto-off/on, smooth dimming, set attributes while off, set scene while
+  off, get attributes
 - [relays and plugs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#relays-and-plugs):
   🟢 turn on with timer, turn off with timer, auto-off/on, get attributes
 - [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#dimmers),
   [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#led-controllers):
-  🟡 turn on with timer, turn off with timer, auto-off/on, set without turning on, set scene, get attributes · ⚪ smooth
-  dimming
+  🟡 turn on with timer, turn off with timer, auto-off/on, set attributes while off, set scene while off, get attributes
+  · ⚪ smooth dimming
 
 **[Hue](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md)** (Bridge v2/Pro)
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups): 🟢
-  smooth dimming, smooth saturation, set without turning on, set scene, get attributes
+  smooth dimming, smooth saturation, set attributes while off, set scene while off, get attributes
 - [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-lights): 🟢 smooth
-  dimming, smooth saturation, set without turning on, set scene, get attributes
+  dimming, smooth saturation, set attributes while off, set scene while off, get attributes
 - [Gledopto lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#gledopto): 🟡
-  smooth dimming, smooth saturation, set without turning on, set scene
+  smooth dimming, smooth saturation, set attributes while off, set scene while off
 - [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#other-brands):
-  🟡 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
+  🟡 smooth dimming, smooth saturation, set attributes while off, set scene while off, get attributes
 
 **[Matter](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md)**
 
 - [WiZ Smart Plug](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#wiz-smart-plug): 🟢
   turn on with timer, get attributes
 - [certified Matter lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices):
-  🟡 get attributes · ⚪ turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, set
-  scene
+  🟡 get attributes · ⚪ turn on with timer, smooth dimming, smooth saturation, smooth hue, set attributes while off,
+  set scene while off
 - [certified Matter plugs and switches](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices):
   🟡 get attributes · ⚪ turn on with timer
 - [multi-endpoint Matter lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#multi-endpoint-devices):
-  ⚪ smooth dimming, smooth saturation, smooth hue, set without turning on, set scene
+  ⚪ smooth dimming, smooth saturation, smooth hue, set attributes while off, set scene while off
 
 **[Control4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md)**
 
 - [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#control4-lights): ⚪
-  smooth dimming, set without turning on, set scene, get attributes
+  smooth dimming, set attributes while off, set scene while off, get attributes
 - [lights whose driver can't stop a ramp](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp):
-  ⚪ set without turning on, set scene, get attributes
+  ⚪ set attributes while off, set scene while off, get attributes
 
 Models and how each was tested are on the
 [compatibility page](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md). Details per

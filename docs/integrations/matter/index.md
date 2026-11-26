@@ -7,7 +7,7 @@ in [internals.md](internals.md).
 
 Plugs and lights on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which
 Matter's timer needs; one without it is refused (`no_lt_feature`). A light can also be dimmed and faded
-([below](#smooth-dimming)) and set without turning on ([below](#flash-free-turn-on)); one with no brightness control on
+([below](#smooth-dimming)) and set while off ([below](#flash-free-turn-on)); one with no brightness control on
 that endpoint is refused these (`not_dimmable`).
 
 ## Turn on with timer

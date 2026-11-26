@@ -38,7 +38,7 @@ its maker strings.
   Where the integration names no classes, its domains stand in for them.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
   `domains` phrases, so a plug never lists dimming. A scene domain is never one of them: a scene is classed by its
-  lights, so its features join the class's light line ("set scene"); a class of scenes alone keeps its own.
+  lights, so its features join the class's light line ("set scene while off"); a class of scenes alone keeps its own.
   Classes of one page section share a link, and a line holding every class its section shows in its domains names
   the section instead, by its devices.yaml `sections` phrase.
 - Variants: a section with `variants` (a model whose classes its page tells apart) is a parent line, "Tuya TS011F

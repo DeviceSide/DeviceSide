@@ -338,9 +338,11 @@ def test_an_action_the_integration_lacks_takes_the_status_and_records_of_the_act
     registry.actions = {"set_scene": RIDE}
     found = data(registry)
     card = gc.card("zha", registry, list(adapters), found)
-    assert card.lines[0] == f"[lights]({URL}#lights): 🟢 set without turning on, set scene"
+    assert card.lines[0] == f"[lights]({URL}#lights): 🟢 set attributes while off, set scene while off"
     assert card.lent == {"set_scene": "set_attributes"}
-    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    cells = gc.matrix_rows(card, ["set attributes while off", "set scene while off"], found, {}, dict(gc.OUTCOMES))[0][
+        1:
+    ]
     assert cells == ["🟢 [record](integrations/zha/test-records/set_attributes.json)"] * 2
     own = (*adapters, adapter("zha", "set_scene", AdapterScope(domains=verified("light"))))
     registry = FakeRegistry(*own)
@@ -360,7 +362,9 @@ def test_a_lent_cell_links_the_riding_actions_own_passing_record_beside_the_ridd
     found = data(registry)
     card = gc.card("zha", registry, list(adapters), found)
     assert card.lent_records == {"set_scene": ["docs/integrations/zha/test-records/set_scene.json"]}
-    cells = gc.matrix_rows(card, ["set without turning on", "set scene"], found, {}, dict(gc.OUTCOMES))[0][1:]
+    cells = gc.matrix_rows(card, ["set attributes while off", "set scene while off"], found, {}, dict(gc.OUTCOMES))[0][
+        1:
+    ]
     assert cells == [
         "🟢 [record](integrations/zha/test-records/set_attributes.json)",
         "🟢 [set attributes](integrations/zha/test-records/set_attributes.json)"
@@ -382,8 +386,8 @@ def test_a_test_another_action_served_is_left_out_of_what_a_record_tested(root):
 
 
 def test_the_native_groups_line_and_an_unplaced_models_line_take_the_lent_action(root):
-    """A group's or a classless model's line names set scene beside the set_attributes it was tested on, linking
-    set_attributes's record."""
+    """A group's or a classless model's line names set scene while off beside the set_attributes it was tested
+    on, linking set_attributes's record."""
     record(root, "zha", "set_attributes", devices=[old_device("P1", "1"), old_group("Group", "x")])
     adapters = (adapter("zha", "set_attributes", AdapterScope(domains=verified("light"))),)
     registry = FakeRegistry(*adapters)
@@ -391,9 +395,9 @@ def test_the_native_groups_line_and_an_unplaced_models_line_take_the_lent_action
     found = data(registry)
     card = gc.card("zha", registry, list(adapters), found)
     shown = [line for line in card.lines if "native groups" in line or "Plug" in line]
-    assert len(shown) == 2 and all("set without turning on, set scene" in line for line in shown)
+    assert len(shown) == 2 and all("set attributes while off, set scene while off" in line for line in shown)
     groups = next(line for line in card.entries if line.native)
-    assert gc.status_cell(card, groups, "set scene", found, {}, dict(gc.OUTCOMES)) == (
+    assert gc.status_cell(card, groups, "set scene while off", found, {}, dict(gc.OUTCOMES)) == (
         "🟢 [record](integrations/zha/test-records/set_attributes.json)"
     )
 
@@ -579,7 +583,7 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
 
 def test_a_classs_scene_domain_joins_its_light_line(root):
     """A scene is classed by its lights, so a class that is a light and a scene shows one line, named by
-    its phrase, with set scene among its features; a class that is only scenes keeps its own line."""
+    its phrase, with set scene while off among its features; a class that is only scenes keeps its own line."""
     phrase = {"phrase": "lights", "section": "Lights"}
     data = gc.Data(
         requires={},
@@ -597,8 +601,12 @@ def test_a_classs_scene_domain_joins_its_light_line(root):
     domains = {"hue": frozenset({Platform.LIGHT, Platform.SCENE}), "smart": frozenset({Platform.SCENE})}
     lines = gc.class_lines("x", found, data, domains, ["light", "scene"], {})
     assert [(line.sections, line.shape, line.items) for line in lines] == [
-        ({"Lights": ["lights"]}, ((("works", ("smooth dimming", "set scene"))),), [("hue", "light"), ("hue", "scene")]),
-        ({"Scenes": ["smart scenes"]}, ((("works", ("set scene",))),), [("smart", "scene")]),
+        (
+            {"Lights": ["lights"]},
+            ((("works", ("smooth dimming", "set scene while off"))),),
+            [("hue", "light"), ("hue", "scene")],
+        ),
+        ({"Scenes": ["smart scenes"]}, ((("works", ("set scene while off",))),), [("smart", "scene")]),
     ]
 
 
@@ -928,7 +936,7 @@ def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root
     )
     # A warning names every feature, stop beside the others.
     assert card.render().splitlines()[2:4] == [
-        f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, turn off with timer, set scene, stop",
+        f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, turn off with timer, set scene while off, stop",
         "- ⚠️ Unmaintained (the maintainer left): get attributes",
     ]
 
@@ -962,7 +970,7 @@ def test_a_card_marks_unmaintained_ones_after_untested_fixes(root):
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith(("- ⚠️", "- [⚠️", "- [🔧"))]
     assert marks == [
-        f"- [🔧 Untested fix]({ISSUE_REASON}): turn on with timer, set scene",
+        f"- [🔧 Untested fix]({ISSUE_REASON}): turn on with timer, set scene while off",
         "- ⚠️ Unmaintained (gone): turn off with timer",
     ]
     # An untested fix is not unmaintained: the heading still names the maintainers.
@@ -1136,7 +1144,7 @@ def test_a_class_an_adapter_serves_in_neither_axis_shows_nothing_for_it(root):
     # features out, and names nothing as not built.
     assert card.lines == [
         f"[CCT controllers, dimmers]({URL}#dimmers): 🟢 turn on with timer",
-        f"[relays]({URL}#relays): 🟢 turn on with timer, turn off with timer, set without turning on",
+        f"[relays]({URL}#relays): 🟢 turn on with timer, turn off with timer, set attributes while off",
     ]
 
 

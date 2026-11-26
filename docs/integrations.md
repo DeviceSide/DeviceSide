@@ -40,7 +40,7 @@ and what was measured on real bulbs, is in [internals.md](internals.md) and each
 ## Home Assistant scenes
 
 `set_scene` takes a Home Assistant scene as well as a Hue bridge scene ([Hue](integrations/hue/index.md)). It writes
-each light as set without turning on does, so it works wherever that does ([feature table](device-compatibility.md)),
+each light as `set_attributes` does, so it works wherever that does ([feature table](device-compatibility.md)),
 at each light's own [evidence level](evidence.md#levels), reading the scene each time it runs.
 
 - **A light held on** gets the scene's brightness and the one color its color mode names, as Home Assistant picks it.
