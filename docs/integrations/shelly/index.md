@@ -5,12 +5,12 @@ to every integration is in [integrations.md](../../integrations.md); which devic
 on the [device compatibility page](../../device-compatibility.md); how the calls work, and what was measured, is
 in [internals.md](internals.md).
 
-Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, RGBCCT
-bulbs, and the other Shelly lights (dimmers, CCT, RGB and RGBW devices: the Light, CCT, RGB and RGBW components),
-which take the same calls. CCT, RGB and RGBW devices take brightness, and DeviceSide can also send them color or
-color temperature ([below](#led-controllers)). Gen1 isn't built: it has Shelly's older
-[HTTP API](https://shelly-api-docs.shelly.cloud/gen1/), not the [Gen2+ RPC calls](https://shelly-api-docs.shelly.cloud/gen2/)
-the adapters send, so it is refused (`gen1_unsupported`).
+Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, Multicolor
+(RGBCCT) bulbs, dimmers, and CCT, RGB and RGBW LED controllers, all on the same calls; the LED controllers can also be
+sent color or color temperature ([below](#device-classes)). Gen1 isn't built: it has Shelly's older
+[HTTP API](https://shelly-api-docs.shelly.cloud/gen1/), not the
+[Gen2+ RPC calls](https://shelly-api-docs.shelly.cloud/gen2/) the adapters send, so it is refused
+(`gen1_unsupported`).
 
 ## Device classes
 
@@ -37,21 +37,28 @@ Gen2+ dimmers (the `Light` component). Shelly documents the `Light` component's 
 as it does the relay's and the bulb's ([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)),
 so a dimmer takes the same calls: get attributes reports its timer, auto-off, auto-on and brightness.
 
-Smooth dimming and stop rely on `DimStop` halting a fade without a jump, which only the multicolor bulb has shown.
-Shelly doesn't document it for any component, and one user reports a Gen3 Dimmer jumping to the end on `DimStop`
-([Shelly forum](https://community.shelly.cloud/topic/2959-rd-please-fix-the-internal-dimming-speeds/)). If you try
-it, please report whether stop halts the fade where it is: Integrations >
+Smooth dimming and stop rely on `DimStop` halting a fade without a jump, which only the multicolor bulb has shown:
+Shelly documents it for no component, and a Gen3 Dimmer is reported jumping to the end
+([Shelly forum](https://community.shelly.cloud/topic/2959-rd-please-fix-the-internal-dimming-speeds/)). If you try it,
+please report whether stop halts the fade: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug (the form for any report on this page). One report per component settles it.
 
 ### LED controllers
 
-CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components). Shelly documents their calls as the
-dimmer's, field for field ([research](research/2026-11-17-set-on-sibling-components.md)), so they take the dimmer's
-calls with brightness. An RGB controller is sent `rgb`, an RGBW controller `rgb` and `white` (Home Assistant's own
-color conversions, as core's Shelly light sends them, with any other color or a color temperature converted to
-those), and a CCT controller is sent its color temperature. Nobody has yet run these calls on a device. If you have
-one, please report whether the color or color temperature lands, as for dimmers. Smooth dimming and stop are as on [dimmers](#dimmers).
+CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components). Shelly documents their calls as the dimmer's,
+field for field ([research](research/2026-11-17-set-on-sibling-components.md)), so they take the dimmer's calls with
+brightness, and their color as core's Shelly light sends it, by Home Assistant's own conversions from any other color
+or a color temperature:
+
+| Controller | Color sent |
+|---|---|
+| CCT | Its color temperature |
+| RGB | `rgb` |
+| RGBW | `rgb` and `white` |
+
+Nobody has yet run these calls on a device. If you have one, please report whether the color or color temperature
+lands, as for dimmers. Smooth dimming and stop are as on [dimmers](#dimmers).
 
 ## Turn on with timer
 
@@ -85,22 +92,28 @@ reading the stored setting back.
 
 ## Smooth dimming
 
-On a Multicolor Bulb (RGBCCT), `raise_brightness` and `lower_brightness` read the bulb's own level, mid-fade included,
-then send one fade the bulb runs itself; `stop` halts it and reads back where it halted. A fade is at least 0.5 s.
-Lowering to 0 % is the bulb's own soft off: it fades out, turns off, and comes back on at its old level; a `stop`
-during it leaves the bulb on. Raising a bulb that is off fades it in from the bottom. Other Shelly lights take the same
-calls on their own component.
+On every Shelly light, `raise_brightness` and `lower_brightness` read its level, mid-fade included, then send one fade
+of at least 0.5 s that the light runs itself; `stop` halts it and reads back where. On a Multicolor Bulb (RGBCCT),
+lowering to 0 % is the bulb's soft off: it fades out, turns off and comes back on at its old level; a `stop` during it
+leaves the bulb on. Raised from off, a light fades in from the bottom.
 
 ## Flash-free turn-on
 
-On a Multicolor Bulb (RGBCCT) `set_attributes` sends one `RGBCCT.Set` without `on`, so a bulb that is off stores the
-values and stays off, and the next plain on comes up with them. The device answers a `Set` with nothing, so DeviceSide
-reads the status back: brightness, color temperature and mode must read as written, or the call fails (`not_stored`).
-A bulb's color is not compared, only the mode it switches to; an RGB controller's `rgb`, and an RGBW controller's
-`rgb` and `white`, must read as written. `min_brightness` and `max_brightness` clamp the brightness the
-bulb has stored, read first, so they work while it is off; a bulb already within them is `unchanged`. On dimmers and
-CCT, RGB and RGBW LED controllers it sends the same `<Component>.Set` with brightness, which Shelly documents
-identically; the LED controllers can also be sent their color or color temperature ([LED controllers](#led-controllers)).
+`set_attributes` sends one `<Component>.Set` without `on`, which Shelly documents identically for every light
+component, so a light that is off stores the values and stays off, and the next plain on comes up with them. The
+device answers a `Set` with nothing, so DeviceSide reads the status back, and the call fails (`not_stored`) unless
+what it checks reads as written:
+
+| Light | Sent | Read back |
+|---|---|---|
+| Multicolor Bulb (RGBCCT) | Brightness, color temperature, color | Brightness, color temperature and mode; not the color |
+| Dimmer | Brightness | Brightness |
+| CCT controller | Brightness, color temperature | Brightness, color temperature |
+| RGB controller | Brightness, color ([LED controllers](#led-controllers)) | Brightness, `rgb` |
+| RGBW controller | Brightness, color | Brightness, `rgb` and `white` |
+
+`min_brightness` and `max_brightness` clamp the brightness the light has stored, read first, so they work while it is
+off; a light already within them is `unchanged`.
 
 ## Get attributes
 

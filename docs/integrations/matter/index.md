@@ -12,12 +12,17 @@ that endpoint is refused these (`not_dimmable`).
 
 ## Turn on with timer
 
-The timer is read back from the device, so the result is `confirmed` only when it reports both a running timer
-(`OnTime`) and that it is on, otherwise `sent`. `turn_off` cancels the timer; a plain `turn_on` doesn't. A second timer
-while one runs keeps the longer of the two, so a shorter one is `sent`, not `confirmed`
-([tested](internals.md#tested-behavior)). By the spec, a device turned off mid-timer ignores a new timer for
-the next 0.1 s and stays off (`sent`). If the device restarts while a timer runs, after a power cut say, it can come
-back on with no timer ([internals](internals.md#what-decides-the-call)).
+The timer is read back from the device:
+
+| Case | Result |
+|---|---|
+| The device reports a running timer (`OnTime`) and that it is on | `confirmed` |
+| Any other read | `sent` |
+| A second timer while one runs | The longer of the two runs; a shorter second one is `sent` ([tested](internals.md#tested-behavior)) |
+| A new timer within 0.1 s of the device being turned off mid-timer | Ignored, by the spec: the device stays off (`sent`) |
+| The device restarts mid-timer, after a power cut say | It can come back on with no timer ([internals](internals.md#what-decides-the-call)) |
+
+`turn_off` cancels the timer; a plain `turn_on` doesn't.
 
 ## Smooth dimming
 
@@ -25,11 +30,10 @@ back on with no timer ([internals](internals.md#what-decides-the-call)).
 runs itself; `stop` halts it and reads where it halted. A full-range `sweep_time` runs 0.1 s to about 109 minutes; one
 outside that is clamped (`clamped_to`).
 
-- **Soft off.** Once a fade to 0 % has run, the light's old level is put back while it stays off, so the next plain
-  on comes back there. A brightness move, a `stop`, a `set_attributes` that sets brightness or a light call from Home Assistant before
-  then cancels that, and a `stop` during the fade leaves the light on at the level it halted at. A light turned on elsewhere in the
-  meantime keeps its level. A restart of Home Assistant before the restore loses it, and the light comes back at its
-  lowest level.
+- **Soft off.** Once a fade to 0 % has run, the light's old level is put back while it stays off, so the next plain on
+  comes back there. A brightness move, a `stop`, a brightness `set_attributes` or a Home Assistant light call first
+  cancels that; a light turned on elsewhere keeps its level. A `stop` mid-fade leaves the light on where it halted. A
+  Home Assistant restart before the restore leaves the light at its lowest level.
 - **`stop`** reads where the light halted: `confirmed` when it held still, `sent` (`still_fading`) when it kept
   moving. A slow move, such as a long hue cycle, can read `confirmed` while it still moves
   ([internals](internals.md#stop)). A light that is off is `unchanged` (`off`).
@@ -76,30 +80,26 @@ is a class of its own.
 
 ### Certified devices
 
-A device certified by the Connectivity Standards Alliance, with one on/off part, has passed a test of the timer reads
-that get attributes makes, so get attributes inherits that test. The certification test sends the timer command
-with other settings than DeviceSide's, so it says nothing about turn on with timer.
+A device certified by the Connectivity Standards Alliance, with one on/off part, has passed certification's test of
+the timer reads get attributes makes, so get attributes inherits it. The test sends the timer command with other
+settings than DeviceSide's, so turn on with timer inherits nothing ([internals](internals.md#what-decides-the-call)).
 DeviceSide counts a device as certified by its vendor ID, which an uncertified product from a registered vendor also
-carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting
-feature.
+carries: that is the case this can't catch.
 
 ### Lights
 
-A Matter light takes the same `OnWithTimedOff` command and timer reads as a plug, so it falls in the class its
-vendor and product IDs give it, as a plug does, and inherits that class's features. Its endpoint needs the Lighting
-feature, as [above](#matter). Smooth dimming, smooth color changes and set without turning on are admitted by
-research, not a run, and no Matter light is on the rig yet: certification tests the fade, move and stop commands on a
-light that is on, and, since Matter 1.0, the set-while-off command on a light that is off for brightness and xy color
-([research](research/2026-11-24-level-color.md), Q1). A [device report](../../../CONTRIBUTING.md#how-to-help) is how they move up.
+A Matter light takes a plug's `OnWithTimedOff` command and timer reads, so it is classed by its vendor and product
+IDs, as a plug is. Its light features are admitted by research, not a run: certification tests the fade, move and stop
+commands on a light that is on, and, since Matter 1.0, the set-while-off command for brightness and xy color
+([research](research/2026-11-24-level-color.md), Q1). No Matter light has had a run yet: a
+[device report](../../../CONTRIBUTING.md#how-to-help) moves them up.
 
 ### Multi-endpoint devices
 
-A certified device with more than one on/off part, such as a power strip, a two-gang switch or a light with several
-lit parts. Certification tests the timer on one of its parts, and DeviceSide can't tell which, so turn on with timer
-and get attributes aren't built for them yet, even with Labs on. The light features (smooth dimming, smooth color
-changes, set without turning on) are admitted, as on a single-part device: they earn no certification credit from
-the timer test anyway, and each part has its own brightness and color server, so the number of parts doesn't change
-how one part takes the call.
+A certified device with more than one on/off part: a power strip, a two-gang switch, a light with several lit parts.
+Certification tests the timer on one part, and DeviceSide can't tell which, so turn on with timer and get attributes
+aren't built for them yet, even with Labs on. The light features are admitted as on a single-part device: they take no
+credit from the timer test, and each part has its own brightness and color server.
 
 ### Matter bridges
 
@@ -110,7 +110,7 @@ is built for them yet, even with Labs on. A bridge's own light or plug counts he
 ### Uncertified devices
 
 A device that reports a test vendor ID: development kits, apps that share other devices on Matter (Matterbridge-style
-apps, bridge or not), and the odd uncertified product. Nothing has tested its timer or its light commands, so none
-of the features is built for them yet, even with Labs on. A device that hasn't reported its vendor ID yet is refused turn on
-with timer, as unknown, until it does. An app built on matter.js forgets a running timer when it restarts, and the device stays on
+apps, bridge or not), and the odd uncertified product. Nothing has tested its timer or its light commands, so no
+feature is built for them yet, even with Labs on. Until a device reports its vendor ID, turn on with timer refuses it
+as unknown. An app built on matter.js forgets a running timer when it restarts, leaving the device on
 ([internals](internals.md#upstream-defects)).

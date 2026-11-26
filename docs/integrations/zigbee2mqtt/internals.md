@@ -99,6 +99,10 @@ page](standard-lights.md) is rendered from the table.
 
 ### `color_modes`
 
+Z2M announces only one of a full-color light's two color modes, usually XY, so Home Assistant ignores its
+hue-saturation (HS) updates and keeps the old color after a hue or saturation change, a Hue gradient scene, a remote
+or a power cut ([Koenkk/zigbee2mqtt#28757](https://github.com/Koenkk/zigbee2mqtt/issues/28757)).
+
 The Home Assistant override is set to `xy`, `hs` and, where present, `color_temp`, on lights
 exposing both `color_xy` and `color_hs`, and on groups whose members all qualify. Z2M re-announces at once and
 Home Assistant keeps the entity. Rerun at setup and on every device or group announcement, reading Z2M's settings
@@ -189,6 +193,10 @@ result is `sent`, or `rejected` by `set_check`. Evidence: Z2M 2.14.3 and the ZHC
   `countdown` expose with no endpoint, the single-endpoint guard. The rules run before `tuya_ts011f` (the ZOT60 is a
   TS011F) and `tuya_mcu`. Until `bridge/devices` lists the device it is Unplaced, refused as `class_unknown`. D1Z and
   SFD02-Z_2 are newer than the ZHC Z2M 2.14.3 ships, so match nothing on it.
+
+**Cancelling** follows Tuya's General Countdown guide, written for its Wi-Fi and Bluetooth lamp panels; that these
+Zigbee devices follow it is an inference, which Z2M's own description of the setting, "Toggle the device after a set
+duration", agrees with ([research](research/2026-11-24-tuya-datapoint-call.md), §2).
 
 Source walk, the toggle and the definitions checked: [research](research/2026-11-24-tuya-datapoint-call.md).
 
