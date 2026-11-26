@@ -222,7 +222,7 @@ async def test_the_rows_are_the_entities_a_call_could_reach(hass):
         "Timed off": Mark.VERIFIED,
     }
     assert {heading: cell.mark for heading, cell in by_id["light.a_lamp"].cells.items()} == {
-        "Set while off": Mark.VERIFIED,
+        "Flash-free turn-on": Mark.VERIFIED,
         "Timed on": Mark.VERIFIED,
         "Timed off": Mark.VERIFIED,
     }

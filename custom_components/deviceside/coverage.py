@@ -57,7 +57,7 @@ class Column:
 COLUMNS = (
     Column(("smooth dimming",), "Smooth dimming"),
     Column(("smooth saturation", "smooth hue"), "Smooth color"),
-    Column(("set attributes while off",), "Set while off"),
+    Column(("set attributes while off",), "Flash-free turn-on"),
     Column(("turn on with timer",), "Timed on"),
     Column(("turn off with timer",), "Timed off"),
     Column(("auto-off/on",), "Auto off/on"),
