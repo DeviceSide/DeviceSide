@@ -16,8 +16,11 @@ sign-offs must land); see their headers. The steps they don't check:
 2. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
    Then review `docs/deferred.md`: list the entries whose Revisit when condition has been met, and delete, by PR,
    those nobody defends.
-3. Dispatch `cut-release` from `main` with `vX.Y.Z`.
-4. Set `manifest.json` on `main` to the next version.
+3. **Before `cut-release`:** land `docs/release-notes/vX.Y.Z.md` on `main`; it can land while the RC soaks, with no
+   new RC. Write it for users, by outcome: what they can now do, what behaves differently, and any withdrawal
+   (tenet 11), grouped under `##` headings as v0.1.0's release is. No PR list: the workflow appends the compare link.
+4. Dispatch `cut-release` from `main` with `vX.Y.Z`.
+5. Set `manifest.json` on `main` to the next version.
 
 To fix an RC or a release without what `main` has gained since, cut `release/vX.Y.Z` from its tag, land the fix
 there, cut the next RC from it, and merge the branch back into `main`.

@@ -1,5 +1,5 @@
 """scripts/check_release.py: the coverage bar, a sign-off for each action whose calls changed, the classes' coverage
-check, and the call for testers."""
+check."""
 
 import json
 import subprocess
@@ -867,14 +867,6 @@ def test_an_all_labs_action_with_a_signoff_still_reports_it(released, gate):
     assert "signed off by record" in gate(on=registry(stop=ALL_LABS[0]))[1][1]
 
 
-def test_the_notes_still_name_an_all_labs_action(released, tmp_path):
-    notes = tmp_path / "notes.md"
-    pin(released, "stop", "b")
-    assert cr.main(["--signoffs", "--notes", str(notes)], registry(stop=ALL_LABS[0])) == 0
-    assert notes.read_text().startswith("## Help us test\n")
-    assert "\n- Fake\n" in notes.read_text()
-
-
 def test_a_class_in_labs_on_some_domains_alone_makes_a_mixed_action():
     on_light = AdapterScope(
         domains=verified("light", "switch"), capabilities=labs("hue", domains=["light"]) | verified("ikea")
@@ -922,33 +914,6 @@ def test_the_step_summary_lists_the_signoffs(released, monkeypatch, tmp_path):
     lines = summary.read_text().splitlines()
     assert lines[:3] == ["## Sign-offs", "", "- Since v0.1.0:"]
     assert lines[3].startswith("- fake / stop: calls changed at ")
-
-
-# The call for testers.
-
-
-def test_notes_call_for_testers_of_unsigned_integrations_and_untested_fixes(released, tmp_path):
-    notes = tmp_path / "notes.md"
-    pin(released, "turn_on_for", "b", integration="other")
-    pin(released, "stop", "b")
-    write_record(released, "stop.json")
-    # No sign-off gate without --signoffs: an RC carries the unsigned change.
-    assert cr.main(["--notes", str(notes)], registry(turn_on_for=CAVEAT)) == 0
-    text = notes.read_text()
-    assert text.startswith("## Help us test\n")
-    assert f"]({cr.DEVICE_REPORT})" in text
-    assert "\n- Other\n" in text
-    assert "- Fake\n" not in text
-    assert text.endswith(
-        "## 🔧 Untested fix\n\nThese ship a fix nobody could test before the release. If you use one,"
-        f" please [report whether it works]({cr.DEVICE_REPORT}).\n\n- fake / turn_on_for\n"
-    )
-
-
-def test_notes_are_empty_with_nothing_to_test(released, tmp_path):
-    notes = tmp_path / "notes.md"
-    assert cr.main(["--notes", str(notes)], registry()) == 0
-    assert notes.read_text() == ""
 
 
 # The coverage check.

@@ -200,12 +200,10 @@ the README folds a card's Labs-only lines (`scripts/gen_compat.py`).
 ## Caveats
 
 `AdapterScope.caveat` holds a reason (an issue URL), set and cleared by a repo maintainer. It is not a level: levels
-are about evidence, caveats about risk and people. Each gives one setup warning, one card mark and one release-notes
-line:
+are about evidence, caveats about risk and people. Each gives one setup warning and one card mark:
 
-- **🔧 Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers
-  in the release notes. A sign-off clears it, including a maintainer's `_manual.json` row citing a user's working
-  report.
+- **🔧 Untested fix:** changed, and nobody could test it before the release. It ships live. A sign-off clears it,
+  including a maintainer's `_manual.json` row citing a user's working report.
 - **⚠️ Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
   integration. An integration whose maintainers are all gone gets it on every adapter.
 
@@ -238,9 +236,8 @@ those). An action whose adapter has `native_groups` needs a segment run on a gro
   --signoffs --reruns`). A suite that is no action's (`config_entry.json`) is outside the gate.
 - **Prefer the rig** where it covers an integration: it is repeatable and catches what a person doesn't. A manual
   sign-off on a rig-covered integration says why in its PR. Guidance, not a gate check; rig evidence is no level.
-- **RCs need no sign-off:** the gate runs at `cut-release`, and an RC's notes list each integration with an unsigned
-  changed action, linking the device report form. `cut-release` checks the latest RC's commit, so land sign-offs or
-  Untested fix caveats before the last RC.
+- **RCs need no sign-off:** the gate runs at `cut-release`. `cut-release` checks the latest RC's commit, so land
+  sign-offs or Untested fix caveats before the last RC.
 - **An all-Labs action needs no sign-off or caveat:** none of its calls runs with the Labs option off (its adapter
   flagged whole, or every class its scope serves in Labs in every domain it serves). A field in Labs on some classes
   alone doesn't make it all-Labs. A mixed action still needs a sign-off: a rerun on the devices a maintainer has gives

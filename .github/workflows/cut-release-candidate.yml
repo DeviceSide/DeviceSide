@@ -3,9 +3,8 @@ name: Cut release candidate
 # The only way a vX.Y.ZrcN tag is made (a tag ruleset refuses any other): from main, or from release/vX.Y.Z when a
 # soaking RC or a release needs a fix without what main has gained since (cut that branch from its tag). Requires a
 # version above the latest release, manifest.json at X.Y.Z, green CI on the head, and docs/audits/<rc>.md covering
-# every commit since the previous RC. An RC needs no sign-off (docs/evidence.md, Release gate): its notes ask for testers
-# of each integration with an action changed since the last release without one, and of each Untested fix
-# (check_release --notes).
+# every commit since the previous RC. An RC needs no sign-off (docs/evidence.md, Release gate). Its notes are a compare
+# link from the previous tag; the curated notes are the release's (cut-release).
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
 #
 # Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
@@ -30,7 +29,7 @@ jobs:
       RC: ${{ inputs.rc }}
       BRANCH: ${{ github.ref_name }}
     outputs:
-      notes: ${{ steps.gates.outputs.notes }}
+      notes: ${{ steps.notes.outputs.notes }}
 
     steps:
       - name: Refuse a tag ref
@@ -64,19 +63,14 @@ jobs:
       - name: Check the audit record
         run: uv run --no-project --with pyyaml==6.0.3 python scripts/check_audit.py "$RC" "$GITHUB_SHA" "$BRANCH"
 
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
-        with:
-          python-version: "3.14"
-
-      - name: Install dependencies
-        run: uv sync --locked
-
-      # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
-      - name: Write the call for testers
-        id: gates
+      # The notes ride to `tag` as an output, as that job's checkout is shallow: no tags to describe.
+      - name: Write the notes
+        id: notes
         run: |
-          .venv/bin/python scripts/check_release.py --notes "$RUNNER_TEMP/notes.md"
-          { echo 'notes<<END_OF_NOTES'; cat "$RUNNER_TEMP/notes.md"; echo 'END_OF_NOTES'; } >> "$GITHUB_OUTPUT"
+          previous=$(git describe --tags --abbrev=0 "$GITHUB_SHA" 2>/dev/null || true)
+          if [[ -n "$previous" ]]; then
+            echo "notes=**Full Changelog**: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$previous...$RC" >> "$GITHUB_OUTPUT"
+          fi
 
   tag:
     needs: check
@@ -112,4 +106,4 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
           git tag "$RC" "$GITHUB_SHA"
           git push "git@github.com:$GITHUB_REPOSITORY.git" "refs/tags/$RC"
-          gh release create "$RC" --verify-tag --prerelease --generate-notes --notes-file "$RUNNER_TEMP/notes.md" --title "$RC"
+          gh release create "$RC" --verify-tag --prerelease --notes-file "$RUNNER_TEMP/notes.md" --title "$RC"

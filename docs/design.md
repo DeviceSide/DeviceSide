@@ -266,8 +266,8 @@ The rules are in [evidence.md](evidence.md#release-gate); each gate's mechanics 
 workflow named.
 
 - **Coverage:** `scripts/check_release.py --coverage`, in CI.
-- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`; `--notes` writes the call for testers in both cut
-  workflows.
+- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`.
+- **Release notes:** `docs/release-notes/vX.Y.Z.md`, which `cut-release` requires and publishes.
 - **Tags:** `scripts/check_tag.py`, in `cut-release-candidate.yml` and `cut-release.yml`, the only way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
 - **Testing:** unit tests mock each integration at its boundary (its client, service or broker) against a real

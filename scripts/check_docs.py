@@ -2,7 +2,7 @@
 """Keep the living docs pared (docs/plans/2026-11-26-docs-scrub.md, step 4).
 
 Living docs are LIVING_GLOBS minus EXCLUDED_GLOBS: docs/**/*.md and CONTRIBUTING.md, less the dated sources
-(research, plans, audits) and the generated pages. Four checks, each reported as file:line and a reason:
+(research, plans, audits, release notes) and the generated pages. Four checks, each reported as file:line and a reason:
 
 - a living doc names no "Decision N", links no docs/plans/ file, and writes no commit SHA in prose. Link targets and
   bare URLs are skipped, so an upstream SHA stays as a permalink pin. Text between generated-block markers is skipped.
@@ -30,6 +30,7 @@ EXCLUDED_GLOBS = (
     "docs/**/research/**",
     "docs/plans/**",
     "docs/audits/**",
+    "docs/release-notes/**",
     "docs/device-compatibility.md",
     "docs/integrations/zigbee2mqtt/standard-lights.md",
 )

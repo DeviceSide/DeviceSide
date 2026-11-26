@@ -4,8 +4,9 @@ name: Cut release
 # vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
 # latest release and, at the RC's commit, manifest.json at that version, green CI, and a sign-off, or Untested fix on
 # its adapter, for each action whose calls changed since the last release (check_release --signoffs;
-# docs/evidence.md, Release gate). Its call for testers (--notes) leads the release notes. Soak is the repo
-# maintainers' call.
+# docs/evidence.md, Release gate). The release notes are docs/release-notes/vX.Y.Z.md as on the dispatched branch,
+# so they can land while the RC soaks, then a compare link from the previous release. Soak is the repo maintainers'
+# call.
 #
 # Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
 # read-only token, and `tag`, on a fresh runner that installs nothing, alone holds the write token and the deploy key.
@@ -30,7 +31,7 @@ jobs:
       BRANCH: ${{ github.ref_name }}
     outputs:
       target: ${{ steps.target.outputs.target }}
-      notes: ${{ steps.gates.outputs.notes }}
+      notes: ${{ steps.notes.outputs.notes }}
 
     steps:
       - name: Refuse a tag ref
@@ -58,6 +59,26 @@ jobs:
             exit 1
           fi
 
+      # From the dispatched branch, before the RC is checked out. The notes ride to `tag` as an output, as that job's
+      # runner has the RC's files, not the branch's.
+      - name: Read the release notes
+        id: notes
+        run: |
+          file="docs/release-notes/$VERSION.md"
+          if [[ ! -s "$file" ]]; then
+            echo "::error::$file is missing or empty: land it on $BRANCH first (the release skill)."
+            exit 1
+          fi
+          previous=$(git describe --tags --abbrev=0 --exclude '*rc*' "$TARGET" 2>/dev/null || true)
+          {
+            echo 'notes<<END_OF_NOTES'
+            cat "$file"
+            if [[ -n "$previous" ]]; then
+              printf '\n**Full Changelog**: %s/%s/compare/%s...%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$previous" "$VERSION"
+            fi
+            echo 'END_OF_NOTES'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Require green CI on the RC
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,12 +97,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
       - name: Refuse a changed action with neither a sign-off nor Untested fix
-        id: gates
-        run: |
-          .venv/bin/python scripts/check_release.py --signoffs --notes "$RUNNER_TEMP/notes.md"
-          { echo 'notes<<END_OF_NOTES'; cat "$RUNNER_TEMP/notes.md"; echo 'END_OF_NOTES'; } >> "$GITHUB_OUTPUT"
+        run: .venv/bin/python scripts/check_release.py --signoffs
 
   tag:
     needs: check
@@ -119,4 +136,4 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
           git tag "$VERSION" "$TARGET"
           git push "git@github.com:$GITHUB_REPOSITORY.git" "refs/tags/$VERSION"
-          gh release create "$VERSION" --verify-tag --latest --generate-notes --notes-file "$RUNNER_TEMP/notes.md" --title "$VERSION"
+          gh release create "$VERSION" --verify-tag --latest --notes-file "$RUNNER_TEMP/notes.md" --title "$VERSION"
