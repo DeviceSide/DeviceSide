@@ -146,7 +146,6 @@ switches:
 
 <img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/images/coverage-view.png" width="600" alt="DeviceSide's Settings: a table of the user's lights and switches by integration, each feature marked Verified, Documented or Labs">
 
-DeviceSide's features were developed on real devices using an automated test rig.
 [Anyone can contribute](https://github.com/DeviceSide/DeviceSide/blob/main/CONTRIBUTING.md) new devices that they own,
 or even new integrations as [@skialpine](https://github.com/skialpine) did for Control4.
 
