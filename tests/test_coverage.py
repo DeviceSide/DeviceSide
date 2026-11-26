@@ -267,7 +267,7 @@ async def test_the_counts_and_the_labs_line_read_the_cells(hass):
     # Verified and Documented count: a, b, the group and the light.
     assert found.devices_now == 4
     # Labs: switch.c's two features, on one device.
-    assert (found.features_in_labs, found.devices_in_labs) == (2, 1)
+    assert found.devices_in_labs == 1
 
 
 @pytest.mark.usefixtures("classed", "household")
@@ -345,7 +345,7 @@ async def test_settings_shows_the_matrix_with_the_options_under_it(hass, setup_i
     step = strings["step"]["settings"]
     assert step["description"] == "{coverage}"  # tags in a translation string break HA's frontend formatter
     assert step["data_description"]["labs"].format(**holders) == (
-        "Turn on Labs: adds 2 features on 1 devices. "
+        "Turn on Labs: adds features on 1 of your devices. "
         "Try out new integrations, actions and action options, and unproven devices. "
         "Labs features may misbehave, change or be withdrawn without notice. "
         'Please report how they go with the "Report a device test result or bug" form.'
@@ -483,7 +483,7 @@ async def test_with_nothing_in_labs_the_labs_description_is_the_warning_alone(ha
 @pytest.mark.usefixtures("classed", "household")
 async def test_labs_adds_is_said_only_while_labs_is_off(hass, setup_integration):
     off = await open_coverage(hass, setup_integration)
-    assert off["description_placeholders"]["labs_adds"] == "Turn on Labs: adds 2 features on 1 devices. "
+    assert off["description_placeholders"]["labs_adds"] == "Turn on Labs: adds features on 1 of your devices. "
     hass.config_entries.async_update_entry(setup_integration, options={"labs": True})
 
     on = await open_coverage(hass, setup_integration)
