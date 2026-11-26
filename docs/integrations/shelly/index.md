@@ -92,10 +92,13 @@ reading the stored setting back.
 
 ## Smooth dimming
 
-On every Shelly light, `raise_brightness` and `lower_brightness` read its level, mid-fade included, then send one fade
-of at least 0.5 s that the light runs itself; `stop` halts it and reads back where. On a Multicolor Bulb (RGBCCT),
-lowering to 0 % is the bulb's soft off: it fades out, turns off and comes back on at its old level; a `stop` during it
-leaves the bulb on. Raised from off, a light fades in from the bottom.
+On a Multicolor Bulb (RGBCCT), `raise_brightness` and `lower_brightness` read the bulb's own level, mid-fade included,
+then send one fade of at least 0.5 s that the bulb runs itself; `stop` halts it and reads back where it halted.
+Lowering to 0 % is the bulb's soft off: it fades out, turns off and comes back on at its old level; a `stop` during it
+leaves the bulb on. Raising a bulb that is off fades it in from the bottom.
+
+Other dimmable Shelly lights take the same calls on their own component; whether `stop` halts them without a jump is
+open ([dimmers](#dimmers)).
 
 ## Flash-free turn-on
 

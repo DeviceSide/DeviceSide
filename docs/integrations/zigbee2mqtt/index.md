@@ -45,10 +45,10 @@ maker string (the Zigbee manufacturer Zigbee2MQTT shows for the plug), so each s
 - **No time left:** it can't be read, so get attributes refuses the plug, with no known method.
 - **Shown as a light:** a TS011F is still a plug to DeviceSide, so the actions for lights alone, such as stop, refuse
   it; turn on with timer takes it, though no run has tried one shown as a light.
-- **In a group:** a group with a TS011F plug falls back to its devices on smooth dimming, smooth color changes and set
-  without turning on, even with Labs on, as those serve lights alone, and on turn on with timer, as the group's timer
-  isn't the plug's. Each light, and a plug shown as a light, gets its own timer; one shown as a switch is skipped with
-  a warning (`not_addressable`): target its switch, or the group's switch.
+- **In a group:** a group with a TS011F plug falls back to its devices on smooth dimming and color changes and set
+  without turning on, even with Labs on, and on turn on with timer, as the group's timer isn't the plug's. Each light,
+  a plug shown as one included, gets its own timer; one shown as a switch is skipped with a warning
+  (`not_addressable`). Targeting its switch, or the group's switch, gets it its countdown, with no warning.
 
 #### Tuya datapoint devices with one countdown
 

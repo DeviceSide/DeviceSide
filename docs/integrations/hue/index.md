@@ -42,10 +42,10 @@ every feature Hue lights get, with Labs off, as do scenes and rooms holding them
 gets, which Hue Smooth Dimming sent every brand for brightness fades, stop, scenes and attribute writes, and none of
 these features harms when it fails ([internals](internals.md#device-classes)).
 
-Some brands answer some Zigbee commands differently, such as coming on when written while off
+Some brands answer some Zigbee commands differently
 ([known departures](internals.md#device-classes)). If one of yours misbehaves,
 [report it](../../../CONTRIBUTING.md#how-to-help) with its manufacturer and model (on its device page in Home
-Assistant): DeviceSide then gives that model, or its maker, a class of its own, refused the action it fails. Müller
+Assistant): DeviceSide then gives that model, or its maker, a class of its own, refused the action it fails; every other light keeps it. Müller
 Licht and Livarno (Lidl) lights, each reported once with [Gledopto's](#gledopto) misread, keep `get_attributes` until
 a report gives a manufacturer string to key on.
 
@@ -73,7 +73,7 @@ only about 10 s later. With the option on, Home Assistant shows:
 | A `stop` halted it | Where it halted |
 | The fade has run | The end, so the slider jumps there |
 | Any time, for color | The bridge's report |
-| A change from the Hue app, a dimmer switch or a bridge scene | The change at once, but a brightness change or a turn on within 15 s of a fade |
+| A change from the Hue app, a dimmer switch or a bridge scene | The change at once, except a brightness change or a turn on within 15 s of a fade |
 | A restart or bridge reconnect mid-fade | The bridge's report |
 
 ## Smooth color changes

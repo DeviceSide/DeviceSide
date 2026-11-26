@@ -9,8 +9,8 @@ Living docs are LIVING_GLOBS minus EXCLUDED_GLOBS: docs/**/*.md and CONTRIBUTING
 - `*/internals.md` never uses the evidence levels' names (Labs, Documented, Verified): levels live in
   docs/device-compatibility.md.
 - `*/index.md` has no bullet or paragraph over MAX_ITEM_WORDS words (INDEX_SKIP lists the bundles exempt for now).
-- each living doc is within its line in docs/word-budgets.yaml, counted as `wc -w` does; a living doc with no line
-  fails, so a new doc adds one. A repo maintainer approves a raise (docs/repo-maintainers.md).
+- each living doc is within its line in docs/word-budgets.yaml, in whitespace-separated words outside generated blocks;
+  a living doc with no line fails, so a new doc adds one. A repo maintainer approves a raise (docs/repo-maintainers.md).
 
 Usage: scripts/check_docs.py   (pre-commit and CI run it on the whole repo)
 """
@@ -24,7 +24,7 @@ BUDGETS = REPO / "docs" / "word-budgets.yaml"
 
 # The one definition of a living doc. Generated pages are written wholly by scripts/gen_compat.py
 # (device-compatibility.md) and scripts/zhc_table.py (standard-lights.md);
-# docs/integrations.md and others carry generated blocks only, which checks a to c skip.
+# docs/integrations.md and others carry generated blocks only, which every check skips.
 LIVING_GLOBS = ("docs/**/*.md", "CONTRIBUTING.md")
 EXCLUDED_GLOBS = (
     "docs/**/research/**",
@@ -38,7 +38,7 @@ INDEX_SKIP = ("control4",)
 LEVEL_WORDS = ("Labs", "Documented", "Verified")
 
 GENERATED_BLOCK = re.compile(r"(<!-- (\w+):start -->).*?(<!-- \2:end -->)", re.DOTALL)
-LINK_TARGET = re.compile(r"\]\([^)\s]*[^)]*\)")
+LINK_TARGET = re.compile(r"\]\([^)]*\)")
 BARE_URL = re.compile(r"https?://[^\s)>\]]+")
 DECISION = re.compile(r"\bDecision \d+\b")
 PLANS_LINK = re.compile(r"\bdocs/plans/|\]\((?:\.\./)*(?:\./)?plans/")
@@ -67,6 +67,7 @@ def line_of(text: str, offset: int) -> int:
 
 
 def word_count(text: str) -> int:
+    """Whitespace-separated words."""
     return len(text.split())
 
 
@@ -147,7 +148,7 @@ def budget_faults(docs: dict[str, str], budgets: dict[str, int]) -> list[str]:
     for rel, text in docs.items():
         if rel not in budgets:
             faults.append(f"{rel}:1: no line in docs/word-budgets.yaml: a new doc adds one")
-        elif (words := word_count(text)) > budgets[rel]:
+        elif (words := word_count(blank_out(text, GENERATED_BLOCK))) > budgets[rel]:
             faults.append(f"{rel}:1: {words} words, budget {budgets[rel]}: cut, or a repo maintainer raises the budget")
     faults.extend(f"docs/word-budgets.yaml: {rel} is no living doc" for rel in budgets if rel not in docs)
     return faults

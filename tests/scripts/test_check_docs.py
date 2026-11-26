@@ -86,6 +86,11 @@ def test_a_doc_over_budget_is_a_fault():
     assert faults("docs/a.md", "one two\n", budget=2) == []
 
 
+def test_generated_blocks_dont_count_toward_the_budget():
+    text = "one two\n<!-- x:start -->\n" + " ".join(["w"] * 50) + "\n<!-- x:end -->\n"
+    assert faults("docs/a.md", text, budget=2) == []
+
+
 def test_a_doc_without_a_budget_line_is_a_fault():
     (fault,) = check_docs.check({"docs/a.md": "x\n"}, {})
     assert "no line in docs/word-budgets.yaml" in fault
