@@ -259,11 +259,11 @@ others are reported to have no effect ([research](integrations/zigbee2mqtt/resea
 
 ## Native scenes beyond Hue
 
-`set_scene` on scenes ZHA, Matter, Shelly, Control4 or Zigbee2MQTT hold, written per light like Hue's.
+`set_scene` serves Hue bridge scenes and Home Assistant scenes. Scenes held by ZHA, Matter, Shelly, Control4 or
+Zigbee2MQTT would be written per light the same way.
 
-**Why not now:** no readable contents. HA core 2026.11.3 gives the first four no scene platform; Zigbee2MQTT's
-scenes are command-only `mqtt` entities whose contents reach MQTT only on a recall
-([research](integrations/zigbee2mqtt/research/2026-11-26-scenes.md)).
+**Why not now:** no readable contents. HA core 2026.11.3: none of the four has a scene platform; Zigbee2MQTT's
+([research](integrations/zigbee2mqtt/research/2026-11-26-scenes.md)) are command-only.
 
 **Revisit when:**
 - one of these integrations exposes scene entities with readable contents.
@@ -274,7 +274,7 @@ scenes are command-only `mqtt` entities whose contents reach MQTT only on a reca
 
 One file per entry, in place of this page, once one file costs more than it saves.
 
-**Why not now:** seventeen entries.
+**Why not now:** sixteen other entries.
 
 **Revisit when:**
 - it holds more than 30 entries;
