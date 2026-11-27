@@ -1,6 +1,6 @@
 """Zigbee2MQTT's standard lights: where the class lands on the catalog's table (zigbee/standard_lights.py, whose own
 tests are tests/zigbee/test_standard_lights.py), and its levels with the Labs option off (docs/evidence.md,
-Documented, a standard converter's call)."""
+Documented, a pass-through request)."""
 
 from types import SimpleNamespace
 

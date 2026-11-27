@@ -30,7 +30,7 @@ versions in `pyproject.toml`'s lock. The walk of the code is
 | Gamut, `mirek_schema`, features | Change the payload, not the call (`fields_dropped`, `not_dimmable`); no class. `product_archetype`, `min_dim_level`, `dynamics`, `mode` route nothing | [§3](research/2026-11-26-class-admission-code-walk.md#3-per-light-data-changes-the-payload-not-the-call) |
 | Hue Smooth Dimming | Sent every brand the same calls; DeviceSide sends the same requests, adding the saturation fades and `stop`'s xy halt and soft-off cut (measured on Hue bulbs only) | [§4](research/2026-11-26-class-admission-code-walk.md#4-hue-smooth-dimming-sent-every-brand-the-same-calls) |
 
-So `other` holds every other maker's light and gets every action, on a bridge's one request
+So `other` holds every other maker's light and gets every action, on a pass-through request
 ([evidence.md](../../evidence.md#levels)): it gets the request `hue` gets, and no Hue action's failure harms: a light
 that misses one stays on, or shows a wrong value, where the user sees it. A user's report has another brand's Zigbee
 Light Link dimmers running set attributes and set scene
