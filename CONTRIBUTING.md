@@ -35,8 +35,7 @@ Everybody is invited and welcome to contribute.
 - **Decisions based on evidence.** Between Home Assistant and a device's hardware sit undocumented behaviors and design
   gaps that can easily break a feature, so we test on real devices where possible. A feature we can't test ships to
   everyone when it uses a standard call or one a tested device takes. Features with weak evidence or that risk causing
-  harm (e.g. a plug timer that doesn't toggle reliably) are shipped in Labs. A feature that shipped in a release is
-  withdrawn only on a report or a root-caused finding, and the release notes say so
+  harm (e.g. a plug timer that doesn't toggle reliably) are shipped in Labs
   ([evidence rules](docs/evidence.md#levels)).
 
 ## Fast track: build it yourself
