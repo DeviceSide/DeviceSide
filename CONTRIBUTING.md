@@ -33,10 +33,11 @@ Everybody is invited and welcome to contribute.
   the automation editor already do well. We also bridge design gaps between HA and upstream integrations (e.g. HS color
   on Zigbee2MQTT lights).
 - **Decisions based on evidence.** Between Home Assistant and a device's hardware sit undocumented behaviors and design
-  gaps that can easily break a feature. So we test on real devices where possible, and rely on upstream evidence for
-  device classes we don't own (e.g. vendor documentation and upstream Issues/PRs). A feature with neither ships in Labs
-  until someone with the device reports that it works. We exclude devices that deliver a poor or potentially harmful
-  user experience (e.g. a timed on/off that doesn't work) ([evidence rules](docs/evidence.md#levels)).
+  gaps that can easily break a feature, so Claude and I test on real devices where possible. A feature we can't test
+  ships to everyone when it uses a standard call or one a tested device takes. Features with weak evidence or that risk
+  causing harm (e.g. a plug timer that doesn't toggle reliably) are shipped in Labs. A feature that shipped in a release
+  is withdrawn only on a report or a root-caused finding, and the release notes say so ([evidence
+  rules](docs/evidence.md#levels)).
 
 ## Fast track: build it yourself
 
