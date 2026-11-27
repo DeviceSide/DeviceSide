@@ -8,6 +8,8 @@ soaked while `main` moves on. The cut workflows enforce the tag rules, green CI,
 `/rc-audit`) and, in `cut-release`, the release gate (`check_release.py --signoffs`; `docs/evidence.md` says when
 sign-offs must land); see their headers. The steps they don't check:
 
+0. **The first RC of a version:** set `manifest.json` on `main` to that version by PR. `main` stays at the last
+   release's version between releases; `cut-release` needs the RC's commit at the released version.
 1. **Each RC from `main`, before `/rc-audit`:** bump the standard lights table to ZHC's latest release
    (`gh release list -R Koenkk/zigbee-herdsman-converters -L 1`): `.venv/bin/python scripts/zhc_table.py --pin <it>`,
    open the bump PR with the proposal it prints as the body, review its departures there (`docs/evidence.md`,
@@ -20,7 +22,6 @@ sign-offs must land); see their headers. The steps they don't check:
    new RC. Write it for users, by outcome: what they can now do, what behaves differently, and any withdrawal
    (tenet 11), grouped under `##` headings as v0.1.0's release is. No PR list: the workflow appends the compare link.
 4. Dispatch `cut-release` from `main` with `vX.Y.Z`.
-5. Set `manifest.json` on `main` to the next version.
 
 To fix an RC or a release without what `main` has gained since, cut `release/vX.Y.Z` from its tag, land the fix
 there, cut the next RC from it, and merge the branch back into `main`.
