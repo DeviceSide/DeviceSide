@@ -31,3 +31,8 @@
 /tests/integrations/zigbee2mqtt/ @jasonmx
 /tests/fixtures/zigbee2mqtt.py @jasonmx
 /docs/integrations/zigbee2mqtt/ @jasonmx
+
+/custom_components/deviceside/integrations/zwave_js/ @jasonmx
+/tests/integrations/zwave_js/ @jasonmx
+/tests/fixtures/zwave_js.py @jasonmx
+/docs/integrations/zwave_js/ @jasonmx

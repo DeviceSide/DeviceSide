@@ -133,6 +133,12 @@ the automation editor. Because features run on the device, timers still work if 
 - [lights whose driver can't stop a ramp](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp):
   ⚪ set attributes while off, set scene while off, get attributes
 
+**[Z-Wave](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zwave_js/index.md)**
+
+- [Inovelli LZW42 bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zwave_js/index.md#inovelli-lzw42),
+  [Z-Wave dimmers and bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zwave_js/index.md#other-dimmers-and-bulbs):
+  🟡 get attributes
+
 Models and how each was tested are on the
 [compatibility page](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md). Details per
 integration are in [docs/integrations.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md).

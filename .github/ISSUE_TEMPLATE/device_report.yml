@@ -17,6 +17,7 @@ body:
         - Hue
         - Matter
         - Shelly
+        - Z-Wave
         - ZHA
         - Zigbee2MQTT
         # integrations:end

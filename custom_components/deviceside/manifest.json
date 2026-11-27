@@ -1,7 +1,7 @@
 {
   "domain": "deviceside",
   "name": "DeviceSide",
-  "after_dependencies": ["mqtt"],
+  "after_dependencies": ["mqtt", "zwave_js"],
   "codeowners": ["@jasonmx"],
   "config_flow": true,
   "documentation": "https://github.com/DeviceSide/DeviceSide",

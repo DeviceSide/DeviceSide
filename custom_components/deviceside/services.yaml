@@ -335,6 +335,8 @@ get_attributes:
         integration: shelly
       - domain: light
         integration: zha
+      - domain: light
+        integration: zwave_js
 
 set_scene:
   target:

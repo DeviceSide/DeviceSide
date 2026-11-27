@@ -16,4 +16,4 @@ def test_the_card_order_is_the_bundles_column_order():
     }
 
     assert list(CARD_ORDER) == sorted(orders, key=orders.get)
-    assert CARD_ORDER[-1] == "control4"
+    assert CARD_ORDER[-1] == "zwave_js"

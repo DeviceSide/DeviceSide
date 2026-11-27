@@ -10,6 +10,7 @@ page, with its limits and what DeviceSide changes in your setup:
 - [Hue](integrations/hue/index.md)
 - [Matter](integrations/matter/index.md)
 - [Control4](integrations/control4/index.md)
+- [Z-Wave](integrations/zwave_js/index.md)
 <!-- integrations:end -->
 
 What holds for a brand on both Zigbee integrations is on the [Zigbee page](integrations/zigbee.md). Which devices each
