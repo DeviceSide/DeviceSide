@@ -131,4 +131,25 @@ From the config DB, templates resolved; Zooz support pages for ZEN72 and ZEN77 [
 | `set_attributes` color while off | Color Switch Set | probe: does it turn the light on? |
 | groups | multicast with singlecast follow-up | no traffic saved; defer |
 
+## 9. Duration handling, from drivers and vendors (no probe)
+
+No source tests either question on the wire, and neither vendor publishes firmware source. What the drivers and vendors show:
+
+**Zooz: does an explicit duration beat the ramp parameters?** Undetermined.
+
+- jtp10181's Hubitat driver, written with Zooz, sends `setLevel(level, duration)` as Multilevel Switch Set V2 with the given duration, and 0xFF ("factory default") when none is given; its v1.6.2 changelog moved to "device duration instead of overriding it" ([zooz-zen-dimmer.groovy#L49, #L1071-L1103](https://github.com/jtp10181/Hubitat/blob/e8e962d3985653e87c6872815edeff75c65561b5/Drivers/zooz/zooz-zen-dimmer.groovy#L1071-L1103)) [code]. That implies 7x devices honor a duration, and that 0xFF follows the device's own ramp parameter [inferred].
+- For 2x models the same driver notes "the 0xFF default is 0 seconds" and sends parameter 9 as the duration instead (#L1093-L1098) [code].
+- Start Level Change sends the call's duration, else parameter 16; a commented-out "hack for devices that don't implement the duration correctly" wrapped it in parameter 9 writes on older firmware, model unnamed (#L658-L675) [code].
+- Zooz calls 28/29 the ramp when "controlled with Z-Wave", 255 = match 9/27 ([ZEN72 advanced settings](https://www.support.getzooz.com/kb/article/538-zen72-dimmer-switch-advanced-settings/)); fw 10.20 split the old shared parameter 9 ([ZEN72 change log](https://www.support.getzooz.com/kb/article/849-zen72-dimmer-change-log/)) [vendor]. Older 2x dimmers had parameter 17, "Z-Wave can set ramp rate", removed on 7x (driver #L430-L434) [code].
+- Community reports conflict: a ZEN77 on fw 2.1 still ramped with 28/29 at 0 ([SmartThings, 2022-09-26](https://community.smartthings.com/t/obsolete-zooz-edge-driver-channel/246497?page=10)), which fits a command duration being honored but doesn't show it [community].
+
+**Inovelli: is Start Level Change's duration a full-range sweep, and does a Set duration beat the parameters?** Undetermined on the first; one staff statement on the second.
+
+- Silicon Labs' API docs define Start Level Change duration as "the duration from lowest to highest value", and Set duration as "from current value to the new given value" ([docs.silabs.com, multilevel-switch](https://docs.silabs.com/z-wave/latest/zwave-api/multilevel-switch), 2026-11-27) [spec-adjacent]. The normative spec text wasn't reachable.
+- The VZW31-SN and VZW32-SN drivers pass the caller's duration to Start Level Change; the LZW31, LZW42 and LZW45 drivers pass the Dimming Speed parameter as the duration ([vzw31 #L1348-L1358](https://github.com/InovelliUSA/Hubitat/blob/d2a274b189cd83e8f67a0f5222ac7bc8ef386734/Drivers/inovelli-dimmer-red-series-vzw31-sn.src/inovelli-dimmer-red-series-vzw31-sn.groovy#L1348-L1358); [lzw31 #L228](https://github.com/InovelliUSA/Hubitat/blob/d2a274b189cd83e8f67a0f5222ac7bc8ef386734/Drivers/inovelli-dimmer-lzw31.src/inovelli-dimmer-lzw31.groovy#L228)) [code]. Inovelli's parameter manual calls Dimming Speed "the rate that the light dims up when controlled from the hub", with no range stated ([help.inovelli.com](https://help.inovelli.com/en/articles/8201814-red-series-dimmer-switch-parameters)) [vendor].
+- Inovelli staff on the LZW31-SN: "if setLevel is used with a duration, it will use the duration in place of what is set in the parameters" ([community.inovelli.com](https://community.inovelli.com/t/dimming-speed-and-ramp-rate-parameter1-and-parameter3-are-swapped-fixed-in-2020-08-12-driver/3529)) [community]. A 2026 VZW31-SN thread had both the parameter and HA transitions capped near 25 s until beta firmware 2.02 ([thread](https://community.inovelli.com/t/red-series-dimmer-vzw31-sn-unexpected-dimming-speed-behavior/21561)) [community].
+- The LZW42 jumped on a V3 Start Level Change and worked on V2 ([thread, 2022-05](https://community.inovelli.com/t/start-level-change-changes-lights-abruptly/10648?page=2)) [community]: a command-version defect to pin in the adapter.
+
+**What this leaves.** Building to the spec reading (Start Level Change duration = full sweep = `sweep_time`; an explicit Set duration wins) is supported by the Silicon Labs docs and both vendors' drivers, and contradicted by nothing. The first owner with a ZEN7x or an Inovelli dimmer can confirm with a timed sweep.
+
 Probes that would decide open points: (1) a ZEN72/74/77 with parameters 28/29 at 255, sent Set and Start Level Change with explicit durations; (2) an LZW42 sent Color Switch Set while off; (3) Start Level Change duration on Inovelli, timed against `sweep_time`.
