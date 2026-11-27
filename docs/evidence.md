@@ -67,7 +67,7 @@ weakest level among the items it touches. A sign-off covers only what was exerci
 | **Documented** | **a sibling's call** | The class's call differs from a Verified class's only in addressing, both run one vendor's firmware, and its documentation gives the call identically for both (Shelly's components). The PR argues it. Never a class spanning vendors (`other`, a vendor-wide family), and never a field, as a field changes the call. | a bug on the sibling reopens its Documented siblings in the same fix |
 | | **a certified read** | A read that certification sends to every device the class holds: the class keys on a marker certified devices carry and known uncertified ones don't, on the one part the test runs on. Never a write, as the test's field values are its own. The PR names the marker and what slips past it ([Matter](integrations/matter/internals.md#what-decides-the-call)). | contrary evidence |
 | | **a standard converter's call** | Zigbee2MQTT lights alone (a light write's failure is low harm, and Z2M's users are the evidence; ZHA's aren't). The class keys on a ZHC definition whose converters for the action are ZHC's standard ones, no flag or override touching the call, from a committed table naming the ZHC release it was built from. A raw command DeviceSide builds qualifies only where every known failure is visible to the caller. | at the narrowest identity: a ZHC flag or override at the next bump; a Z2M or ZHC issue or PR reporting DeviceSide's call failing, on the report alone, cited; a DeviceSide report as contrary evidence. A bump's departure of a model shipped outside Labs is a withdrawal (tenet 11): a maintainer keeps it with a reason or excludes it with a source. |
-| | **a bridge's one request** | An action whose failure doesn't harm (`Action.failure_harms`): the class gets the request a Verified class gets, and the bridge's firmware picks the call (Hue's CLIP v2). The evidence: a predecessor's or another integration's users sent that request to every brand with no reported departure. It covers actions sending only the fields they sent; a read that sends nothing needs none. `internals.md` lists the departures that would split a device off. | one report of a device failing the request, or misreading, at the narrowest key, cited |
+| | **a bridge's one request** | An action whose failure doesn't harm (`Action.failure_harms`): the class gets a request a real device passed, in any of the integration's classes, and the bridge or the device's driver picks the call (Hue's CLIP v2, Control4's Director). The evidence: a predecessor's or another integration's users sent that request to every brand with no reported departure. It covers actions sending only the fields they sent; a read that sends nothing needs none. `internals.md` lists the departures that would split a device off. | one report of a device failing the request, or misreading, at the narrowest key, cited |
 | **Labs** | a sourced call | Built on a [sourced call](#no-known-method-not-built-yet-in-labs) no real device has passed and no Documented route admits, or held back by a maintainer. Refused unless the Labs option is on. | |
 
 Documented also needs that no known class departs. A field can be in Labs on some classes alone (`labs_fields(...)`,
@@ -88,9 +88,9 @@ the same firmware family, differing only in whose evidence they hold.
 - **Unknown is never Verified.** A device no rule matches gets the default class (`IntegrationInfo.default_class`),
   which the registry refuses at Verified in any scope. Spanning vendors, it is Documented only by a certified read or a
   bridge's one request; otherwise it is `labs(...)` where research predicts most of it accepts the call (Zigbee 3.0
-  certification and the dimming commands: [internals](internals.md#shared)), else not built yet. No pass lifts it: a
-  record on a device outside the named classes adds a class named for its maker (Zigbee2MQTT: `innr`), as one maker's
-  record proves nothing about the rest. Where a call is known to harm, a target DeviceSide can't class yet is refused
+  certification and the dimming commands: [internals](internals.md#shared)), else not built yet. No pass makes it
+  Verified: a record on a device outside the named classes can add a class named for its maker (Zigbee2MQTT: `innr`),
+  as one maker's record proves nothing about the rest. Where a call is known to harm, a target DeviceSide can't class yet is refused
   (`class_unknown`, below).
 - **A level per class and domain.** A class's level holds on every domain the adapter serves unless its entry names
   some (`verified(..., domains=...)`, core's `OnDomains`); on the rest it has no entry and counts as a Labs item. A
@@ -188,7 +188,7 @@ option, and turning it on changes how no other item behaves.
 A new item ships at the level tenet 10 and [Levels](#levels) give. Nothing counts users' reports in code: a maintainer
 judges whether a pass is enough (tenet 7). A maintainer may keep a complex tested item in Labs to soak with
 users who opt in, as an exception, giving the reason in its PR. A field passes only on a test that sent it, which no
-check can tell ([deferred](deferred.md#field-lifts-checked-against-a-record)). No pass lifts the default class.
+check can tell ([deferred](deferred.md#field-lifts-checked-against-a-record)).
 
 Lifting a flag makes `labs(...)` into `verified(...)` on a pass (an adapter flagged whole: its domains) or into
 `documented(...)` on a route its PR argues, or removes a `labs_fields(...)` entry. It changes the integration's
