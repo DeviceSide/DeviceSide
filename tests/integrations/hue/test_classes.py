@@ -120,7 +120,7 @@ def get_entry(hass) -> str:
 
 @pytest.mark.parametrize("adapter", ADAPTERS, ids=lambda adapter: adapter.action)
 def test_hue_is_verified_and_other_documented_on_every_adapter(adapter):
-    # other on a bridge's one request (docs/evidence.md, Levels): every light gets the same CLIP v2 request. Gledopto
+    # other on a pass-through request (docs/evidence.md, Levels): every light gets the same CLIP v2 request. Gledopto
     # shares other's levels but get_attributes', as the bridge reports its color temperature mode wrong (core #62497,
     # #93459).
     levels = {"hue": Level.VERIFIED, "other": Level.DOCUMENTED}

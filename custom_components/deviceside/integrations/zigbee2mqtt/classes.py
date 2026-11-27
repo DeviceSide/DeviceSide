@@ -89,7 +89,7 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
 }
 
 # The standard lights' level in each adapter's scope (index.md, Standard lights; docs/evidence.md, Documented, a
-# standard converter's call). Like `other`, the integration's own class (IntegrationInfo.own_classes), as it spans
+# pass-through request). Like `other`, the integration's own class (IntegrationInfo.own_classes), as it spans
 # vendors: other brands' lights whose definition sends DeviceSide's calls through ZHC's standard converters
 # (zigbee/standard_lights.py), carved out of `other` by the rule after every family's (families/__init__.py). Documented
 # on Zigbee2MQTT's usage: its users send the fades, stop and the hue and saturation moves through the same converters. A
