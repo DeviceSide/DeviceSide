@@ -36,8 +36,8 @@ Everybody is invited and welcome to contribute.
   gaps that can easily break a feature, so Claude and I test on real devices where possible. A feature we can't test
   ships to everyone when it uses a standard call or one a tested device takes. Features with weak evidence or that risk
   causing harm (e.g. a plug timer that doesn't toggle reliably) are shipped in Labs. A feature that shipped in a release
-  is withdrawn only on a report or a root-caused finding, and the release notes say so ([evidence
-  rules](docs/evidence.md#levels)).
+  is withdrawn only on a report or a root-caused finding, and the release notes say so
+  ([evidence rules](docs/evidence.md#levels)).
 
 ## Fast track: build it yourself
 
