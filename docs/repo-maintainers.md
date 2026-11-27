@@ -38,8 +38,9 @@ invite them to Triage, as for an integration's maintainers.
 - **`pull_request_target` allowed explicitly (Actions event policy):** "Protected files" and "Owner notice" run on
   it, to check and comment on fork PRs. GitHub is changing its default to block it on public repos (a brownout on
   2026-11-16 failed both with `startup_failure` and no jobs), so the policy must allow it, or both stop running.
-- **Pages (repo, Settings > Pages):** Source = GitHub Actions, and `actions/upload-pages-artifact` and
-  `actions/deploy-pages` on the Actions allow-list. `installs-badge.yml` deploys the README's Installs badge from it.
+- **Pages (repo, Settings > Pages):** Source = GitHub Actions, and `actions/upload-pages-artifact`,
+  `actions/deploy-pages` and `actions/upload-artifact` (the first calls it) on the Actions allow-list.
+  `installs-badge.yml` deploys the README's Installs badge from it.
 - **Allow auto-merge (repo, General):** `/merge` turns on auto-merge, and Renovate's digest and patch updates use
   it, to merge once their checks pass.
 
