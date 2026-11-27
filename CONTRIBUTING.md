@@ -32,12 +32,11 @@ Everybody is invited and welcome to contribute.
 - **Feature gaps.** We focus on features that are missing from or unintuitive in HA. We avoid replicating what Core and
   the automation editor already do well. We also bridge design gaps between HA and upstream integrations (e.g. HS color
   on Zigbee2MQTT lights).
-- **Tested on real devices, included unless harmful.** Between Home Assistant and a device's hardware sit undocumented
-  behaviors and design gaps that can easily break a feature, and even vendor documentation is sometimes wrong, so Claude
-  and I test our main assumptions on real devices. But users want features on devices nobody here can test, so a feature
-  ships to everyone unless it's likely to cause harm or nothing shows it should work; the rest ships in Labs until
-  someone with the device reports that it works. A feature that shipped in a release (not an RC) stays unless a report
-  or a root-caused finding says otherwise, and the release notes say so ([evidence rules](docs/evidence.md#levels)).
+- **Decisions based on evidence.** Between Home Assistant and a device's hardware sit undocumented behaviors and design
+  gaps that can easily break a feature. So we test on real devices where possible, and rely on upstream evidence for
+  device classes we don't own (e.g. vendor documentation and upstream Issues/PRs). A feature with neither ships in Labs
+  until someone with the device reports that it works. We actively exclude devices that deliver a poor or potentially
+  harmful user experience (e.g. a timed on/off that doesn't work) ([evidence rules](docs/evidence.md#levels)).
 
 ## Fast track: build it yourself
 
