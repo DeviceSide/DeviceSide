@@ -23,3 +23,12 @@ reports.
 | `lzw42` | Inovelli LZW42: manufacturer 0x031e, product type 0x0005, product ID 0x0001 ([Z-Wave JS config](https://github.com/zwave-js/zwave-js/blob/473703662970725e75fcf8d6f2d226c48dc4f3ba/packages/config/config/devices/0x031e/lzw42.json)) |
 | `v1` | Multilevel Switch version 1, which has no duration |
 | `other` | Any other Multilevel Switch endpoint |
+
+## Start Level Change duration
+
+The Simplicity SDK scales the duration to the distance when the command carries a start level, so it means a full
+0-99 sweep
+([ZAF_Actuator.c#L176-L180](https://github.com/SiliconLabs/simplicity_sdk/blob/f107f75d25c1d92dc3d5ca16b83f1656145f4e6e/protocol/z-wave/ZAF/ApplicationUtilities/Actuator/ZAF_Actuator.c#L176-L180)).
+Gecko SDK 4.4.6 never scales it, so it covers the distance left
+([ZAF_Actuator.c#L168-L193](https://github.com/SiliconLabs/gecko_sdk/blob/59d2160fe448b13730a91c0f019a8b4c53c43eb2/protocol/z-wave/ZAF/ApplicationUtilities/Actuator/ZAF_Actuator.c#L168-L193)).
+Which a vendor's firmware follows is unsourced.
