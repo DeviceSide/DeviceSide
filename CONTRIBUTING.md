@@ -35,8 +35,8 @@ Everybody is invited and welcome to contribute.
 - **Decisions based on evidence.** Between Home Assistant and a device's hardware sit undocumented behaviors and design
   gaps that can easily break a feature. So we test on real devices where possible, and rely on upstream evidence for
   device classes we don't own (e.g. vendor documentation and upstream Issues/PRs). A feature with neither ships in Labs
-  until someone with the device reports that it works. We actively exclude devices that deliver a poor or potentially
-  harmful user experience (e.g. a timed on/off that doesn't work) ([evidence rules](docs/evidence.md#levels)).
+  until someone with the device reports that it works. We exclude devices that deliver a poor or potentially harmful
+  user experience (e.g. a timed on/off that doesn't work) ([evidence rules](docs/evidence.md#levels)).
 
 ## Fast track: build it yourself
 
