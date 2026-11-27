@@ -1,0 +1,46 @@
+# Publishes the README's Installs badge. shields.io times out (HTTP 408) fetching HA's ~700 KB
+# custom_integrations.json, so this reads our one number daily and serves it as a tiny shields endpoint on GitHub Pages.
+name: Installs badge
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installs-badge
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Build the badge endpoint
+        run: |
+          mkdir _site
+          curl -fsSL --retry 3 --max-time 120 -o analytics.json https://analytics.home-assistant.io/custom_integrations.json
+          total="$(jq -e '.deviceside.total | select(type == "number" and . == floor)' analytics.json)"
+          jq -n --argjson n "$total" '{schemaVersion: 1, label: "Installs", message: ($n | tostring), color: "blue"}' > _site/installs.json
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=https://github.com/DeviceSide/DeviceSide">
+          <title>DeviceSide</title>
+          <a href="https://github.com/DeviceSide/DeviceSide">DeviceSide</a>
+          HTML
+          cat _site/installs.json
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

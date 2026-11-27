@@ -1,7 +1,7 @@
 # DeviceSide
 
 [![Latest Version](https://img.shields.io/github/v/release/DeviceSide/DeviceSide?sort=date)](https://github.com/DeviceSide/DeviceSide/releases)
-![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=deviceside.total&url=https://analytics.home-assistant.io/custom_integrations.json)
+![Installs](https://img.shields.io/endpoint?url=https://deviceside.github.io/DeviceSide/installs.json&label=Installs&color=blue)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
 DeviceSide unlocks features that run natively on your devices, via the Z2M, ZHA, Shelly, Hue, Matter and Control4
