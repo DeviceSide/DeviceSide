@@ -3,7 +3,7 @@
 Research date: 2026-11-28. Scope: which calls, reached through Home Assistant's `tplink` integration and its
 `python-kasa` device objects, would serve DeviceSide's actions on Kasa and Tapo plugs, strips, switches, dimmers and
 bulbs, and what core already offers. Feeds the decision: whether a `tplink` integration clears CONTRIBUTING's
-development principles, and which actions it carries. No probe or rig run backs anything here.
+development principles, and which actions it carries. Section 9's KP115 probe is the only hardware run behind it.
 
 Unreachable from this session: home-assistant.io, community.home-assistant.io, community.hubitat.com,
 community.tp-link.com and tapo.com (DNS refused by the sandbox). Forum and vendor-FAQ items in the Signal section are
@@ -64,9 +64,9 @@ python-kasa then drops the module (PK/kasa/iot/iotmodule.py#L69-L76). So the mod
 
 The call, then, is not in a primary source. Its shape from the signal (section 7): `count_down.add_rule`
 `{enable, delay, act, name}`, `delay` in seconds, `act` 0 off or 1 on; one rule at most, a second `add_rule` failing
-with `-10 "table is full"`; `delete_all_rules` clears it; strip outlets addressed with `context.child_ids`. Whether
-`get_rules` reports time left (a `remain` field), the maximum delay, and what a button press does to a running
-rule are unsourced.
+with `-10 "table is full"`; `delete_all_rules` clears it; strip outlets addressed with `context.child_ids`. On a KP115
+(section 9) `get_rules` reports time left (`remain`), the maximum delay is 86400 s, and a manual off cancels a running
+rule.
 
 DeviceSide can send it with python-kasa's own raw path: `IotDevice._query_helper(target, cmd, arg, child_ids)`, which
 adds `{"context": {"child_ids": [...]}}` for an outlet (PK/kasa/iot/iotdevice.py#L232-L243, #L254-L269). That method
@@ -98,10 +98,9 @@ allows" (section 7) [signal]. SMART calls go through `SmartDevice._query_helper(
 
 ### A running countdown when the device is switched
 
-Unsourced on both protocols. No primary source says whether a plain on or off, from the app, a button or HA, cancels,
-restarts or leaves a rule. The one statement is the python-kasa maintainer's, on a KP115: the rule "is not removed
-automatically" and is disabled once it fires (section 7) [signal]. This decides whether `turn_on_for` can be left
-running safely, and is the first probe (section 9).
+IOT, on a KP115: a button off or `set_relay_state` off cancels a running rule, a later on doesn't restore it, and an
+on to a plug already on leaves it running; a spent or cancelled rule stays in the list, disabled (section 9). SMART:
+unsourced; no primary source says whether a plain on or off cancels, restarts or leaves a rule.
 
 ## 3. Auto-off (`set_auto_off`, `clear_auto_off`)
 
@@ -188,7 +187,7 @@ First cut by family:
 
 | Class | Models (PK/README.md#L190-L211) | Countdown | Auto-off | Set while off |
 |---|---|---|---|---|
-| IOT plug and wall switch | HS100, HS103, HS105, HS110, KP100, KP105, KP115, KP401, EP10; HS200 to v5.0, HS210, KS200 | `count_down`, call from signal | none | n/a |
+| IOT plug and wall switch | HS100, HS103, HS105, HS110, KP100, KP105, KP115, KP401, EP10; HS200 to v5.0, HS210, KS200 | `count_down`, probed on a KP115 (section 9) | none | n/a |
 | IOT strip outlet | HS300, KP303, KP400, HS107, KP200, EP40 | `count_down` with `child_ids`, from signal | none | n/a |
 | IOT dimmer | HS220 v1/v2, KS220, KS230, ES20M, KP405 | `count_down` assumed, unsourced | none | brightness (core) |
 | IOT bulb and light strip | KL, LB | namespace unsourced | none | unsourced |
@@ -254,8 +253,8 @@ call.
 
 | Action | IOT | SMART | Notes |
 |---|---|---|---|
-| `turn_on_for`, `turn_off_for` | `count_down` rule, call from signal | `add_countdown_rule`, call from signal; read shape in fixtures | not in core; one rule per device or outlet; behavior on a manual switch unsourced |
-| `get_attributes` `timer` | `remain` unsourced | `remain` in `get_countdown_rules` | |
+| `turn_on_for`, `turn_off_for` | `count_down` rule, call from signal | `add_countdown_rule`, call from signal; read shape in fixtures | not in core; one rule per device or outlet; IOT: a manual off cancels the rule (section 9) |
+| `get_attributes` `timer` | `remain` in `get_rules` (section 9) | `remain` in `get_countdown_rules` | |
 | `set_auto_off`, `clear_auto_off` | no known method | `set_auto_off_config`, minutes | core has it: leave to core |
 | `set_auto_on`, `clear_auto_on` | none | none | no known method |
 | `raise_*`, `lower_*`, `stop` | no stop | no stop, no per-command transition | no known method |
@@ -264,34 +263,40 @@ call.
 
 ## 9. Probes
 
-Cheap probes on a KP105 and a KP115 (both IOT plugs) the repo maintainer can reach, run with python-kasa's CLI
+Run on a KP115 (IOT plug) on 2026-11-28 with python-kasa's CLI
 (`kasa --host <address> command --module <namespace> <cmd> '<params>'`, PK/kasa/cli/main.py#L421-L439) and the device's
-`sys_info`. Each names the decision it takes (Evidence tenets 2 and 8).
+`sys_info`; the KP105 planned alongside it died before the run. Commands, raw replies and timings:
+[2026-11-28-tplink-kp115-probe.md](2026-11-28-tplink-kp115-probe.md). Each names the decision it took (Evidence tenets
+2 and 8).
 
-1. **Namespace and read shape.** `count_down get_rules` and `countdown get_rules` on both plugs. Decides the IOT call's
-   namespace, whether python-kasa's `Countdown` module is dead on hardware (a finding for its maintainers, in
-   `internals.md`), and whether `get_rules` returns `remain`: if not, IOT `get_attributes` `timer` is no known method
-   and IOT countdowns are refused, per `docs/action-behavior.md`.
-2. **Add, replace, delete.** `add_rule {"enable": 1, "delay": 60, "act": 0, "name": "t"}` while on; a second `add_rule`
-   (expect `-10`); `delete_all_rules`; `add_rule` again. Decides the send sequence (delete-then-add, or edit) and its
-   call transcript.
-3. **Manual switch during a countdown.** Start a 120 s off rule, then press the plug's button off and on; repeat with
-   `set_relay_state` from HA; read `get_rules` and watch whether the plug still turns off at 120 s. Decides whether
-   `turn_on_for` is safe outside Labs (a stale rule that turns a plug off after someone turned it on by hand is the
-   harm CONTRIBUTING names) and what `docs/action-behavior.md` says a running timer does on a plain on or off.
-4. **Firing and residue.** Let a rule fire; read `get_rules` and `sys_info.active_mode`. Decides whether DeviceSide
-   must delete the spent rule before the next add, and whether `active_mode` can tell a running timer from a spent one.
-5. **Long delay.** `add_rule` with `delay` 86400 and 604800. Decides `DurationLimits` for the IOT class.
+1. **Namespace and read shape.** `count_down get_rules` answers; `countdown get_rules` is `-1 "module not support"`,
+   so python-kasa's `Countdown` module queries a namespace this plug doesn't serve (a finding for its maintainers). A
+   rule reads `{id, name, enable, delay, act, remain}`, `remain` in whole seconds. Took: the namespace is
+   `count_down`, and `get_attributes` `timer` reads `remain`, so IOT countdowns aren't refused.
+2. **Add, replace, delete.** A second `add_rule` is `-10 "table is full"`; `delete_all_rules` then `add_rule` works.
+   Took: the send sequence is delete-then-add.
+3. **Manual switch during a countdown.** A button off, or `set_relay_state` off as HA sends it, cancels a running rule
+   (`enable: 0`, `remain: 0`), and a later on doesn't restore it: the plug stayed on past the fire time. A
+   `set_relay_state` on to a plug already on leaves the rule running. Took: no stale rule after a manual switch, so
+   no Labs caveat on that ground; a plain off ends the timer.
+4. **Firing and residue.** A rule fires on time and stays in the list, disabled with `remain: 0`, blocking the next
+   `add_rule` with `-10`. `sys_info.active_mode` is `count_down` only while a rule runs. Took: delete before every
+   add; a rule with `enable: 1` is a running timer.
+5. **Long delay.** 86400 s is accepted, 86401 s and 604800 s are `-3 "invalid argument"`. Took: the IOT maximum is
+   86400 s. The minimum wasn't probed.
 
-None reaches SMART devices, dimmers or bulbs: those stay at the level their sources give until an owner probes.
+None reaches strip outlets, wall switches, SMART devices, dimmers or bulbs: those stay at the level their sources give
+until an owner probes.
 
 ## 10. Recommendation
 
 **Build part.** A `tplink` integration whose first scope is `turn_on_for` and `turn_off_for`, with
 `get_attributes` (`timer`), on plugs, wall switches and strip outlets:
 
-- **IOT plug and wall switch, IOT strip outlet**: after probes 1-3 on the KP105 and KP115. If probe 1 shows no
-  `remain`, the class is refused (`no_known_method`) rather than shipped without a readable timer.
+- **IOT plug and wall switch, IOT strip outlet**: build, from the KP115 probe (section 9): `count_down`
+  `delete_all_rules` then `add_rule {enable: 1, delay, act, name}`, `delay` up to 86400 s, `timer` from `remain`. A
+  manual off cancels the rule, so no stale-rule caveat. Wall switches and strip outlets send the same call (an outlet
+  adds `context.child_ids`) but weren't probed.
 - **SMART plug and switch, SMART strip child, SMART hub child switch**: Labs, from the fixtures' rule shape and the
   `tapo` library's call, until a SMART owner's run.
 - **Leave to core**: SMART auto-off (fully exposed since 2024.7).
@@ -300,8 +305,7 @@ None reaches SMART devices, dimmers or bulbs: those stay at the level their sour
   an HS220 or KS230 owner for its `get_attributes` and the classes' other calls), and countdowns on dimmers and bulbs
   (IOT bulb namespace unsourced).
 
-If probe 3 shows a manual switch leaves a rule that later turns the plug off, IOT countdowns go to Labs with that
-caveat, and the SMART classes stay in Labs until a SMART run shows otherwise.
+The SMART classes stay in Labs until a SMART run shows what a manual switch does to their rule.
 
 Smooth moves reopen when a TP-Link firmware or python-kasa adds a stop or move call, or an HS220 or KS230 owner shows a
 mid-fade `sys_info.brightness` read and a `set_brightness` to it halt a `set_dimmer_transition` without a jump.
