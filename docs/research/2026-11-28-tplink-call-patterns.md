@@ -282,8 +282,9 @@ Run on a KP115 (IOT plug) on 2026-11-28 with python-kasa's CLI
 4. **Firing and residue.** A rule fires on time and stays in the list, disabled with `remain: 0`, blocking the next
    `add_rule` with `-10`. `sys_info.active_mode` is `count_down` only while a rule runs. Took: delete before every
    add; a rule with `enable: 1` is a running timer.
-5. **Long delay.** 86400 s is accepted, 86401 s and 604800 s are `-3 "invalid argument"`. Took: the IOT maximum is
-   86400 s. The minimum wasn't probed.
+5. **Delay range.** 1 s to 86400 s are accepted; 86401 s, 604800 s and -1 s are `-3 "invalid argument"`. 0 s returns an
+   `id` but stores the rule disabled, and it never fires. Took: IOT `DurationLimits` is 1 s to 86400 s, and DeviceSide
+   never sends 0.
 
 None reaches strip outlets, wall switches, SMART devices, dimmers or bulbs: those stay at the level their sources give
 until an owner probes.
@@ -294,7 +295,7 @@ until an owner probes.
 `get_attributes` (`timer`), on plugs, wall switches and strip outlets:
 
 - **IOT plug and wall switch, IOT strip outlet**: build, from the KP115 probe (section 9): `count_down`
-  `delete_all_rules` then `add_rule {enable: 1, delay, act, name}`, `delay` up to 86400 s, `timer` from `remain`. A
+  `delete_all_rules` then `add_rule {enable: 1, delay, act, name}`, `delay` 1 s to 86400 s, `timer` from `remain`. A
   manual off cancels the rule, so no stale-rule caveat. Wall switches and strip outlets send the same call (an outlet
   adds `context.child_ids`) but weren't probed.
 - **SMART plug and switch, SMART strip child, SMART hub child switch**: Labs, from the fixtures' rule shape and the

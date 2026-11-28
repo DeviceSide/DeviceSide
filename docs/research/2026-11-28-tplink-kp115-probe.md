@@ -1,6 +1,6 @@
 # TP-Link KP115 countdown probe (2026-11-28)
 
-Run date: 2026-11-28, 11:47 to 12:07 UTC (the plug's time zone, GB, is UTC in November). Runs the probes in
+Run date: 2026-11-28, 11:47 to 12:27 UTC (the plug's time zone, GB, is UTC in November). Runs the probes in
 section 9 of [2026-11-28-tplink-call-patterns.md](2026-11-28-tplink-call-patterns.md) on one IOT plug; the KP105 that
 section planned for died before the run. Nothing was plugged into the plug.
 
@@ -23,7 +23,7 @@ UTC time when the reply arrived.
 | 2. Add, replace, delete | `add_rule` returns `{"id"}`; a second is `-10 "table is full"`; `delete_all_rules` empties the list; a new `add_rule` then works | Send `delete_all_rules`, then `add_rule`. No `edit_rule` needed |
 | 3. Manual switch | Button off cancels a running off rule (`enable: 0`, `delay: 0`, `remain: 0`); button on doesn't restore it; the plug stayed on past the fire time. `set_relay_state` (python-kasa `off`, `on`) does the same. A `set_relay_state` on to a plug already on leaves the rule running | No stale rule after a manual switch, so the Labs caveat doesn't apply. A plain off cancels the timer; a plain on that changes nothing leaves it |
 | 4. Firing and residue | A 15 s off rule fired 15 to 16 s after it was added. The spent rule stays, disabled with `delay: 0`, `remain: 0`, and blocks the next `add_rule` with `-10` | DeviceSide deletes before every add. A rule is running when `enable` is 1, and `sys_info.active_mode` is `count_down` only while one runs |
-| 5. Long delay | 86400 s accepted (`remain: 86399`); 86401 s and 604800 s are `-3 "invalid argument"` | IOT `DurationLimits` maximum is 86400 s. The minimum is unprobed |
+| 5. Delay range | 86400 s accepted (`remain: 86399`); 86401 s, 604800 s and -1 s are `-3 "invalid argument"`. 0 s returns an `id` but stores the rule disabled, and it never fires. 1 s fires, about 3 s after the add | IOT `DurationLimits` is 1 s to 86400 s. A 0 s delay is a silent no-op on the device, so DeviceSide never sends it |
 
 ### `sys_info` while a rule runs
 
@@ -249,8 +249,53 @@ Narrowing the maximum:
           # relay_state 0, active_mode "none", next_action {"type":-1}, on_time 0
 ```
 
+### 5b. Minimum delay
+
+Run at 12:26 to 12:27 UTC. `sys_info` polled every 0.9 s for 6 s after each add.
+
+```
+12:26:29  kasa --host "$HOST" --type plug on
+          Turning on <alias>
+12:26:30  kasa --host "$HOST" --type plug command --module count_down add_rule '{"enable":1,"delay":0,"act":0,"name":"t"}'
+          {"id": "69E31F076FE376E66FE5060F6CE572FF"}
+12:26:30  kasa --host "$HOST" --type plug command --module count_down get_rules
+          {"rule_list": [{"id": "69E31F076FE376E66FE5060F6CE572FF", "name": "t", "enable": 0, "delay": 0, "act": 0, "remain": 0}]}
+12:26:37  kasa --host "$HOST" --type plug command --module count_down get_rules
+          {"rule_list": [{"id": "69E31F076FE376E66FE5060F6CE572FF", "name": "t", "enable": 0, "delay": 0, "act": 0, "remain": 0}]}
+12:26:38  kasa --host "$HOST" --type plug command --module count_down delete_all_rules
+          {}
+12:26:38  kasa --host "$HOST" --type plug on
+          Turning on <alias>
+12:26:39  kasa --host "$HOST" --type plug command --module count_down add_rule '{"enable":1,"delay":1,"act":0,"name":"t"}'
+          {"id": "470F4D506482FDC1620135F16387AD39"}
+12:26:39  kasa --host "$HOST" --type plug command --module count_down get_rules
+          {"rule_list": [{"id": "470F4D506482FDC1620135F16387AD39", "name": "t", "enable": 1, "delay": 1, "act": 0, "remain": 1}]}
+12:26:46  kasa --host "$HOST" --type plug command --module count_down get_rules
+          {"rule_list": [{"id": "470F4D506482FDC1620135F16387AD39", "name": "t", "enable": 0, "delay": 0, "act": 0, "remain": 0}]}
+12:26:47  kasa --host "$HOST" --type plug command --module count_down delete_all_rules
+          {}
+12:26:47  kasa --host "$HOST" --type plug on
+          Turning on <alias>
+12:26:47  kasa --host "$HOST" --type plug command --module count_down add_rule '{"enable":1,"delay":-1,"act":0,"name":"t"}'
+          Error on count_down add_rule: {'err_code': -3, 'err_msg': 'invalid argument'}
+12:26:48  kasa --host "$HOST" --type plug command --module count_down get_rules
+          {"rule_list": []}
+12:26:54  kasa --host "$HOST" --type plug command --module count_down get_rules
+          {"rule_list": []}
+12:26:55  kasa --host "$HOST" --type plug command --module count_down delete_all_rules
+          {}
+12:26:55  kasa --host "$HOST" --type plug off
+          Turning off <alias>
+12:26:56  kasa --host "$HOST" --type plug command --module count_down get_rules
+          {"rule_list": []}
+12:26:56  kasa --host "$HOST" --type plug command --module system get_sysinfo
+          # relay_state 0, active_mode "none", next_action {"type":-1}, on_time 0
+```
+
+Polls: delay 0: 12:26:31 relay_state 1, active_mode none (last read 12:26:36); delay 1: 12:26:40 relay_state 1, active_mode count_down; 12:26:42 relay_state 0, active_mode none; delay -1: 12:26:48 relay_state 1, active_mode none (last read 12:26:53).
+The 1 s rule turned the relay off between the 12:26:42.0 and 12:26:42.9 reads, about 3 s after the add at 12:26:39.
+
 ## Left open
 
-- The minimum delay (0 s or 1 s) wasn't probed.
 - Strip outlets (`context.child_ids`), wall switches and IOT bulbs weren't probed; nor whether the rule survives a
   power cut or reboot.
