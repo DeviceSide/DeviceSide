@@ -1,0 +1,16 @@
+# Z-Wave's data for scripts/gen_compat.py (the README card and the evidence on docs/device-compatibility.md) and
+# scripts/gen_features.py (the feature table's column). gen_compat's docstring gives the format.
+
+column: Z-Wave
+column_order: 7
+capabilities:
+  # The classes integrations/zwave_js/classes.py names.
+  other:
+    phrase: Z-Wave dimmers and bulbs
+    section: Other dimmers and bulbs
+  lzw42:
+    phrase: Inovelli LZW42 bulbs
+    section: Inovelli LZW42
+  v1:
+    phrase: Z-Wave dimmers with Multilevel Switch version 1
+    section: Version 1 dimmers

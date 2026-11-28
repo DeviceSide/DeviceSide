@@ -1,0 +1,862 @@
+[
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "lzw42",
+    "data": {
+     "brightness": 100.0
+    },
+    "detail": null,
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 99
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 1.0
+    },
+    "detail": null,
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 1
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 100.0
+    },
+    "detail": null,
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 99
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 20.2
+    },
+    "detail": null,
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 20,
+     "duration": {
+      "unit": "seconds",
+      "value": 5
+     },
+     "targetValue": 80
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 50.5
+    },
+    "detail": null,
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 50
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {},
+    "detail": null,
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    [
+     50
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": "50"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": -1
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 254
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 255
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 50.5
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": null
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.dimmer",
+     "light.dimmer",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.dimmer",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {}
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 100.0
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {},
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 99
+    }
+   ],
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "zwave_js",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 20.2
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "zwave_js",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zwave_js.ZwaveEndpoint.async_invoke_cc_api",
+     [
+      38,
+      "get"
+     ],
+     {}
+    ],
+    {
+     "currentValue": 20
+    }
+   ]
+  ]
+ }
+]
