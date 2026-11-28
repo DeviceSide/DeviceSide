@@ -504,3 +504,13 @@ This integration follows standard integration removal.
    [![Open the DeviceSide integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=deviceside)
 
 2. Open the ⋮ menu and choose **Delete**
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=deviceside%2Fdeviceside&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=deviceside/deviceside&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=deviceside/deviceside&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=deviceside/deviceside&type=date&legend=top-left" />
+ </picture>
+</a>
