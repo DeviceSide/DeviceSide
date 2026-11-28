@@ -32,3 +32,14 @@ The Simplicity SDK scales the duration to the distance when the command carries 
 Gecko SDK 4.4.6 never scales it, so it covers the distance left
 ([ZAF_Actuator.c#L168-L193](https://github.com/SiliconLabs/gecko_sdk/blob/59d2160fe448b13730a91c0f019a8b4c53c43eb2/protocol/z-wave/ZAF/ApplicationUtilities/Actuator/ZAF_Actuator.c#L168-L193)).
 Which a vendor's firmware follows is unsourced.
+
+## Stop Level Change
+
+In both SDKs, Set with a duration and Start Level Change run one actuator timer
+([ZAF_Actuator.c#L294](https://github.com/SiliconLabs/simplicity_sdk/blob/f107f75d25c1d92dc3d5ca16b83f1656145f4e6e/protocol/z-wave/ZAF/ApplicationUtilities/Actuator/ZAF_Actuator.c#L294)),
+and Stop Level Change stops it whatever started it, then reports
+([ZAF_Actuator.c#L199-L210](https://github.com/SiliconLabs/simplicity_sdk/blob/f107f75d25c1d92dc3d5ca16b83f1656145f4e6e/protocol/z-wave/ZAF/ApplicationUtilities/Actuator/ZAF_Actuator.c#L199-L210);
+[CC_MultilevelSwitch_Support.c#L287-L306](https://github.com/SiliconLabs/simplicity_sdk/blob/f107f75d25c1d92dc3d5ca16b83f1656145f4e6e/protocol/z-wave/ZAF/CommandClasses/MultilevelSwitch/src/CC_MultilevelSwitch_Support.c#L287-L306);
+Gecko SDK 4.4.6:
+[ZAF_Actuator.c#L197-L207](https://github.com/SiliconLabs/gecko_sdk/blob/59d2160fe448b13730a91c0f019a8b4c53c43eb2/protocol/z-wave/ZAF/ApplicationUtilities/Actuator/ZAF_Actuator.c#L197-L207)).
+Firmware not built on either SDK, such as 500-series, is unsourced.
