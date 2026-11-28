@@ -1,0 +1,14 @@
+# TP-Link's data for scripts/gen_compat.py (the README card and the evidence on docs/device-compatibility.md) and
+# scripts/gen_features.py (the feature table's column). gen_compat's docstring gives the format.
+
+column: TP-Link
+column_order: 6
+capabilities:
+  # The classes integrations/tplink/classes.py names.
+  iot_plug: {phrase: Kasa plugs and switches, section: Kasa plugs and switches}
+  iot_strip_outlet: {phrase: Kasa strip outlets, section: Kasa strip outlets}
+  smart_plug: {phrase: Tapo plugs and switches, section: Tapo plugs and switches}
+  smart_strip_child: {phrase: Tapo strip outlets, section: Tapo strip outlets}
+  smart_hub_child: {phrase: Tapo hub switches, section: Tapo hub switches}
+  smart_light: {phrase: Tapo lights, section: Tapo lights}
+  iot_light: {phrase: Kasa lights, section: Kasa lights}

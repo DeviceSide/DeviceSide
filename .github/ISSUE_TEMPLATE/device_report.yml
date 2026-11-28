@@ -17,6 +17,7 @@ body:
         - Hue
         - Matter
         - Shelly
+        - TP-Link
         - ZHA
         - Zigbee2MQTT
         # integrations:end

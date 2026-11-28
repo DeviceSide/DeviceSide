@@ -22,6 +22,11 @@
 /tests/fixtures/shelly.py @jasonmx
 /docs/integrations/shelly/ @jasonmx
 
+/custom_components/deviceside/integrations/tplink/ @jasonmx
+/tests/integrations/tplink/ @jasonmx
+/tests/fixtures/tplink.py @jasonmx
+/docs/integrations/tplink/ @jasonmx
+
 /custom_components/deviceside/integrations/zha/ @jasonmx
 /tests/integrations/zha/ @jasonmx
 /tests/fixtures/zha.py @jasonmx

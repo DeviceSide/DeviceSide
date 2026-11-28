@@ -9,6 +9,7 @@ page, with its limits and what DeviceSide changes in your setup:
 - [Shelly](integrations/shelly/index.md)
 - [Hue](integrations/hue/index.md)
 - [Matter](integrations/matter/index.md)
+- [TP-Link](integrations/tplink/index.md)
 - [Control4](integrations/control4/index.md)
 <!-- integrations:end -->
 
