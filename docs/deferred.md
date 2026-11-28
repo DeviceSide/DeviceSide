@@ -262,6 +262,24 @@ Zigbee2MQTT would be written per light the same way.
 **Revisit when:**
 - one of these integrations exposes scene entities with readable contents.
 
+## Lutron LEAP integration
+
+A `lutron_caseta` integration: `raise_brightness`, `lower_brightness` and `stop` as LEAP zone Raise, Lower and Stop
+on dimmer zones, with `get_attributes`, in Labs on Caséta bridges and RadioRA 3
+([research](research/2026-11-28-lutron-leap-call-patterns.md), Option A).
+
+**Why not now:** `lutron_caseta` is on 1.9 % of active installs (rank 168), nobody on the project has a LEAP bridge,
+the move rests on one third-party run and one community driver, and a Caséta bridge may hold a move sent on a Pico's
+hold until the Pico stops transmitting ([research](research/2026-11-28-lutron-leap-call-patterns.md),
+section 5).
+
+**Revisit when:**
+- a contributor with a LEAP bridge offers to maintain the integration, or records probe 1's result;
+- `pylutron-caseta` adds a public dimmer raise, lower or stop, or core `lutron_caseta` ships one;
+- a request asks DeviceSide for hold-to-dim on Caséta or RadioRA 3 loads;
+- `lutron_caseta` enters the top 100 integrations on analytics.home-assistant.io;
+- Lutron publishes LEAP documentation for zone commands.
+
 ## Split this register into a file per entry
 
 One file per entry, in place of this page, once one file costs more than it saves.

@@ -458,3 +458,5 @@ reach do. A Labs integration whose maintainer can't reproduce a report has only 
 path, and at rank 168 the share of users it reaches is small next to the work of a new transport. The first reopen
 condition is the one that changes both: a contributor with a bridge. If the maintainer weighs the feature gap above the
 install share, Option A is ready to build as written.
+
+**Decided 2026-11-28: B.** The maintainer deferred the integration; the entry is in `docs/deferred.md`.
