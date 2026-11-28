@@ -18,6 +18,8 @@ docs/integrations/matter/index.md: 1322
 docs/integrations/matter/internals.md: 3176
 docs/integrations/shelly/index.md: 1256
 docs/integrations/shelly/internals.md: 869
+docs/integrations/tplink/index.md: 700
+docs/integrations/tplink/internals.md: 1500
 docs/integrations/zha/index.md: 1096
 docs/integrations/zha/internals.md: 2348
 docs/integrations/zigbee.md: 777

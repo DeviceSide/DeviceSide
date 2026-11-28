@@ -385,7 +385,9 @@ def test_names_classes_is_the_integrations_capability_for_every_adapter():
         for name, adapter in cr.adapters(registry)
     }
     assert found == expected
-    assert cr.classed(registry) == {key for key, info in registry.integrations.items() if info.capability is not None}
+    # An integration with no adapter yet (tplink, until its first action lands) names none.
+    served = {adapter.integration for _, adapter in cr.adapters(registry)}
+    assert cr.classed(registry) == {key for key in served if registry.integrations[key].capability is not None}
 
 
 # The release gate.
